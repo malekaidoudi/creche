@@ -1,0 +1,65 @@
+{
+  "name": "Mima Elghalia Backend",
+  "description": "Backend API pour le système de gestion de crèche Mima Elghalia",
+  "repository": "https://github.com/votre-username/creche-site",
+  "logo": "https://votre-domaine.com/logo.png",
+  "keywords": ["node", "express", "mysql", "creche", "management"],
+  "image": "heroku/nodejs",
+  "stack": "heroku-22",
+  "buildpacks": [
+    {
+      "url": "heroku/nodejs"
+    }
+  ],
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "basic"
+    }
+  },
+  "addons": [
+    {
+      "plan": "jawsdb-maria:kitefin",
+      "as": "DATABASE"
+    }
+  ],
+  "env": {
+    "NODE_ENV": {
+      "description": "Environment mode",
+      "value": "production"
+    },
+    "JWT_SECRET": {
+      "description": "Secret key for JWT tokens",
+      "generator": "secret"
+    },
+    "JWT_EXPIRES_IN": {
+      "description": "JWT token expiration time",
+      "value": "7d"
+    },
+    "RATE_LIMIT_WINDOW_MS": {
+      "description": "Rate limiting window in milliseconds",
+      "value": "900000"
+    },
+    "RATE_LIMIT_MAX_REQUESTS": {
+      "description": "Maximum requests per window",
+      "value": "100"
+    },
+    "EMAIL_HOST": {
+      "description": "SMTP host for emails",
+      "value": "smtp.gmail.com"
+    },
+    "EMAIL_PORT": {
+      "description": "SMTP port",
+      "value": "587"
+    },
+    "EMAIL_USER": {
+      "description": "Email username for SMTP"
+    },
+    "EMAIL_PASS": {
+      "description": "Email password for SMTP"
+    }
+  },
+  "scripts": {
+    "postdeploy": "npm run db:migrate"
+  }
+}
