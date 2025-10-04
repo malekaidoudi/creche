@@ -27,7 +27,7 @@ const queryClient = new QueryClient({
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <BrowserRouter basename={import.meta.env.PROD ? '/creche-site' : ''}>
+    <BrowserRouter basename={import.meta.env.PROD ? '/creche' : ''}>
       <QueryClientProvider client={queryClient}>
         <SettingsProvider>
           <LanguageProvider>
