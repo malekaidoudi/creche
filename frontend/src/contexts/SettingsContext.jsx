@@ -1,118 +1,194 @@
-import { createContext, useContext, useState, useEffect } from 'react'
-import { settingsService } from '../services/settingsService'
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { settingsService } from '../services/settingsService';
 
-const SettingsContext = createContext()
+const SettingsContext = createContext();
 
 export const useSettings = () => {
-  const context = useContext(SettingsContext)
+  const context = useContext(SettingsContext);
   if (!context) {
-    throw new Error('useSettings must be used within a SettingsProvider')
+    throw new Error('useSettings must be used within a SettingsProvider');
   }
-  return context
-}
+  return context;
+};
 
 export const SettingsProvider = ({ children }) => {
-  const [settings, setSettings] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [settings, setSettings] = useState({
+    // Paramètres par défaut
+    nursery_name: 'Mima Elghalia',
+    nursery_logo: '/images/logo.png',
+    director_name: 'Mme Fatima Ben Ali',
+    nursery_address: '123 Rue de la Paix, 1000 Tunis, Tunisie',
+    nursery_phone: '+216 71 123 456',
+    nursery_email: 'contact@mimaelghalia.tn',
+    nursery_website: 'https://mimaelghalia.tn',
+    total_capacity: 30,
+    available_spots: 5,
+    min_age_months: 3,
+    max_age_months: 48,
+    welcome_message_fr: 'Bienvenue à la crèche Mima Elghalia',
+    welcome_message_ar: 'مرحباً بكم في حضانة ميما الغالية',
+    site_theme: 'light',
+    primary_color: '#3B82F6',
+    secondary_color: '#8B5CF6',
+    accent_color: '#F59E0B'
+  });
 
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Charger les paramètres publics au démarrage
   useEffect(() => {
-    loadSettings()
-  }, [])
+    loadPublicSettings();
+  }, []);
 
-  const loadSettings = async () => {
+  const loadPublicSettings = async () => {
     try {
-      setLoading(true)
-      setError(null)
-      const response = await settingsService.getAllSettings()
-      setSettings(response.data)
-    } catch (err) {
-      console.error('Erreur lors du chargement des paramètres:', err)
-      setError(err)
-      // Fallback avec des données par défaut
-      setSettings(getDefaultSettings())
+      setLoading(true);
+      setError(null);
+      
+      const response = await settingsService.getPublicSettings();
+      
+      if (response.success) {
+        setSettings(prev => ({
+          ...prev,
+          ...response.data
+        }));
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des paramètres:', error);
+      setError(error.message);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const getDefaultSettings = () => ({
-    name: {
-      fr: 'Mima Elghalia',
-      ar: 'ميما الغالية'
-    },
-    description: {
-      fr: 'Une crèche moderne offrant un environnement sûr et stimulant',
-      ar: 'حضانة عصرية توفر بيئة آمنة ومحفزة'
-    },
-    address: {
-      fr: '123 Avenue Habib Bourguiba, Tunis',
-      ar: 'شارع الحبيب بورقيبة، تونس العاصمة'
-    },
-    phone: '+216 71 123 456',
-    email: 'contact@mimaelghalia.tn',
-    website: 'https://mimaelghalia.tn',
-    director: {
-      name: {
-        fr: 'Mme. Fatima Ahmed',
-        ar: 'السيدة فاطمة أحمد'
-      },
-      title: {
-        fr: 'Directrice',
-        ar: 'المديرة'
+  // Appliquer le thème CSS
+  useEffect(() => {
+    const applyTheme = () => {
+      const root = document.documentElement;
+      const theme = settings.site_theme;
+      
+      // Appliquer le thème
+      if (theme === 'dark') {
+        root.classList.add('dark');
+      } else if (theme === 'light') {
+        root.classList.remove('dark');
+      } else if (theme === 'auto') {
+        // Détecter la préférence système
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (prefersDark) {
+          root.classList.add('dark');
+        } else {
+          root.classList.remove('dark');
+        }
       }
-    },
-    capacity: 30,
-    ageRange: {
-      min: 2,
-      max: 36
-    },
-    hours: {
-      open: '07:00',
-      close: '18:00',
-      days: {
-        fr: 'Lundi - Vendredi',
-        ar: 'الإثنين - الجمعة'
+      
+      // Appliquer les couleurs personnalisées
+      if (settings.primary_color) {
+        root.style.setProperty('--color-primary', settings.primary_color);
       }
-    },
-    theme: {
-      primaryColor: '#0ea5e9',
-      secondaryColor: '#d946ef',
-      logo: '/images/logo_creche.jpg',
-      favicon: '/images/favicon.ico'
-    },
-    social: {
-      facebook: 'https://facebook.com/mimaelghalia',
-      instagram: 'https://instagram.com/mimaelghalia',
-      linkedin: 'https://linkedin.com/company/mimaelghalia'
-    },
-    services: [],
-    features: [],
-    stats: []
-  })
+      if (settings.secondary_color) {
+        root.style.setProperty('--color-secondary', settings.secondary_color);
+      }
+      if (settings.accent_color) {
+        root.style.setProperty('--color-accent', settings.accent_color);
+      }
+    };
 
-  const getLocalizedValue = (value, language = 'fr') => {
-    if (typeof value === 'object' && value !== null) {
-      return value[language] || value.fr || value.ar || ''
-    }
-    return value || ''
-  }
+    applyTheme();
+  }, [settings.site_theme, settings.primary_color, settings.secondary_color, settings.accent_color]);
 
+  // Obtenir une valeur de paramètre avec fallback
+  const getSetting = (key, fallback = null) => {
+    return settings[key] !== undefined ? settings[key] : fallback;
+  };
+
+  // Obtenir les informations de base de la crèche
+  const getNurseryInfo = () => {
+    return {
+      name: getSetting('nursery_name', 'Mima Elghalia'),
+      logo: getSetting('nursery_logo', '/images/logo.png'),
+      director: getSetting('director_name', 'Mme Fatima Ben Ali'),
+      address: getSetting('nursery_address', '123 Rue de la Paix, 1000 Tunis'),
+      phone: getSetting('nursery_phone', '+216 71 123 456'),
+      email: getSetting('nursery_email', 'contact@mimaelghalia.tn'),
+      website: getSetting('nursery_website', 'https://mimaelghalia.tn')
+    };
+  };
+
+  // Obtenir les informations de capacité
+  const getCapacityInfo = () => {
+    return {
+      total: getSetting('total_capacity', 30),
+      available: getSetting('available_spots', 5),
+      minAge: getSetting('min_age_months', 3),
+      maxAge: getSetting('max_age_months', 48)
+    };
+  };
+
+  // Obtenir les messages de bienvenue
+  const getWelcomeMessages = () => {
+    return {
+      fr: getSetting('welcome_message_fr', 'Bienvenue à la crèche Mima Elghalia'),
+      ar: getSetting('welcome_message_ar', 'مرحباً بكم في حضانة ميما الغالية')
+    };
+  };
+
+  // Obtenir les informations de thème
+  const getThemeInfo = () => {
+    return {
+      theme: getSetting('site_theme', 'light'),
+      primaryColor: getSetting('primary_color', '#3B82F6'),
+      secondaryColor: getSetting('secondary_color', '#8B5CF6'),
+      accentColor: getSetting('accent_color', '#F59E0B')
+    };
+  };
+
+  // Obtenir les horaires d'ouverture
+  const getOpeningHours = () => {
+    const hours = getSetting('opening_hours', {});
+    return typeof hours === 'string' ? JSON.parse(hours) : hours;
+  };
+
+  // Rafraîchir les paramètres
   const refreshSettings = () => {
-    loadSettings()
-  }
+    loadPublicSettings();
+  };
+
+  // Mettre à jour un paramètre localement (pour l'admin)
+  const updateLocalSetting = (key, value) => {
+    setSettings(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
+  // Mettre à jour plusieurs paramètres localement
+  const updateLocalSettings = (newSettings) => {
+    setSettings(prev => ({
+      ...prev,
+      ...newSettings
+    }));
+  };
 
   const value = {
     settings,
     loading,
     error,
-    getLocalizedValue,
-    refreshSettings
-  }
+    getSetting,
+    getNurseryInfo,
+    getCapacityInfo,
+    getWelcomeMessages,
+    getThemeInfo,
+    getOpeningHours,
+    refreshSettings,
+    updateLocalSetting,
+    updateLocalSettings
+  };
 
   return (
     <SettingsContext.Provider value={value}>
       {children}
     </SettingsContext.Provider>
-  )
-}
+  );
+};

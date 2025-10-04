@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowRight, Shield, Heart, GraduationCap, Users, Clock, Award, Star, Play, CheckCircle, Baby, Utensils, Gamepad2, User } from 'lucide-react'
 import { useLanguage } from '../../hooks/useLanguage'
+import { useSettings } from '../../contexts/SettingsContext'
 //import { useAuth } from '../../hooks/useAuth'
 
 const HomePage = () => {
@@ -30,8 +31,13 @@ const HomePage = () => {
     }
   ]
 
+  const { getNurseryInfo, getCapacityInfo, getWelcomeMessages } = useSettings();
+  const nurseryInfo = getNurseryInfo();
+  const capacityInfo = getCapacityInfo();
+  const welcomeMessages = getWelcomeMessages();
+
   const stats = [
-    { number: '30', label: isRTL ? 'مكان متاح' : 'Places disponibles' },
+    { number: capacityInfo.available.toString(), label: isRTL ? 'مكان متاح' : 'Places disponibles' },
     { number: '2025', label: isRTL ? 'سنة الافتتاح' : 'Année d\'ouverture' },
     { number: '4', label: isRTL ? 'موظف مؤهل' : 'Personnel qualifié' },
     { number: '100%', label: isRTL ? 'معايير الأمان' : 'Normes de sécurité' }
@@ -231,11 +237,11 @@ const HomePage = () => {
               <div className="space-y-6">
                 <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight">
                   <span className="inline-block bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent animate-pulse">
-                    {isRTL ? 'مستقبل' : 'L\'avenir'}
+                    {nurseryInfo.name}
                   </span>
                   <br />
                   <span className="inline-block text-gray-900 dark:text-white hover:scale-105 transition-transform duration-300">
-                    {isRTL ? 'أطفالكم' : 'de vos enfants'}
+                    {isRTL ? 'مستقبل أطفالكم' : 'L\'avenir de vos enfants'}
                   </span>
                   <br />
                   <span className="inline-block bg-gradient-to-r from-pink-500 to-rose-500 bg-clip-text text-transparent hover:from-rose-500 hover:to-pink-500 transition-all duration-300">
@@ -246,10 +252,7 @@ const HomePage = () => {
 
               {/* Subtitle */}
               <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 leading-relaxed max-w-2xl">
-                {isRTL
-                  ? 'بيئة آمنة ومحفزة للنمو والتعلم واللعب. نحن نهتم بكل طفل كأنه طفلنا.'
-                  : 'Un environnement sûr et stimulant pour grandir, apprendre et jouer. Nous prenons soin de chaque enfant comme s\'il était le nôtre.'
-                }
+                {isRTL ? welcomeMessages.ar : welcomeMessages.fr}
               </p>
 
               {/* Features List */}

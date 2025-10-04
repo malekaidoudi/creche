@@ -3,6 +3,7 @@ import { useLanguage } from './hooks/useLanguage'
 
 // Layouts
 import PublicLayout from './layouts/PublicLayout'
+import AdminLayout from './layouts/AdminLayout'
 
 // Pages publiques
 import HomePage from './pages/public/HomePage'
@@ -11,6 +12,9 @@ import ArticleDetailPage from './pages/public/ArticleDetailPage'
 import EnrollmentPage from './pages/public/EnrollmentPage'
 import ContactPage from './pages/public/ContactPage'
 import VirtualTourPage from './pages/public/VirtualTourPage'
+
+// Pages admin
+import SettingsPageSimple from './pages/admin/SettingsPageSimple'
 
 function App() {
   const { language, direction } = useLanguage()
@@ -28,6 +32,11 @@ function App() {
         <Route path="inscription" element={<EnrollmentPage />} />
         <Route path="contact" element={<ContactPage />} />
         <Route path="visite-virtuelle" element={<VirtualTourPage />} />
+      </Route>
+
+      {/* Routes admin */}
+      <Route path="/admin" element={<AdminLayout />}>
+        <Route path="settings" element={<SettingsPageSimple />} />
       </Route>
 
       {/* Route 404 */}

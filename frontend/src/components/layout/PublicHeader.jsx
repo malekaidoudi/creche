@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Menu, X } from 'lucide-react'
 import { useLanguage } from '../../hooks/useLanguage'
+import { useSettings } from '../../contexts/SettingsContext'
 import LanguageToggle from '../ui/LanguageToggle'
 import ThemeToggle from '../ui/ThemeToggle'
 import { ImageWithFallback, defaultImages } from '../../utils/imageUtils.jsx'
@@ -11,8 +12,11 @@ import { Button } from '../ui/Button'
 const PublicHeader = () => {
   const { t } = useTranslation()
   const { isRTL } = useLanguage()
+  const { getNurseryInfo } = useSettings()
   const location = useLocation()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  
+  const nurseryInfo = getNurseryInfo()
 
   const navigation = [
     { name: t('nav.home'), href: '/' },
@@ -37,15 +41,15 @@ const PublicHeader = () => {
             <Link to="/" className="flex items-center">
               <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center">
                 <ImageWithFallback
-                  src="images/logo_creche.jpg"
-                  alt="Mima Elghalia"
+                  src={nurseryInfo.logo}
+                  alt={nurseryInfo.name}
                   fallback={defaultImages.logo}
                   className="w-full h-full object-contain"
                 />
               </div>
               <div className="ml-3 rtl:ml-0 rtl:mr-3">
                 <div className="text-lg font-bold text-gray-900 dark:text-white">
-                  {isRTL ? 'ميما الغالية' : 'Mima Elghalia'}
+                  {nurseryInfo.name}
                 </div>
                 <div className="text-xs text-gray-500 dark:text-gray-400">
                   {isRTL ? 'حضانة' : 'Crèche'}
