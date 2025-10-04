@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useSettings } from '../../contexts/SettingsContext';
-import { settingsService } from '../../services/settingsService';
+import { settingsService } from '../../services/staticSettingsService';
 
 const SettingsPageSimple = () => {
   const { isRTL } = useLanguage();

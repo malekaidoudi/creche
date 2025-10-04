@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { settingsService } from '../services/settingsService';
+import { settingsService } from '../services/staticSettingsService';
 
 const SettingsContext = createContext();
 

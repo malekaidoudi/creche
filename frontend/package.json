@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:github": "NODE_ENV=production vite build",
     "preview": "vite preview",
     "test": "vitest",
     "test:ui": "vitest --ui",
@@ -15,8 +16,8 @@
     "lint:fix": "eslint . --ext js,jsx --fix",
     "format": "prettier --write .",
     "type-check": "tsc --noEmit",
-    "deploy": "npm run build && gh-pages -d dist",
-    "predeploy": "npm run build"
+    "deploy": "npm run build:github && gh-pages -d dist",
+    "predeploy": "npm run build:github"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.9",
