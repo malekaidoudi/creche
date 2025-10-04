@@ -8,12 +8,6 @@ const path = require('path');
 require('dotenv').config();
 
 const db = require('./config/database');
-const authRoutes = require('./routes/auth');
-const userRoutes = require('./routes/users');
-const childrenRoutes = require('./routes/children');
-const enrollmentRoutes = require('./routes/enrollments');
-const attendanceRoutes = require('./routes/attendance');
-const uploadRoutes = require('./routes/uploads');
 const uploadProfileRoutes = require('./routes/upload');
 const articleRoutes = require('./routes/articles');
 const newsRoutes = require('./routes/news');
@@ -57,13 +51,7 @@ app.use('/media', express.static(path.join(__dirname, process.env.UPLOADS_DIR ||
 
 // API Routes
 app.use('/api/health', healthRoutes);
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/children', childrenRoutes);
-app.use('/api/enrollments', enrollmentRoutes);
 app.use('/api/public/enrollments', publicEnrollmentsRoutes);
-app.use('/api/attendance', attendanceRoutes);
-app.use('/api/uploads', uploadRoutes);
 app.use('/api/upload', uploadProfileRoutes);
 app.use('/api/articles', articleRoutes);
 app.use('/api/news', newsRoutes);
