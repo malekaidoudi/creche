@@ -20,9 +20,12 @@
   },
   "dependencies": {
     "@headlessui/react": "^2.2.9",
+    "@radix-ui/react-slot": "^1.2.3",
     "axios": "^1.6.2",
+    "class-variance-authority": "^0.7.1",
     "clsx": "^2.0.0",
     "date-fns": "^2.30.0",
+    "framer-motion": "^12.23.22",
     "i18next": "^23.7.6",
     "i18next-browser-languagedetector": "^7.2.0",
     "i18next-http-backend": "^2.4.2",

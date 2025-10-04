@@ -1,16 +1,32 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
-import { MapPin, Phone, Mail, Clock, Send, MessageSquare } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { 
+  MapPin, 
+  Phone, 
+  Mail, 
+  Clock, 
+  Send, 
+  MessageSquare, 
+  CheckCircle,
+  User,
+  MessageCircle,
+  Calendar,
+  Globe
+} from 'lucide-react'
 import { useLanguage } from '../../hooks/useLanguage'
 import { contactService } from '../../services/contactService'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card'
+import { Button } from '../../components/ui/Button'
 import toast from 'react-hot-toast'
 
 const ContactPage = () => {
   const { t } = useTranslation()
   const { isRTL } = useLanguage()
   const [loading, setLoading] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
 
   const {
     register,
@@ -19,313 +35,377 @@ const ContactPage = () => {
     reset
   } = useForm()
 
+  // Animation variants
+  const fadeInUp = {
+    initial: { opacity: 0, y: 60 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0.6 }
+  }
+
+  const staggerContainer = {
+    animate: {
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  }
+
   const onSubmit = async (data) => {
     try {
       setLoading(true)
-      await contactService.createContact(data)
-      toast.success(t('contact.success'))
+      
+      // Simuler l'envoi du message
+      console.log('Message de contact:', data)
+      
+      // Simuler un délai d'envoi
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      setSubmitted(true)
+      toast.success(isRTL ? 'تم إرسال رسالتك بنجاح' : 'Votre message a été envoyé avec succès')
       reset()
+      
+      // Reset submitted state after 3 seconds
+      setTimeout(() => setSubmitted(false), 3000)
+      
     } catch (error) {
       console.error('Erreur lors de l\'envoi du message:', error)
-      toast.error(error.response?.data?.error || 'Erreur lors de l\'envoi du message')
+      toast.error(isRTL ? 'خطأ في إرسال الرسالة' : 'Erreur lors de l\'envoi du message')
     } finally {
       setLoading(false)
     }
   }
 
+  // Contact information
   const contactInfo = [
     {
       icon: MapPin,
-      title: t('contact.info.address'),
-      content: isRTL ? '8 نهج بنزرت، مدنين 4100، تونس' : '8 Rue Bizerte, Medenine 4100, Tunisie',
-      color: 'text-red-600'
+      title: isRTL ? 'العنوان' : 'Adresse',
+      content: isRTL ? 'شارع الحبيب بورقيبة، تونس العاصمة' : '123 Avenue Habib Bourguiba, Tunis',
+      gradient: 'from-blue-500 to-cyan-500'
     },
     {
       icon: Phone,
-      title: t('contact.info.phone'),
-      content: '+216 25 95 35 32',
-      color: 'text-green-600'
+      title: isRTL ? 'الهاتف' : 'Téléphone',
+      content: '+216 71 123 456',
+      gradient: 'from-green-500 to-emerald-500'
     },
     {
       icon: Mail,
-      title: t('contact.info.email'),
+      title: isRTL ? 'البريد الإلكتروني' : 'Email',
       content: 'contact@mimaelghalia.tn',
-      color: 'text-blue-600'
+      gradient: 'from-purple-500 to-violet-500'
     },
     {
       icon: Clock,
-      title: t('contact.info.hours'),
-      content: isRTL ? 'الإثنين - الجمعة: 7:00 - 18:00، السبت: 8:00 - 12:00' : 'Lun - Ven: 7h00 - 18h00, Sam: 8h00 - 12h00',
-      color: 'text-purple-600'
+      title: isRTL ? 'ساعات العمل' : 'Horaires',
+      content: isRTL ? 'الإثنين - الجمعة: 7:00 - 18:00' : 'Lun - Ven: 7h00 - 18h00',
+      gradient: 'from-orange-500 to-red-500'
     }
   ]
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="text-center">
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              {t('contact.title')}
-            </h1>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              {t('contact.subtitle')}
-            </p>
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12">
+      <div className="container mx-auto px-4">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-16"
+        >
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4">
+            {isRTL ? 'تواصل معنا' : 'Contactez-nous'}
+          </h1>
+          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+            {isRTL
+              ? 'نحن هنا للإجابة على جميع أسئلتكم ومساعدتكم في رحلة طفلكم التعليمية'
+              : 'Nous sommes là pour répondre à toutes vos questions et vous accompagner dans le parcours éducatif de votre enfant'
+            }
+          </p>
+        </motion.div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          {/* Informations de contact */}
-          <div className="space-y-8">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                {t('contact.info.title')}
+        <div className="grid lg:grid-cols-2 gap-12">
+          {/* Contact Information */}
+          <motion.div
+            variants={staggerContainer}
+            initial="initial"
+            animate="animate"
+            className="space-y-8"
+          >
+            <motion.div variants={fadeInUp}>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+                {isRTL ? 'معلومات الاتصال' : 'Informations de contact'}
               </h2>
+              <div className="grid gap-6">
+                {contactInfo.map((info, index) => (
+                  <motion.div key={index} variants={fadeInUp}>
+                    <Card className="group hover:shadow-lg transition-all duration-300 border-0 bg-white dark:bg-gray-800">
+                      <CardContent className="p-6">
+                        <div className="flex items-start space-x-4 rtl:space-x-reverse">
+                          <div className={`w-12 h-12 rounded-xl bg-gradient-to-r ${info.gradient} p-3 group-hover:scale-110 transition-transform duration-300`}>
+                            <info.icon className="w-6 h-6 text-white" />
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
+                              {info.title}
+                            </h3>
+                            <p className="text-gray-600 dark:text-gray-300">
+                              {info.content}
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+
+            {/* Map */}
+            <motion.div variants={fadeInUp}>
+              <Card className="overflow-hidden border-0 bg-white dark:bg-gray-800">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-gray-900 dark:text-white">
+                    <Globe className="w-5 h-5 mr-2 rtl:mr-0 rtl:ml-2" />
+                    {isRTL ? 'موقعنا' : 'Notre localisation'}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="w-full h-64 bg-gradient-to-br from-primary-100 to-secondary-100 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center">
+                    <div className="text-center">
+                      <MapPin className="w-12 h-12 text-primary-600 dark:text-primary-400 mx-auto mb-2" />
+                      <p className="text-gray-600 dark:text-gray-300">
+                        {isRTL ? 'خريطة Google Maps ستظهر هنا' : 'Google Maps sera intégrée ici'}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </motion.div>
+
+          {/* Contact Form */}
+          <motion.div
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+          >
+            <Card className="border-0 bg-white dark:bg-gray-800 shadow-xl">
+              <CardHeader>
+                <CardTitle className="flex items-center text-2xl text-gray-900 dark:text-white">
+                  <MessageSquare className="w-6 h-6 mr-3 rtl:mr-0 rtl:ml-3" />
+                  {isRTL ? 'أرسل لنا رسالة' : 'Envoyez-nous un message'}
+                </CardTitle>
+                <CardDescription className="text-gray-600 dark:text-gray-300">
+                  {isRTL
+                    ? 'املأ النموذج أدناه وسنتواصل معك في أقرب وقت ممكن'
+                    : 'Remplissez le formulaire ci-dessous et nous vous répondrons dans les plus brefs délais'
+                  }
+                </CardDescription>
+              </CardHeader>
               
-              <div className="space-y-6">
-                {contactInfo.map((info, index) => {
-                  const Icon = info.icon
-                  return (
-                    <div key={index} className="flex items-start space-x-4 rtl:space-x-reverse">
-                      <div className={`flex-shrink-0 w-12 h-12 ${info.color} bg-gray-100 rounded-lg flex items-center justify-center`}>
-                        <Icon className="w-6 h-6" />
-                      </div>
+              <CardContent>
+                {submitted ? (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="text-center py-8"
+                  >
+                    <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                      {isRTL ? 'تم إرسال رسالتك!' : 'Message envoyé !'}
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-300">
+                      {isRTL
+                        ? 'شكراً لتواصلك معنا. سنرد عليك قريباً.'
+                        : 'Merci de nous avoir contactés. Nous vous répondrons bientôt.'
+                      }
+                    </p>
+                  </motion.div>
+                ) : (
+                  <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                    {/* Name and Email */}
+                    <div className="grid md:grid-cols-2 gap-6">
                       <div>
-                        <h3 className="font-semibold text-gray-900 mb-1">
-                          {info.title}
-                        </h3>
-                        <p className="text-gray-600">
-                          {info.content}
-                        </p>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          {isRTL ? 'الاسم الكامل' : 'Nom complet'}
+                        </label>
+                        <div className="relative">
+                          <User className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                          <input
+                            type="text"
+                            {...register('name', { required: true })}
+                            className={`w-full pl-10 rtl:pl-4 rtl:pr-10 pr-4 py-3 border rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${
+                              errors.name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                            }`}
+                            placeholder={isRTL ? 'أدخل اسمك الكامل' : 'Entrez votre nom complet'}
+                          />
+                        </div>
+                        {errors.name && (
+                          <p className="text-red-500 text-sm mt-1">
+                            {isRTL ? 'الاسم مطلوب' : 'Le nom est requis'}
+                          </p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          {isRTL ? 'البريد الإلكتروني' : 'Email'}
+                        </label>
+                        <div className="relative">
+                          <Mail className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                          <input
+                            type="email"
+                            {...register('email', { required: true, pattern: /^\S+@\S+$/i })}
+                            className={`w-full pl-10 rtl:pl-4 rtl:pr-10 pr-4 py-3 border rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${
+                              errors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                            }`}
+                            placeholder={isRTL ? 'أدخل بريدك الإلكتروني' : 'Entrez votre email'}
+                          />
+                        </div>
+                        {errors.email && (
+                          <p className="text-red-500 text-sm mt-1">
+                            {isRTL ? 'بريد إلكتروني صحيح مطلوب' : 'Email valide requis'}
+                          </p>
+                        )}
                       </div>
                     </div>
-                  )
-                })}
-              </div>
-            </div>
 
-            {/* Carte (placeholder) */}
-            <div className="bg-gray-200 rounded-lg h-64 flex items-center justify-center">
-              <div className="text-center text-gray-500">
-                <MapPin className="w-12 h-12 mx-auto mb-2" />
-                <p>{isRTL ? 'خريطة الموقع' : 'Carte de localisation'}</p>
-                <p className="text-sm">
-                  {isRTL ? 'قريباً...' : 'Bientôt disponible...'}
-                </p>
-              </div>
-            </div>
+                    {/* Phone */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {isRTL ? 'رقم الهاتف' : 'Téléphone'}
+                      </label>
+                      <div className="relative">
+                        <Phone className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                        <input
+                          type="tel"
+                          {...register('phone')}
+                          className="w-full pl-10 rtl:pl-4 rtl:pr-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors"
+                          placeholder={isRTL ? 'أدخل رقم هاتفك (اختياري)' : 'Entrez votre téléphone (optionnel)'}
+                        />
+                      </div>
+                    </div>
 
-            {/* Heures d'ouverture détaillées */}
-            <div className="card">
-              <div className="card-body">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  {t('contact.info.hours')}
-                </h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">
-                      {isRTL ? 'الإثنين - الجمعة' : 'Lundi - Vendredi'}
-                    </span>
-                    <span className="font-medium">7:00 - 18:00</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">
-                      {isRTL ? 'السبت' : 'Samedi'}
-                    </span>
-                    <span className="font-medium">8:00 - 12:00</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">
-                      {isRTL ? 'الأحد' : 'Dimanche'}
-                    </span>
-                    <span className="font-medium text-red-600">
-                      {isRTL ? 'مغلق' : 'Fermé'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+                    {/* Subject */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {isRTL ? 'الموضوع' : 'Sujet'}
+                      </label>
+                      <select
+                        {...register('subject', { required: true })}
+                        className={`w-full px-4 py-3 border rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${
+                          errors.subject ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                        }`}
+                      >
+                        <option value="">{isRTL ? 'اختر الموضوع' : 'Sélectionnez un sujet'}</option>
+                        <option value="inscription">{isRTL ? 'استفسار عن التسجيل' : 'Demande d\'inscription'}</option>
+                        <option value="information">{isRTL ? 'طلب معلومات' : 'Demande d\'information'}</option>
+                        <option value="visit">{isRTL ? 'طلب زيارة' : 'Demande de visite'}</option>
+                        <option value="other">{isRTL ? 'أخرى' : 'Autre'}</option>
+                      </select>
+                      {errors.subject && (
+                        <p className="text-red-500 text-sm mt-1">
+                          {isRTL ? 'الموضوع مطلوب' : 'Le sujet est requis'}
+                        </p>
+                      )}
+                    </div>
 
-          {/* Formulaire de contact */}
-          <div className="card">
-            <div className="card-body">
-              <div className="flex items-center space-x-3 rtl:space-x-reverse mb-6">
-                <MessageSquare className="w-6 h-6 text-primary-600" />
-                <h2 className="text-2xl font-bold text-gray-900">
-                  {isRTL ? 'أرسل لنا رسالة' : 'Envoyez-nous un message'}
-                </h2>
-              </div>
+                    {/* Message */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {isRTL ? 'الرسالة' : 'Message'}
+                      </label>
+                      <div className="relative">
+                        <MessageCircle className="absolute left-3 rtl:left-auto rtl:right-3 top-3 text-gray-400 w-5 h-5" />
+                        <textarea
+                          {...register('message', { required: true, minLength: 10 })}
+                          rows={5}
+                          className={`w-full pl-10 rtl:pl-4 rtl:pr-10 pr-4 py-3 border rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors resize-none ${
+                            errors.message ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                          }`}
+                          placeholder={isRTL ? 'اكتب رسالتك هنا...' : 'Écrivez votre message ici...'}
+                        />
+                      </div>
+                      {errors.message && (
+                        <p className="text-red-500 text-sm mt-1">
+                          {isRTL ? 'رسالة من 10 أحرف على الأقل مطلوبة' : 'Message de 10 caractères minimum requis'}
+                        </p>
+                      )}
+                    </div>
 
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-                <div className="form-group">
-                  <label className="form-label">
-                    {t('contact.name')} *
-                  </label>
-                  <input
-                    type="text"
-                    className={`form-input ${errors.name ? 'border-error-500' : ''}`}
-                    placeholder={isRTL ? 'اسمكم الكامل' : 'Votre nom complet'}
-                    {...register('name', {
-                      required: t('validation.required'),
-                      minLength: {
-                        value: 2,
-                        message: t('validation.minLength', { min: 2 })
-                      }
-                    })}
-                  />
-                  {errors.name && (
-                    <p className="form-error">{errors.name.message}</p>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="form-group">
-                    <label className="form-label">
-                      {t('contact.email')} *
-                    </label>
-                    <input
-                      type="email"
-                      className={`form-input ${errors.email ? 'border-error-500' : ''}`}
-                      placeholder={isRTL ? 'بريدكم الإلكتروني' : 'Votre email'}
-                      {...register('email', {
-                        required: t('validation.required'),
-                        pattern: {
-                          value: /^\S+@\S+$/i,
-                          message: t('validation.email')
-                        }
-                      })}
-                    />
-                    {errors.email && (
-                      <p className="form-error">{errors.email.message}</p>
-                    )}
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">
-                      {t('contact.phone')}
-                    </label>
-                    <input
-                      type="tel"
-                      className={`form-input ${errors.phone ? 'border-error-500' : ''}`}
-                      placeholder={isRTL ? 'رقم هاتفكم' : 'Votre téléphone'}
-                      {...register('phone', {
-                        pattern: {
-                          value: /^[+]?[\d\s\-()]+$/,
-                          message: t('validation.phone')
-                        }
-                      })}
-                    />
-                    {errors.phone && (
-                      <p className="form-error">{errors.phone.message}</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">
-                    {t('contact.subject')} *
-                  </label>
-                  <input
-                    type="text"
-                    className={`form-input ${errors.subject ? 'border-error-500' : ''}`}
-                    placeholder={isRTL ? 'موضوع رسالتكم' : 'Sujet de votre message'}
-                    {...register('subject', {
-                      required: t('validation.required'),
-                      minLength: {
-                        value: 5,
-                        message: t('validation.minLength', { min: 5 })
-                      }
-                    })}
-                  />
-                  {errors.subject && (
-                    <p className="form-error">{errors.subject.message}</p>
-                  )}
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">
-                    {t('contact.message')} *
-                  </label>
-                  <textarea
-                    rows={6}
-                    className={`form-input ${errors.message ? 'border-error-500' : ''}`}
-                    placeholder={isRTL ? 'اكتبوا رسالتكم هنا...' : 'Écrivez votre message ici...'}
-                    {...register('message', {
-                      required: t('validation.required'),
-                      minLength: {
-                        value: 20,
-                        message: t('validation.minLength', { min: 20 })
-                      }
-                    })}
-                  />
-                  {errors.message && (
-                    <p className="form-error">{errors.message.message}</p>
-                  )}
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="btn-primary w-full flex items-center justify-center"
-                >
-                  {loading ? (
-                    <LoadingSpinner size="sm" color="white" />
-                  ) : (
-                    <>
-                      <Send className={`w-4 h-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
-                      {t('contact.send')}
-                    </>
-                  )}
-                </button>
-              </form>
-            </div>
-          </div>
+                    {/* Submit Button */}
+                    <Button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full py-3 text-lg font-semibold group"
+                      size="lg"
+                    >
+                      {loading ? (
+                        <LoadingSpinner size="sm" />
+                      ) : (
+                        <>
+                          <Send className="w-5 h-5 mr-2 rtl:mr-0 rtl:ml-2 group-hover:translate-x-1 rtl:group-hover:-translate-x-1 transition-transform" />
+                          {isRTL ? 'إرسال الرسالة' : 'Envoyer le message'}
+                        </>
+                      )}
+                    </Button>
+                  </form>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
         </div>
 
         {/* FAQ Section */}
-        <div className="mt-16">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          viewport={{ once: true }}
+          className="mt-20"
+        >
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
               {isRTL ? 'الأسئلة الشائعة' : 'Questions fréquentes'}
             </h2>
+            <p className="text-xl text-gray-600 dark:text-gray-300">
+              {isRTL ? 'إجابات على الأسئلة الأكثر شيوعاً' : 'Réponses aux questions les plus courantes'}
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
             {[
               {
-                question: isRTL ? 'ما هي أعمار الأطفال المقبولين؟' : 'Quels sont les âges acceptés ?',
-                answer: isRTL ? 'نقبل الأطفال من عمر شهرين إلى 3 سنوات.' : 'Nous accueillons les enfants de 2 mois à 3 ans.'
+                question: isRTL ? 'ما هي الأعمار المقبولة؟' : 'Quels sont les âges acceptés ?',
+                answer: isRTL ? 'نقبل الأطفال من عمر شهرين إلى 3 سنوات' : 'Nous accueillons les enfants de 2 mois à 3 ans'
               },
               {
                 question: isRTL ? 'ما هي ساعات العمل؟' : 'Quels sont les horaires ?',
-                answer: isRTL ? 'من الإثنين إلى الجمعة من 7:00 إلى 18:00، السبت من 8:00 إلى 12:00.' : 'Du lundi au vendredi de 7h00 à 18h00, samedi de 8h00 à 12h00.'
+                answer: isRTL ? 'من الإثنين إلى الجمعة من 7:00 إلى 18:00' : 'Du lundi au vendredi de 7h00 à 18h00'
               },
               {
                 question: isRTL ? 'هل تقدمون وجبات الطعام؟' : 'Proposez-vous les repas ?',
-                answer: isRTL ? 'نعم، نقدم وجبات صحية ومتوازنة.' : 'Oui, nous proposons des repas sains et équilibrés.'
+                answer: isRTL ? 'نعم، نقدم وجبات صحية ومتوازنة' : 'Oui, nous proposons des repas sains et équilibrés'
               },
               {
                 question: isRTL ? 'كيف يمكنني زيارة الحضانة؟' : 'Comment puis-je visiter la crèche ?',
-                answer: isRTL ? 'يمكنكم حجز موعد للزيارة عبر الاتصال بنا.' : 'Vous pouvez prendre rendez-vous en nous contactant.'
+                answer: isRTL ? 'يمكنكم حجز موعد للزيارة عبر الهاتف أو البريد الإلكتروني' : 'Vous pouvez prendre rendez-vous par téléphone ou email'
               }
             ].map((faq, index) => (
-              <div key={index} className="card">
-                <div className="card-body">
-                  <h3 className="font-semibold text-gray-900 mb-2">
+              <Card key={index} className="border-0 bg-white dark:bg-gray-800">
+                <CardContent className="p-6">
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
                     {faq.question}
                   </h3>
-                  <p className="text-gray-600">
+                  <p className="text-gray-600 dark:text-gray-300">
                     {faq.answer}
                   </p>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   )

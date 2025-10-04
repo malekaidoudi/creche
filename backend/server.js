@@ -14,6 +14,7 @@ const newsRoutes = require('./routes/news');
 const contactRoutes = require('./routes/contacts');
 const healthRoutes = require('./routes/health');
 const publicEnrollmentsRoutes = require('./routes/publicEnrollments');
+const settingsRoutes = require('./routes/settings');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -56,6 +57,7 @@ app.use('/api/upload', uploadProfileRoutes);
 app.use('/api/articles', articleRoutes);
 app.use('/api/news', newsRoutes);
 app.use('/api/contacts', contactRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {

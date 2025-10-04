@@ -10,11 +10,11 @@ import ArticlesPage from './pages/public/ArticlesPage'
 import ArticleDetailPage from './pages/public/ArticleDetailPage'
 import EnrollmentPage from './pages/public/EnrollmentPage'
 import ContactPage from './pages/public/ContactPage'
+import VirtualTourPage from './pages/public/VirtualTourPage'
 
 function App() {
   const { language, direction } = useLanguage()
 
-  // Appliquer la direction et la langue au document
   document.documentElement.lang = language
   document.documentElement.dir = direction
 
@@ -27,6 +27,7 @@ function App() {
         <Route path="articles/:id" element={<ArticleDetailPage />} />
         <Route path="inscription" element={<EnrollmentPage />} />
         <Route path="contact" element={<ContactPage />} />
+        <Route path="visite-virtuelle" element={<VirtualTourPage />} />
       </Route>
 
       {/* Route 404 */}
