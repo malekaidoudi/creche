@@ -36,7 +36,7 @@ const API_CONFIG = {
     CONTACTS: '/api/contacts',
     ARTICLES: '/api/articles',
     NEWS: '/api/news',
-    ENROLLMENTS: '/api/public-enrollments'
+    ENROLLMENTS: '/api/public/enrollments'
   },
   
   // Configuration des timeouts
