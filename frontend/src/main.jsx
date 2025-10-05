@@ -11,6 +11,11 @@ import { SettingsProvider } from './contexts/SettingsContext.jsx'
 import './index.css'
 import './i18n/config.js'
 
+// Debug API (temporaire)
+if (import.meta.env.DEV) {
+  import('./debug-api.js');
+}
+
 // Configuration React Query
 const queryClient = new QueryClient({
   defaultOptions: {

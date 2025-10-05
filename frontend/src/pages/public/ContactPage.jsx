@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { motion } from 'framer-motion'
 import { 
@@ -12,27 +11,28 @@ import {
   CheckCircle,
   User,
   MessageCircle,
-  Calendar,
   Globe
 } from 'lucide-react'
 import { useLanguage } from '../../hooks/useLanguage'
-import { contactService } from '../../services/contactService'
+import { useSettings } from '../../contexts/SettingsContext'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card'
 import toast from 'react-hot-toast'
 
 const ContactPage = () => {
-  const { t } = useTranslation()
   const { isRTL } = useLanguage()
+  const { getNurseryInfo, getFormattedOpeningHours, getMapAddress } = useSettings()
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  
+  const nurseryInfo = getNurseryInfo()
+  const mapAddress = getMapAddress()
 
   const {
     register,
     handleSubmit,
-    formState: { errors },
-    reset
+    formState: { errors }
   } = useForm()
 
   // Animation variants
@@ -80,28 +80,29 @@ const ContactPage = () => {
     {
       icon: MapPin,
       title: isRTL ? 'العنوان' : 'Adresse',
-      content: isRTL ? 'شارع الحبيب بورقيبة، تونس العاصمة' : '123 Avenue Habib Bourguiba, Tunis',
+      content: isRTL ? (nurseryInfo.addressAr || nurseryInfo.address) : nurseryInfo.address,
       gradient: 'from-blue-500 to-cyan-500'
     },
     {
       icon: Phone,
       title: isRTL ? 'الهاتف' : 'Téléphone',
-      content: '+216 71 123 456',
-      gradient: 'from-green-500 to-emerald-500'
+      content: nurseryInfo.phone,
+      gradient: 'from-green-500 to-emerald-500',
+      isPhone: true // Marqueur pour le traitement spécial RTL
     },
     {
       icon: Mail,
       title: isRTL ? 'البريد الإلكتروني' : 'Email',
-      content: 'contact@mimaelghalia.tn',
-      gradient: 'from-purple-500 to-violet-500'
+      content: nurseryInfo.email,
+      gradient: 'from-orange-500 to-red-500'
     },
     {
       icon: Clock,
       title: isRTL ? 'ساعات العمل' : 'Horaires',
-      content: isRTL ? 'الإثنين - الجمعة: 7:00 - 18:00' : 'Lun - Ven: 7h00 - 18h00',
-      gradient: 'from-orange-500 to-red-500'
+      content: getFormattedOpeningHours(isRTL),
+      gradient: 'from-purple-500 to-pink-500'
     }
-  ]
+  ];
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12">
@@ -149,7 +150,10 @@ const ContactPage = () => {
                             <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
                               {info.title}
                             </h3>
-                            <p className="text-gray-600 dark:text-gray-300">
+                            <p 
+                              className={`text-gray-600 dark:text-gray-300 ${info.isPhone ? 'ltr' : ''}`}
+                              dir={info.isPhone ? 'ltr' : undefined}
+                            >
                               {info.content}
                             </p>
                           </div>
@@ -171,12 +175,38 @@ const ContactPage = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <div className="w-full h-64 bg-gradient-to-br from-primary-100 to-secondary-100 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center">
-                    <div className="text-center">
-                      <MapPin className="w-12 h-12 text-primary-600 dark:text-primary-400 mx-auto mb-2" />
-                      <p className="text-gray-600 dark:text-gray-300">
-                        {isRTL ? 'خريطة Google Maps ستظهر هنا' : 'Google Maps sera intégrée ici'}
-                      </p>
+                  <div className="w-full h-64 relative">
+                    <iframe
+                      src={`https://www.google.com/maps?q=${encodeURIComponent(mapAddress)}&output=embed`}
+                      width="100%"
+                      height="100%"
+                      style={{ border: 0 }}
+                      allowFullScreen=""
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                      className="rounded-b-lg"
+                      title={isRTL ? 'موقع الحضانة على الخريطة' : 'Localisation de la crèche'}
+                    />
+                    {/* Overlay avec adresse au survol */}
+                    <div className="absolute top-2 left-2 right-2 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg p-2 opacity-0 hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                      <div className="flex items-center text-sm">
+                        <MapPin className="w-4 h-4 text-primary-600 dark:text-primary-400 mr-2 rtl:mr-0 rtl:ml-2 flex-shrink-0" />
+                        <p className="text-gray-700 dark:text-gray-300 truncate">
+                          {mapAddress}
+                        </p>
+                      </div>
+                    </div>
+                    {/* Bouton pour ouvrir dans Google Maps */}
+                    <div className="absolute bottom-2 right-2">
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapAddress)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm hover:bg-white dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 p-2 rounded-lg shadow-sm transition-all duration-200 flex items-center text-xs"
+                      >
+                        <Globe className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
+                        {isRTL ? 'فتح في خرائط جوجل' : 'Ouvrir dans Maps'}
+                      </a>
                     </div>
                   </div>
                 </CardContent>

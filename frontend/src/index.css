@@ -337,6 +337,59 @@
   @apply bg-white rounded-lg shadow-xl max-w-md w-full max-h-screen overflow-y-auto;
 }
 
+/* Styles pour forcer la direction LTR (téléphones, emails, URLs) */
+.ltr {
+  direction: ltr !important;
+  text-align: left !important;
+}
+
+[dir="rtl"] .ltr {
+  direction: ltr !important;
+  text-align: left !important;
+}
+
+/* Classes utilitaires pour les couleurs personnalisées */
+.bg-custom-primary {
+  background-color: var(--color-primary, #3B82F6);
+}
+
+.text-custom-primary {
+  color: var(--color-primary, #3B82F6);
+}
+
+.border-custom-primary {
+  border-color: var(--color-primary, #3B82F6);
+}
+
+.bg-custom-secondary {
+  background-color: var(--color-secondary, #8B5CF6);
+}
+
+.text-custom-secondary {
+  color: var(--color-secondary, #8B5CF6);
+}
+
+.bg-custom-accent {
+  background-color: var(--color-accent, #F59E0B);
+}
+
+.text-custom-accent {
+  color: var(--color-accent, #F59E0B);
+}
+
+/* Classes avec opacité utilisant les variables RGB */
+.bg-custom-primary-10 {
+  background-color: rgba(var(--color-primary-rgb, 59, 130, 246), 0.1);
+}
+
+.bg-custom-primary-20 {
+  background-color: rgba(var(--color-primary-rgb, 59, 130, 246), 0.2);
+}
+
+.bg-custom-primary-50 {
+  background-color: rgba(var(--color-primary-rgb, 59, 130, 246), 0.5);
+}
+
 /* Styles d'impression */
 @media print {
   .no-print {

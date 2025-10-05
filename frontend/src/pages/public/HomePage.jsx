@@ -3,12 +3,11 @@ import { useTranslation } from 'react-i18next'
 import { ArrowRight, Shield, Heart, GraduationCap, Users, Clock, Award, Star, Play, CheckCircle, Baby, Utensils, Gamepad2, User } from 'lucide-react'
 import { useLanguage } from '../../hooks/useLanguage'
 import { useSettings } from '../../contexts/SettingsContext'
-//import { useAuth } from '../../hooks/useAuth'
+import { ImageWithFallback, defaultImages } from '../../utils/imageUtils.jsx'
 
 const HomePage = () => {
   const { t } = useTranslation()
-  const { isRTL, getLocalizedText } = useLanguage()
-  //const { user, isAuthenticated } = useAuth()
+  const { isRTL } = useLanguage()
 
   const features = [
     {
@@ -31,16 +30,33 @@ const HomePage = () => {
     }
   ]
 
-  const { getNurseryInfo, getCapacityInfo, getWelcomeMessages } = useSettings();
+  const { getNurseryInfo, getStatistics, getSetting } = useSettings();
   const nurseryInfo = getNurseryInfo();
-  const capacityInfo = getCapacityInfo();
-  const welcomeMessages = getWelcomeMessages();
+  const welcomeMessages = {
+    fr: getSetting('welcome_message_fr', 'Bienvenue à la crèche Mima Elghalia'),
+    ar: getSetting('welcome_message_ar', 'مرحباً بكم في حضانة ميما الغالية')
+  };
+  const statistics = getStatistics();
 
   const stats = [
-    { number: capacityInfo.available.toString(), label: isRTL ? 'مكان متاح' : 'Places disponibles' },
-    { number: '2025', label: isRTL ? 'سنة الافتتاح' : 'Année d\'ouverture' },
-    { number: '4', label: isRTL ? 'موظف مؤهل' : 'Personnel qualifié' },
-    { number: '100%', label: isRTL ? 'معايير الأمان' : 'Normes de sécurité' }
+    { 
+      number: (statistics?.availableSpots || 5).toString(), 
+      label: isRTL ? 'مكان متاح' : 'Places disponibles' 
+    },
+    { 
+      number: (statistics?.yearsOfExperience || 0) > 5 ? `+${statistics.yearsOfExperience}` : (statistics?.openingYear || 2019).toString(), 
+      label: isRTL ? 
+        ((statistics?.yearsOfExperience || 0) > 5 ? 'سنوات خبرة' : 'سنة الافتتاح') : 
+        ((statistics?.yearsOfExperience || 0) > 5 ? 'ans d\'expérience' : 'Année d\'ouverture')
+    },
+    { 
+      number: (statistics?.staffCount || 8).toString(), 
+      label: isRTL ? 'موظف مؤهل' : 'Personnel qualifié' 
+    },
+    { 
+      number: '100%', 
+      label: isRTL ? 'معايير الأمان' : 'Normes de sécurité' 
+    }
   ]
 
   const services = [
@@ -235,10 +251,9 @@ const HomePage = () => {
 
               {/* Title */}
               <div className="space-y-6">
-                <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight">
+                <h1 className="text-3xl md:text-6xl lg:text-7xl font-bold leading-tight">
                   <span className="inline-block bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent animate-pulse">
-                    {nurseryInfo.name}
-                  </span>
+                    {isRTL ? nurseryInfo.nameAr : nurseryInfo.name}                  </span>
                   <br />
                   <span className="inline-block text-gray-900 dark:text-white hover:scale-105 transition-transform duration-300">
                     {isRTL ? 'مستقبل أطفالكم' : 'L\'avenir de vos enfants'}

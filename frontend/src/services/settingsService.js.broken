@@ -1,11 +1,4 @@
-// Utiliser le proxy Vite en développement, URL complète en production
-const API_BASE_URL = import.meta.env.DEV ? '/api' : (import.meta.env.VITE_API_URL || 'http://localhost:3003/api');
-
-console.log('🔧 Configuration API:', {
-  DEV: import.meta.env.DEV,
-  VITE_API_URL: import.meta.env.VITE_API_URL,
-  API_BASE_URL: API_BASE_URL
-});
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3003/api';
 
 // Fonction utilitaire pour les requêtes authentifiées
 const authenticatedFetch = async (url, options = {}) => {
@@ -32,45 +25,69 @@ export const settingsService = {
   async loginAdmin() {
     try {
       // Token admin temporaire généré côté backend (valide 24h)
-      const adminToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJhZG1pbkBjcmVjaGUuY29tIiwicm9sZSI6ImFkbWluIiwiZmlyc3RfbmFtZSI6IkFkbWluIiwibGFzdF9uYW1lIjoiU3lzdGVtIiwiaWF0IjoxNzU5NjU3MTM5LCJleHAiOjE3NTk3NDM1Mzl9.oSagY6YnxOo-0vIT6PTJ4inRdiqCC-wabg_YlwUlgF0';
+      const adminToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJhZG1pbkBjcmVjaGUuY29tIiwicm9sZSI6ImFkbWluIiwiZmlyc3RfbmFtZSI6IkFkbWluIiwibGFzdF9uYW1lIjoiU3lzdGVtIiwiaWF0IjoxNzU5NjU2NjY1LCJleHAiOjE3NTk3NDMwNjV9.rB_-ao7j8xzC1GQ485ZRbbcjto_JhQaJ1YngOtdof1s';
       
       localStorage.setItem('token', adminToken);
       console.log('✅ Token admin temporaire configuré');
       return { success: true };
     } catch (error) {
       console.error('❌ Erreur login admin:', error);
-      return { success: false, error: error.message };
     }
   },
-
   // Récupérer tous les paramètres publics
   async getPublicSettings() {
     try {
-      console.log('🔄 Appel API:', `${API_BASE_URL}/settings/public`);
+      console.log(' Appel API:', `${API_BASE_URL}/settings/public`);
       const response = await fetch(`${API_BASE_URL}/settings/public`);
       
-      console.log('📡 Réponse reçue:', response.status, response.statusText);
+      console.log(' Réponse reçue:', response.status, response.statusText);
       
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Erreur HTTP:', response.status, errorText);
-        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
-      }
-      
-      const data = await response.json();
-      console.log('✅ Données reçues:', Object.keys(data));
-      return data;
-    } catch (error) {
-      console.error('❌ Erreur lors de la récupération des paramètres publics:', error);
-      console.error('❌ Type d\'erreur:', error.constructor.name);
-      console.error('❌ Message:', error.message);
-      console.error('❌ Stack:', error.stack);
-      throw error;
+          nursery_logo: '/images/logo.png',
+          director_name: 'Mme Fatima Ben Ali',
+          nursery_address: '123 Rue de la Paix, 1000 Tunis, Tunisie',
+          nursery_address_ar: '123 شارع السلام، 1000 تونس، تونس',
+          nursery_phone: '+216 71 123 456',
+          nursery_email: 'contact@mimaelghalia.tn',
+          nursery_website: 'https://mimaelghalia.tn',
+          
+          // Capacité et statistiques
+          total_capacity: 30,
+          available_spots: 5,
+          min_age_months: 3,
+          max_age_months: 48,
+          staff_count: 8,
+          opening_year: 2019,
+          map_address: '123 Rue de la Paix, 1000 Tunis, Tunisie',
+          
+          // Messages
+          welcome_message_fr: 'Bienvenue à la crèche Mima Elghalia, un lieu d\'épanouissement pour vos enfants dans un environnement sécurisé et bienveillant.',
+          welcome_message_ar: 'مرحباً بكم في حضانة ميما الغالية، مكان لنمو أطفالكم في بيئة آمنة ومحبة.',
+          about_description_fr: 'Notre crèche offre un environnement éducatif stimulant avec une équipe qualifiée dédiée au bien-être de chaque enfant.',
+          about_description_ar: 'توفر حضانتنا بيئة تعليمية محفزة مع فريق مؤهل مكرس لرفاهية كل طفل.',
+          
+          // Thème
+          site_theme: 'light',
+          primary_color: '#3B82F6',
+          secondary_color: '#8B5CF6',
+          accent_color: '#F59E0B',
+          
+          // Horaires d'ouverture
+          opening_hours: {
+            monday: { open: '07:00', close: '18:00', closed: false },
+            tuesday: { open: '07:00', close: '18:00', closed: false },
+            wednesday: { open: '07:00', close: '18:00', closed: false },
+            thursday: { open: '07:00', close: '18:00', closed: false },
+            friday: { open: '07:00', close: '18:00', closed: false },
+            saturday: { open: '08:00', close: '12:00', closed: false },
+            sunday: { open: '00:00', close: '00:00', closed: true }
+          }
+        }
+      };
     }
   },
 
-  // Récupérer tous les paramètres (admin)
-  async getAllSettings() {
+  // Récupérer tous les paramètres (admin seulement)
+  async getAll() {
     try {
       const response = await authenticatedFetch(`${API_BASE_URL}/settings`);
       
@@ -86,10 +103,44 @@ export const settingsService = {
     }
   },
 
-  // Récupérer un paramètre spécifique
-  async getSetting(key) {
+  // Récupérer les catégories
+  async getCategories() {
     try {
-      const response = await authenticatedFetch(`${API_BASE_URL}/settings/${key}`);
+      const response = await authenticatedFetch(`${API_BASE_URL}/settings/categories`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Erreur lors de la récupération des catégories:', error);
+      throw error;
+    }
+  },
+
+  // Récupérer par catégorie
+  async getByCategory(category) {
+    try {
+      const response = await authenticatedFetch(`${API_BASE_URL}/settings/category/${category}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error(`Erreur lors de la récupération de la catégorie ${category}:`, error);
+      throw error;
+    }
+  },
+
+  // Récupérer un paramètre spécifique
+  async getByKey(key) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/settings/${key}`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -104,7 +155,7 @@ export const settingsService = {
   },
 
   // Mettre à jour un paramètre
-  async updateSetting(key, value, type = 'string') {
+  async updateByKey(key, value, type = 'string') {
     try {
       const response = await authenticatedFetch(`${API_BASE_URL}/settings/${key}`, {
         method: 'PUT',
@@ -126,37 +177,25 @@ export const settingsService = {
   // Mettre à jour plusieurs paramètres
   async updateMultiple(settings) {
     try {
-      console.log('🔄 Mise à jour multiple via API:', settings);
-      // Utiliser fetch normal sans authentification pour le développement
-      const response = await fetch(`${API_BASE_URL}/settings`, {
+      const response = await authenticatedFetch(`${API_BASE_URL}/settings`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
         body: JSON.stringify({ settings })
       });
       
-      console.log('📡 Réponse mise à jour:', response.status, response.statusText);
-      
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Erreur HTTP mise à jour:', response.status, errorText);
-        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
       
       const data = await response.json();
-      console.log('✅ Mise à jour réussie:', data);
       return data;
     } catch (error) {
-      console.error('❌ Erreur lors de la mise à jour multiple:', error);
-      console.error('❌ Type d\'erreur:', error.constructor.name);
-      console.error('❌ Message:', error.message);
+      console.error('Erreur lors de la mise à jour multiple:', error);
       throw error;
     }
   },
 
   // Créer un nouveau paramètre
-  async createSetting(key, value, type = 'string', category = 'general', description = '', isPublic = true) {
+  async create(key, value, type = 'string', category = 'general', description = '', isPublic = true) {
     try {
       const response = await authenticatedFetch(`${API_BASE_URL}/settings`, {
         method: 'POST',
@@ -176,7 +215,7 @@ export const settingsService = {
   },
 
   // Supprimer un paramètre
-  async deleteSetting(key) {
+  async delete(key) {
     try {
       const response = await authenticatedFetch(`${API_BASE_URL}/settings/${key}`, {
         method: 'DELETE'
@@ -194,7 +233,7 @@ export const settingsService = {
     }
   },
 
-  // Upload d'image pour un paramètre
+  // Upload d'image
   async uploadImage(key, file) {
     try {
       const formData = new FormData();
@@ -202,6 +241,7 @@ export const settingsService = {
       
       const token = localStorage.getItem('token');
       const headers = {};
+      
       if (token) {
         headers.Authorization = `Bearer ${token}`;
       }
@@ -222,41 +262,5 @@ export const settingsService = {
       console.error(`Erreur lors de l'upload d'image pour ${key}:`, error);
       throw error;
     }
-  },
-
-  // Récupérer les catégories disponibles
-  async getCategories() {
-    try {
-      const response = await authenticatedFetch(`${API_BASE_URL}/settings/categories`);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error('Erreur lors de la récupération des catégories:', error);
-      throw error;
-    }
-  },
-
-  // Récupérer les paramètres par catégorie
-  async getByCategory(category) {
-    try {
-      const response = await authenticatedFetch(`${API_BASE_URL}/settings/category/${category}`);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error(`Erreur lors de la récupération des paramètres de la catégorie ${category}:`, error);
-      throw error;
-    }
   }
 };
-
-export default settingsService;

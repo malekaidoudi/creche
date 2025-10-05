@@ -143,6 +143,14 @@ class Settings {
             processedValue = value.toString();
         }
 
+        // Vérifier la taille avant insertion
+        if (processedValue.length > 65535) {
+          console.error(`❌ Valeur trop longue pour ${key}: ${processedValue.length} caractères`);
+          throw new Error(`Valeur trop longue pour ${key}: ${processedValue.length} caractères (max: 65535)`);
+        }
+
+        console.log(`📝 Mise à jour ${key}: ${processedValue.substring(0, 50)}... (${processedValue.length} chars)`);
+
         await connection.execute(
           'UPDATE creche_settings SET setting_value = ?, setting_type = ?, updated_at = CURRENT_TIMESTAMP WHERE setting_key = ?',
           [processedValue, type, key]

@@ -118,14 +118,38 @@ const ArticlesPage = () => {
     setTimeout(() => {
       setArticles(mockArticles)
       setLoading(false)
-    }, 1000)
-  }, [currentPage, searchTerm, selectedCategory])
+    }, 500)
+  }, [currentPage]) // Retiré searchTerm et selectedCategory pour éviter les recherches à chaque lettre
 
   const filteredArticles = articles.filter(article => {
-    const matchesSearch = article.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         article.excerpt.toLowerCase().includes(searchTerm.toLowerCase())
+    // Recherche améliorée dans titre, extrait, contenu et tags
+    const searchLower = searchTerm.toLowerCase().trim()
+    const matchesSearch = searchLower === '' || 
+      article.title.toLowerCase().includes(searchLower) ||
+      article.excerpt.toLowerCase().includes(searchLower) ||
+      article.content.toLowerCase().includes(searchLower) ||
+      article.tags.some(tag => tag.toLowerCase().includes(searchLower))
+    
+    // Filtrage par catégorie amélioré - correspondance exacte ou traduction
     const matchesCategory = selectedCategory === 'all' || 
-                           article.category.toLowerCase().includes(selectedCategory.toLowerCase())
+      article.category.toLowerCase() === selectedCategory.toLowerCase() ||
+      (selectedCategory === 'education' && (
+        article.category.toLowerCase().includes('éducation') || 
+        article.category.toLowerCase().includes('تعليم')
+      )) ||
+      (selectedCategory === 'health' && (
+        article.category.toLowerCase().includes('santé') || 
+        article.category.toLowerCase().includes('صحة')
+      )) ||
+      (selectedCategory === 'psychology' && (
+        article.category.toLowerCase().includes('psychologie') || 
+        article.category.toLowerCase().includes('علم النفس')
+      )) ||
+      (selectedCategory === 'activities' && (
+        article.category.toLowerCase().includes('activités') || 
+        article.category.toLowerCase().includes('أنشطة')
+      ))
+    
     return matchesSearch && matchesCategory
   })
 
@@ -226,6 +250,25 @@ const ArticlesPage = () => {
               </button>
             </div>
           </div>
+          
+          {/* Results indicator */}
+          {(searchTerm || selectedCategory !== 'all') && (
+            <div className="mt-4 text-center">
+              <p className="text-gray-600 dark:text-gray-400">
+                {filteredArticles.length === 0 
+                  ? (isRTL ? 'لم يتم العثور على مقالات' : 'Aucun article trouvé')
+                  : (isRTL 
+                      ? `تم العثور على ${filteredArticles.length} مقال${filteredArticles.length > 1 ? 'ات' : ''}`
+                      : `${filteredArticles.length} article${filteredArticles.length > 1 ? 's' : ''} trouvé${filteredArticles.length > 1 ? 's' : ''}`)
+                }
+                {searchTerm && (
+                  <span className="ml-2 rtl:ml-0 rtl:mr-2">
+                    {isRTL ? `للبحث: "${searchTerm}"` : `pour "${searchTerm}"`}
+                  </span>
+                )}
+              </p>
+            </div>
+          )}
         </motion.div>
 
         {/* Articles Grid/List */}

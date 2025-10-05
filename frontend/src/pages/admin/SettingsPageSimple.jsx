@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
+import { Link } from 'react-router-dom';
 import { 
   Settings, 
   Save, 
@@ -9,44 +10,43 @@ import {
   Palette, 
   Globe, 
   Building, 
-  Clock, 
-  Shield,
-  Image as ImageIcon
+  Clock,
+  Image as ImageIcon,
+  Users,
+  ArrowLeft,
+  Home
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useSettings } from '../../contexts/SettingsContext';
-import { settingsService } from '../../services/staticSettingsService';
 
 const SettingsPageSimple = () => {
   const { isRTL } = useLanguage();
-  const { refreshSettings, updateLocalSettings } = useSettings();
+  const { settings: contextSettings, refreshSettings, updateLocalSettings, saveSettings, loading: contextLoading } = useSettings();
   const [loading, setLoading] = useState(false);
   const [settings, setSettings] = useState({});
   const [activeTab, setActiveTab] = useState('general');
   const [formData, setFormData] = useState({});
-
   // Catégories de paramètres
   const categories = [
     {
       id: 'general',
       name: isRTL ? 'عام' : 'Général',
-      icon: Building,
+      icon: Settings,
       color: 'blue',
-      fields: ['nursery_name', 'director_name', 'nursery_logo']
+      fields: ['nursery_name', 'nursery_name_ar', 'nursery_logo', 'director_name']
     },
     {
       id: 'contact',
       name: isRTL ? 'الاتصال' : 'Contact',
       icon: Globe,
       color: 'green',
-      fields: ['nursery_address', 'nursery_phone', 'nursery_email', 'nursery_website']
+      fields: ['nursery_address', 'nursery_address_ar', 'nursery_phone', 'nursery_email', 'nursery_website']
     },
     {
       id: 'capacity',
-      name: isRTL ? 'السعة' : 'Capacité',
-      icon: Settings,
-      color: 'purple',
-      fields: ['total_capacity', 'available_spots', 'min_age_months', 'max_age_months']
+      name: isRTL ? 'السعة والإحصائيات' : 'Capacité & Statistiques',
+      icon: Users,
+      fields: ['total_capacity', 'available_spots', 'min_age_months', 'max_age_months', 'staff_count', 'opening_year', 'map_address']
     },
     {
       id: 'content',
@@ -59,8 +59,15 @@ const SettingsPageSimple = () => {
       id: 'appearance',
       name: isRTL ? 'المظهر' : 'Apparence',
       icon: Palette,
-      color: 'indigo',
+      color: 'purple',
       fields: ['site_theme', 'primary_color', 'secondary_color', 'accent_color']
+    },
+    {
+      id: 'hours',
+      name: isRTL ? 'ساعات العمل' : 'Horaires',
+      icon: Clock,
+      color: 'indigo',
+      fields: ['opening_hours']
     }
   ];
 
@@ -69,28 +76,132 @@ const SettingsPageSimple = () => {
     loadSettings();
   }, []);
 
+  // Recharger quand le contexte change
+  useEffect(() => {
+    if (contextSettings && Object.keys(contextSettings).length > 0) {
+      setSettings(contextSettings);
+      setFormData(contextSettings);
+    }
+  }, [contextSettings]);
+
   const loadSettings = async () => {
     try {
-      setLoading(true);
-      const response = await settingsService.getPublicSettings();
+      console.log('🔄 Chargement des paramètres admin depuis le contexte...');
       
-      if (response.success) {
-        setSettings(response.data);
-        setFormData(response.data);
+      // Utiliser les paramètres du contexte au lieu du service
+      if (contextSettings && Object.keys(contextSettings).length > 0) {
+        setSettings(contextSettings);
+        setFormData(contextSettings);
+        console.log('✅ Paramètres admin chargés:', Object.keys(contextSettings).length, 'paramètres');
+      } else {
+        console.log('⚠️ Aucun paramètre dans le contexte, attente...');
       }
     } catch (error) {
-      console.error('Error loading settings:', error);
+      console.error('❌ Erreur lors du chargement des paramètres admin:', error);
       toast.error(isRTL ? 'خطأ في تحميل الإعدادات' : 'Erreur lors du chargement des paramètres');
-    } finally {
-      setLoading(false);
     }
   };
 
-  // Mettre à jour un champ
+  // Validation des champs
+  const validateField = (key, value) => {
+    const errors = {};
+
+    switch (key) {
+      case 'welcome_message_fr':
+        if (!value || value.trim().length === 0) {
+          errors[key] = isRTL ? 'الرسالة الفرنسية مطلوبة' : 'Message français requis';
+        } else {
+          const sentences = value.split(/[.!?]+/).filter(s => s.trim().length > 0);
+          if (sentences.length < 1) {
+            errors[key] = isRTL ? 'يجب أن تحتوي على جملة واحدة على الأقل' : 'Doit contenir au moins une phrase';
+          } else if (sentences.length > 3) {
+            errors[key] = isRTL ? 'لا يجب أن تتجاوز 3 جمل' : 'Ne doit pas dépasser 3 phrases';
+          }
+        }
+        break;
+
+      case 'welcome_message_ar':
+        if (!value || value.trim().length === 0) {
+          errors[key] = isRTL ? 'الرسالة العربية مطلوبة' : 'Message arabe requis';
+        } else {
+          const sentences = value.split(/[.!?؟]+/).filter(s => s.trim().length > 0);
+          if (sentences.length < 1) {
+            errors[key] = isRTL ? 'يجب أن تحتوي على جملة واحدة على الأقل' : 'Doit contenir au moins une phrase';
+          } else if (sentences.length > 3) {
+            errors[key] = isRTL ? 'لا يجب أن تتجاوز 3 جمل' : 'Ne doit pas dépasser 3 phrases';
+          }
+        }
+        break;
+
+      case 'nursery_address':
+      case 'nursery_address_ar':
+      case 'map_address':
+        if (!value || value.trim().length < 10) {
+          errors[key] = isRTL ? 'العنوان قصير جداً (10 أحرف على الأقل)' : 'Adresse trop courte (min 10 caractères)';
+        } else if (value.length > 200) {
+          errors[key] = isRTL ? 'العنوان طويل جداً (200 حرف كحد أقصى)' : 'Adresse trop longue (max 200 caractères)';
+        }
+        break;
+
+      case 'nursery_name':
+      case 'nursery_name_ar':
+        if (!value || value.trim().length < 2) {
+          errors[key] = isRTL ? 'اسم الحضانة قصير جداً (حرفان على الأقل)' : 'Nom de crèche trop court (min 2 caractères)';
+        } else if (value.length > 100) {
+          errors[key] = isRTL ? 'اسم الحضانة طويل جداً (100 حرف كحد أقصى)' : 'Nom de crèche trop long (max 100 caractères)';
+        }
+        break;
+
+      case 'total_capacity':
+      case 'available_spots':
+      case 'staff_count':
+      case 'min_age_months':
+      case 'max_age_months':
+      case 'opening_year':
+        const numValue = parseInt(value);
+        if (isNaN(numValue) || numValue < 0) {
+          errors[key] = isRTL ? 'يجب أن يكون رقماً موجباً' : 'Doit être un nombre positif';
+        } else if (key === 'total_capacity' && numValue > 200) {
+          errors[key] = isRTL ? 'السعة الإجمالية كبيرة جداً' : 'Capacité totale trop élevée';
+        } else if (key === 'available_spots' && numValue > parseInt(formData.total_capacity || 0)) {
+          errors[key] = isRTL ? 'الأماكن المتاحة لا يمكن أن تتجاوز السعة الإجمالية' : 'Places disponibles ne peut pas dépasser la capacité totale';
+        } else if (key === 'opening_year' && (numValue < 1990 || numValue > new Date().getFullYear())) {
+          errors[key] = isRTL ? 'سنة الافتتاح غير صحيحة' : 'Année d\'ouverture invalide';
+        }
+        break;
+
+      case 'nursery_phone':
+        if (!value || !/^\+?[\d\s\-\(\)]{8,20}$/.test(value)) {
+          errors[key] = isRTL ? 'رقم الهاتف غير صحيح' : 'Numéro de téléphone invalide';
+        }
+        break;
+
+      case 'nursery_email':
+        if (!value || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          errors[key] = isRTL ? 'عنوان البريد الإلكتروني غير صحيح' : 'Adresse email invalide';
+        }
+        break;
+    }
+
+    return errors;
+  };
+
+  // État pour les erreurs de validation
+  const [validationErrors, setValidationErrors] = useState({});
+
+  // Mettre à jour un champ avec validation
   const handleFieldChange = (key, value) => {
     setFormData(prev => ({
       ...prev,
       [key]: value
+    }));
+
+    // Valider le champ
+    const fieldErrors = validateField(key, value);
+    setValidationErrors(prev => ({
+      ...prev,
+      ...fieldErrors,
+      [key]: fieldErrors[key] || undefined
     }));
   };
 
@@ -98,6 +209,22 @@ const SettingsPageSimple = () => {
   const handleSave = async () => {
     try {
       setLoading(true);
+      
+      // Valider tous les champs modifiés
+      const allErrors = {};
+      Object.keys(formData).forEach(key => {
+        if (formData[key] !== settings[key]) {
+          const fieldErrors = validateField(key, formData[key]);
+          Object.assign(allErrors, fieldErrors);
+        }
+      });
+
+      // Vérifier s'il y a des erreurs de validation
+      if (Object.keys(allErrors).length > 0) {
+        setValidationErrors(allErrors);
+        toast.error(isRTL ? 'يرجى تصحيح الأخطاء قبل الحفظ' : 'Veuillez corriger les erreurs avant de sauvegarder');
+        return;
+      }
       
       // Préparer les données modifiées seulement
       const changedSettings = {};
@@ -111,26 +238,30 @@ const SettingsPageSimple = () => {
       });
 
       if (Object.keys(changedSettings).length === 0) {
-        toast.info(isRTL ? 'لا توجد تغييرات للحفظ' : 'Aucune modification à sauvegarder');
+        toast(isRTL ? 'لا توجد تغييرات للحفظ' : 'Aucune modification à sauvegarder');
         return;
       }
 
-      // Sauvegarder via l'API (simulation pour le moment)
-      // En production, utiliser : await settingsService.updateMultiple(changedSettings);
+      // Préparer les données pour la sauvegarde (valeurs seulement)
+      const settingsToSave = {};
+      Object.keys(changedSettings).forEach(key => {
+        settingsToSave[key] = changedSettings[key].value;
+      });
       
-      // Simulation de sauvegarde
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Sauvegarder via le contexte
+      const result = await saveSettings(settingsToSave);
       
-      toast.success(isRTL ? 'تم حفظ الإعدادات بنجاح' : 'Paramètres sauvegardés avec succès');
-      
-      // Mettre à jour les settings locaux
-      setSettings(formData);
-      
-      // Mettre à jour le contexte global immédiatement pour que les changements apparaissent sur le site
-      updateLocalSettings(formData);
-      
-      // Optionnel : rafraîchir depuis la base de données
-      // await refreshSettings();
+      if (result.success) {
+        toast.success(isRTL ? 'تم حفظ الإعدادات بنجاح' : 'Paramètres sauvegardés avec succès');
+        
+        // Mettre à jour les settings locaux
+        setSettings(formData);
+        
+        // Recharger les paramètres pour s'assurer de la synchronisation
+        await refreshSettings();
+      } else {
+        toast.error(result.error || (isRTL ? 'خطأ في الحفظ' : 'Erreur lors de la sauvegarde'));
+      }
       
     } catch (error) {
       console.error('Error saving settings:', error);
@@ -162,14 +293,33 @@ const SettingsPageSimple = () => {
     if (!file) return;
     
     try {
-      // Simulation d'upload - en production, utiliser l'API
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        handleFieldChange(key, e.target.result);
-        toast.success(isRTL ? 'تم رفع الصورة بنجاح' : 'Image uploadée avec succès');
-      };
-      reader.readAsDataURL(file);
+      // Utiliser l'API d'upload
+      const formData = new FormData();
+      formData.append('image', file);
+      
+      const response = await fetch(`/api/settings/upload/${key}`, {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        // Mettre à jour seulement le formData (pas le contexte)
+        handleFieldChange(key, result.data.path);
+        toast.success(isRTL ? 'تم رفع الصورة بنجاح - Cliquez sur Sauvegarder pour confirmer' : 'Image uploadée avec succès - Cliquez sur Sauvegarder pour confirmer');
+        
+        // Ne pas rafraîchir le contexte ici - laisser l'utilisateur sauvegarder
+        // await refreshSettings();
+      } else {
+        throw new Error(result.message || 'Erreur upload');
+      }
     } catch (error) {
+      console.error('Erreur upload image:', error);
       toast.error(isRTL ? 'خطأ في رفع الصورة' : 'Erreur lors de l\'upload');
     }
   };
@@ -265,7 +415,7 @@ const SettingsPageSimple = () => {
       );
     }
 
-    if (key.includes('capacity') || key.includes('age') || key.includes('spots')) {
+    if (key.includes('capacity') || key.includes('age') || key.includes('spots') || key.includes('count') || key.includes('year')) {
       return (
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -275,8 +425,15 @@ const SettingsPageSimple = () => {
             type="number"
             value={value}
             onChange={(e) => handleFieldChange(key, e.target.value)}
-            className="w-full px-4 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent border-gray-300 dark:border-gray-600"
+            className={`w-full px-4 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+              validationErrors[key] ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'
+            }`}
           />
+          {validationErrors[key] && (
+            <p className="text-sm text-red-600 dark:text-red-400">
+              {validationErrors[key]}
+            </p>
+          )}
         </div>
       );
     }
@@ -291,8 +448,15 @@ const SettingsPageSimple = () => {
             value={value}
             onChange={(e) => handleFieldChange(key, e.target.value)}
             rows="3"
-            className="w-full px-4 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent border-gray-300 dark:border-gray-600"
+            className={`w-full px-4 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+              validationErrors[key] ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'
+            }`}
           />
+          {validationErrors[key] && (
+            <p className="text-sm text-red-600 dark:text-red-400">
+              {validationErrors[key]}
+            </p>
+          )}
         </div>
       );
     }
@@ -309,9 +473,16 @@ const SettingsPageSimple = () => {
             value={value}
             onChange={(e) => handleFieldChange(key, e.target.value)}
             dir="ltr"
-            className="w-full px-4 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent border-gray-300 dark:border-gray-600"
+            className={`w-full px-4 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+              validationErrors[key] ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'
+            }`}
             placeholder="+216 XX XXX XXX"
           />
+          {validationErrors[key] && (
+            <p className="text-sm text-red-600 dark:text-red-400">
+              {validationErrors[key]}
+            </p>
+          )}
         </div>
       );
     }
@@ -328,9 +499,16 @@ const SettingsPageSimple = () => {
             value={value}
             onChange={(e) => handleFieldChange(key, e.target.value)}
             dir="ltr"
-            className="w-full px-4 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent border-gray-300 dark:border-gray-600"
+            className={`w-full px-4 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+              validationErrors[key] ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'
+            }`}
             placeholder="contact@example.com"
           />
+          {validationErrors[key] && (
+            <p className="text-sm text-red-600 dark:text-red-400">
+              {validationErrors[key]}
+            </p>
+          )}
         </div>
       );
     }
@@ -354,6 +532,101 @@ const SettingsPageSimple = () => {
       );
     }
 
+    // Champ horaires d'ouverture
+    if (key === 'opening_hours') {
+      const hours = value || {
+        monday: { open: '07:00', close: '18:00', closed: false },
+        tuesday: { open: '07:00', close: '18:00', closed: false },
+        wednesday: { open: '07:00', close: '18:00', closed: false },
+        thursday: { open: '07:00', close: '18:00', closed: false },
+        friday: { open: '07:00', close: '18:00', closed: false },
+        saturday: { open: '08:00', close: '12:00', closed: false },
+        sunday: { open: '00:00', close: '00:00', closed: true }
+      };
+
+      const days = [
+        { key: 'monday', name: isRTL ? 'الإثنين' : 'Lundi' },
+        { key: 'tuesday', name: isRTL ? 'الثلاثاء' : 'Mardi' },
+        { key: 'wednesday', name: isRTL ? 'الأربعاء' : 'Mercredi' },
+        { key: 'thursday', name: isRTL ? 'الخميس' : 'Jeudi' },
+        { key: 'friday', name: isRTL ? 'الجمعة' : 'Vendredi' },
+        { key: 'saturday', name: isRTL ? 'السبت' : 'Samedi' },
+        { key: 'sunday', name: isRTL ? 'الأحد' : 'Dimanche' }
+      ];
+
+      return (
+        <div className="space-y-4">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            {displayName}
+          </label>
+          <div className="space-y-3">
+            {days.map(day => (
+              <div key={day.key} className="flex items-center space-x-4 rtl:space-x-reverse p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <div className="w-20 text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {day.name}
+                </div>
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={!hours[day.key]?.closed}
+                    onChange={(e) => {
+                      const newHours = {
+                        ...hours,
+                        [day.key]: {
+                          ...hours[day.key],
+                          closed: !e.target.checked
+                        }
+                      };
+                      handleFieldChange(key, newHours);
+                    }}
+                    className="mr-2 rtl:mr-0 rtl:ml-2"
+                  />
+                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                    {isRTL ? 'مفتوح' : 'Ouvert'}
+                  </span>
+                </label>
+                {!hours[day.key]?.closed && (
+                  <>
+                    <input
+                      type="time"
+                      value={hours[day.key]?.open || '07:00'}
+                      onChange={(e) => {
+                        const newHours = {
+                          ...hours,
+                          [day.key]: {
+                            ...hours[day.key],
+                            open: e.target.value
+                          }
+                        };
+                        handleFieldChange(key, newHours);
+                      }}
+                      className="px-2 py-1 border rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"
+                    />
+                    <span className="text-gray-500">-</span>
+                    <input
+                      type="time"
+                      value={hours[day.key]?.close || '18:00'}
+                      onChange={(e) => {
+                        const newHours = {
+                          ...hours,
+                          [day.key]: {
+                            ...hours[day.key],
+                            close: e.target.value
+                          }
+                        };
+                        handleFieldChange(key, newHours);
+                      }}
+                      className="px-2 py-1 border rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"
+                    />
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
     // Champ texte par défaut
     return (
       <div className="space-y-2">
@@ -364,8 +637,15 @@ const SettingsPageSimple = () => {
           type="text"
           value={value}
           onChange={(e) => handleFieldChange(key, e.target.value)}
-          className="w-full px-4 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent border-gray-300 dark:border-gray-600"
+          className={`w-full px-4 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+            validationErrors[key] ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'
+          }`}
         />
+        {validationErrors[key] && (
+          <p className="text-sm text-red-600 dark:text-red-400">
+            {validationErrors[key]}
+          </p>
+        )}
       </div>
     );
   };
@@ -384,16 +664,26 @@ const SettingsPageSimple = () => {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                {isRTL ? 'إعدادات الحضانة' : 'Paramètres de la crèche'}
-              </h1>
-              <p className="mt-2 text-gray-600 dark:text-gray-400">
-                {isRTL 
-                  ? 'إدارة جميع إعدادات وخصائص الحضانة'
-                  : 'Gérez tous les paramètres et propriétés de la crèche'
-                }
-              </p>
+            <div className="flex items-center space-x-4">
+              <Link
+                to="/"
+                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
+              >
+                <ArrowLeft size={20} />
+                <span>{isRTL ? 'العودة للموقع' : 'Retour au site'}</span>
+              </Link>
+              <div className="border-l border-gray-300 dark:border-gray-600 h-6"></div>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                  {isRTL ? 'إعدادات الحضانة' : 'Paramètres de la crèche'}
+                </h1>
+                <p className="mt-2 text-gray-600 dark:text-gray-400">
+                  {isRTL 
+                    ? 'إدارة جميع إعدادات وخصائص الحضانة'
+                    : 'Gérez tous les paramètres et propriétés de la crèche'
+                  }
+                </p>
+              </div>
             </div>
             
             <button
