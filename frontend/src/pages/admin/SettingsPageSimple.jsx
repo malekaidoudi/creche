@@ -292,8 +292,20 @@ const SettingsPageSimple = () => {
   const handleImageUpload = async (key, file) => {
     if (!file) return;
     
+    // Vérifier si on est en production (GitHub Pages)
+    const isProduction = window.location.hostname === 'malekaidoudi.github.io';
+    
+    if (isProduction) {
+      toast.error(
+        isRTL 
+          ? 'رفع الصور غير متاح في النسخة التجريبية. سيكون متاحاً عند استضافة الموقع.' 
+          : 'Upload d\'images non disponible en version démo. Sera disponible lors de l\'hébergement du site.'
+      );
+      return;
+    }
+    
     try {
-      // Utiliser l'API d'upload
+      // Utiliser l'API d'upload (seulement en développement)
       const formData = new FormData();
       formData.append('image', file);
       
@@ -360,10 +372,22 @@ const SettingsPageSimple = () => {
             />
             <label
               htmlFor={`upload-${key}`}
-              className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 cursor-pointer transition-colors"
+              className={`flex items-center px-4 py-2 rounded-lg transition-colors ${
+                window.location.hostname === 'malekaidoudi.github.io'
+                  ? 'bg-gray-400 text-white cursor-not-allowed'
+                  : 'bg-primary-600 text-white hover:bg-primary-700 cursor-pointer'
+              }`}
+              title={
+                window.location.hostname === 'malekaidoudi.github.io'
+                  ? (isRTL ? 'غير متاح في النسخة التجريبية' : 'Non disponible en version démo')
+                  : ''
+              }
             >
               <Upload className="w-4 h-4 mr-2" />
-              {isRTL ? 'رفع صورة' : 'Choisir une image'}
+              {window.location.hostname === 'malekaidoudi.github.io'
+                ? (isRTL ? 'غير متاح (نسخة تجريبية)' : 'Non disponible (démo)')
+                : (isRTL ? 'رفع صورة' : 'Choisir une image')
+              }
             </label>
           </div>
         </div>
@@ -700,6 +724,32 @@ const SettingsPageSimple = () => {
             </button>
           </div>
         </div>
+
+        {/* Bannière d'information pour la version démo */}
+        {window.location.hostname === 'malekaidoudi.github.io' && (
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3 rtl:ml-0 rtl:mr-3">
+                <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                  {isRTL ? 'نسخة تجريبية' : 'Version Démo'}
+                </h3>
+                <div className="mt-2 text-sm text-blue-700 dark:text-blue-300">
+                  <p>
+                    {isRTL 
+                      ? 'هذه نسخة تجريبية مستضافة على GitHub Pages. رفع الصور غير متاح حالياً وسيكون متاحاً عند استضافة الموقع على خادم مخصص.'
+                      : 'Ceci est une version démo hébergée sur GitHub Pages. L\'upload d\'images n\'est pas disponible actuellement et sera activé lors de l\'hébergement du site sur un serveur dédié.'
+                    }
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Sidebar - Catégories */}
