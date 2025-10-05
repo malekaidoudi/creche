@@ -23,10 +23,11 @@ import { useSettings } from '../../contexts/SettingsContext';
 const SettingsPageSimple = () => {
   const { isRTL } = useLanguage();
   const { settings: contextSettings, refreshSettings, updateLocalSettings, saveSettings, loading: contextLoading } = useSettings();
-  const [loading, setLoading] = useState(false);
   const [settings, setSettings] = useState({});
-  const [activeTab, setActiveTab] = useState('general');
   const [formData, setFormData] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [activeCategory, setActiveCategory] = useState('general');
+  const [isSaving, setIsSaving] = useState(false); // Flag pour éviter les re-renders pendant la sauvegarde
   // Catégories de paramètres
   const categories = [
     {
@@ -77,13 +78,24 @@ const SettingsPageSimple = () => {
     loadSettings();
   }, []);
 
-  // Recharger quand le contexte change
+  // Recharger quand le contexte change (seulement au premier chargement)
   useEffect(() => {
-    if (contextSettings && Object.keys(contextSettings).length > 0) {
+    if (contextSettings && Object.keys(contextSettings).length > 0 && !isSaving) {
       setSettings(contextSettings);
-      setFormData(contextSettings);
+      
+      // Ne mettre à jour formData que si c'est vide (premier chargement)
+      setFormData(prev => {
+        const isFirstLoad = Object.keys(prev).length === 0;
+        if (isFirstLoad) {
+          console.log('🔄 Premier chargement du formulaire depuis le contexte');
+          return contextSettings;
+        } else {
+          console.log('⚠️ Formulaire déjà initialisé, conservation des modifications');
+          return prev;
+        }
+      });
     }
-  }, [contextSettings]);
+  }, [contextSettings, isSaving]);
 
   const loadSettings = async () => {
     try {
@@ -223,6 +235,7 @@ const SettingsPageSimple = () => {
   const handleSave = async () => {
     try {
       setLoading(true);
+      setIsSaving(true); // Empêcher les re-renders pendant la sauvegarde
       
       // Valider tous les champs modifiés
       const allErrors = {};
@@ -287,6 +300,7 @@ const SettingsPageSimple = () => {
       toast.error(isRTL ? 'خطأ في حفظ الإعدادات' : 'Erreur lors de la sauvegarde');
     } finally {
       setLoading(false);
+      setIsSaving(false); // Réactiver les re-renders
     }
   };
 
