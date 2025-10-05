@@ -98,6 +98,34 @@ if (process.env.NODE_ENV !== 'test') {
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/media', express.static(path.join(__dirname, process.env.UPLOADS_DIR || 'uploads')));
 
+// Route de base pour l'API
+app.get('/api', (req, res) => {
+  res.json({
+    message: 'API Crèche - Backend fonctionnel',
+    version: '1.0.0',
+    environment: process.env.NODE_ENV || 'development',
+    railway: !!process.env.RAILWAY_ENVIRONMENT,
+    endpoints: [
+      '/api/health',
+      '/api/settings',
+      '/api/public/enrollments',
+      '/api/upload',
+      '/api/articles',
+      '/api/news',
+      '/api/contacts'
+    ]
+  });
+});
+
+// Route racine
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Crèche Backend API',
+    status: 'running',
+    api: '/api'
+  });
+});
+
 // API Routes
 app.use('/api/health', healthRoutes);
 app.use('/api/public/enrollments', publicEnrollmentsRoutes);
