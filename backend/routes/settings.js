@@ -9,7 +9,8 @@ const fs = require('fs').promises;
 // Configuration multer pour l'upload d'images
 const storage = multer.diskStorage({
   destination: async (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '../../frontend/public/images');
+    // Utiliser le dossier uploads du backend pour Railway
+    const uploadDir = path.join(__dirname, '../uploads/settings');
     try {
       await fs.mkdir(uploadDir, { recursive: true });
       cb(null, uploadDir);
@@ -253,7 +254,7 @@ router.post('/upload/:key', upload.single('image'), async (req, res) => {
 
     // Ajouter un timestamp pour forcer le rafraîchissement du cache
     const timestamp = Date.now();
-    const imagePath = `/images/${req.file.filename}?v=${timestamp}`;
+    const imagePath = `/uploads/settings/${req.file.filename}?v=${timestamp}`;
     
     // Mettre à jour le paramètre avec le chemin de l'image
     const updated = await Settings.updateByKey(key, imagePath, 'image');
