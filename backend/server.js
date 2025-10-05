@@ -99,9 +99,29 @@ app.get('/api', (req, res) => {
       '/api/upload/profile-picture',
       '/api/articles',
       '/api/news',
-      '/api/contacts'
+      '/api/contacts',
+      '/api/init-db (temporaire)'
     ]
   });
+});
+
+// Route d'initialisation de la base de données (temporaire pour Railway)
+app.post('/api/init-db', async (req, res) => {
+  try {
+    const { initDatabase } = require('./scripts/init-database');
+    await initDatabase();
+    res.json({
+      success: true,
+      message: 'Base de données initialisée avec succès'
+    });
+  } catch (error) {
+    console.error('Erreur initialisation DB:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de l\'initialisation',
+      error: error.message
+    });
+  }
 });
 
 // Route racine
