@@ -751,9 +751,9 @@ const SettingsPageSimple = () => {
                   return (
                     <button
                       key={category.id}
-                      onClick={() => setActiveTab(category.id)}
+                      onClick={() => setActiveCategory(category.id)}
                       className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-left transition-colors ${
-                        activeTab === category.id
+                        activeCategory === category.id
                           ? `bg-${category.color}-50 text-${category.color}-700 dark:bg-${category.color}-900/20 dark:text-${category.color}-300`
                           : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
                       }`}
@@ -763,7 +763,7 @@ const SettingsPageSimple = () => {
                         {category.name}
                       </div>
                       <span className={`text-xs px-2 py-1 rounded-full ${
-                        activeTab === category.id
+                        activeCategory === category.id
                           ? `bg-${category.color}-100 text-${category.color}-700 dark:bg-${category.color}-800 dark:text-${category.color}-200`
                           : 'bg-gray-100 text-gray-600 dark:bg-gray-600 dark:text-gray-400'
                       }`}>
@@ -782,20 +782,20 @@ const SettingsPageSimple = () => {
               {/* Header du formulaire */}
               <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                 <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                  {categories.find(c => c.id === activeTab)?.name}
+                  {categories.find(c => c.id === activeCategory)?.name}
                 </h2>
               </div>
 
               {/* Contenu du formulaire */}
               <div className="p-6">
                 <div className="space-y-6">
-                  {getFieldsByCategory(activeTab).map((key) => (
+                  {getFieldsByCategory(activeCategory).map((key) => (
                     <div key={key}>
                       {renderField(key)}
                     </div>
                   ))}
                   
-                  {getFieldsByCategory(activeTab).length === 0 && (
+                  {getFieldsByCategory(activeCategory).length === 0 && (
                     <div className="text-center py-12">
                       <Settings className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                       <p className="text-gray-500 dark:text-gray-400">
