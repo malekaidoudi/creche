@@ -19,17 +19,46 @@ const settingsRoutes = require('./routes/settings');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Configuration pour Railway proxy
+if (process.env.RAILWAY_ENVIRONMENT) {
+  app.set('trust proxy', true);
+  console.log('🚂 Trust proxy activé pour Railway');
+}
+
 // Security middleware
 app.use(helmet());
 app.use(compression());
 
-// Rate limiting
+// Rate limiting - Configuration pour Railway
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Trop de requêtes depuis cette IP, veuillez réessayer plus tard.'
+  message: 'Trop de requêtes depuis cette IP, veuillez réessayer plus tard.',
+  // Configuration pour Railway proxy
+  trustProxy: true,
+  standardHeaders: true,
+  legacyHeaders: false,
+  // Skip rate limiting en cas d'erreur de proxy
+  skipFailedRequests: true,
+  skipSuccessfulRequests: false
 });
-app.use('/api/', limiter);
+
+// Appliquer rate limiting seulement si pas en mode Railway ou si pas d'erreur
+if (process.env.RAILWAY_ENVIRONMENT) {
+  console.log('🚂 Rate limiting adapté pour Railway');
+  // Rate limiting plus permissif sur Railway
+  app.use('/api/', rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 200, // Plus permissif sur Railway
+    message: 'Trop de requêtes, veuillez réessayer plus tard.',
+    trustProxy: true,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skipFailedRequests: true
+  }));
+} else {
+  app.use('/api/', limiter);
+}
 
 // CORS configuration - Support multiple origins for Railway deployment
 const allowedOrigins = [
