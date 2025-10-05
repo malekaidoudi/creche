@@ -162,6 +162,8 @@ export const settingsService = {
       
       console.log('🔄 Mise à jour multiple via API:', settings);
       const url = getApiUrl(API_CONFIG.ENDPOINTS.SETTINGS);
+      console.log('🔗 URL générée pour mise à jour:', url);
+      console.log('🔧 API_CONFIG.BASE_URL:', API_CONFIG.BASE_URL);
       
       const response = await fetch(url, {
         method: 'PUT',
