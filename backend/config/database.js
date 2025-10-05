@@ -11,21 +11,39 @@ require('dotenv').config({ path: path.join(__dirname, '../../.env') });
 // console.log('DB_PORT:', process.env.DB_PORT);
 // console.log('DB_USER:', process.env.DB_USER);
 
-// Configuration de la base de données
+// Configuration de la base de données avec support Railway
 let dbConfig = {
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASS || 'root',
-  database: process.env.DB_NAME || 'creche_app',
+  user: process.env.DB_USER || process.env.MYSQLUSER || 'root',
+  password: process.env.DB_PASS || process.env.MYSQLPASSWORD || 'root',
+  database: process.env.DB_NAME || process.env.MYSQLDATABASE || 'creche_app',
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  acquireTimeout: 60000,
+  timeout: 60000,
+  reconnect: true
 };
 
-// Choisir entre socket ou host/port
-if (process.env.DB_SOCKET) {
+// Configuration spécifique Railway (variables automatiques)
+if (process.env.RAILWAY_ENVIRONMENT) {
+  console.log('🚂 Configuration Railway détectée');
+  dbConfig.host = process.env.MYSQLHOST || process.env.DB_HOST;
+  dbConfig.port = process.env.MYSQLPORT || process.env.DB_PORT || 3306;
+  
+  // Railway utilise souvent SSL en production
+  if (process.env.NODE_ENV === 'production') {
+    dbConfig.ssl = {
+      rejectUnauthorized: false
+    };
+  }
+} 
+// Configuration locale (MAMP/XAMPP)
+else if (process.env.DB_SOCKET) {
   console.log('📡 Utilisation du socket MAMP:', process.env.DB_SOCKET);
   dbConfig.socketPath = process.env.DB_SOCKET;
-} else {
+} 
+// Configuration standard host/port
+else {
   console.log('🌐 Utilisation host/port:', process.env.DB_HOST, process.env.DB_PORT);
   dbConfig.host = process.env.DB_HOST || 'localhost';
   dbConfig.port = process.env.DB_PORT || 3306;

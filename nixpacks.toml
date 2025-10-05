@@ -1,0 +1,18 @@
+# Configuration Nixpacks pour Railway
+# Ce fichier indique à Railway comment construire et démarrer l'application
+
+[phases.setup]
+# Installation des dépendances Node.js
+nixPkgs = ["nodejs_18", "npm"]
+
+[phases.install]
+# Installation des dépendances du backend
+cmds = ["cd backend && npm ci"]
+
+[phases.build]
+# Aucune étape de build spécifique nécessaire pour le backend
+cmds = []
+
+[start]
+# Commande pour démarrer le serveur backend
+cmd = "cd backend && npm start"

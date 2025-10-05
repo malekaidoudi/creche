@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { settingsService } from '../services/settingsService';
+import { isReadOnlyMode, ENV_INFO } from '../config/api';
 
 const SettingsContext = createContext();
 
@@ -12,41 +13,10 @@ export const useSettings = () => {
 };
 
 export const SettingsProvider = ({ children }) => {
-  const [settings, setSettings] = useState({
-    // Paramètres par défaut
-    nursery_name: 'Mima Elghalia',
-    nursery_name_ar: 'ميما الغالية',
-    nursery_logo: '/images/logo.png',
-    director_name: 'Mme Fatima Ben Ali',
-    nursery_address: '123 Rue de la Paix, 1000 Tunis, Tunisie',
-    nursery_address_ar: '123 شارع السلام، 1000 تونس، تونس',
-    nursery_phone: '+216 71 123 456',
-    nursery_email: 'contact@mimaelghalia.tn',
-    nursery_website: 'https://mimaelghalia.tn',
-    total_capacity: 30,
-    available_spots: 5,
-    min_age_months: 3,
-    max_age_months: 48,
-    staff_count: 8,
-    opening_year: 2019,
-    map_address: '123 Rue de la Paix, 1000 Tunis, Tunisie',
-    welcome_message_fr: 'Bienvenue à la crèche Mima Elghalia',
-    welcome_message_ar: 'مرحباً بكم في حضانة ميما الغالية',
-    about_description_fr: 'Notre crèche offre un environnement éducatif stimulant',
-    about_description_ar: 'توفر حضانتنا بيئة تعليمية محفزة',
-    site_theme: 'light',
-    primary_color: '#3B82F6',
-    secondary_color: '#8B5CF6',
-    accent_color: '#F59E0B',
-    opening_hours: {
-      monday: { open: '07:00', close: '18:00', closed: false },
-      tuesday: { open: '07:00', close: '18:00', closed: false },
-      wednesday: { open: '07:00', close: '18:00', closed: false },
-      thursday: { open: '07:00', close: '18:00', closed: false },
-      friday: { open: '07:00', close: '18:00', closed: false },
-      saturday: { open: '08:00', close: '12:00', closed: false },
-      sunday: { open: '00:00', close: '00:00', closed: true }
-    }
+  // Initialiser avec les données par défaut du service
+  const [settings, setSettings] = useState(() => {
+    console.log('🔧 Initialisation SettingsContext:', ENV_INFO);
+    return settingsService.getStaticDefaults();
   });
 
   const [loading, setLoading] = useState(true);

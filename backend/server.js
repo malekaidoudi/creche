@@ -31,10 +31,29 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-// CORS configuration
+// CORS configuration - Support multiple origins for Railway deployment
+const allowedOrigins = [
+  'http://localhost:5173',           // Développement local
+  'https://malekaidoudi.github.io',  // GitHub Pages production
+  process.env.FRONTEND_URL           // URL personnalisée (si définie)
+].filter(Boolean); // Retire les valeurs undefined
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-  credentials: true
+  origin: function (origin, callback) {
+    // Permet les requêtes sans origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    // Vérifie si l'origin est dans la liste autorisée
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log(`❌ CORS: Origin non autorisé: ${origin}`);
+      callback(new Error('Non autorisé par la politique CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
 // Body parsing middleware
@@ -99,10 +118,20 @@ app.use((err, req, res, next) => {
 
 // Start server
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Serveur démarré sur le port ${PORT}`);
     console.log(`📊 Environnement: ${process.env.NODE_ENV || 'development'}`);
     console.log(`🔗 API disponible sur: http://localhost:${PORT}/api`);
+    
+    // Informations spécifiques à Railway
+    if (process.env.RAILWAY_ENVIRONMENT) {
+      console.log(`🚂 Déployé sur Railway`);
+      console.log(`🌍 URL publique: ${process.env.RAILWAY_PUBLIC_DOMAIN || 'En cours de génération...'}`);
+      console.log(`🔒 CORS autorisé pour: ${allowedOrigins.join(', ')}`);
+    }
+    
+    // Vérification de la base de données
+    console.log(`🗄️  Base de données: ${process.env.DB_HOST ? 'Configurée' : 'Locale'}`);
   });
 }
 
