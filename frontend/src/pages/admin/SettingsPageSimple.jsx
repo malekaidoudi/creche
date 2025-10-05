@@ -92,7 +92,20 @@ const SettingsPageSimple = () => {
       // Utiliser les paramètres du contexte au lieu du service
       if (contextSettings && Object.keys(contextSettings).length > 0) {
         setSettings(contextSettings);
-        setFormData(contextSettings);
+        
+        // Ne mettre à jour formData que si c'est le premier chargement
+        // (éviter d'écraser les modifications en cours)
+        setFormData(prev => {
+          const hasExistingData = Object.keys(prev).length > 0;
+          if (hasExistingData) {
+            console.log('⚠️ FormData existant détecté, conservation des modifications');
+            return prev; // Garder les modifications existantes
+          } else {
+            console.log('✅ Premier chargement, initialisation du formData');
+            return contextSettings; // Premier chargement
+          }
+        });
+        
         console.log('✅ Paramètres admin chargés:', Object.keys(contextSettings).length, 'paramètres');
       } else {
         console.log('⚠️ Aucun paramètre dans le contexte, attente...');
@@ -255,11 +268,16 @@ const SettingsPageSimple = () => {
       if (result.success) {
         toast.success(isRTL ? 'تم حفظ الإعدادات بنجاح' : 'Paramètres sauvegardés avec succès');
         
-        // Mettre à jour les settings locaux
-        setSettings(formData);
+        // Mettre à jour les settings de référence avec les nouvelles valeurs
+        setSettings(prev => ({
+          ...prev,
+          ...settingsToSave
+        }));
         
-        // Recharger les paramètres pour s'assurer de la synchronisation
-        await refreshSettings();
+        // NE PAS recharger depuis l'API pour éviter d'écraser les modifications
+        // await refreshSettings(); // Commenté pour éviter l'écrasement
+        
+        console.log('✅ Paramètres mis à jour localement:', Object.keys(settingsToSave));
       } else {
         toast.error(result.error || (isRTL ? 'خطأ في الحفظ' : 'Erreur lors de la sauvegarde'));
       }
