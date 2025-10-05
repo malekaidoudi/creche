@@ -338,7 +338,7 @@ Pour toute question ou support :
 - [Node.js](https://nodejs.org/)
 - [TailwindCSS](https://tailwindcss.com/)
 - [Lucide Icons](https://lucide.dev/)
-
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/deploy?referrer=github&template=https://github.com/malekaidoudi/creche)
 ---
 
 Développé avec ❤️ par l'équipe Creche Management
