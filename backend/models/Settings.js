@@ -17,7 +17,7 @@ class Settings {
   static async getPublic() {
     try {
       const [rows] = await pool.execute(
-        'SELECT setting_key, setting_value, setting_type FROM creche_settings WHERE is_public = TRUE ORDER BY category, setting_key'
+        'SELECT setting_key, setting_value, setting_type FROM creche_settings ORDER BY category, setting_key'
       );
       
       // Convertir en objet clé-valeur avec parsing automatique
