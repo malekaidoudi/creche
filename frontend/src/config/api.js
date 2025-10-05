@@ -96,7 +96,8 @@ export const checkApiHealth = async () => {
  * @returns {boolean} True si mode lecture seule
  */
 export const isReadOnlyMode = () => {
-  return isProduction; // Pour l'instant, GitHub Pages = lecture seule
+  // Maintenant que Railway est opérationnel, désactiver le mode lecture seule
+  return false; // Railway backend disponible pour la sauvegarde
 };
 
 /**

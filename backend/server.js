@@ -49,14 +49,13 @@ if (process.env.RAILWAY_ENVIRONMENT) {
 
 // CORS configuration - Support multiple origins for Railway deployment
 const allowedOrigins = [
-  'http://localhost:5173',           // Développement local
   'https://malekaidoudi.github.io',  // GitHub Pages production
   process.env.FRONTEND_URL           // URL personnalisée (si définie)
 ].filter(Boolean); // Retire les valeurs undefined
 
 app.use(cors({
-  origin: function (origin, callback) {
-    // Permet les requêtes sans origin (mobile apps, Postman, etc.)
+  origin: (origin, callback) => {
+    // Autoriser les requêtes sans origin (mobile apps, etc.)
     if (!origin) return callback(null, true);
     
     // Vérifie si l'origin est dans la liste autorisée
@@ -72,18 +71,22 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
+// Servir les fichiers uploadés avec CORS
+app.use('/uploads', (req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  next();
+}, express.static(path.join(__dirname, 'uploads')));
+
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Logging
-if (process.env.NODE_ENV !== 'test') {
+if (process.env.NODE_ENV === 'production') {
   app.use(morgan('combined'));
 }
-
-// Static files for uploads
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-app.use('/media', express.static(path.join(__dirname, process.env.UPLOADS_DIR || 'uploads')));
 
 // Route de base pour l'API
 app.get('/api', (req, res) => {
