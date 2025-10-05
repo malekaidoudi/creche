@@ -298,7 +298,7 @@ const SettingsPageSimple = () => {
       const formData = new FormData();
       formData.append('image', file);
       
-      const response = await fetch(getApiUrl(`/settings/upload/${key}`), {
+      const response = await fetch(getApiUrl(`/api/settings/upload/${key}`), {
         method: 'POST',
         body: formData
       });

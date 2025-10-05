@@ -59,6 +59,21 @@ export const getApiUrl = (endpoint) => {
 };
 
 /**
+ * Construit une URL complète pour une image uploadée
+ * @param {string} imagePath - Le chemin de l'image (ex: '/uploads/settings/logo.jpg')
+ * @returns {string} URL complète de l'image
+ */
+export const getImageUrl = (imagePath) => {
+  if (!imagePath) return null;
+  
+  // Si c'est déjà une URL complète, la retourner telle quelle
+  if (imagePath.startsWith('http')) return imagePath;
+  
+  // Si c'est un chemin relatif, utiliser le backend Railway
+  return `${API_CONFIG.BASE_URL}${imagePath}`;
+};
+
+/**
  * Vérifie si l'API est disponible
  * @returns {Promise<boolean>} True si l'API répond
  */

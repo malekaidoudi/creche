@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { settingsService } from '../services/settingsService';
-import { isReadOnlyMode, ENV_INFO } from '../config/api';
+import settingsService from '../services/settingsService';
+import { getImageUrl, isReadOnlyMode, ENV_INFO } from '../config/api';
 
 const SettingsContext = createContext();
 
@@ -80,7 +80,7 @@ export const SettingsProvider = ({ children }) => {
     return {
       name: getSetting('nursery_name', 'Mima Elghalia'),
       nameAr: getSetting('nursery_name_ar', 'ميما الغالية'),
-      logo: getSetting('nursery_logo', '/images/logo.png'),
+      logo: getImageUrl(getSetting('nursery_logo', '/images/logo.png')),
       director: getSetting('director_name', 'Mme Fatima Ben Ali'),
       address: getSetting('nursery_address', '123 Rue de la Paix, 1000 Tunis, Tunisie'),
       addressAr: getSetting('nursery_address_ar', '123 شارع السلام، 1000 تونس، تونس'),
