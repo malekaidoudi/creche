@@ -1,8 +1,9 @@
 import axios from 'axios'
 import toast from 'react-hot-toast'
+import API_CONFIG from '../config/api.js'
 
-// Configuration de base d'Axios
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+// Configuration de base d'Axios avec la nouvelle config centralisée
+const API_BASE_URL = `${API_CONFIG.BASE_URL}/api`
 
 const api = axios.create({
   baseURL: API_BASE_URL,

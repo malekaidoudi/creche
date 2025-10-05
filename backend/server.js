@@ -96,7 +96,7 @@ app.get('/api', (req, res) => {
       '/api/health',
       '/api/settings',
       '/api/public/enrollments',
-      '/api/upload',
+      '/api/upload/profile-picture',
       '/api/articles',
       '/api/news',
       '/api/contacts'
