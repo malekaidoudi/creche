@@ -7,8 +7,8 @@ WORKDIR /app
 # Copier les fichiers package.json du backend
 COPY backend/package*.json ./
 
-# Installer les dépendances
-RUN npm ci --only=production
+# Installer les dépendances (toutes pour éviter les problèmes)
+RUN npm ci
 
 # Copier le code source du backend
 COPY backend/ ./
