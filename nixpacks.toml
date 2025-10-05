@@ -16,3 +16,7 @@ cmds = []
 [start]
 # Commande pour démarrer le serveur backend
 cmd = "cd backend && npm start"
+
+# Variables d'environnement pour indiquer le dossier de travail
+[variables]
+RAILWAY_RUN_UID = "1001"
