@@ -123,7 +123,7 @@ export const settingsService = {
   },
 
   // Mettre à jour un paramètre
-  async updateSetting(key, value, type = 'string') {
+  async updateSetting(key, value, type = 'text') {
     try {
       const response = await authenticatedFetch(`${API_BASE_URL}/settings/${key}`, {
         method: 'PUT',
@@ -207,7 +207,7 @@ export const settingsService = {
   },
 
   // Créer un nouveau paramètre
-  async createSetting(key, value, type = 'string', category = 'general', description = '', isPublic = true) {
+  async createSetting(key, value, type = 'text', category = 'general', description = '', isPublic = true) {
     try {
       const response = await authenticatedFetch(`${API_BASE_URL}/settings`, {
         method: 'POST',

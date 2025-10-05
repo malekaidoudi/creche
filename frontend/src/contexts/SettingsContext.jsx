@@ -178,7 +178,7 @@ export const SettingsProvider = ({ children }) => {
       const formattedSettings = {};
       Object.keys(settingsToSave).forEach(key => {
         const value = settingsToSave[key];
-        let type = 'string';
+        let type = 'text';
         
         // Déterminer le type automatiquement
         if (typeof value === 'number') {

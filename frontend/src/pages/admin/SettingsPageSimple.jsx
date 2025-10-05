@@ -307,10 +307,10 @@ const SettingsPageSimple = () => {
   // Déterminer le type d'un paramètre
   const getSettingType = (key) => {
     if (key.includes('capacity') || key.includes('age') || key.includes('spots')) return 'number';
-    if (key.includes('color')) return 'string';
-    if (key.includes('theme')) return 'string';
-    if (key.includes('message') || key.includes('description')) return 'string';
-    return 'string';
+    if (key.includes('color')) return 'text';
+    if (key.includes('theme')) return 'text';
+    if (key.includes('message') || key.includes('description')) return 'text';
+    return 'text';
   };
 
   // Filtrer les champs par catégorie
