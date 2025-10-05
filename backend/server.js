@@ -19,45 +19,32 @@ const settingsRoutes = require('./routes/settings');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Configuration pour Railway proxy
-if (process.env.RAILWAY_ENVIRONMENT) {
-  app.set('trust proxy', true);
-  console.log('🚂 Trust proxy activé pour Railway');
-}
+// Configuration pour Railway proxy - DOIT être en premier
+app.set('trust proxy', true);
+console.log('🚂 Trust proxy activé globalement');
 
 // Security middleware
 app.use(helmet());
 app.use(compression());
 
-// Rate limiting - Configuration pour Railway
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Trop de requêtes depuis cette IP, veuillez réessayer plus tard.',
-  // Configuration pour Railway proxy
-  trustProxy: true,
-  standardHeaders: true,
-  legacyHeaders: false,
-  // Skip rate limiting en cas d'erreur de proxy
-  skipFailedRequests: true,
-  skipSuccessfulRequests: false
-});
-
-// Appliquer rate limiting seulement si pas en mode Railway ou si pas d'erreur
+// Rate limiting simplifié pour Railway
 if (process.env.RAILWAY_ENVIRONMENT) {
-  console.log('🚂 Rate limiting adapté pour Railway');
-  // Rate limiting plus permissif sur Railway
+  console.log('🚂 Rate limiting Railway activé');
   app.use('/api/', rateLimit({
-    windowMs: 15 * 60 * 1000,
+    windowMs: 15 * 60 * 1000, // 15 minutes
     max: 200, // Plus permissif sur Railway
     message: 'Trop de requêtes, veuillez réessayer plus tard.',
-    trustProxy: true,
     standardHeaders: true,
     legacyHeaders: false,
     skipFailedRequests: true
   }));
 } else {
-  app.use('/api/', limiter);
+  // Rate limiting local
+  app.use('/api/', rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    message: 'Trop de requêtes depuis cette IP, veuillez réessayer plus tard.'
+  }));
 }
 
 // CORS configuration - Support multiple origins for Railway deployment
