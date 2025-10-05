@@ -34,7 +34,9 @@ export const SettingsProvider = ({ children }) => {
       // Charger depuis l'API backend
       const response = await settingsService.getPublicSettings();
       
-      if (response.success) {
+      console.log('📦 Réponse API complète:', response);
+      
+      if (response && response.success && response.data) {
         console.log('✅ Paramètres chargés depuis l\'API:', Object.keys(response.data));
         setSettings(prev => ({
           ...prev,
@@ -77,10 +79,20 @@ export const SettingsProvider = ({ children }) => {
 
   // Obtenir les informations de la crèche
   const getNurseryInfo = () => {
+    const logoPath = getSetting('nursery_logo', '/images/logo.png');
+    const logoUrl = getImageUrl(logoPath);
+    
+    console.log('🏢 getNurseryInfo Debug:', {
+      logoPath,
+      logoUrl,
+      allSettings: Object.keys(settings),
+      settingsCount: Object.keys(settings).length
+    });
+    
     return {
       name: getSetting('nursery_name', 'Mima Elghalia'),
       nameAr: getSetting('nursery_name_ar', 'ميما الغالية'),
-      logo: getImageUrl(getSetting('nursery_logo', '/images/logo.png')),
+      logo: logoUrl,
       director: getSetting('director_name', 'Mme Fatima Ben Ali'),
       address: getSetting('nursery_address', '123 Rue de la Paix, 1000 Tunis, Tunisie'),
       addressAr: getSetting('nursery_address_ar', '123 شارع السلام، 1000 تونس، تونس'),
