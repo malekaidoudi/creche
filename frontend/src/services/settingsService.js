@@ -56,7 +56,7 @@ export const settingsService = {
       }
       
       const data = await response.json();
-      );
+      console.log('✅ Données reçues:', Object.keys(data));
       return data;
     } catch (error) {
       console.error('❌ Erreur lors de la récupération des paramètres publics:', error);

@@ -36,7 +36,7 @@ export const SettingsProvider = ({ children }) => {
       console.log('📦 Réponse API complète:', response);
       
       if (response && response.success && response.data) {
-        );
+        console.log('✅ Paramètres chargés depuis l\'API:', Object.keys(response.data));
         setSettings(prev => ({
           ...prev,
           ...response.data
@@ -89,7 +89,8 @@ export const SettingsProvider = ({ children }) => {
       logoUrl = getImageUrl(logoPath);
     }
     
-     + '...' : logoPath,
+    console.log('🏢 getNurseryInfo Debug:', {
+      logoPath: logoPath ? logoPath.substring(0, 50) + '...' : logoPath,
       isBase64: logoPath && logoPath.startsWith('data:image/'),
       logoUrl: logoUrl ? logoUrl.substring(0, 50) + '...' : logoUrl,
       allSettings: Object.keys(settings),
@@ -225,7 +226,7 @@ export const SettingsProvider = ({ children }) => {
           // Log spécial pour les images
           Object.keys(settingsToSave).forEach(key => {
             if (key.includes('logo') || key.includes('image')) {
-               + '...' : 'null'}`);
+              console.log(`🖼️ Logo mis à jour: ${key} = ${settingsToSave[key] ? settingsToSave[key].substring(0, 50) + '...' : 'null'}`);
             }
           });
           

@@ -111,11 +111,11 @@ const SettingsPageSimple = () => {
             console.log('⚠️ FormData existant détecté, conservation des modifications');
             return prev; // Garder les modifications existantes
           } else {
-                        return contextSettings; // Premier chargement
+            return contextSettings; // Premier chargement
           }
         });
         
-        .length, 'paramètres');
+        console.log('✅ Paramètres admin chargés:', Object.keys(contextSettings).length, 'paramètres');
       } else {
         console.log('⚠️ Aucun paramètre dans le contexte, attente...');
       }
@@ -287,7 +287,7 @@ const SettingsPageSimple = () => {
         // NE PAS recharger depuis l'API pour éviter d'écraser les modifications
         // await refreshSettings(); // Commenté pour éviter l'écrasement
         
-        );
+        console.log('✅ Paramètres mis à jour localement:', Object.keys(settingsToSave));
       } else {
         toast.error(result.error || (isRTL ? 'خطأ في الحفظ' : 'Erreur lors de la sauvegarde'));
       }
