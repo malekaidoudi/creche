@@ -273,6 +273,13 @@ const SettingsPageSimple = () => {
       });
       
       // Sauvegarder via le contexte
+      console.log('💾 Sauvegarde des paramètres:', Object.keys(settingsToSave));
+      console.log('🖼️ Logo dans settingsToSave:', settingsToSave.nursery_logo ? {
+        isBase64: settingsToSave.nursery_logo.startsWith('data:image/'),
+        length: settingsToSave.nursery_logo.length,
+        prefix: settingsToSave.nursery_logo.substring(0, 50) + '...'
+      } : 'undefined');
+      
       const result = await saveSettings(settingsToSave);
       
       if (result.success) {
@@ -324,6 +331,8 @@ const SettingsPageSimple = () => {
     if (!file) return;
     
     try {
+      console.log('🖼️ Upload image démarré:', { key, fileName: file.name, size: file.size, type: file.type });
+      
       // Vérifier la taille du fichier (max 2MB)
       if (file.size > 2 * 1024 * 1024) {
         toast.error(isRTL ? 'حجم الصورة كبير جداً (الحد الأقصى 2 ميجابايت)' : 'Image trop volumineuse (max 2MB)');
@@ -338,14 +347,21 @@ const SettingsPageSimple = () => {
 
       // Convertir l'image en Base64
       const base64String = await convertFileToBase64(file);
+      console.log('✅ Conversion Base64 réussie:', { 
+        key, 
+        length: base64String.length, 
+        prefix: base64String.substring(0, 50) + '...',
+        isBase64: base64String.startsWith('data:image/')
+      });
       
       // Mettre à jour directement le formData avec la chaîne Base64
       handleFieldChange(key, base64String);
+      console.log('📝 FormData mis à jour pour:', key);
       
       toast.success(isRTL ? 'تم تحميل الصورة - اضغط على حفظ للتأكيد' : 'Image chargée - Cliquez sur Sauvegarder pour confirmer');
       
     } catch (error) {
-      console.error('Erreur conversion image:', error);
+      console.error('❌ Erreur conversion image:', error);
       toast.error(isRTL ? 'خطأ في معالجة الصورة' : 'Erreur lors du traitement de l\'image');
     }
   };
