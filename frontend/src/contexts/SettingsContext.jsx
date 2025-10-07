@@ -237,18 +237,25 @@ export const SettingsProvider = ({ children }) => {
         const newSettings = { ...settings, ...settingsToSave };
         localStorage.setItem('creche_settings', JSON.stringify(newSettings));
         
-        // Forcer la mise à jour immédiate du logo et rechargement
+        // Forcer le rechargement complet des paramètres depuis l'API
         if (settingsToSave.nursery_logo) {
-                    
-          // Déclencher immédiatement l'événement avec le nouveau logo
-          window.dispatchEvent(new CustomEvent('logoUpdated', { 
-            detail: { logo: settingsToSave.nursery_logo } 
-          }));
+          console.log('🔄 Logo sauvegardé, rechargement depuis l\'API...');
           
-          // Forcer un re-render de tous les composants qui utilisent le contexte
-          setTimeout(() => {
-            setSettings(prev => ({ ...prev })); // Force re-render
-          }, 100);
+          // Recharger les paramètres depuis l'API après un court délai
+          setTimeout(async () => {
+            try {
+              console.log('🔄 Rechargement des paramètres depuis l\'API...');
+              await loadSettings(); // Recharger depuis l'API
+              console.log('✅ Paramètres rechargés avec succès');
+              
+              // Déclencher l'événement de mise à jour du logo
+              window.dispatchEvent(new CustomEvent('logoUpdated', { 
+                detail: { logo: settingsToSave.nursery_logo } 
+              }));
+            } catch (error) {
+              console.error('❌ Erreur lors du rechargement:', error);
+            }
+          }, 1000); // Délai de 1 seconde pour laisser l'API se mettre à jour
         }
         
         return { success: true };
