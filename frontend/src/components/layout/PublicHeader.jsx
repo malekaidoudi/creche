@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Menu, X } from 'lucide-react'
@@ -15,8 +15,20 @@ const PublicHeader = () => {
   const { getNurseryInfo } = useSettings()
   const location = useLocation()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [logoKey, setLogoKey] = useState(0) // Clé pour forcer le re-render du logo
   
   const nurseryInfo = getNurseryInfo()
+
+  // Écouter les mises à jour du logo
+  useEffect(() => {
+    const handleLogoUpdate = (event) => {
+      console.log('🔄 Header: Logo mis à jour détecté', event.detail);
+      setLogoKey(prev => prev + 1); // Forcer le re-render
+    };
+
+    window.addEventListener('logoUpdated', handleLogoUpdate);
+    return () => window.removeEventListener('logoUpdated', handleLogoUpdate);
+  }, []);
 
   const navigation = [
     { name: t('nav.home'), href: '/' },
@@ -41,6 +53,7 @@ const PublicHeader = () => {
             <Link to="/" className="flex items-center">
               <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center">
                 <ImageWithFallback
+                  key={`logo-${logoKey}`} // Clé pour forcer le re-render
                   src={nurseryInfo.logo}
                   alt={nurseryInfo.name}
                   fallback={defaultImages.logo}

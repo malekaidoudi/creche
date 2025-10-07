@@ -218,15 +218,35 @@ export const SettingsProvider = ({ children }) => {
       if (response.success) {
         console.log('✅ Paramètres sauvegardés via API avec succès');
         
-        // Mettre à jour le state local
-        setSettings(prev => ({
-          ...prev,
-          ...settingsToSave
-        }));
+        // Mettre à jour le state local avec forçage de re-render
+        setSettings(prev => {
+          const newSettings = {
+            ...prev,
+            ...settingsToSave
+          };
+          
+          // Log spécial pour les images
+          Object.keys(settingsToSave).forEach(key => {
+            if (key.includes('logo') || key.includes('image')) {
+              console.log(`🖼️ Logo mis à jour: ${key} = ${settingsToSave[key] ? settingsToSave[key].substring(0, 50) + '...' : 'null'}`);
+            }
+          });
+          
+          return newSettings;
+        });
         
         // Mettre à jour le cache localStorage
         const newSettings = { ...settings, ...settingsToSave };
         localStorage.setItem('creche_settings', JSON.stringify(newSettings));
+        
+        // Forcer un re-render des composants qui utilisent le logo
+        if (settingsToSave.nursery_logo) {
+          console.log('🔄 Forçage de mise à jour du logo dans le DOM');
+          // Déclencher un événement personnalisé pour notifier les composants
+          window.dispatchEvent(new CustomEvent('logoUpdated', { 
+            detail: { logo: settingsToSave.nursery_logo } 
+          }));
+        }
         
         return { success: true };
       } else {

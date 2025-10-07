@@ -372,23 +372,30 @@ const SettingsPageSimple = () => {
     // Champ upload d'image (logo)
     if (key.includes('logo')) {
       return (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
             {displayName}
           </label>
+          
+          {/* Aperçu de l'image */}
           {value && (
             <div className="relative">
               <img
                 src={value}
                 alt="Logo"
-                className="w-32 h-32 object-contain rounded-lg border border-gray-300 dark:border-gray-600"
+                className="w-32 h-32 object-contain rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700"
               />
+              <div className="absolute -top-2 -right-2 bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">
+                ✓
+              </div>
             </div>
           )}
-          <div className="flex items-center space-x-3">
+          
+          {/* Zone d'upload stylée */}
+          <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors">
             <input
               type="file"
-              accept="image/*"
+              accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
               onChange={(e) => {
                 const file = e.target.files[0];
                 if (file) {
@@ -398,13 +405,58 @@ const SettingsPageSimple = () => {
               className="hidden"
               id={`upload-${key}`}
             />
-            <label
-              htmlFor={`upload-${key}`}
-              className="flex items-center px-4 py-2 rounded-lg transition-colors bg-primary-600 text-white hover:bg-primary-700 cursor-pointer"
-            >
-              <Upload className="w-4 h-4 mr-2" />
-              {isRTL ? 'رفع صورة' : 'Choisir une image'}
-            </label>
+            
+            <div className="text-center">
+              <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              
+              <label
+                htmlFor={`upload-${key}`}
+                className="inline-flex items-center px-6 py-3 rounded-lg transition-all duration-200 bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 cursor-pointer shadow-lg hover:shadow-xl transform hover:scale-105"
+              >
+                <ImageIcon className="w-5 h-5 mr-2" />
+                {isRTL ? 'اختر صورة الشعار' : 'Choisir le Logo'}
+              </label>
+              
+              <div className="mt-4 space-y-2">
+                <div className="flex items-center justify-center space-x-4 text-sm text-gray-600 dark:text-gray-400">
+                  <div className="flex items-center space-x-1">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span>{isRTL ? 'الحد الأقصى: 2 ميجابايت' : 'Max: 2MB'}</span>
+                  </div>
+                  <div className="w-px h-4 bg-gray-300"></div>
+                  <div className="flex items-center space-x-1">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <span>{isRTL ? 'تخزين Base64' : 'Stockage Base64'}</span>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-center space-x-2 text-xs text-gray-500 dark:text-gray-500">
+                  <span className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded-full">PNG</span>
+                  <span className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded-full">JPG</span>
+                  <span className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded-full">GIF</span>
+                  <span className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded-full">WebP</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Informations supplémentaires */}
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+            <div className="flex items-start space-x-2">
+              <div className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5">
+                ℹ️
+              </div>
+              <div className="text-sm text-blue-800 dark:text-blue-200">
+                <p className="font-medium mb-1">
+                  {isRTL ? 'معلومات مهمة:' : 'Informations importantes :'}
+                </p>
+                <ul className="space-y-1 text-xs">
+                  <li>• {isRTL ? 'الصورة محفوظة مباشرة في قاعدة البيانات' : 'Image sauvegardée directement en base de données'}</li>
+                  <li>• {isRTL ? 'لا حاجة لملفات منفصلة' : 'Aucun fichier séparé nécessaire'}</li>
+                  <li>• {isRTL ? 'تحديث فوري على الموقع' : 'Mise à jour immédiate sur le site'}</li>
+                </ul>
+              </div>
+            </div>
           </div>
         </div>
       );
