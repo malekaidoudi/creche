@@ -321,40 +321,47 @@ const SettingsPageSimple = () => {
     return categoryConfig.fields.filter(field => settings[field] !== undefined);
   };
 
-  // Upload d'image
+  // Upload d'image - Conversion en Base64
   const handleImageUpload = async (key, file) => {
     if (!file) return;
     
     try {
-      // Utiliser l'API d'upload Railway en production
-      const formData = new FormData();
-      formData.append('image', file);
-      
-      const response = await fetch(getApiUrl(`/api/settings/upload/${key}`), {
-        method: 'POST',
-        body: formData
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      // Vérifier la taille du fichier (max 2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error(isRTL ? 'حجم الصورة كبير جداً (الحد الأقصى 2 ميجابايت)' : 'Image trop volumineuse (max 2MB)');
+        return;
       }
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        // Mettre à jour seulement le formData (pas le contexte)
-        handleFieldChange(key, result.data.path);
-        toast.success(isRTL ? 'تم رفع الصورة بنجاح - Cliquez sur Sauvegarder pour confirmer' : 'Image uploadée avec succès - Cliquez sur Sauvegarder pour confirmer');
-        
-        // Ne pas rafraîchir le contexte ici - laisser l'utilisateur sauvegarder
-        // await refreshSettings();
-      } else {
-        throw new Error(result.message || 'Erreur upload');
+
+      // Vérifier le type de fichier
+      if (!file.type.startsWith('image/')) {
+        toast.error(isRTL ? 'يرجى اختيار ملف صورة صالح' : 'Veuillez choisir un fichier image valide');
+        return;
       }
+
+      // Convertir l'image en Base64
+      const base64String = await convertFileToBase64(file);
+      
+      // Mettre à jour directement le formData avec la chaîne Base64
+      handleFieldChange(key, base64String);
+      
+      toast.success(isRTL ? 'تم تحميل الصورة - اضغط على حفظ للتأكيد' : 'Image chargée - Cliquez sur Sauvegarder pour confirmer');
+      
     } catch (error) {
-      console.error('Erreur upload image:', error);
-      toast.error(isRTL ? 'خطأ في رفع الصورة' : 'Erreur lors de l\'upload');
+      console.error('Erreur conversion image:', error);
+      toast.error(isRTL ? 'خطأ في معالجة الصورة' : 'Erreur lors du traitement de l\'image');
     }
+  };
+
+  // Fonction utilitaire pour convertir un fichier en Base64
+  const convertFileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        resolve(reader.result); // Inclut le préfixe data:image/...;base64,
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
   };
 
   // Rendu d'un champ selon son type

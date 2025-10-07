@@ -80,11 +80,21 @@ export const SettingsProvider = ({ children }) => {
   // Obtenir les informations de la crèche
   const getNurseryInfo = () => {
     const logoPath = getSetting('nursery_logo', '/images/logo.png');
-    const logoUrl = getImageUrl(logoPath);
+    
+    // Gérer les images Base64 et les URLs normales
+    let logoUrl;
+    if (logoPath && logoPath.startsWith('data:image/')) {
+      // C'est une image Base64, l'utiliser directement
+      logoUrl = logoPath;
+    } else {
+      // C'est un chemin normal, utiliser getImageUrl
+      logoUrl = getImageUrl(logoPath);
+    }
     
     console.log('🏢 getNurseryInfo Debug:', {
-      logoPath,
-      logoUrl,
+      logoPath: logoPath ? logoPath.substring(0, 50) + '...' : logoPath,
+      isBase64: logoPath && logoPath.startsWith('data:image/'),
+      logoUrl: logoUrl ? logoUrl.substring(0, 50) + '...' : logoUrl,
       allSettings: Object.keys(settings),
       settingsCount: Object.keys(settings).length
     });
@@ -187,13 +197,14 @@ export const SettingsProvider = ({ children }) => {
           type = 'boolean';
         } else if (typeof value === 'object' && value !== null) {
           type = 'json';
-        } else if (key.includes('logo') || key.includes('image')) {
+        } else if (key.includes('logo') || key.includes('image') || (typeof value === 'string' && value.startsWith('data:image/'))) {
           type = 'image';
         }
         
-        // Vérifier la taille des données avant envoi
+        // Vérifier la taille des données avant envoi (plus permissif pour les images)
         const valueStr = typeof value === 'object' ? JSON.stringify(value) : String(value);
-        if (valueStr.length > 65000) {
+        const maxLength = type === 'image' ? 16000000 : 65000; // 16MB pour images, 65KB pour autres
+        if (valueStr.length > maxLength) {
           console.warn(`⚠️ Valeur trop longue pour ${key}: ${valueStr.length} caractères, ignorée`);
           return; // Ignorer ce champ
         }

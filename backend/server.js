@@ -127,6 +127,25 @@ app.post('/api/init-db', async (req, res) => {
   }
 });
 
+// Route de migration pour Base64 (temporaire pour Railway)
+app.post('/api/migrate-base64', async (req, res) => {
+  try {
+    const { migrateForBase64 } = require('./scripts/migrate-base64');
+    await migrateForBase64();
+    res.json({
+      success: true,
+      message: 'Migration Base64 effectuée avec succès'
+    });
+  } catch (error) {
+    console.error('Erreur migration Base64:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la migration',
+      error: error.message
+    });
+  }
+});
+
 // Route racine
 app.get('/', (req, res) => {
   res.json({

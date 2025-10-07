@@ -143,10 +143,11 @@ class Settings {
             processedValue = value.toString();
         }
 
-        // Vérifier la taille avant insertion
-        if (processedValue.length > 65535) {
+        // Vérifier la taille avant insertion (plus permissif pour les images Base64)
+        const maxLength = type === 'image' ? 16777215 : 65535; // MEDIUMTEXT pour images, TEXT pour autres
+        if (processedValue.length > maxLength) {
           console.error(`❌ Valeur trop longue pour ${key}: ${processedValue.length} caractères`);
-          throw new Error(`Valeur trop longue pour ${key}: ${processedValue.length} caractères (max: 65535)`);
+          throw new Error(`Valeur trop longue pour ${key}: ${processedValue.length} caractères (max: ${maxLength})`);
         }
 
         console.log(`📝 Mise à jour ${key}: ${processedValue.substring(0, 50)}... (${processedValue.length} chars)`);
