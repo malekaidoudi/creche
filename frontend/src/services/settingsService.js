@@ -31,8 +31,7 @@ export const settingsService = {
       const adminToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJhZG1pbkBjcmVjaGUuY29tIiwicm9sZSI6ImFkbWluIiwiZmlyc3RfbmFtZSI6IkFkbWluIiwibGFzdF9uYW1lIjoiU3lzdGVtIiwiaWF0IjoxNzU5NjU3MTM5LCJleHAiOjE3NTk3NDM1Mzl9.oSagY6YnxOo-0vIT6PTJ4inRdiqCC-wabg_YlwUlgF0';
       
       localStorage.setItem('token', adminToken);
-      console.log('✅ Token admin temporaire configuré');
-      return { success: true };
+            return { success: true };
     } catch (error) {
       console.error('❌ Erreur login admin:', error);
       return { success: false, error: error.message };
@@ -43,8 +42,7 @@ export const settingsService = {
   async getPublicSettings() {
     try {
       const url = getApiUrl(`${API_CONFIG.ENDPOINTS.SETTINGS}/public`);
-      console.log('🔄 Appel API getPublicSettings:', url);
-      
+            
       const response = await fetch(url, {
         timeout: API_CONFIG.TIMEOUT
       });
@@ -58,7 +56,7 @@ export const settingsService = {
       }
       
       const data = await response.json();
-      console.log('✅ Données reçues:', Object.keys(data));
+      );
       return data;
     } catch (error) {
       console.error('❌ Erreur lors de la récupération des paramètres publics:', error);
@@ -160,8 +158,7 @@ export const settingsService = {
         };
       }
       
-      console.log('🔄 Mise à jour multiple via API:', settings);
-      const url = getApiUrl(API_CONFIG.ENDPOINTS.SETTINGS);
+            const url = getApiUrl(API_CONFIG.ENDPOINTS.SETTINGS);
       console.log('🔗 URL générée pour mise à jour:', url);
       console.log('🔧 API_CONFIG.BASE_URL:', API_CONFIG.BASE_URL);
       
@@ -181,8 +178,7 @@ export const settingsService = {
       }
       
       const data = await response.json();
-      console.log('✅ Mise à jour réussie:', data);
-      return data;
+            return data;
     } catch (error) {
       console.error('❌ Erreur lors de la mise à jour multiple:', error);
       console.error('❌ Type d\'erreur:', error.constructor.name);
@@ -325,8 +321,7 @@ export const settingsService = {
     if (localSettings) {
       try {
         const parsed = JSON.parse(localSettings);
-        console.log('✅ Données trouvées dans localStorage');
-        return { ...this.getStaticDefaults(), ...parsed };
+                return { ...this.getStaticDefaults(), ...parsed };
       } catch (error) {
         console.warn('⚠️ Erreur parsing localStorage, utilisation des défauts');
       }

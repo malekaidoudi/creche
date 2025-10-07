@@ -29,15 +29,14 @@ export const SettingsProvider = ({ children }) => {
   const loadSettings = async () => {
     try {
       setLoading(true);
-      console.log('🔄 Chargement des paramètres depuis l\'API...');
-      
+            
       // Charger depuis l'API backend
       const response = await settingsService.getPublicSettings();
       
       console.log('📦 Réponse API complète:', response);
       
       if (response && response.success && response.data) {
-        console.log('✅ Paramètres chargés depuis l\'API:', Object.keys(response.data));
+        );
         setSettings(prev => ({
           ...prev,
           ...response.data
@@ -62,8 +61,7 @@ export const SettingsProvider = ({ children }) => {
             ...parsedSettings
           }));
         } else {
-          console.log('📝 Aucune donnée en cache, utilisation des valeurs par défaut');
-        }
+                  }
       } catch (cacheError) {
         console.error('❌ Erreur cache localStorage:', cacheError);
       }
@@ -91,8 +89,7 @@ export const SettingsProvider = ({ children }) => {
       logoUrl = getImageUrl(logoPath);
     }
     
-    console.log('🏢 getNurseryInfo Debug:', {
-      logoPath: logoPath ? logoPath.substring(0, 50) + '...' : logoPath,
+     + '...' : logoPath,
       isBase64: logoPath && logoPath.startsWith('data:image/'),
       logoUrl: logoUrl ? logoUrl.substring(0, 50) + '...' : logoUrl,
       allSettings: Object.keys(settings),
@@ -217,8 +214,7 @@ export const SettingsProvider = ({ children }) => {
       const response = await settingsService.updateMultiple(formattedSettings);
       
       if (response.success) {
-        console.log('✅ Paramètres sauvegardés via API avec succès');
-        
+                
         // Mettre à jour le state local avec forçage de re-render
         setSettings(prev => {
           const newSettings = {
@@ -229,7 +225,7 @@ export const SettingsProvider = ({ children }) => {
           // Log spécial pour les images
           Object.keys(settingsToSave).forEach(key => {
             if (key.includes('logo') || key.includes('image')) {
-              console.log(`🖼️ Logo mis à jour: ${key} = ${settingsToSave[key] ? settingsToSave[key].substring(0, 50) + '...' : 'null'}`);
+               + '...' : 'null'}`);
             }
           });
           
@@ -240,21 +236,18 @@ export const SettingsProvider = ({ children }) => {
         const newSettings = { ...settings, ...settingsToSave };
         localStorage.setItem('creche_settings', JSON.stringify(newSettings));
         
-        // Forcer un rechargement des paramètres depuis l'API pour s'assurer de la cohérence
+        // Forcer la mise à jour immédiate du logo et rechargement
         if (settingsToSave.nursery_logo) {
-          console.log('🔄 Rechargement des paramètres après mise à jour du logo');
-          setTimeout(async () => {
-            try {
-              await refreshSettings();
-              console.log('✅ Paramètres rechargés avec succès');
-              // Déclencher un événement personnalisé pour notifier les composants
-              window.dispatchEvent(new CustomEvent('logoUpdated', { 
-                detail: { logo: settingsToSave.nursery_logo } 
-              }));
-            } catch (error) {
-              console.error('❌ Erreur lors du rechargement:', error);
-            }
-          }, 500); // Petit délai pour laisser l'API se mettre à jour
+                    
+          // Déclencher immédiatement l'événement avec le nouveau logo
+          window.dispatchEvent(new CustomEvent('logoUpdated', { 
+            detail: { logo: settingsToSave.nursery_logo } 
+          }));
+          
+          // Forcer un re-render de tous les composants qui utilisent le contexte
+          setTimeout(() => {
+            setSettings(prev => ({ ...prev })); // Force re-render
+          }, 100);
         }
         
         return { success: true };

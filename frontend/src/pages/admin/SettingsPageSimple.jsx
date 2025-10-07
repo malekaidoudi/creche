@@ -87,8 +87,7 @@ const SettingsPageSimple = () => {
       setFormData(prev => {
         const isFirstLoad = Object.keys(prev).length === 0;
         if (isFirstLoad) {
-          console.log('🔄 Premier chargement du formulaire depuis le contexte');
-          return contextSettings;
+                    return contextSettings;
         } else {
           console.log('⚠️ Formulaire déjà initialisé, conservation des modifications');
           return prev;
@@ -99,8 +98,7 @@ const SettingsPageSimple = () => {
 
   const loadSettings = async () => {
     try {
-      console.log('🔄 Chargement des paramètres admin depuis le contexte...');
-      
+            
       // Utiliser les paramètres du contexte au lieu du service
       if (contextSettings && Object.keys(contextSettings).length > 0) {
         setSettings(contextSettings);
@@ -113,12 +111,11 @@ const SettingsPageSimple = () => {
             console.log('⚠️ FormData existant détecté, conservation des modifications');
             return prev; // Garder les modifications existantes
           } else {
-            console.log('✅ Premier chargement, initialisation du formData');
-            return contextSettings; // Premier chargement
+                        return contextSettings; // Premier chargement
           }
         });
         
-        console.log('✅ Paramètres admin chargés:', Object.keys(contextSettings).length, 'paramètres');
+        .length, 'paramètres');
       } else {
         console.log('⚠️ Aucun paramètre dans le contexte, attente...');
       }
@@ -290,7 +287,7 @@ const SettingsPageSimple = () => {
         // NE PAS recharger depuis l'API pour éviter d'écraser les modifications
         // await refreshSettings(); // Commenté pour éviter l'écrasement
         
-        console.log('✅ Paramètres mis à jour localement:', Object.keys(settingsToSave));
+        );
       } else {
         toast.error(result.error || (isRTL ? 'خطأ في الحفظ' : 'Erreur lors de la sauvegarde'));
       }
@@ -310,6 +307,7 @@ const SettingsPageSimple = () => {
     if (key.includes('color')) return 'text';
     if (key.includes('theme')) return 'text';
     if (key.includes('message') || key.includes('description')) return 'text';
+    if (key.includes('hours') || key.includes('schedule')) return 'json';
     return 'text';
   };
 
@@ -427,8 +425,6 @@ const SettingsPageSimple = () => {
                   <span>Max: 2MB</span>
                   <span>•</span>
                   <span>PNG, JPG, GIF, WebP</span>
-                  <span>•</span>
-                  <span className="text-blue-600 dark:text-blue-400">Base64</span>
                 </div>
               </div>
             </div>
@@ -726,25 +722,25 @@ const SettingsPageSimple = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-4 md:py-8">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
+        {/* Header - Version mobile compacte */}
+        <div className="mb-4 md:mb-8">
+          <div className="flex flex-col space-y-2 md:flex-row md:items-center md:justify-between md:space-y-0">
+            <div className="flex items-center space-x-2 md:space-x-4">
               <Link
                 to="/"
-                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
+                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors text-sm md:text-base"
               >
-                <ArrowLeft size={20} />
-                <span>{isRTL ? 'العودة للموقع' : 'Retour au site'}</span>
+                <ArrowLeft size={16} className="md:w-5 md:h-5" />
+                <span>{isRTL ? 'العودة' : 'Retour'}</span>
               </Link>
-              <div className="border-l border-gray-300 dark:border-gray-600 h-6"></div>
+              <div className="border-l border-gray-300 dark:border-gray-600 h-4 md:h-6"></div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                  {isRTL ? 'إعدادات الحضانة' : 'Paramètres de la crèche'}
+                <h1 className="text-xl md:text-3xl font-bold text-gray-900 dark:text-white">
+                  {isRTL ? 'الإعدادات' : 'Paramètres'}
                 </h1>
-                <p className="mt-2 text-gray-600 dark:text-gray-400">
+                <p className="hidden md:block mt-2 text-gray-600 dark:text-gray-400">
                   {isRTL 
                     ? 'إدارة جميع إعدادات وخصائص الحضانة'
                     : 'Gérez tous les paramètres et propriétés de la crèche'
