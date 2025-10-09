@@ -139,4 +139,4 @@ Pour toute question concernant le projet :
 
 ---
 
-**Développé avec ❤️ pour la crèche Mima Elghalia**
+**Développé par Aiuoudi Malek pour la crèche Mima Elghalia**

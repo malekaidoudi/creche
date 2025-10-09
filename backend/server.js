@@ -8,6 +8,13 @@ const path = require('path');
 require('dotenv').config();
 
 const db = require('./config/database');
+
+// Routes
+const authRoutes = require('./routes/auth');
+const userRoutes = require('./routes/users');
+const childrenRoutes = require('./routes/children');
+const enrollmentRoutes = require('./routes/enrollments');
+const attendanceRoutes = require('./routes/attendance');
 const uploadProfileRoutes = require('./routes/upload');
 const articleRoutes = require('./routes/articles');
 const newsRoutes = require('./routes/news');
@@ -96,8 +103,13 @@ app.get('/api', (req, res) => {
     railway: !!process.env.RAILWAY_ENVIRONMENT,
     endpoints: [
       '/api/health',
+      '/api/auth',
+      '/api/users',
+      '/api/children',
+      '/api/enrollments',
+      '/api/attendance',
       '/api/public/enrollments',
-      '/api/upload/profile-picture',
+      '/api/upload',
       '/api/articles',
       '/api/news',
       '/api/contacts'
@@ -117,6 +129,11 @@ app.get('/', (req, res) => {
 
 // API Routes
 app.use('/api/health', healthRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/children', childrenRoutes);
+app.use('/api/enrollments', enrollmentRoutes);
+app.use('/api/attendance', attendanceRoutes);
 app.use('/api/public/enrollments', publicEnrollmentsRoutes);
 app.use('/api/upload', uploadProfileRoutes);
 app.use('/api/articles', articleRoutes);

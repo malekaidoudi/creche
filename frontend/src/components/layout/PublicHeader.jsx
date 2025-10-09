@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Menu, X } from 'lucide-react'
+import { Menu, X, User, LogOut, Settings, LayoutDashboard } from 'lucide-react'
 import { useLanguage } from '../../hooks/useLanguage'
+import { useAuth } from '../../hooks/useAuth'
 import LanguageToggle from '../ui/LanguageToggle'
 import ThemeToggle from '../ui/ThemeToggle'
 import { ImageWithFallback, defaultImages } from '../../utils/imageUtils.jsx'
@@ -11,8 +12,10 @@ import { Button } from '../ui/Button'
 const PublicHeader = () => {
   const { t } = useTranslation()
   const { isRTL } = useLanguage()
+  const { isAuthenticated, user, logout, isStaff } = useAuth()
   const location = useLocation()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
 
   // Informations par défaut de la crèche
   const nurseryInfo = {
@@ -81,11 +84,77 @@ const PublicHeader = () => {
           <div className="hidden md:flex items-center space-x-4 rtl:space-x-reverse">
             <LanguageToggle />
             <ThemeToggle />
-            <Button asChild>
-              <Link to="/inscription">
-                {isRTL ? 'سجل الآن' : 'S\'inscrire'}
-              </Link>
-            </Button>
+            
+            {isAuthenticated ? (
+              <div className="relative">
+                <button
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  className="flex items-center space-x-2 rtl:space-x-reverse p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                >
+                  <div className="w-8 h-8 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center">
+                    <User className="w-4 h-4 text-primary-600 dark:text-primary-400" />
+                  </div>
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {user?.first_name}
+                  </span>
+                </button>
+
+                {/* Menu utilisateur */}
+                {userMenuOpen && (
+                  <div className="absolute right-0 rtl:right-auto rtl:left-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg ring-1 ring-black ring-opacity-5 z-50">
+                    <div className="py-1">
+                      {user?.role === 'parent' && (
+                        <Link
+                          to="/mon-espace"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        >
+                          <User className="w-4 h-4 mr-3 rtl:mr-0 rtl:ml-3" />
+                          {isRTL ? 'مساحتي' : 'Mon espace'}
+                        </Link>
+                      )}
+                      
+                      {isStaff() && (
+                        <Link
+                          to="/dashboard"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        >
+                          <LayoutDashboard className="w-4 h-4 mr-3 rtl:mr-0 rtl:ml-3" />
+                          {isRTL ? 'لوحة التحكم' : 'Dashboard'}
+                        </Link>
+                      )}
+                      
+                      <div className="border-t border-gray-200 dark:border-gray-700">
+                        <button
+                          onClick={() => {
+                            logout();
+                            setUserMenuOpen(false);
+                          }}
+                          className="flex items-center w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        >
+                          <LogOut className="w-4 h-4 mr-3 rtl:mr-0 rtl:ml-3" />
+                          {isRTL ? 'تسجيل الخروج' : 'Déconnexion'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                <Button variant="outline" asChild>
+                  <Link to="/login">
+                    {isRTL ? 'تسجيل الدخول' : 'Connexion'}
+                  </Link>
+                </Button>
+                <Button asChild>
+                  <Link to="/inscription">
+                    {isRTL ? 'سجل الآن' : 'S\'inscrire'}
+                  </Link>
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Menu mobile button */}
@@ -127,13 +196,72 @@ const PublicHeader = () => {
                 <LanguageToggle />
                 <ThemeToggle />
               </div>
-              <div className="px-3">
-                <Button asChild className="w-full">
-                  <Link to="/inscription" onClick={() => setIsMenuOpen(false)}>
-                    {isRTL ? 'سجل الآن' : 'S\'inscrire'}
-                  </Link>
-                </Button>
-              </div>
+              
+              {isAuthenticated ? (
+                <div className="px-3 space-y-3">
+                  <div className="flex items-center space-x-3 rtl:space-x-reverse p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center">
+                      <User className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">
+                        {user?.first_name} {user?.last_name}
+                      </p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        {user?.role === 'admin' ? (isRTL ? 'مدير' : 'Admin') :
+                         user?.role === 'staff' ? (isRTL ? 'موظف' : 'Staff') :
+                         (isRTL ? 'ولي أمر' : 'Parent')}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {user?.role === 'parent' && (
+                    <Link
+                      to="/mon-espace"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="flex items-center w-full px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                    >
+                      <User className="w-4 h-4 mr-3 rtl:mr-0 rtl:ml-3" />
+                      {isRTL ? 'مساحتي' : 'Mon espace'}
+                    </Link>
+                  )}
+                  
+                  {isStaff() && (
+                    <Link
+                      to="/dashboard"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="flex items-center w-full px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                    >
+                      <LayoutDashboard className="w-4 h-4 mr-3 rtl:mr-0 rtl:ml-3" />
+                      {isRTL ? 'لوحة التحكم' : 'Dashboard'}
+                    </Link>
+                  )}
+                  
+                  <button
+                    onClick={() => {
+                      logout();
+                      setIsMenuOpen(false);
+                    }}
+                    className="flex items-center w-full px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+                  >
+                    <LogOut className="w-4 h-4 mr-3 rtl:mr-0 rtl:ml-3" />
+                    {isRTL ? 'تسجيل الخروج' : 'Déconnexion'}
+                  </button>
+                </div>
+              ) : (
+                <div className="px-3 space-y-2">
+                  <Button variant="outline" asChild className="w-full">
+                    <Link to="/login" onClick={() => setIsMenuOpen(false)}>
+                      {isRTL ? 'تسجيل الدخول' : 'Connexion'}
+                    </Link>
+                  </Button>
+                  <Button asChild className="w-full">
+                    <Link to="/inscription" onClick={() => setIsMenuOpen(false)}>
+                      {isRTL ? 'سجل الآن' : 'S\'inscrire'}
+                    </Link>
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </div>
