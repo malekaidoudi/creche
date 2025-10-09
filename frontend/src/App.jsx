@@ -3,7 +3,6 @@ import { useLanguage } from './hooks/useLanguage'
 
 // Layouts
 import PublicLayout from './layouts/PublicLayout'
-import AdminLayout from './layouts/AdminLayout'
 
 // Pages publiques
 import HomePage from './pages/public/HomePage'
@@ -13,8 +12,7 @@ import EnrollmentPage from './pages/public/EnrollmentPage'
 import ContactPage from './pages/public/ContactPage'
 import VirtualTourPage from './pages/public/VirtualTourPage'
 
-// Pages admin
-import SettingsPageSimple from './pages/admin/SettingsPageSimple'
+
 
 function App() {
   const { language, direction } = useLanguage()
@@ -35,27 +33,27 @@ function App() {
       </Route>
 
       {/* Routes admin */}
-      <Route path="/admin" element={<AdminLayout />}>
+      {/* <Route path="/admin" element={<AdminLayout />}>
         <Route path="settings" element={<SettingsPageSimple />} />
-      </Route>
+      </Route> */}
 
       {/* Route 404 */}
-      <Route 
-        path="*" 
+      <Route
+        path="*"
         element={
           <div className="min-h-screen flex items-center justify-center">
             <div className="text-center">
               <h1 className="text-4xl font-bold text-gray-900 mb-4">404</h1>
               <p className="text-gray-600 mb-8">Page non trouvée</p>
-              <a 
-                href="/" 
+              <a
+                href="/"
                 className="btn-primary"
               >
                 Retour à l'accueil
               </a>
             </div>
           </div>
-        } 
+        }
       />
     </Routes>
   )

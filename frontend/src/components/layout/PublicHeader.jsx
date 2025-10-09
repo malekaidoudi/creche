@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Menu, X } from 'lucide-react'
 import { useLanguage } from '../../hooks/useLanguage'
-import { useSettings } from '../../contexts/SettingsContext'
 import LanguageToggle from '../ui/LanguageToggle'
 import ThemeToggle from '../ui/ThemeToggle'
 import { ImageWithFallback, defaultImages } from '../../utils/imageUtils.jsx'
@@ -12,23 +11,15 @@ import { Button } from '../ui/Button'
 const PublicHeader = () => {
   const { t } = useTranslation()
   const { isRTL } = useLanguage()
-  const { getNurseryInfo } = useSettings()
   const location = useLocation()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [logoKey, setLogoKey] = useState(0) // Clé pour forcer le re-render du logo
-  
-  const nurseryInfo = getNurseryInfo()
 
-  // Écouter les mises à jour du logo
-  useEffect(() => {
-    const handleLogoUpdate = (event) => {
-      console.log('🔄 Header: Logo mis à jour détecté', event.detail);
-      setLogoKey(prev => prev + 1); // Forcer le re-render
-    };
-
-    window.addEventListener('logoUpdated', handleLogoUpdate);
-    return () => window.removeEventListener('logoUpdated', handleLogoUpdate);
-  }, []);
+  // Informations par défaut de la crèche
+  const nurseryInfo = {
+    name: 'Mima Elghalia',
+    nameAr: 'ميما الغالية',
+    logo: '/images/logo.jpg'
+  }
 
   const navigation = [
     { name: t('nav.home'), href: '/' },
@@ -53,7 +44,6 @@ const PublicHeader = () => {
             <Link to="/" className="flex items-center">
               <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center">
                 <ImageWithFallback
-                  key={`logo-${logoKey}`} // Clé pour forcer le re-render
                   src={nurseryInfo.logo}
                   alt={nurseryInfo.name}
                   fallback={defaultImages.logo}
@@ -77,11 +67,10 @@ const PublicHeader = () => {
               <Link
                 key={item.name}
                 to={item.href}
-                className={`px-3 py-2 text-sm font-medium transition-colors duration-200 ${
-                  isActive(item.href)
+                className={`px-3 py-2 text-sm font-medium transition-colors duration-200 ${isActive(item.href)
                     ? 'text-primary-600 dark:text-primary-400 border-b-2 border-primary-600 dark:border-primary-400'
                     : 'text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400'
-                }`}
+                  }`}
               >
                 {item.name}
               </Link>
@@ -124,16 +113,15 @@ const PublicHeader = () => {
                 key={item.name}
                 to={item.href}
                 onClick={() => setIsMenuOpen(false)}
-                className={`block px-3 py-2 text-base font-medium transition-colors duration-200 rounded-lg ${
-                  isActive(item.href)
+                className={`block px-3 py-2 text-base font-medium transition-colors duration-200 rounded-lg ${isActive(item.href)
                     ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20'
                     : 'text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-                }`}
+                  }`}
               >
                 {item.name}
               </Link>
             ))}
-            
+
             <div className="pt-4 border-t border-gray-200 dark:border-gray-700 space-y-3">
               <div className="flex items-center justify-between px-3">
                 <LanguageToggle />

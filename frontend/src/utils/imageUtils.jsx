@@ -2,8 +2,14 @@
 export const getImageUrl = (imagePath) => {
   if (!imagePath) return null
   
-  // Si c'est déjà une URL complète, la retourner
+  // Si c'est déjà une URL complète (http/https), la retourner
   if (imagePath.startsWith('http')) return imagePath
+  
+  // Si c'est un Blob URL, le retourner tel quel
+  if (imagePath.startsWith('blob:')) return imagePath
+  
+  // Si c'est du Base64, le retourner tel quel
+  if (imagePath.startsWith('data:')) return imagePath
   
   // Pour GitHub Pages, utiliser le BASE_URL
   const baseUrl = import.meta.env.BASE_URL || '/'
@@ -27,15 +33,44 @@ export const ImageWithFallback = ({
   alt, 
   fallback = defaultImages.placeholder, 
   className = '',
+  onLoad,
+  onError,
   ...props 
 }) => {
   const handleError = (e) => {
+    console.error('❌ ImageWithFallback: Erreur chargement image:', {
+      originalSrc: src,
+      processedSrc: e.target.src,
+      fallback: fallback,
+      error: e
+    });
+    
     if (e.target.src !== fallback) {
-      e.target.src = fallback
+      console.log('🔄 ImageWithFallback: Basculement vers fallback');
+      e.target.src = fallback;
     }
+    
+    // Appeler le onError personnalisé s'il existe
+    if (onError) onError(e);
   }
 
-  const imageUrl = getImageUrl(src) || fallback
+  const handleLoad = (e) => {
+    console.log('✅ ImageWithFallback: Image chargée avec succès:', {
+      src: e.target.src,
+      originalSrc: src
+    });
+    
+    // Appeler le onLoad personnalisé s'il existe
+    if (onLoad) onLoad(e);
+  }
+
+  const imageUrl = getImageUrl(src) || fallback;
+  
+  console.log('🖼️ ImageWithFallback: Traitement image:', {
+    originalSrc: src,
+    processedUrl: imageUrl,
+    srcType: src ? (src.startsWith('blob:') ? 'Blob URL' : src.startsWith('data:') ? 'Base64' : 'Chemin') : 'undefined'
+  });
 
   return (
     <img
@@ -43,6 +78,7 @@ export const ImageWithFallback = ({
       alt={alt}
       className={className}
       onError={handleError}
+      onLoad={handleLoad}
       {...props}
     />
   )

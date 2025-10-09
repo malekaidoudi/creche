@@ -2,7 +2,6 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowRight, Shield, Heart, GraduationCap, Users, Clock, Award, Star, Play, CheckCircle, Baby, Utensils, Gamepad2, User } from 'lucide-react'
 import { useLanguage } from '../../hooks/useLanguage'
-import { useSettings } from '../../contexts/SettingsContext'
 import { ImageWithFallback, defaultImages } from '../../utils/imageUtils.jsx'
 
 const HomePage = () => {
@@ -30,13 +29,22 @@ const HomePage = () => {
     }
   ]
 
-  const { getNurseryInfo, getStatistics, getSetting } = useSettings();
-  const nurseryInfo = getNurseryInfo();
-  const welcomeMessages = {
-    fr: getSetting('welcome_message_fr', 'Bienvenue à la crèche Mima Elghalia'),
-    ar: getSetting('welcome_message_ar', 'مرحباً بكم في حضانة ميما الغالية')
+  // Informations par défaut de la crèche
+  const nurseryInfo = {
+    name: 'Mima Elghalia',
+    nameAr: 'ميما الغالية'
   };
-  const statistics = getStatistics();
+  
+  const welcomeMessages = {
+    fr: 'Bienvenue chez Mima Elghalia',
+    ar: 'مرحباً بكم في ميما الغالية'
+  };
+  
+  const statistics = {
+    availableSpots: 5,
+    yearsOfExperience: 8,
+    openingYear: 2019
+  };
 
   const stats = [
     { 

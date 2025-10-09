@@ -1,16 +1,24 @@
 import { Link } from 'react-router-dom'
-import { MapPin, Phone, Mail, Clock, Settings } from 'lucide-react'
+import { MapPin, Phone, Mail, Clock } from 'lucide-react'
 import { useLanguage } from '../../hooks/useLanguage'
-import { useSettings } from '../../contexts/SettingsContext'
 
 const PublicFooter = () => {
   const { isRTL } = useLanguage();
-  const { getNurseryInfo, getSetting, getFormattedOpeningHours } = useSettings();
   
-  const nurseryInfo = getNurseryInfo();
-  const welcomeMessages = {
-    fr: getSetting('welcome_message_fr', 'Bienvenue à la crèche Mima Elghalia'),
-    ar: getSetting('welcome_message_ar', 'مرحباً بكم في حضانة ميما الغالية')
+  // Informations par défaut de la crèche
+  const nurseryInfo = {
+    name: 'Mima Elghalia',
+    nameAr: 'ميما الغالية',
+    address: '8 Rue Bizerte, Medenine 4100, Tunisie',
+    addressAr: '8 نهج بنزرت، مدنين 4100، تونس',
+    phone: '+216 25 95 35 32',
+    email: 'contact@mimaelghalia.tn'
+  };
+  
+  const contentMessages = {
+    welcomeMessageFr: 'Bienvenue chez Mima Elghalia où chaque enfant grandit dans un environnement bienveillant et stimulant.',
+    welcomeMessageAr: 'مرحباً بكم في ميما الغالية حيث ينمو كل طفل في بيئة محبة ومحفزة.',
+    openingHours: isRTL ? 'الإثنين - الجمعة: 7:00 - 18:00، السبت: 8:00 - 12:00' : 'Lun - Ven: 7h00 - 18h00, Sam: 8h00 - 12h00'
   };
 
   const quickLinks = [
@@ -29,7 +37,7 @@ const PublicFooter = () => {
     {
       icon: Phone,
       text: nurseryInfo.phone,
-      isPhone: true // Marqueur pour le traitement spécial RTL
+      isPhone: true
     },
     {
       icon: Mail,
@@ -37,7 +45,7 @@ const PublicFooter = () => {
     },
     {
       icon: Clock,
-      text: getFormattedOpeningHours(isRTL)
+      text: contentMessages.openingHours
     }
   ]
 
@@ -47,20 +55,14 @@ const PublicFooter = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Logo et description */}
           <div className="space-y-4">
-            <div className="flex items-center">
-              <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">
-                  {isRTL ? (nurseryInfo.nameAr || nurseryInfo.name).charAt(0) : nurseryInfo.name.charAt(0)}
-                </span>
-              </div>
-              <span className="ml-2 rtl:ml-0 rtl:mr-2 text-xl font-bold">
-                {isRTL ? (nurseryInfo.nameAr || nurseryInfo.name) : nurseryInfo.name}
-              </span>
-            </div>
-            <p className="text-gray-300 text-sm leading-relaxed">
-              {isRTL ? welcomeMessages.ar : welcomeMessages.fr}
+            <h3 className="text-lg font-semibold mb-4">
+              {isRTL ? nurseryInfo.nameAr || nurseryInfo.name : nurseryInfo.name}
+            </h3>
+            <p className="text-gray-300 mb-4">
+              {isRTL ? contentMessages.welcomeMessageAr : contentMessages.welcomeMessageFr}
             </p>
           </div>
+          
           {/* Liens rapides */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">
@@ -125,15 +127,6 @@ const PublicFooter = () => {
                   {isRTL ? 'شروط الاستخدام' : 'Conditions d\'utilisation'}
                 </Link>
               </div>
-              
-              {/* Icône admin */}
-              <Link
-                to="/admin/settings"
-                className="text-gray-500 hover:text-white transition-colors duration-200 p-2 rounded-full hover:bg-gray-800"
-                title={isRTL ? 'إعدادات الإدارة' : 'Administration'}
-              >
-                <Settings size={18} />
-              </Link>
             </div>
           </div>
         </div>

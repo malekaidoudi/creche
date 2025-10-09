@@ -14,7 +14,6 @@ import {
   Globe
 } from 'lucide-react'
 import { useLanguage } from '../../hooks/useLanguage'
-import { useSettings } from '../../contexts/SettingsContext'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
 import { Button } from '../../components/ui/Button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card'
@@ -22,16 +21,29 @@ import toast from 'react-hot-toast'
 
 const ContactPage = () => {
   const { isRTL } = useLanguage()
-  const { getNurseryInfo, getFormattedOpeningHours, getMapAddress } = useSettings()
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   
-  const nurseryInfo = getNurseryInfo()
-  const mapAddress = getMapAddress()
+  // Informations par défaut de la crèche
+  const nurseryInfo = {
+    name: 'Mima Elghalia',
+    nameAr: 'ميما الغالية',
+    address: '8 Rue Bizerte, Medenine 4100, Tunisie',
+    addressAr: '8 نهج بنزرت، مدنين 4100، تونس',
+    phone: '+216 25 95 35 32',
+    email: 'contact@mimaelghalia.tn'
+  }
+  
+  const mapAddress = nurseryInfo.address
+  
+  const getFormattedOpeningHours = (isRTL) => {
+    return isRTL ? 'الإثنين - الجمعة: 7:00 - 18:00، السبت: 8:00 - 12:00' : 'Lun - Ven: 7h00 - 18h00, Sam: 8h00 - 12h00'
+  }
 
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors }
   } = useForm()
 

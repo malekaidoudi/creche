@@ -14,7 +14,6 @@ const newsRoutes = require('./routes/news');
 const contactRoutes = require('./routes/contacts');
 const healthRoutes = require('./routes/health');
 const publicEnrollmentsRoutes = require('./routes/publicEnrollments');
-const settingsRoutes = require('./routes/settings');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -97,54 +96,15 @@ app.get('/api', (req, res) => {
     railway: !!process.env.RAILWAY_ENVIRONMENT,
     endpoints: [
       '/api/health',
-      '/api/settings',
       '/api/public/enrollments',
       '/api/upload/profile-picture',
       '/api/articles',
       '/api/news',
-      '/api/contacts',
-      '/api/init-db (temporaire)'
+      '/api/contacts'
     ]
   });
 });
 
-// Route d'initialisation de la base de données (temporaire pour Railway)
-app.post('/api/init-db', async (req, res) => {
-  try {
-    const { initDatabase } = require('./scripts/init-database');
-    await initDatabase();
-    res.json({
-      success: true,
-      message: 'Base de données initialisée avec succès'
-    });
-  } catch (error) {
-    console.error('Erreur initialisation DB:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erreur lors de l\'initialisation',
-      error: error.message
-    });
-  }
-});
-
-// Route de migration pour Base64 (temporaire pour Railway)
-app.post('/api/migrate-base64', async (req, res) => {
-  try {
-    const { migrateForBase64 } = require('./scripts/migrate-base64');
-    await migrateForBase64();
-    res.json({
-      success: true,
-      message: 'Migration Base64 effectuée avec succès'
-    });
-  } catch (error) {
-    console.error('Erreur migration Base64:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erreur lors de la migration',
-      error: error.message
-    });
-  }
-});
 
 // Route racine
 app.get('/', (req, res) => {
@@ -162,7 +122,6 @@ app.use('/api/upload', uploadProfileRoutes);
 app.use('/api/articles', articleRoutes);
 app.use('/api/news', newsRoutes);
 app.use('/api/contacts', contactRoutes);
-app.use('/api/settings', settingsRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
