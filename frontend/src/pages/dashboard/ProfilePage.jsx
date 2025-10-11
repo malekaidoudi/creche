@@ -204,8 +204,10 @@ const ProfilePage = () => {
                     src={`${API_CONFIG.BASE_URL}${profileImage}`}
                     alt="Photo de profil"
                     className="w-32 h-32 object-cover"
+                    crossOrigin="anonymous"
+                    onLoad={() => console.log('✅ Image profil chargée:', profileImage)}
                     onError={(e) => {
-                      console.error('Erreur chargement image profil:', e.target.src);
+                      console.error('❌ Erreur chargement image profil:', e.target.src);
                       setProfileImage(''); // Reset si erreur
                     }}
                   />

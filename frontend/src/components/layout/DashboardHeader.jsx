@@ -104,8 +104,9 @@ const DashboardHeader = ({ onMenuClick }) => {
                       src={`${API_CONFIG.BASE_URL}${user.profile_image}`}
                       alt="Photo de profil"
                       className="w-8 h-8 object-cover"
+                      crossOrigin="anonymous"
                       onError={(e) => {
-                        console.error('Erreur chargement image header:', e.target.src);
+                        console.error('❌ Erreur chargement image header:', e.target.src);
                         e.target.style.display = 'none';
                         e.target.nextElementSibling.style.display = 'flex';
                       }}
@@ -141,8 +142,9 @@ const DashboardHeader = ({ onMenuClick }) => {
                               src={`${API_CONFIG.BASE_URL}${user.profile_image}`}
                               alt="Photo de profil"
                               className="w-10 h-10 object-cover"
+                              crossOrigin="anonymous"
                               onError={(e) => {
-                                console.error('Erreur chargement image dropdown:', e.target.src);
+                                console.error('❌ Erreur chargement image dropdown:', e.target.src);
                                 e.target.style.display = 'none';
                                 e.target.nextElementSibling.style.display = 'flex';
                               }}

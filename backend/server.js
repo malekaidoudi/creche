@@ -33,8 +33,20 @@ const PORT = process.env.PORT || 3001;
 app.set('trust proxy', true);
 console.log('🚂 Trust proxy activé globalement');
 
-// Security middleware
-app.use(helmet());
+// Security middleware avec configuration pour les images
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "blob:", "*"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https:"],
+      scriptSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      upgradeInsecureRequests: [],
+    },
+  },
+}));
 app.use(compression());
 
 // Rate limiting temporairement désactivé pour éviter les erreurs
@@ -86,8 +98,10 @@ app.use(cors({
 
 // Servir les fichiers uploadés avec CORS
 app.use('/uploads', (req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET');
   res.header('Access-Control-Allow-Headers', 'Content-Type');
+  res.header('Cross-Origin-Resource-Policy', 'cross-origin');
   next();
 }, express.static(path.join(__dirname, 'uploads')));
 
