@@ -1,19 +1,25 @@
-
-import { useState, useRef, useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useForm } from 'react-hook-form'
-import { Baby, User, Calendar, Phone, FileText, Send, CheckCircle, AlertCircle, ArrowRight, ArrowLeft, Utensils, Heart, Upload, Download } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import { useLanguage } from '../../hooks/useLanguage'
+import { useAuth } from '../../hooks/useAuth'
+import { Baby, User, Calendar, Phone, FileText, Send, CheckCircle, AlertCircle, ArrowRight, ArrowLeft, Utensils, Heart, Upload, Download, ToggleLeft, ToggleRight } from 'lucide-react'
+import { useForm } from 'react-hook-form'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
+import { Button } from '../../components/ui/Button'
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card'
 import DocumentUpload from '../../components/ui/DocumentUpload'
-import { documentService } from '../../services/documentService'
 import toast from 'react-hot-toast'
+import api from '../../config/api'
 
 const EnrollmentPage = () => {
-  const { t } = useTranslation()
   const { isRTL } = useLanguage()
+  const { isAuthenticated, user } = useAuth()
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
-  const [step, setStep] = useState(1) // 1: Enfant, 2: Parent, 3: Documents, 4: Règlement, 5: Confirmation
+  const [step, setStep] = useState(1)
+  const [isExistingChild, setIsExistingChild] = useState(false)
+  const [availableChildren, setAvailableChildren] = useState([])
   const [regulationScrolled, setRegulationScrolled] = useState(false)
   const regulationRef = useRef(null)
 
@@ -24,6 +30,49 @@ const EnrollmentPage = () => {
     certificat_medical: null
   })
   const [documentErrors, setDocumentErrors] = useState({})
+
+  // Redirection pour les utilisateurs connectés
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      if (user.role === 'parent') {
+        // Rediriger les parents vers leur espace
+        navigate('/mon-espace', { replace: true });
+      } else if (user.role === 'admin' || user.role === 'staff') {
+        // Rediriger le staff vers le dashboard
+        navigate('/dashboard', { replace: true });
+      }
+    }
+  }, [isAuthenticated, user, navigate]);
+
+  // Récupérer les enfants disponibles (sans parent)
+  useEffect(() => {
+    const fetchAvailableChildren = async () => {
+      try {
+        const response = await api.get('/children/available');
+        setAvailableChildren(response.data.children || []);
+      } catch (error) {
+        console.error('Erreur récupération enfants:', error);
+      }
+    };
+
+    if (isExistingChild) {
+      fetchAvailableChildren();
+    }
+  }, [isExistingChild]);
+
+  // Si l'utilisateur est connecté, afficher un message de redirection
+  if (isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-center">
+          <LoadingSpinner size="lg" />
+          <p className="mt-4 text-gray-600 dark:text-gray-300">
+            {isRTL ? 'جاري التوجيه...' : 'Redirection en cours...'}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const {
     register,
@@ -83,36 +132,79 @@ const EnrollmentPage = () => {
     try {
       setLoading(true)
 
-      // Simuler l'envoi des données d'inscription
-      const enrollmentData = {
+      if (isExistingChild) {
+        // Cas 2: Créer compte parent et lier enfant existant
+        const parentData = {
+          first_name: data.parent_first_name,
+          last_name: data.parent_last_name,
+          email: data.parent_email,
+          password: data.parent_password,
+          phone: data.parent_phone,
+          role: 'parent',
+          child_id: data.selected_child_id
+        }
+
+        const response = await api.post('/auth/register-parent-existing-child', parentData)
+        
+        toast.success(isRTL ? 'تم إنشاء الحساب بنجاح!' : 'Compte créé avec succès!')
+        
+        // Rediriger vers la page de connexion
+        setTimeout(() => {
+          navigate('/login')
+        }, 2000)
+
+      } else {
+        // Cas 1: Nouvelle inscription complète
+        const formData = new FormData()
+        
         // Données de l'enfant
-        child_first_name: data.child_first_name,
-        child_last_name: data.child_last_name,
-        birth_date: data.birth_date,
-        gender: data.gender,
-        medical_info: data.medical_info,
-        emergency_contact_name: data.emergency_contact_name,
-        emergency_contact_phone: data.emergency_contact_phone,
+        formData.append('child_first_name', data.child_first_name)
+        formData.append('child_last_name', data.child_last_name)
+        formData.append('birth_date', data.birth_date)
+        formData.append('gender', data.gender)
+        formData.append('medical_info', data.medical_info || '')
+        formData.append('emergency_contact_name', data.emergency_contact_name)
+        formData.append('emergency_contact_phone', data.emergency_contact_phone)
         
         // Données du parent
-        parent_first_name: data.parent_first_name,
-        parent_last_name: data.parent_last_name,
-        parent_phone: data.parent_phone,
-        parent_email: data.parent_email,
+        formData.append('parent_first_name', data.parent_first_name)
+        formData.append('parent_last_name', data.parent_last_name)
+        formData.append('parent_email', data.parent_email)
+        formData.append('parent_password', data.parent_password)
+        formData.append('parent_phone', data.parent_phone)
         
         // Options
-        enrollment_date: data.enrollment_date,
-        lunch_assistance: data.lunch_assistance || false,
-        regulation_accepted: data.regulation_accepted || false,
-        notes: data.notes
+        formData.append('enrollment_date', data.enrollment_date)
+        formData.append('lunch_assistance', data.lunch_assistance || false)
+        formData.append('regulation_accepted', data.regulation_accepted || false)
+        formData.append('notes', data.notes || '')
+
+        // Documents
+        if (documents.carnet_medical) {
+          formData.append('carnet_medical', documents.carnet_medical)
+        }
+        if (documents.acte_naissance) {
+          formData.append('acte_naissance', documents.acte_naissance)
+        }
+        if (documents.certificat_medical) {
+          formData.append('certificat_medical', documents.certificat_medical)
+        }
+
+        const response = await api.post('/enrollments', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        })
+
+        toast.success(isRTL ? 'تم التسجيل بنجاح!' : 'Inscription réussie !')
+        
+        // Rediriger vers la page de connexion
+        setTimeout(() => {
+          navigate('/login')
+        }, 2000)
       }
 
-      console.log('Données d\'inscription:', enrollmentData)
-      
-      // Simuler un délai d'envoi
-      await new Promise(resolve => setTimeout(resolve, 2000))
-
-      toast.success(isRTL ? 'تم التسجيل بنجاح!' : 'Inscription réussie !')
+      // Reset form
       reset()
       setStep(1)
       setDocuments({
@@ -124,26 +216,36 @@ const EnrollmentPage = () => {
 
     } catch (error) {
       console.error('Erreur lors de l\'inscription:', error)
-      toast.error(isRTL ? 'خطأ في التسجيل' : 'Erreur lors de l\'inscription')
+      toast.error(error.response?.data?.error || (isRTL ? 'خطأ في التسجيل' : 'Erreur lors de l\'inscription'))
     } finally {
       setLoading(false)
     }
   }
 
   const nextStep = () => {
-    // Validation spéciale pour l'étape des documents
-    if (step === 3) {
+    // Validation spéciale pour l'étape des documents (seulement si nouveau enfant)
+    if (step === 3 && !isExistingChild) {
       if (!validateDocuments()) {
         toast.error(isRTL ? 'يرجى تحميل جميع الوثائق المطلوبة' : 'Veuillez télécharger tous les documents requis')
         return
       }
     }
 
-    setStep(prev => Math.min(prev + 1, 5))
+    // Si enfant existant, passer directement de l'étape 2 à 4 (skip documents)
+    if (isExistingChild && step === 2) {
+      setStep(4)
+    } else {
+      setStep(prev => Math.min(prev + 1, 5))
+    }
   }
 
   const prevStep = () => {
-    setStep(prev => Math.max(prev - 1, 1))
+    // Si enfant existant et on est à l'étape 4, revenir à l'étape 2 (skip documents)
+    if (isExistingChild && step === 4) {
+      setStep(2)
+    } else {
+      setStep(prev => Math.max(prev - 1, 1))
+    }
   }
 
   return (
@@ -165,7 +267,7 @@ const EnrollmentPage = () => {
         {/* Barre de progression */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
-            {[1, 2, 3, 4, 5].map((stepNumber) => (
+            {(isExistingChild ? [1, 2, 4, 5] : [1, 2, 3, 4, 5]).map((stepNumber) => (
               <div key={stepNumber} className="flex items-center">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${step === stepNumber
                     ? 'bg-primary-600 text-white'
@@ -184,7 +286,10 @@ const EnrollmentPage = () => {
           </div>
           <div className="flex justify-center mt-2">
             <span className="text-sm text-gray-600 dark:text-gray-300">
-              {step === 1 && (isRTL ? 'معلومات الطفل' : 'Informations de l\'enfant')}
+              {step === 1 && (isExistingChild 
+                ? (isRTL ? 'اختيار الطفل' : 'Sélection de l\'enfant')
+                : (isRTL ? 'معلومات الطفل' : 'Informations de l\'enfant')
+              )}
               {step === 2 && (isRTL ? 'معلومات الوالدين' : 'Informations des parents')}
               {step === 3 && (isRTL ? 'الوثائق المطلوبة' : 'Documents requis')}
               {step === 4 && (isRTL ? 'الموافقة على القوانين' : 'Acceptation du règlement')}
@@ -196,9 +301,60 @@ const EnrollmentPage = () => {
         {/* Formulaire */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
           <div className="p-8">
+            {/* Choix du type d'inscription */}
+            {step === 1 && (
+              <div className="mb-8">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <Baby className="w-5 h-5 mr-2 rtl:mr-0 rtl:ml-2" />
+                      {isRTL ? 'نوع التسجيل' : 'Type d\'inscription'}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <p className="text-gray-600 dark:text-gray-300">
+                        {isRTL ? 'هل طفلك مسجل بالفعل في الحضانة؟' : 'Votre enfant est-il déjà inscrit à la crèche ?'}
+                      </p>
+                      
+                      <div className="flex items-center space-x-4 rtl:space-x-reverse">
+                        <Button
+                          type="button"
+                          variant={!isExistingChild ? "default" : "outline"}
+                          onClick={() => setIsExistingChild(false)}
+                          className="flex-1"
+                        >
+                          {isRTL ? 'لا، تسجيل جديد' : 'Non, nouvelle inscription'}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={isExistingChild ? "default" : "outline"}
+                          onClick={() => setIsExistingChild(true)}
+                          className="flex-1"
+                        >
+                          {isRTL ? 'نعم، طفلي مسجل بالفعل' : 'Oui, mon enfant est déjà inscrit'}
+                        </Button>
+                      </div>
+
+                      {isExistingChild && (
+                        <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                          <p className="text-sm text-blue-800 dark:text-blue-200">
+                            {isRTL 
+                              ? 'سنحتاج فقط لإنشاء حسابك الشخصي وربطه بطفلك المسجل بالفعل.'
+                              : 'Nous aurons seulement besoin de créer votre compte personnel et de le lier à votre enfant déjà inscrit.'
+                            }
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit(onSubmit)}>
-              {/* Étape 1: Informations de l'enfant */}
-              {step === 1 && (
+              {/* Étape 1: Informations de l'enfant (seulement si nouveau) */}
+              {step === 1 && !isExistingChild && (
                 <div className="space-y-6">
                   <div className="flex items-center space-x-3 rtl:space-x-reverse mb-6">
                     <Baby className="w-6 h-6 text-primary-600" />
@@ -330,6 +486,54 @@ const EnrollmentPage = () => {
                 </div>
               )}
 
+              {/* Étape 1: Sélection enfant existant */}
+              {step === 1 && isExistingChild && (
+                <div className="space-y-6">
+                  <div className="flex items-center space-x-3 rtl:space-x-reverse mb-6">
+                    <Baby className="w-6 h-6 text-primary-600" />
+                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                      {isRTL ? 'اختيار الطفل' : 'Sélection de l\'enfant'}
+                    </h2>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      {isRTL ? 'اختر طفلك من القائمة' : 'Sélectionnez votre enfant dans la liste'} *
+                    </label>
+                    <select
+                      className={`w-full px-4 py-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent ${errors.selected_child_id ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
+                      {...register('selected_child_id', {
+                        required: isRTL ? 'يجب اختيار طفل' : 'Vous devez sélectionner un enfant'
+                      })}
+                    >
+                      <option value="">
+                        {isRTL ? 'اختر الطفل...' : 'Sélectionner un enfant...'}
+                      </option>
+                      {availableChildren.map((child) => (
+                        <option key={child.id} value={child.id}>
+                          {child.first_name} {child.last_name} - {isRTL ? 'العمر:' : 'Âge:'} {child.age}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.selected_child_id && (
+                      <p className="text-red-500 text-sm mt-1">{errors.selected_child_id.message}</p>
+                    )}
+                  </div>
+
+                  {availableChildren.length === 0 && (
+                    <div className="text-center py-8">
+                      <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-500 dark:text-gray-400">
+                        {isRTL ? 'لا توجد أطفال متاحين للربط' : 'Aucun enfant disponible pour la liaison'}
+                      </p>
+                      <p className="text-sm text-gray-400 mt-2">
+                        {isRTL ? 'تواصل مع الإدارة' : 'Contactez l\'administration'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Informations du parent - Étape 2 */}
               {step === 2 && (
                 <div className="space-y-6">
@@ -440,55 +644,59 @@ const EnrollmentPage = () => {
                     )}
                   </div>
 
-                  {/* Date d'inscription souhaitée */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      {isRTL ? 'تاريخ التسجيل المرغوب' : 'Date d\'inscription souhaitée'} *
-                    </label>
-                    <input
-                      type="date"
-                      className={`w-full px-4 py-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent ${errors.enrollment_date ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
-                      {...register('enrollment_date', {
-                        required: isRTL ? 'تاريخ التسجيل مطلوب' : 'La date d\'inscription est requise'
-                      })}
-                    />
-                    {errors.enrollment_date && (
-                      <p className="text-red-500 text-sm mt-1">{errors.enrollment_date.message}</p>
-                    )}
-                  </div>
-
-                  {/* Assistance au déjeuner */}
-                  <div>
-                    <div className="flex items-center space-x-3 rtl:space-x-reverse">
-                      <input
-                        type="checkbox"
-                        id="lunch_assistance"
-                        className="w-4 h-4 text-primary-600 border-gray-300 dark:border-gray-600 rounded focus:ring-primary-500"
-                        {...register('lunch_assistance')}
-                      />
-                      <label htmlFor="lunch_assistance" className="flex-1 cursor-pointer">
-                        <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                          <Utensils className="w-5 h-5 text-primary-600" />
-                          <div>
-                            <h3 className="font-semibold text-gray-900 dark:text-white">
-                              {isRTL ? 'المساعدة في الغداء' : 'Assistance au déjeuner'}
-                            </h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-300">
-                              {isRTL
-                                ? 'رسوم إضافية: 20 دينار تونسي شهرياً'
-                                : 'Frais supplémentaires : 20 TND par mois'
-                              }
-                            </p>
-                          </div>
-                        </div>
+                  {/* Date d'inscription souhaitée - seulement pour nouveau enfant */}
+                  {!isExistingChild && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {isRTL ? 'تاريخ التسجيل المرغوب' : 'Date d\'inscription souhaitée'} *
                       </label>
+                      <input
+                        type="date"
+                        className={`w-full px-4 py-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent ${errors.enrollment_date ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
+                        {...register('enrollment_date', {
+                          required: !isExistingChild ? (isRTL ? 'تاريخ التسجيل مطلوب' : 'La date d\'inscription est requise') : false
+                        })}
+                      />
+                      {errors.enrollment_date && (
+                        <p className="text-red-500 text-sm mt-1">{errors.enrollment_date.message}</p>
+                      )}
                     </div>
-                  </div>
+                  )}
+
+                  {/* Assistance au déjeuner - seulement pour nouveau enfant */}
+                  {!isExistingChild && (
+                    <div>
+                      <div className="flex items-center space-x-3 rtl:space-x-reverse">
+                        <input
+                          type="checkbox"
+                          id="lunch_assistance"
+                          className="w-4 h-4 text-primary-600 border-gray-300 dark:border-gray-600 rounded focus:ring-primary-500"
+                          {...register('lunch_assistance')}
+                        />
+                        <label htmlFor="lunch_assistance" className="flex-1 cursor-pointer">
+                          <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                            <Utensils className="w-5 h-5 text-primary-600" />
+                            <div>
+                              <h3 className="font-semibold text-gray-900 dark:text-white">
+                                {isRTL ? 'المساعدة في الغداء' : 'Assistance au déjeuner'}
+                              </h3>
+                              <p className="text-sm text-gray-600 dark:text-gray-300">
+                                {isRTL
+                                  ? 'رسوم إضافية: 20 دينار تونسي شهرياً'
+                                  : 'Frais supplémentaires : 20 TND par mois'
+                                }
+                              </p>
+                            </div>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* Étape 3: Documents requis */}
-              {step === 3 && (
+              {/* Étape 3: Documents requis - seulement pour nouveau enfant */}
+              {step === 3 && !isExistingChild && (
                 <div className="space-y-6">
                   <div className="flex items-center space-x-3 rtl:space-x-reverse mb-6">
                     <Upload className="w-6 h-6 text-primary-600" />
@@ -517,7 +725,7 @@ const EnrollmentPage = () => {
                   <div className="space-y-4">
                     {/* Carnet médical */}
                     <DocumentUpload
-                      documentType={documentService.documentTypes.CARNET_MEDICAL}
+                      documentType="carnet_medical"
                       label={isRTL ? 'الدفتر الطبي' : 'Carnet médical'}
                       description={isRTL ? 'الدفتر الطبي للطفل مع التطعيمات' : 'Carnet de santé de l\'enfant avec vaccinations'}
                       required={true}
@@ -528,7 +736,7 @@ const EnrollmentPage = () => {
 
                     {/* Acte de naissance */}
                     <DocumentUpload
-                      documentType={documentService.documentTypes.ACTE_NAISSANCE}
+                      documentType="acte_naissance"
                       label={isRTL ? 'شهادة الميلاد' : 'Acte de naissance'}
                       description={isRTL ? 'شهادة الميلاد الأصلية أو نسخة مصدقة' : 'Acte de naissance original ou copie certifiée'}
                       required={true}
@@ -539,7 +747,7 @@ const EnrollmentPage = () => {
 
                     {/* Certificat médical */}
                     <DocumentUpload
-                      documentType={documentService.documentTypes.CERTIFICAT_MEDICAL}
+                      documentType="certificat_medical"
                       label={isRTL ? 'الشهادة الطبية' : 'Certificat médical'}
                       description={isRTL ? 'شهادة طبية تؤكد عدم وجود أمراض معدية' : 'Certificat médical attestant l\'absence de maladies contagieuses'}
                       required={true}
@@ -565,7 +773,7 @@ const EnrollmentPage = () => {
                       </div>
                       <button
                         type="button"
-                        onClick={documentService.downloadReglement}
+                        onClick={() => window.open('/documents/reglement-interieur.pdf', '_blank')}
                         className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
                       >
                         <Download className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />

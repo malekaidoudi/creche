@@ -108,9 +108,15 @@ if (process.env.NODE_ENV !== 'test') {
   testConnection();
 }
 
+// Alias pour compatibilité
+const execute = async (sql, params = []) => {
+  return pool.execute(sql, params);
+};
+
 module.exports = {
   pool,
   query,
+  execute,
   transaction,
   testConnection
 };

@@ -153,6 +153,75 @@ router.get('/me', async (req, res) => {
   }
 });
 
+// POST /api/auth/register-parent-existing-child
+router.post('/register-parent-existing-child', [
+  body('email').isEmail().withMessage('Email invalide'),
+  body('password').isLength({ min: 6 }).withMessage('Mot de passe trop court (minimum 6 caractères)'),
+  body('first_name').isLength({ min: 1 }).withMessage('Prénom requis'),
+  body('last_name').isLength({ min: 1 }).withMessage('Nom requis'),
+  body('phone').optional().isMobilePhone('any').withMessage('Numéro de téléphone invalide'),
+  body('child_id').isInt().withMessage('ID enfant requis')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        error: 'Données invalides', 
+        details: errors.array() 
+      });
+    }
+
+    const { email, password, first_name, last_name, phone, child_id } = req.body;
+
+    // Vérifier que l'enfant existe et n'a pas de parent
+    const db = require('../config/database');
+    const [children] = await db.execute('SELECT * FROM children WHERE id = ? AND parent_id IS NULL', [child_id]);
+    
+    if (children.length === 0) {
+      return res.status(400).json({ error: 'Enfant non trouvé ou déjà associé à un parent' });
+    }
+
+    // Créer l'utilisateur parent
+    const user = await User.create({
+      email,
+      password,
+      first_name,
+      last_name,
+      phone,
+      role: 'parent'
+    });
+
+    // Associer l'enfant au parent
+    await db.execute('UPDATE children SET parent_id = ? WHERE id = ?', [user.id, child_id]);
+
+    // Créer le token JWT
+    const token = jwt.sign(
+      { 
+        userId: user.id, 
+        email: user.email, 
+        role: user.role 
+      },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+
+    res.status(201).json({
+      message: 'Compte parent créé et enfant associé avec succès',
+      token,
+      user: user.toJSON()
+    });
+
+  } catch (error) {
+    console.error('Erreur lors de la création du compte parent:', error);
+    
+    if (error.message.includes('email existe déjà')) {
+      return res.status(409).json({ error: error.message });
+    }
+    
+    res.status(500).json({ error: 'Erreur lors de la création du compte' });
+  }
+});
+
 // POST /api/auth/change-password
 router.post('/change-password', [
   body('currentPassword').isLength({ min: 1 }).withMessage('Mot de passe actuel requis'),

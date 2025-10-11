@@ -17,26 +17,42 @@ const API_CONFIG = {
   BASE_URL: (() => {
     if (isDevelopment) {
       // Développement local - Backend local
-      return 'http://localhost:3001';
+      return 'http://localhost:3003';
     } else if (isProduction) {
       // Production GitHub Pages - Backend Railway
       // TODO: Remplacer par votre URL Railway réelle après déploiement
       return 'https://backend-production-3a21.up.railway.app';
     } else {
       // Autre environnement (preview, staging, etc.)
-      return process.env.VITE_API_URL || 'http://localhost:3001';
+      return process.env.VITE_API_URL || 'http://localhost:3003';
     }
   })(),
   
   // Endpoints de l'API
   ENDPOINTS: {
-    SETTINGS: '/api/settings',
-    SETTINGS_UPLOAD: '/api/settings/upload',
+    // Authentification
+    AUTH: '/api/auth',
+    AUTH_LOGIN: '/api/auth/login',
+    AUTH_REGISTER: '/api/auth/register',
+    AUTH_ME: '/api/auth/me',
+    
+    // Gestion
+    USERS: '/api/users',
+    CHILDREN: '/api/children',
+    ENROLLMENTS: '/api/enrollments',
+    ATTENDANCE: '/api/attendance',
+    
+    // Public
+    PUBLIC_ENROLLMENTS: '/api/public/enrollments',
     HEALTH: '/api/health',
     CONTACTS: '/api/contacts',
     ARTICLES: '/api/articles',
     NEWS: '/api/news',
-    ENROLLMENTS: '/api/public/enrollments'
+    UPLOAD: '/api/upload',
+    
+    // Legacy (à supprimer plus tard)
+    SETTINGS: '/api/settings',
+    SETTINGS_UPLOAD: '/api/settings/upload'
   },
   
   // Configuration des timeouts

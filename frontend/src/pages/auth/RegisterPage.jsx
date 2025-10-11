@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { motion } from 'framer-motion';
@@ -12,7 +12,7 @@ import toast from 'react-hot-toast';
 
 const RegisterPage = () => {
   const { isRTL } = useLanguage();
-  const { register: registerUser, loading, error, clearError, isAuthenticated } = useAuth();
+  const { register: registerUser, loading, error, clearError, isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -26,24 +26,17 @@ const RegisterPage = () => {
 
   const password = watch('password');
 
-  // Rediriger si déjà connecté
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/');
-    }
-  }, [isAuthenticated, navigate]);
-
-  // Effacer les erreurs au démontage
-  useEffect(() => {
-    return () => clearError();
-  }, [clearError]);
+  // Pas de redirection automatique - laissons l'utilisateur naviguer manuellement
 
   const onSubmit = async (data) => {
     try {
       const { confirmPassword, ...userData } = data;
       await registerUser(userData);
       toast.success(isRTL ? 'تم إنشاء الحساب بنجاح' : 'Compte créé avec succès');
-      navigate('/');
+      // Redirection manuelle après inscription réussie
+      setTimeout(() => {
+        navigate('/', { replace: true });
+      }, 1000);
     } catch (error) {
       toast.error(error.response?.data?.error || (isRTL ? 'خطأ في إنشاء الحساب' : 'Erreur lors de la création du compte'));
     }

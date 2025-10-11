@@ -12,14 +12,21 @@ import ArticleDetailPage from './pages/public/ArticleDetailPage'
 import EnrollmentPage from './pages/public/EnrollmentPage'
 import ContactPage from './pages/public/ContactPage'
 import VirtualTourPage from './pages/public/VirtualTourPage'
-import ParentSpacePage from './pages/public/ParentSpacePage'
 
 // Pages d'authentification
 import LoginPage from './pages/auth/LoginPage'
 import RegisterPage from './pages/auth/RegisterPage'
 
+// Pages parent
+import ParentSpacePage from './pages/parent/ParentSpacePage'
+
 // Pages dashboard
 import DashboardHome from './pages/dashboard/DashboardHome'
+import ProfilePage from './pages/dashboard/ProfilePage'
+import ChildrenPage from './pages/dashboard/ChildrenPage'
+import AddChildPage from './pages/dashboard/AddChildPage'
+import EnrollmentsPage from './pages/dashboard/EnrollmentsPage'
+import AttendancePage from './pages/dashboard/AttendancePage'
 import DocumentsPage from './pages/dashboard/DocumentsPage'
 
 // Composants
@@ -69,6 +76,13 @@ function App() {
         }
       >
         <Route index element={<DashboardHome />} />
+        <Route path="profile" element={<ProfilePage />} />
+        <Route path="children" element={<ChildrenPage />} />
+        <Route path="children/add" element={<AddChildPage />} />
+        <Route path="enrollments" element={<EnrollmentsPage />} />
+        <Route path="attendance" element={<AttendancePage />} />
+        <Route path="attendance/today" element={<AttendancePage />} />
+        <Route path="attendance/history" element={<AttendancePage />} />
         <Route path="documents" element={<DocumentsPage />} />
         <Route path="documents/download" element={<DocumentsPage />} />
         <Route path="documents/uploaded" element={<DocumentsPage />} />

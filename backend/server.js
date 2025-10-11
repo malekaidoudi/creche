@@ -9,19 +9,19 @@ require('dotenv').config();
 
 const db = require('./config/database');
 
-// Routes
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const childrenRoutes = require('./routes/children');
 const enrollmentRoutes = require('./routes/enrollments');
 const attendanceRoutes = require('./routes/attendance');
-const uploadProfileRoutes = require('./routes/upload');
+const uploadRoutes = require('./routes/uploads');
+// const publicRoutes = require('./routes/public'); // Fichier non existant
 const articleRoutes = require('./routes/articles');
 const newsRoutes = require('./routes/news');
 const contactRoutes = require('./routes/contacts');
 const healthRoutes = require('./routes/health');
 const publicEnrollmentsRoutes = require('./routes/publicEnrollments');
-
+const setupRoutes = require('./routes/setup');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -56,6 +56,12 @@ if (process.env.RAILWAY_ENVIRONMENT) {
 // CORS configuration - Support multiple origins for Railway deployment
 const allowedOrigins = [
   'https://malekaidoudi.github.io',  // GitHub Pages production
+  'http://localhost:5173',           // Vite dev server
+  'http://localhost:5174',           // Vite dev server (port alternatif)
+  'http://localhost:5175',           // Vite dev server (port alternatif)
+  'http://127.0.0.1:5173',          // Localhost alternatif
+  'http://127.0.0.1:5174',          // Localhost alternatif
+  'http://127.0.0.1:5175',          // Localhost alternatif
   process.env.FRONTEND_URL           // URL personnalisée (si définie)
 ].filter(Boolean); // Retire les valeurs undefined
 
@@ -63,6 +69,11 @@ app.use(cors({
   origin: (origin, callback) => {
     // Autoriser les requêtes sans origin (mobile apps, etc.)
     if (!origin) return callback(null, true);
+    
+    // En développement, autoriser tous les localhost
+    if (process.env.NODE_ENV !== 'production' && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
+      return callback(null, true);
+    }
     
     // Vérifie si l'origin est dans la liste autorisée
     if (allowedOrigins.indexOf(origin) !== -1) {
@@ -79,16 +90,17 @@ app.use(cors({
 
 // Servir les fichiers uploadés avec CORS
 app.use('/uploads', (req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET');
   res.header('Access-Control-Allow-Headers', 'Content-Type');
   next();
 }, express.static(path.join(__dirname, 'uploads')));
 
-// Body parsing middleware
+// Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Servir les fichiers statiques (uploads)
+app.use('/media', express.static(path.join(__dirname, 'uploads')));
 // Logging
 if (process.env.NODE_ENV === 'production') {
   app.use(morgan('combined'));
@@ -128,17 +140,19 @@ app.get('/', (req, res) => {
 });
 
 // API Routes
-app.use('/api/health', healthRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/children', childrenRoutes);
 app.use('/api/enrollments', enrollmentRoutes);
 app.use('/api/attendance', attendanceRoutes);
+app.use('/api/uploads', uploadRoutes);
+app.use('/api/health', healthRoutes);
+// app.use('/api/public', publicRoutes); // Fichier non existant
 app.use('/api/public/enrollments', publicEnrollmentsRoutes);
-app.use('/api/upload', uploadProfileRoutes);
 app.use('/api/articles', articleRoutes);
 app.use('/api/news', newsRoutes);
 app.use('/api/contacts', contactRoutes);
+// app.use('/api/setup', setupRoutes); // Route temporaire désactivée
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -147,7 +161,6 @@ app.use('*', (req, res) => {
     path: req.originalUrl 
   });
 });
-
 // Global error handler
 app.use((err, req, res, next) => {
   console.error('Error:', err);
