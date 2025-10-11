@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const childrenController = require('../controllers/childrenController');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, requireStaff } = require('../middleware/auth');
 
 // Routes pour la gestion des enfants
 
