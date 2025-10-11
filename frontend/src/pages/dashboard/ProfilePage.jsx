@@ -123,10 +123,19 @@ const ProfilePage = () => {
         const newImagePath = response.profile_image;
         setProfileImage(newImagePath);
         
-        // Mettre à jour le contexte utilisateur
+        // Mettre à jour le contexte utilisateur avec la nouvelle image
         if (response.user) {
-          updateUser(response.user);
+          updateUser({
+            ...user,
+            ...response.user,
+            profile_image: newImagePath
+          });
         }
+        
+        // Forcer le rechargement du profil pour s'assurer de la synchronisation
+        setTimeout(() => {
+          loadProfile();
+        }, 500);
         
         toast.success(isRTL ? 'تم تحديث صورة الملف الشخصي بنجاح' : 'Photo de profil mise à jour avec succès');
       }
@@ -199,7 +208,7 @@ const ProfilePage = () => {
               <div className="w-32 h-32 mx-auto rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
                 {profileImage ? (
                   <img
-                    src={`${API_CONFIG.BASE_URL}${profileImage}`}
+                    src={`${API_CONFIG.BASE_URL}${profileImage}?t=${Date.now()}`}
                     alt="Profile"
                     className="w-32 h-32 object-cover object-center"
                     onError={(e) => {

@@ -1,5 +1,7 @@
 const db = require('../config/database');
 const bcrypt = require('bcrypt');
+const fs = require('fs');
+const path = require('path');
 
 const userController = {
   // Obtenir le profil utilisateur
@@ -208,7 +210,26 @@ const userController = {
         return res.status(400).json({ error: 'Aucun fichier fourni' });
       }
 
-      // Construire le chemin de l'image
+      // Récupérer l'ancienne image de profil pour la supprimer
+      const [currentUser] = await db.execute(
+        'SELECT profile_image FROM users WHERE id = ?',
+        [userId]
+      );
+
+      // Supprimer l'ancienne image si elle existe
+      if (currentUser.length > 0 && currentUser[0].profile_image) {
+        const oldImagePath = path.join(__dirname, '..', currentUser[0].profile_image);
+        try {
+          if (fs.existsSync(oldImagePath)) {
+            fs.unlinkSync(oldImagePath);
+            console.log('✅ Ancienne image supprimée:', oldImagePath);
+          }
+        } catch (deleteError) {
+          console.warn('⚠️ Impossible de supprimer l\'ancienne image:', deleteError.message);
+        }
+      }
+
+      // Construire le chemin de la nouvelle image
       const imagePath = `/uploads/${req.file.filename}`;
 
       // Mettre à jour le profil avec la nouvelle image

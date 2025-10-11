@@ -101,7 +101,7 @@ const DashboardHeader = ({ onMenuClick }) => {
                 <div className="w-8 h-8 rounded-full overflow-hidden bg-primary-100 dark:bg-primary-900 flex items-center justify-center flex-shrink-0">
                   {user?.profile_image ? (
                     <img
-                      src={`${API_CONFIG.BASE_URL}${user.profile_image}`}
+                      src={`${API_CONFIG.BASE_URL}${user.profile_image}?t=${Date.now()}`}
                       alt="Profile"
                       className="w-8 h-8 object-cover object-center"
                       onError={(e) => {
@@ -137,7 +137,7 @@ const DashboardHeader = ({ onMenuClick }) => {
                         <div className="w-10 h-10 rounded-full overflow-hidden bg-primary-100 dark:bg-primary-900 flex items-center justify-center flex-shrink-0">
                           {user?.profile_image ? (
                             <img
-                              src={`${API_CONFIG.BASE_URL}${user.profile_image}`}
+                              src={`${API_CONFIG.BASE_URL}${user.profile_image}?t=${Date.now()}`}
                               alt="Profile"
                               className="w-10 h-10 object-cover object-center"
                               onError={(e) => {
