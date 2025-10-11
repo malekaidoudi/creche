@@ -4,7 +4,7 @@
   "description": "Backend API pour le système de gestion de crèche",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node server-debug.js",
     "dev": "nodemon server.js",
     "build": "echo 'Backend build completed - no build step required'",
     "db:init": "node scripts/init-database-v1.js",
