@@ -108,6 +108,29 @@ const initDatabase = async () => {
     `);
     console.log('✅ Table enrollment_documents créée/vérifiée');
 
+    // Table documents (pour les documents administratifs)
+    await query(`
+      CREATE TABLE IF NOT EXISTS documents (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        document_type VARCHAR(100) NOT NULL DEFAULT 'general',
+        file_path VARCHAR(500) NOT NULL,
+        original_filename VARCHAR(255) NOT NULL,
+        file_size INT NOT NULL,
+        mime_type VARCHAR(100) NOT NULL,
+        is_public BOOLEAN DEFAULT FALSE,
+        uploaded_by INT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE SET NULL,
+        INDEX idx_document_type (document_type),
+        INDEX idx_uploaded_by (uploaded_by),
+        INDEX idx_created_at (created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+    console.log('✅ Table documents créée/vérifiée');
+
     // Table attendance
     await query(`
       CREATE TABLE IF NOT EXISTS attendance (

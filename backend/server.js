@@ -15,6 +15,7 @@ const childrenRoutes = require('./routes/children');
 const enrollmentRoutes = require('./routes/enrollments');
 const attendanceRoutes = require('./routes/attendance');
 const uploadRoutes = require('./routes/uploads');
+const documentsRoutes = require('./routes/documents');
 // const publicRoutes = require('./routes/public'); // Fichier non existant
 const articleRoutes = require('./routes/articles');
 const newsRoutes = require('./routes/news');
@@ -198,6 +199,7 @@ app.use('/api/children', childrenRoutes);
 app.use('/api/enrollments', enrollmentRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/uploads', uploadRoutes);
+app.use('/api/documents', documentsRoutes);
 app.use('/api/health', healthRoutes);
 // app.use('/api/public', publicRoutes); // Fichier non existant
 app.use('/api/public/enrollments', publicEnrollmentsRoutes);
