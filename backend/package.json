@@ -1,6 +1,6 @@
 {
   "name": "creche-backend",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "description": "Backend API pour le système de gestion de crèche",
   "main": "server.js",
   "scripts": {

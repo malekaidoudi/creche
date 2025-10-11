@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: creche-backend
+    env: node
+    plan: free
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        value: https://malekaidoudi.github.io
+      - key: DATABASE_URL
+        fromDatabase:
+          name: creche-db
+          property: connectionString
+
+databases:
+  - name: creche-db
+    databaseName: creche
+    user: creche_user
+    plan: free
