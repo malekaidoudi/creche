@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
 const { authenticateToken } = require('../middleware/auth');
+const upload = require('../middleware/upload');
 
 // Routes pour les profils utilisateurs
 
@@ -10,6 +11,9 @@ router.get('/profile', authenticateToken, userController.getProfile);
 
 // Mettre à jour le profil de l'utilisateur connecté
 router.put('/profile', authenticateToken, userController.updateProfile);
+
+// Upload photo de profil
+router.post('/profile/image', authenticateToken, upload.single('profile_image'), userController.uploadProfileImage);
 
 // Changer le mot de passe
 router.put('/change-password', authenticateToken, userController.changePassword);

@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { motion } from 'framer-motion';
-import { User, Mail, Phone, Camera, Save, Edit } from 'lucide-react';
+import { User, Mail, Phone, Camera, Save, Edit, RefreshCw } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
 import { Button } from '../../components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import toast from 'react-hot-toast';
-import api from '../../config/api';
+import userService from '../../services/userService';
+import API_CONFIG from '../../config/api';
 
 const ProfilePage = () => {
   const { user, updateUser } = useAuth();
@@ -32,6 +33,30 @@ const ProfilePage = () => {
     }
   });
 
+  // Fonction pour charger le profil depuis l'API
+  const loadProfile = async () => {
+    try {
+      setLoading(true);
+      const response = await userService.getProfile();
+      if (response.user) {
+        const userData = response.user;
+        reset({
+          first_name: userData.first_name || '',
+          last_name: userData.last_name || '',
+          email: userData.email || '',
+          phone: userData.phone || ''
+        });
+        setProfileImage(userData.profile_image || '');
+        updateUser(userData); // Mettre à jour le contexte
+      }
+    } catch (error) {
+      console.error('Erreur chargement profil:', error);
+      toast.error(isRTL ? 'خطأ في تحميل الملف الشخصي' : 'Erreur lors du chargement du profil');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (user) {
       reset({
@@ -41,16 +66,21 @@ const ProfilePage = () => {
         phone: user.phone || ''
       });
       setProfileImage(user.profile_image || '');
+    } else {
+      // Si pas d'utilisateur en contexte, charger depuis l'API
+      loadProfile();
     }
   }, [user, reset]);
 
   const onSubmit = async (data) => {
     setLoading(true);
     try {
-      const response = await api.put(`/users/${user.id}`, data);
+      const response = await userService.updateProfile(data);
       
       // Mettre à jour le contexte utilisateur
-      updateUser(response.data.user);
+      if (response.user) {
+        updateUser(response.user);
+      }
       
       toast.success(isRTL ? 'تم تحديث الملف الشخصي بنجاح' : 'Profil mis à jour avec succès');
       setEditing(false);
@@ -80,22 +110,19 @@ const ProfilePage = () => {
 
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append('profile', file);
+      const response = await userService.uploadProfileImage(file);
 
-      const response = await api.post('/uploads/profile', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
+      if (response.success) {
+        const newImagePath = response.profile_image;
+        setProfileImage(newImagePath);
+        
+        // Mettre à jour le contexte utilisateur
+        if (response.user) {
+          updateUser(response.user);
         }
-      });
-
-      const newImagePath = response.data.file.path;
-      setProfileImage(newImagePath);
-      
-      // Mettre à jour le contexte utilisateur
-      updateUser({ ...user, profile_image: newImagePath });
-      
-      toast.success(isRTL ? 'تم تحديث صورة الملف الشخصي' : 'Photo de profil mise à jour');
+        
+        toast.success(isRTL ? 'تم تحديث صورة الملف الشخصي بنجاح' : 'Photo de profil mise à jour avec succès');
+      }
     } catch (error) {
       console.error('Erreur upload image:', error);
       toast.error(error.response?.data?.error || (isRTL ? 'خطأ في رفع الصورة' : 'Erreur lors de l\'upload'));
@@ -113,6 +140,11 @@ const ProfilePage = () => {
     return roles[role] || role;
   };
 
+  // Fonction pour rafraîchir le profil
+  const handleRefresh = () => {
+    loadProfile();
+  };
+
   return (
     <div className="space-y-6">
       {/* En-tête */}
@@ -125,13 +157,26 @@ const ProfilePage = () => {
             {isRTL ? 'إدارة معلوماتك الشخصية' : 'Gérez vos informations personnelles'}
           </p>
         </div>
-        <Button
-          onClick={() => setEditing(!editing)}
-          variant={editing ? 'outline' : 'default'}
-        >
-          <Edit className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
-          {editing ? (isRTL ? 'إلغاء' : 'Annuler') : (isRTL ? 'تعديل' : 'Modifier')}
-        </Button>
+        
+        <div className="flex gap-2">
+          <Button
+            onClick={handleRefresh}
+            variant="outline"
+            size="sm"
+            disabled={loading}
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2 ${loading ? 'animate-spin' : ''}`} />
+            {isRTL ? 'تحديث' : 'Actualiser'}
+          </Button>
+          
+          <Button
+            onClick={() => setEditing(!editing)}
+            variant={editing ? 'outline' : 'default'}
+          >
+            <Edit className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+            {editing ? (isRTL ? 'إلغاء' : 'Annuler') : (isRTL ? 'تعديل' : 'Modifier')}
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -147,7 +192,7 @@ const ProfilePage = () => {
               <div className="w-32 h-32 mx-auto rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
                 {profileImage ? (
                   <img
-                    src={`${import.meta.env.VITE_API_URL}${profileImage}`}
+                    src={`${API_CONFIG.BASE_URL}${profileImage}`}
                     alt="Profile"
                     className="w-full h-full object-cover"
                   />

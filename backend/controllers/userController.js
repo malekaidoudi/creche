@@ -197,6 +197,46 @@ const userController = {
       console.error('Erreur changement statut utilisateur:', error);
       res.status(500).json({ error: 'Erreur serveur' });
     }
+  },
+
+  // Upload photo de profil
+  uploadProfileImage: async (req, res) => {
+    try {
+      const userId = req.user.id;
+
+      if (!req.file) {
+        return res.status(400).json({ error: 'Aucun fichier fourni' });
+      }
+
+      // Construire le chemin de l'image
+      const imagePath = `/uploads/${req.file.filename}`;
+
+      // Mettre à jour le profil avec la nouvelle image
+      const [result] = await db.execute(
+        'UPDATE users SET profile_image = ?, updated_at = NOW() WHERE id = ?',
+        [imagePath, userId]
+      );
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ error: 'Utilisateur non trouvé' });
+      }
+
+      // Récupérer les informations mises à jour
+      const [users] = await db.execute(
+        'SELECT id, first_name, last_name, email, phone, role, profile_image FROM users WHERE id = ?',
+        [userId]
+      );
+
+      res.json({
+        success: true,
+        message: 'Photo de profil mise à jour avec succès',
+        user: users[0],
+        profile_image: imagePath
+      });
+    } catch (error) {
+      console.error('Erreur upload photo profil:', error);
+      res.status(500).json({ error: 'Erreur serveur' });
+    }
   }
 };
 
