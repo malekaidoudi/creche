@@ -139,6 +139,65 @@ app.get('/', (req, res) => {
   });
 });
 
+// Route de debug temporaire
+app.get('/api/debug', async (req, res) => {
+  try {
+    const bcrypt = require('bcryptjs');
+    const { execute } = require('./config/database');
+    
+    // Test de création d'utilisateur direct
+    const hashedPassword = await bcrypt.hash('Password123!', 10);
+    
+    // Créer table users si elle n'existe pas
+    await execute(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        first_name VARCHAR(100) NOT NULL,
+        last_name VARCHAR(100) NOT NULL,
+        phone VARCHAR(20),
+        role ENUM('admin', 'staff', 'parent') DEFAULT 'parent',
+        profile_image VARCHAR(255),
+        is_active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
+    
+    // Insérer utilisateur test
+    try {
+      await execute(
+        'INSERT IGNORE INTO users (first_name, last_name, email, password, role, phone) VALUES (?, ?, ?, ?, ?, ?)',
+        ['Admin', 'Test', 'admin@creche.test', hashedPassword, 'admin', '+33123456789']
+      );
+    } catch (e) {
+      // Ignorer si existe déjà
+    }
+    
+    // Vérifier utilisateurs
+    const [users] = await execute('SELECT email, role FROM users');
+    
+    res.json({
+      status: 'OK',
+      message: 'Debug Railway',
+      environment: process.env.NODE_ENV,
+      database: {
+        host: process.env.MYSQLHOST || 'localhost',
+        database: process.env.MYSQLDATABASE || 'railway'
+      },
+      users: users
+    });
+    
+  } catch (error) {
+    res.status(500).json({
+      error: 'Debug error',
+      message: error.message,
+      stack: error.stack
+    });
+  }
+});
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
