@@ -29,4 +29,10 @@ router.put('/:id', authenticateToken, childrenController.updateChild);
 // Supprimer un enfant (soft delete)
 router.delete('/:id', authenticateToken, childrenController.deleteChild);
 
+// Associer un enfant à un parent existant (Admin/Staff seulement)
+router.put('/:childId/associate-parent', authenticateToken, requireStaff, childrenController.associateChildToParent);
+
+// Obtenir les enfants sans parent (orphelins) (Admin/Staff seulement)
+router.get('/orphans', authenticateToken, requireStaff, childrenController.getOrphanChildren);
+
 module.exports = router;

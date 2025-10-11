@@ -17,7 +17,8 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  UserPlus
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -26,11 +27,16 @@ import { Button } from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import toast from 'react-hot-toast';
 import childrenService from '../../services/childrenService';
+import userService from '../../services/userService';
 
 const ChildrenPage = () => {
   const { isAdmin } = useAuth();
   const { isRTL } = useLanguage();
-  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(null);
+  const [showAssociateModal, setShowAssociateModal] = useState(false);
+  const [selectedChild, setSelectedChild] = useState(null);
+  const [parents, setParents] = useState([]);
+  const [selectedParentId, setSelectedParentId] = useState('');
   const [children, setChildren] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -82,6 +88,49 @@ const ChildrenPage = () => {
   // Fonction pour rafraîchir les données
   const handleRefresh = () => {
     loadChildren();
+  };
+
+  // Fonction pour ouvrir le modal d'association parent
+  const handleAssociateParent = async (child) => {
+    try {
+      setSelectedChild(child);
+      setShowAssociateModal(true);
+      
+      // Charger la liste des parents
+      const response = await userService.getAllUsers({ role: 'parent' });
+      if (response.users) {
+        setParents(response.users);
+      }
+    } catch (error) {
+      console.error('Erreur chargement parents:', error);
+      toast.error('Erreur lors du chargement des parents');
+    }
+  };
+
+  // Fonction pour associer un enfant à un parent
+  const handleConfirmAssociation = async () => {
+    if (!selectedParentId || !selectedChild) {
+      toast.error(isRTL ? 'يرجى اختيار ولي أمر' : 'Veuillez sélectionner un parent');
+      return;
+    }
+
+    try {
+      setActionLoading('associate');
+      const response = await childrenService.associateChildToParent(selectedChild.id, selectedParentId);
+      
+      if (response.success) {
+        toast.success(isRTL ? 'تم ربط الطفل بولي الأمر بنجاح' : 'Enfant associé au parent avec succès');
+        setShowAssociateModal(false);
+        setSelectedChild(null);
+        setSelectedParentId('');
+        loadChildren(); // Recharger la liste
+      }
+    } catch (error) {
+      console.error('Erreur association:', error);
+      toast.error(error.response?.data?.error || 'Erreur lors de l\'association');
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   const calculateAge = (birthDate) => {
@@ -374,8 +423,21 @@ const ChildrenPage = () => {
                             </div>
                           </>
                         ) : (
-                          <div className="text-gray-500">
-                            {isRTL ? 'لا يوجد ولي أمر مسجل' : 'Aucun parent enregistré'}
+                          <div className="space-y-2">
+                            <div className="text-gray-500">
+                              {isRTL ? 'لا يوجد ولي أمر مسجل' : 'Aucun parent enregistré'}
+                            </div>
+                            {isAdmin() && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleAssociateParent(child)}
+                                className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                              >
+                                <UserPlus className="w-3 h-3 mr-1 rtl:mr-0 rtl:ml-1" />
+                                {isRTL ? 'ربط ولي أمر' : 'Associer parent'}
+                              </Button>
+                            )}
                           </div>
                         )}
                       </div>
@@ -438,6 +500,94 @@ const ChildrenPage = () => {
               : 'Aucun enfant ne correspond aux critères de recherche'
             }
           </p>
+        </div>
+      )}
+
+      {/* Modal d'association parent */}
+      {showAssociateModal && selectedChild && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              {isRTL ? 'ربط ولي أمر' : 'Associer un parent'}
+            </h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {isRTL ? 'الطفل' : 'Enfant'}
+                </label>
+                <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <div className="font-medium text-gray-900 dark:text-white">
+                    {selectedChild.first_name} {selectedChild.last_name}
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    {calculateAge(selectedChild.birth_date)}
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {isRTL ? 'اختر ولي الأمر' : 'Sélectionner un parent'}
+                </label>
+                <select
+                  value={selectedParentId}
+                  onChange={(e) => setSelectedParentId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                >
+                  <option value="">
+                    {isRTL ? 'اختر ولي أمر...' : 'Sélectionner un parent...'}
+                  </option>
+                  {parents.map((parent) => (
+                    <option key={parent.id} value={parent.id}>
+                      {parent.first_name} {parent.last_name} ({parent.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              {selectedParentId && (
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                  <div className="text-sm text-blue-800 dark:text-blue-200">
+                    {isRTL 
+                      ? 'سيتم ربط هذا الطفل بولي الأمر المحدد. يمكن لولي الأمر بعد ذلك رؤية معلومات الطفل في حسابه.'
+                      : 'Cet enfant sera associé au parent sélectionné. Le parent pourra alors voir les informations de l\'enfant dans son compte.'
+                    }
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div className="flex gap-3 mt-6">
+              <Button
+                onClick={() => {
+                  setShowAssociateModal(false);
+                  setSelectedChild(null);
+                  setSelectedParentId('');
+                }}
+                variant="outline"
+                className="flex-1"
+                disabled={actionLoading === 'associate'}
+              >
+                {isRTL ? 'إلغاء' : 'Annuler'}
+              </Button>
+              <Button
+                onClick={handleConfirmAssociation}
+                disabled={!selectedParentId || actionLoading === 'associate'}
+                className="flex-1"
+              >
+                {actionLoading === 'associate' ? (
+                  <RefreshCw className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2 animate-spin" />
+                ) : (
+                  <UserPlus className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                )}
+                {actionLoading === 'associate' ? 
+                  (isRTL ? 'جاري الربط...' : 'Association...') : 
+                  (isRTL ? 'ربط' : 'Associer')
+                }
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>

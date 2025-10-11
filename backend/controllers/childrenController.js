@@ -377,6 +377,99 @@ const childrenController = {
       console.error('Erreur statistiques enfants:', error);
       res.status(500).json({ error: 'Erreur serveur' });
     }
+  },
+
+  // Associer un enfant à un parent existant
+  associateChildToParent: async (req, res) => {
+    try {
+      const { childId } = req.params;
+      const { parentId } = req.body;
+
+      // Vérifier que l'enfant existe et n'a pas déjà de parent
+      const [children] = await db.execute(
+        'SELECT id, parent_id FROM children WHERE id = ?',
+        [childId]
+      );
+
+      if (children.length === 0) {
+        return res.status(404).json({ error: 'Enfant non trouvé' });
+      }
+
+      if (children[0].parent_id) {
+        return res.status(400).json({ error: 'Cet enfant est déjà associé à un parent' });
+      }
+
+      // Vérifier que le parent existe
+      const [parents] = await db.execute(
+        'SELECT id, first_name, last_name FROM users WHERE id = ? AND role = "parent"',
+        [parentId]
+      );
+
+      if (parents.length === 0) {
+        return res.status(404).json({ error: 'Parent non trouvé' });
+      }
+
+      // Associer l'enfant au parent
+      await db.execute(
+        'UPDATE children SET parent_id = ?, updated_at = NOW() WHERE id = ?',
+        [parentId, childId]
+      );
+
+      // Récupérer l'enfant mis à jour
+      const [updatedChild] = await db.execute(`
+        SELECT 
+          c.*,
+          p.first_name as parent_first_name,
+          p.last_name as parent_last_name,
+          p.email as parent_email,
+          p.phone as parent_phone
+        FROM children c
+        LEFT JOIN users p ON c.parent_id = p.id
+        WHERE c.id = ?
+      `, [childId]);
+
+      res.json({
+        success: true,
+        message: 'Enfant associé au parent avec succès',
+        child: {
+          ...updatedChild[0],
+          age: calculateAge(updatedChild[0].birth_date),
+          parent: updatedChild[0].parent_first_name ? {
+            first_name: updatedChild[0].parent_first_name,
+            last_name: updatedChild[0].parent_last_name,
+            email: updatedChild[0].parent_email,
+            phone: updatedChild[0].parent_phone
+          } : null
+        }
+      });
+    } catch (error) {
+      console.error('Erreur association enfant-parent:', error);
+      res.status(500).json({ error: 'Erreur serveur' });
+    }
+  },
+
+  // Obtenir les enfants sans parent (orphelins)
+  getOrphanChildren: async (req, res) => {
+    try {
+      const [children] = await db.execute(`
+        SELECT 
+          c.*
+        FROM children c
+        WHERE c.parent_id IS NULL AND c.is_active = TRUE
+        ORDER BY c.first_name, c.last_name
+      `);
+
+      res.json({
+        success: true,
+        children: children.map(child => ({
+          ...child,
+          age: calculateAge(child.birth_date)
+        }))
+      });
+    } catch (error) {
+      console.error('Erreur récupération enfants orphelins:', error);
+      res.status(500).json({ error: 'Erreur serveur' });
+    }
   }
 };
 

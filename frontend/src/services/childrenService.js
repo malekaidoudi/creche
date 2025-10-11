@@ -90,6 +90,30 @@ const childrenService = {
       console.error('Erreur lors de la récupération des enfants disponibles:', error)
       throw error
     }
+  },
+
+  // Obtenir les enfants orphelins (sans parent)
+  getOrphanChildren: async () => {
+    try {
+      const response = await api.get('/children/orphans')
+      return response.data
+    } catch (error) {
+      console.error('Erreur lors de la récupération des enfants orphelins:', error)
+      throw error
+    }
+  },
+
+  // Associer un enfant à un parent existant
+  associateChildToParent: async (childId, parentId) => {
+    try {
+      const response = await api.put(`/children/${childId}/associate-parent`, {
+        parentId
+      })
+      return response.data
+    } catch (error) {
+      console.error('Erreur lors de l\'association enfant-parent:', error)
+      throw error
+    }
   }
 }
 
