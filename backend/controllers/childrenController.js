@@ -7,24 +7,8 @@ const childrenController = {
       const { page = 1, limit = 20, search = '', status = 'all' } = req.query;
       const offset = (page - 1) * limit;
 
-      let whereClause = '1=1';
-      let params = [];
-
-      // Filtrage par recherche
-      if (search) {
-        whereClause += ' AND (c.first_name LIKE ? OR c.last_name LIKE ? OR CONCAT(p.first_name, " ", p.last_name) LIKE ?)';
-        const searchPattern = `%${search}%`;
-        params.push(searchPattern, searchPattern, searchPattern);
-      }
-
-      // Filtrage par statut
-      if (status !== 'all') {
-        whereClause += ' AND c.is_active = ?';
-        params.push(status === 'active' ? 1 : 0);
-      }
-
-      // Requête principale avec jointure pour récupérer les informations du parent
-      const query = `
+      // Requête simple pour commencer
+      const [children] = await db.query(`
         SELECT 
           c.*,
           p.first_name as parent_first_name,
@@ -33,40 +17,22 @@ const childrenController = {
           p.phone as parent_phone
         FROM children c
         LEFT JOIN users p ON c.parent_id = p.id
-        WHERE ${whereClause}
         ORDER BY c.created_at DESC
-        LIMIT ? OFFSET ?
-      `;
+        LIMIT 20
+      `);
 
-      const [children] = await db.execute(query, [...params, parseInt(limit), offset]);
-
-      // Compter le total pour la pagination
-      const countQuery = `
-        SELECT COUNT(*) as total
-        FROM children c
-        LEFT JOIN users p ON c.parent_id = p.id
-        WHERE ${whereClause}
-      `;
-      const [countResult] = await db.execute(countQuery, params);
+      // Compter le total
+      const [countResult] = await db.query('SELECT COUNT(*) as total FROM children');
       const total = countResult[0].total;
 
       res.json({
-        success: true,
-        data: {
-          children: children.map(child => ({
-            ...child,
-            age: calculateAge(child.birth_date),
-            parent: child.parent_first_name ? {
-              first_name: child.parent_first_name,
-              last_name: child.parent_last_name,
-              email: child.parent_email,
-              phone: child.parent_phone
-            } : null
-          })),
+        children,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
           total,
           totalPages: Math.ceil(total / limit),
-          currentPage: parseInt(page),
-          limit: parseInt(limit)
+          currentPage: parseInt(page)
         }
       });
     } catch (error) {

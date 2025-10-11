@@ -37,18 +37,17 @@ console.log('🚂 Trust proxy activé globalement');
 app.use(helmet());
 app.use(compression());
 
-// Rate limiting désactivé temporairement sur Railway pour éviter les erreurs trust proxy
-if (process.env.RAILWAY_ENVIRONMENT) {
-  console.log('🚂 Rate limiting désactivé sur Railway');
-  // Pas de rate limiting sur Railway pour éviter les problèmes trust proxy
-} else {
-  // Rate limiting local
-  app.use('/api/', rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
-    message: 'Trop de requêtes depuis cette IP, veuillez réessayer plus tard.'
-  }));
-}
+// Rate limiting temporairement désactivé pour éviter les erreurs
+// if (process.env.RAILWAY_ENVIRONMENT) {
+//   console.log('🚂 Rate limiting temporairement désactivé pour éviter les erreurs');
+// } else {
+//   // Rate limiting local
+//   app.use('/api/', rateLimit({
+//     windowMs: 15 * 60 * 1000,
+//     max: 100,
+//     message: 'Trop de requêtes depuis cette IP, veuillez réessayer plus tard.'
+//   }));
+// }
 
 // CORS configuration - Support multiple origins for Railway deployment
 const allowedOrigins = [
@@ -104,9 +103,9 @@ if (process.env.NODE_ENV === 'production') {
   app.use(morgan('combined'));
 }
 
-// Middleware de logging personnalisé pour les API routes
-const { loggerMiddleware } = require('./middleware/logger');
-app.use('/api', loggerMiddleware);
+// Middleware de logging personnalisé pour les API routes (temporairement désactivé)
+// const { loggerMiddleware } = require('./middleware/logger');
+// app.use('/api', loggerMiddleware);
 
 // Route de base pour l'API
 app.get('/api', (req, res) => {
