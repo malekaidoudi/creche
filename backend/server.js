@@ -48,14 +48,14 @@ if (process.env.RAILWAY_ENVIRONMENT) {
 
 // CORS configuration - Support multiple origins for Railway deployment
 const allowedOrigins = [
-  'https://malekaidoudi.github.io',  // GitHub Pages production
-  'http://localhost:5173',           // Vite dev server
-  'http://localhost:5174',           // Vite dev server (port alternatif)
-  'http://localhost:5175',           // Vite dev server (port alternatif)
-  'http://127.0.0.1:5173',          // Localhost alternatif
-  'http://127.0.0.1:5174',          // Localhost alternatif
-  'http://127.0.0.1:5175',          // Localhost alternatif
-  process.env.FRONTEND_URL           // URL personnalisée (si définie)
+  'https://malekaidoudi.github.io',      // GitHub Pages racine
+  'https://malekaidoudi.github.io/creche', // GitHub Pages avec path
+  'http://localhost:5173',               // Vite dev server
+  'http://localhost:5174',               // Vite dev server (port alternatif)
+  'http://localhost:5175',               // Vite dev server (port alternatif)
+  'http://127.0.0.1:5173',               // Alternative localhost
+  'http://127.0.0.1:5174',               // Alternative localhost
+  'http://127.0.0.1:5175'                // Alternative localhost
 ].filter(Boolean); // Retire les valeurs undefined
 
 app.use(cors({
