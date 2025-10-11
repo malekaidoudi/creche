@@ -12,7 +12,10 @@ import {
   XCircle,
   AlertCircle,
   Download,
-  Eye
+  Eye,
+  RefreshCw,
+  LogIn,
+  LogOut
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -20,81 +23,96 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../..
 import { Button } from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import toast from 'react-hot-toast';
+import attendanceService from '../../services/attendanceService';
 
 const AttendancePage = () => {
   const { isAdmin, isStaff } = useAuth();
   const { isRTL } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [attendanceData, setAttendanceData] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [currentlyPresent, setCurrentlyPresent] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [actionLoading, setActionLoading] = useState(null);
+
+  // Fonction pour charger les données d'attendance
+  const loadAttendanceData = async () => {
+    try {
+      setLoading(true);
+      
+      // Charger les données selon la date sélectionnée
+      let attendanceResponse;
+      if (selectedDate === new Date().toISOString().split('T')[0]) {
+        // Si c'est aujourd'hui, utiliser l'endpoint spécialisé
+        attendanceResponse = await attendanceService.getTodayAttendance();
+      } else {
+        // Sinon, utiliser l'endpoint par date
+        attendanceResponse = await attendanceService.getAttendanceByDate(selectedDate);
+      }
+      
+      // Charger les statistiques
+      const statsResponse = await attendanceService.getAttendanceStats(selectedDate);
+      
+      // Charger les enfants actuellement présents (seulement pour aujourd'hui)
+      let currentlyPresentResponse = [];
+      if (selectedDate === new Date().toISOString().split('T')[0]) {
+        currentlyPresentResponse = await attendanceService.getCurrentlyPresent();
+      }
+      
+      setAttendanceData(attendanceResponse.attendances || []);
+      setStats(statsResponse);
+      setCurrentlyPresent(currentlyPresentResponse.children || []);
+      
+    } catch (error) {
+      console.error('Erreur lors du chargement des données d\'attendance:', error);
+      toast.error('Erreur lors du chargement des données');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // Simuler le chargement des données de présence
-    setTimeout(() => {
-      setAttendanceData([
-        {
-          id: 1,
-          child: {
-            id: 1,
-            first_name: 'Youssef',
-            last_name: 'Ben Ali',
-            birth_date: '2021-05-15',
-            parent: {
-              first_name: 'Fatima',
-              last_name: 'Ben Ali',
-              phone: '98765432'
-            }
-          },
-          date: selectedDate,
-          check_in_time: '08:30:00',
-          check_out_time: '16:45:00',
-          status: 'present',
-          notes: 'Arrivé à l\'heure'
-        },
-        {
-          id: 2,
-          child: {
-            id: 2,
-            first_name: 'Lina',
-            last_name: 'Ben Ali',
-            birth_date: '2022-08-22',
-            parent: {
-              first_name: 'Fatima',
-              last_name: 'Ben Ali',
-              phone: '98765432'
-            }
-          },
-          date: selectedDate,
-          check_in_time: null,
-          check_out_time: null,
-          status: 'absent',
-          notes: 'Maladie - Justifié'
-        },
-        {
-          id: 3,
-          child: {
-            id: 3,
-            first_name: 'Sara',
-            last_name: 'Ahmed',
-            birth_date: '2021-03-15',
-            parent: {
-              first_name: 'Ahmed',
-              last_name: 'Mohamed',
-              phone: '25123789'
-            }
-          },
-          date: selectedDate,
-          check_in_time: '09:15:00',
-          check_out_time: null,
-          status: 'present',
-          notes: 'Retard de 15 minutes'
-        }
-      ]);
-      setLoading(false);
-    }, 1000);
+    loadAttendanceData();
   }, [selectedDate]);
+
+  // Fonction pour rafraîchir les données
+  const handleRefresh = () => {
+    loadAttendanceData();
+  };
+
+  // Fonction pour check-in
+  const handleCheckIn = async (childId) => {
+    try {
+      setActionLoading(childId);
+      const response = await attendanceService.checkIn(childId);
+      toast.success(isRTL ? 'تم تسجيل الوصول بنجاح' : 'Arrivée enregistrée avec succès');
+      loadAttendanceData(); // Recharger les données
+    } catch (error) {
+      console.error('Erreur check-in:', error);
+      const message = error.response?.data?.error || 'Erreur lors de l\'enregistrement';
+      toast.error(isRTL ? 'خطأ في تسجيل الوصول' : message);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Fonction pour check-out
+  const handleCheckOut = async (childId) => {
+    try {
+      setActionLoading(childId);
+      const response = await attendanceService.checkOut(childId);
+      toast.success(isRTL ? 'تم تسجيل المغادرة بنجاح' : 'Départ enregistré avec succès');
+      loadAttendanceData(); // Recharger les données
+    } catch (error) {
+      console.error('Erreur check-out:', error);
+      const message = error.response?.data?.error || 'Erreur lors de l\'enregistrement';
+      toast.error(isRTL ? 'خطأ في تسجيل المغادرة' : message);
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   const calculateAge = (birthDate) => {
     const today = new Date();
@@ -119,8 +137,8 @@ const AttendancePage = () => {
         return <CheckCircle className="w-5 h-5 text-green-600" />;
       case 'absent':
         return <XCircle className="w-5 h-5 text-red-600" />;
-      case 'late':
-        return <AlertCircle className="w-5 h-5 text-orange-600" />;
+      case 'completed':
+        return <CheckCircle className="w-5 h-5 text-blue-600" />;
       default:
         return <AlertCircle className="w-5 h-5 text-gray-600" />;
     }
@@ -132,8 +150,8 @@ const AttendancePage = () => {
         return isRTL ? 'حاضر' : 'Présent';
       case 'absent':
         return isRTL ? 'غائب' : 'Absent';
-      case 'late':
-        return isRTL ? 'متأخر' : 'En retard';
+      case 'completed':
+        return isRTL ? 'مكتمل' : 'Terminé';
       default:
         return isRTL ? 'غير محدد' : 'Non défini';
     }
@@ -145,55 +163,41 @@ const AttendancePage = () => {
         return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
       case 'absent':
         return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-      case 'late':
-        return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
+      case 'completed':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
     }
   };
 
-  const handleCheckIn = (childId) => {
-    const now = new Date();
-    const timeString = now.toTimeString().split(' ')[0];
-    
-    setAttendanceData(prev => 
-      prev.map(record => 
-        record.child.id === childId 
-          ? { ...record, check_in_time: timeString, status: 'present' }
-          : record
-      )
-    );
-    
-    toast.success(isRTL ? 'تم تسجيل الوصول' : 'Arrivée enregistrée');
-  };
-
-  const handleCheckOut = (childId) => {
-    const now = new Date();
-    const timeString = now.toTimeString().split(' ')[0];
-    
-    setAttendanceData(prev => 
-      prev.map(record => 
-        record.child.id === childId 
-          ? { ...record, check_out_time: timeString }
-          : record
-      )
-    );
-    
-    toast.success(isRTL ? 'تم تسجيل المغادرة' : 'Départ enregistré');
-  };
 
   const filteredAttendance = attendanceData.filter(record => {
-    const matchesSearch = record.child.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         record.child.last_name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === 'all' || record.status === filterStatus;
+    const matchesSearch = record.child?.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         record.child?.last_name?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    let matchesStatus = true;
+    if (filterStatus !== 'all') {
+      const status = getRecordStatus(record);
+      matchesStatus = status === filterStatus;
+    }
+    
     return matchesSearch && matchesStatus;
   });
 
-  const stats = {
+  // Fonction pour déterminer le statut d'un enregistrement
+  const getRecordStatus = (record) => {
+    if (!record.check_in_time) return 'absent';
+    if (record.check_in_time && !record.check_out_time) return 'present';
+    if (record.check_in_time && record.check_out_time) return 'completed';
+    return 'absent';
+  };
+
+  // Utiliser les stats de l'API ou calculer en fallback
+  const displayStats = stats || {
     total: attendanceData.length,
-    present: attendanceData.filter(r => r.status === 'present').length,
-    absent: attendanceData.filter(r => r.status === 'absent').length,
-    late: attendanceData.filter(r => r.status === 'late').length
+    present: attendanceData.filter(r => r.check_in_time && !r.check_out_time).length,
+    absent: attendanceData.filter(r => !r.check_in_time).length,
+    completed: attendanceData.filter(r => r.check_in_time && r.check_out_time).length
   };
 
   if (loading) {
@@ -226,6 +230,15 @@ const AttendancePage = () => {
           </div>
           
           <div className="flex items-center space-x-3 rtl:space-x-reverse mt-4 sm:mt-0">
+            <Button 
+              onClick={handleRefresh}
+              variant="outline"
+              size="sm"
+              disabled={loading}
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2 ${loading ? 'animate-spin' : ''}`} />
+              {isRTL ? 'تحديث' : 'Actualiser'}
+            </Button>
             <input
               type="date"
               value={selectedDate}
@@ -250,7 +263,7 @@ const AttendancePage = () => {
                   {isRTL ? 'المجموع' : 'Total'}
                 </p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {stats.total}
+                  {displayStats.total}
                 </p>
               </div>
               <Baby className="w-8 h-8 text-blue-600" />
@@ -266,7 +279,7 @@ const AttendancePage = () => {
                   {isRTL ? 'حاضر' : 'Présents'}
                 </p>
                 <p className="text-2xl font-bold text-green-600">
-                  {stats.present}
+                  {displayStats.present}
                 </p>
               </div>
               <UserCheck className="w-8 h-8 text-green-600" />
@@ -282,7 +295,7 @@ const AttendancePage = () => {
                   {isRTL ? 'غائب' : 'Absents'}
                 </p>
                 <p className="text-2xl font-bold text-red-600">
-                  {stats.absent}
+                  {displayStats.absent}
                 </p>
               </div>
               <UserX className="w-8 h-8 text-red-600" />
@@ -298,7 +311,7 @@ const AttendancePage = () => {
                   {isRTL ? 'معدل الحضور' : 'Taux présence'}
                 </p>
                 <p className="text-2xl font-bold text-primary-600">
-                  {stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 0}%
+                  {displayStats.total > 0 ? Math.round((displayStats.present / displayStats.total) * 100) : 0}%
                 </p>
               </div>
               <Clock className="w-8 h-8 text-primary-600" />
@@ -376,10 +389,15 @@ const AttendancePage = () => {
 
                   <div className="flex items-center space-x-4 rtl:space-x-reverse">
                     {/* Statut */}
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusBadgeColor(record.status)}`}>
-                      {getStatusIcon(record.status)}
-                      <span className="ml-2 rtl:ml-0 rtl:mr-2">{getStatusText(record.status)}</span>
-                    </span>
+                    {(() => {
+                      const status = getRecordStatus(record);
+                      return (
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusBadgeColor(status)}`}>
+                          {getStatusIcon(status)}
+                          <span className="ml-2 rtl:ml-0 rtl:mr-2">{getStatusText(status)}</span>
+                        </span>
+                      );
+                    })()}
 
                     {/* Horaires */}
                     <div className="text-sm text-gray-600 dark:text-gray-400">
@@ -399,24 +417,34 @@ const AttendancePage = () => {
 
                     {/* Actions */}
                     <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                      {record.status === 'present' && !record.check_in_time && (
+                      {!record.check_in_time && (
                         <Button
                           size="sm"
                           onClick={() => handleCheckIn(record.child.id)}
+                          disabled={actionLoading === record.child.id}
                           className="bg-green-600 hover:bg-green-700"
                         >
-                          {isRTL ? 'تسجيل الوصول' : 'Arrivée'}
+                          <LogIn className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
+                          {actionLoading === record.child.id ? 
+                            (isRTL ? 'جاري...' : 'En cours...') : 
+                            (isRTL ? 'تسجيل الوصول' : 'Arrivée')
+                          }
                         </Button>
                       )}
                       
-                      {record.status === 'present' && record.check_in_time && !record.check_out_time && (
+                      {record.check_in_time && !record.check_out_time && (
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => handleCheckOut(record.child.id)}
+                          disabled={actionLoading === record.child.id}
                           className="text-orange-600 border-orange-600 hover:bg-orange-50"
                         >
-                          {isRTL ? 'تسجيل المغادرة' : 'Départ'}
+                          <LogOut className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
+                          {actionLoading === record.child.id ? 
+                            (isRTL ? 'جاري...' : 'En cours...') : 
+                            (isRTL ? 'تسجيل المغادرة' : 'Départ')
+                          }
                         </Button>
                       )}
 
