@@ -11,6 +11,8 @@
     "db:migrate": "node scripts/init-database-v1.js",
     "railway:setup": "node scripts/railway-setup.js",
     "railway:check": "node scripts/check-railway-db.js",
+    "railway:recreate": "node scripts/recreate-railway-db.js",
+    "railway:test": "node scripts/test-railway-login.js",
     "postinstall": "echo 'Backend dependencies installed successfully'"
   },
   "keywords": [
