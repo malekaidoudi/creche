@@ -7,7 +7,6 @@ import { useLanguage } from '../../hooks/useLanguage';
 import { Button } from '../../components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import ProfileImageUpload from '../../components/ui/ProfileImageUpload';
 import toast from 'react-hot-toast';
 import userService from '../../services/userService';
 import API_CONFIG from '../../config/api';
@@ -100,17 +99,44 @@ const ProfilePage = () => {
     }
   };
 
-  const handleImageUpdate = (newImagePath, updatedUserData) => {
-    // Mettre à jour l'image locale
-    setProfileImage(newImagePath);
-    
-    // Mettre à jour le contexte utilisateur
-    const updatedUser = {
-      ...user,
-      ...updatedUserData,
-      profile_image: newImagePath
-    };
-    updateUser(updatedUser);
+  const handleImageUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Validation
+    if (!file.type.startsWith('image/')) {
+      toast.error(isRTL ? 'يرجى اختيار صورة صالحة' : 'Veuillez sélectionner une image valide');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error(isRTL ? 'حجم الصورة كبير جداً (الحد الأقصى 5 ميجابايت)' : 'Image trop volumineuse (5MB max)');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const response = await userService.uploadProfileImage(file);
+      
+      if (response.success) {
+        // Mettre à jour l'image locale
+        setProfileImage(response.profile_image);
+        
+        // Mettre à jour le contexte utilisateur
+        const updatedUser = {
+          ...user,
+          profile_image: response.profile_image
+        };
+        updateUser(updatedUser);
+        
+        toast.success(isRTL ? 'تم تحديث صورة الملف الشخصي بنجاح' : 'Photo de profil mise à jour avec succès');
+      }
+    } catch (error) {
+      console.error('Erreur upload image:', error);
+      toast.error(error.response?.data?.error || (isRTL ? 'خطأ في رفع الصورة' : 'Erreur lors de l\'upload'));
+    } finally {
+      setUploading(false);
+    }
   };
 
   const getRoleLabel = (role) => {
@@ -169,13 +195,49 @@ const ProfilePage = () => {
               {isRTL ? 'صورة الملف الشخصي' : 'Photo de profil'}
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <ProfileImageUpload
-              currentImage={profileImage}
-              onImageUpdate={handleImageUpdate}
-              size="large"
-              showButton={true}
-            />
+          <CardContent className="text-center space-y-4">
+            <div className="relative inline-block">
+              {/* Photo de profil */}
+              <div className="w-32 h-32 mx-auto rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                {profileImage ? (
+                  <img
+                    src={`${API_CONFIG.BASE_URL}${profileImage}`}
+                    alt="Photo de profil"
+                    className="w-32 h-32 object-cover"
+                    onError={(e) => {
+                      console.error('Erreur chargement image profil:', e.target.src);
+                      setProfileImage(''); // Reset si erreur
+                    }}
+                  />
+                ) : (
+                  <User className="w-16 h-16 text-gray-400" />
+                )}
+              </div>
+              
+              {/* Bouton de modification - visible uniquement en mode édition */}
+              {editing && (
+                <label className="absolute bottom-0 right-0 bg-primary-600 hover:bg-primary-700 text-white p-2 rounded-full cursor-pointer transition-colors shadow-lg">
+                  <Camera className="w-4 h-4" />
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                    disabled={uploading}
+                  />
+                </label>
+              )}
+            </div>
+            
+            {/* Indicateur de chargement */}
+            {uploading && (
+              <div className="flex items-center justify-center space-x-2 rtl:space-x-reverse">
+                <LoadingSpinner size="sm" />
+                <span className="text-sm text-gray-600 dark:text-gray-300">
+                  {isRTL ? 'جاري الرفع...' : 'Upload en cours...'}
+                </span>
+              </div>
+            )}
           </CardContent>
         </Card>
 

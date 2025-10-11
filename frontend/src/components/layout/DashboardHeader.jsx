@@ -5,7 +5,6 @@ import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
 import ThemeToggle from '../ui/ThemeToggle';
 import LanguageToggle from '../ui/LanguageToggle';
-import ProfileImageUpload from '../ui/ProfileImageUpload';
 import API_CONFIG from '../../config/api';
 
 const DashboardHeader = ({ onMenuClick }) => {
@@ -99,12 +98,23 @@ const DashboardHeader = ({ onMenuClick }) => {
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
                 className="flex items-center space-x-3 rtl:space-x-reverse p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >
-                <ProfileImageUpload
-                  currentImage={user?.profile_image}
-                  onImageUpdate={() => {}} // Pas de callback dans le header
-                  size="small"
-                  showButton={false}
-                />
+                <div className="w-8 h-8 rounded-full overflow-hidden bg-primary-100 dark:bg-primary-900 flex items-center justify-center flex-shrink-0">
+                  {user?.profile_image ? (
+                    <img
+                      src={`${API_CONFIG.BASE_URL}${user.profile_image}`}
+                      alt="Photo de profil"
+                      className="w-8 h-8 object-cover"
+                      onError={(e) => {
+                        console.error('Erreur chargement image header:', e.target.src);
+                        e.target.style.display = 'none';
+                        e.target.nextElementSibling.style.display = 'flex';
+                      }}
+                    />
+                  ) : null}
+                  <div className={`w-8 h-8 flex items-center justify-center ${user?.profile_image ? 'hidden' : ''}`}>
+                    <User className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                  </div>
+                </div>
                 <div className="hidden md:block text-left rtl:text-right">
                   <div className="text-sm font-medium text-gray-900 dark:text-white">
                     {user?.first_name} {user?.last_name}
@@ -125,12 +135,23 @@ const DashboardHeader = ({ onMenuClick }) => {
                     {/* Informations utilisateur */}
                     <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                       <div className="flex items-center space-x-3 rtl:space-x-reverse">
-                        <ProfileImageUpload
-                          currentImage={user?.profile_image}
-                          onImageUpdate={() => {}} // Pas de callback dans le dropdown
-                          size="medium"
-                          showButton={false}
-                        />
+                        <div className="w-10 h-10 rounded-full overflow-hidden bg-primary-100 dark:bg-primary-900 flex items-center justify-center flex-shrink-0">
+                          {user?.profile_image ? (
+                            <img
+                              src={`${API_CONFIG.BASE_URL}${user.profile_image}`}
+                              alt="Photo de profil"
+                              className="w-10 h-10 object-cover"
+                              onError={(e) => {
+                                console.error('Erreur chargement image dropdown:', e.target.src);
+                                e.target.style.display = 'none';
+                                e.target.nextElementSibling.style.display = 'flex';
+                              }}
+                            />
+                          ) : null}
+                          <div className={`w-10 h-10 flex items-center justify-center ${user?.profile_image ? 'hidden' : ''}`}>
+                            <User className="w-6 h-6 text-primary-600 dark:text-primary-400" />
+                          </div>
+                        </div>
                         <div>
                           <div className="text-sm font-medium text-gray-900 dark:text-white">
                             {user?.first_name} {user?.last_name}
