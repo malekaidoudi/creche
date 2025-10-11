@@ -5,6 +5,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
 import ThemeToggle from '../ui/ThemeToggle';
 import LanguageToggle from '../ui/LanguageToggle';
+import API_CONFIG from '../../config/api';
 
 const DashboardHeader = ({ onMenuClick }) => {
   const { user, logout } = useAuth();
@@ -97,8 +98,16 @@ const DashboardHeader = ({ onMenuClick }) => {
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
                 className="flex items-center space-x-3 rtl:space-x-reverse p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >
-                <div className="w-8 h-8 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center">
-                  <User className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                <div className="w-8 h-8 rounded-full overflow-hidden bg-primary-100 dark:bg-primary-900 flex items-center justify-center">
+                  {user?.profile_image ? (
+                    <img
+                      src={`${API_CONFIG.BASE_URL}${user.profile_image}`}
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <User className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                  )}
                 </div>
                 <div className="hidden md:block text-left rtl:text-right">
                   <div className="text-sm font-medium text-gray-900 dark:text-white">
@@ -119,11 +128,26 @@ const DashboardHeader = ({ onMenuClick }) => {
                   <div className="py-1">
                     {/* Informations utilisateur */}
                     <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                      <div className="text-sm font-medium text-gray-900 dark:text-white">
-                        {user?.first_name} {user?.last_name}
-                      </div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400">
-                        {user?.email}
+                      <div className="flex items-center space-x-3 rtl:space-x-reverse">
+                        <div className="w-10 h-10 rounded-full overflow-hidden bg-primary-100 dark:bg-primary-900 flex items-center justify-center">
+                          {user?.profile_image ? (
+                            <img
+                              src={`${API_CONFIG.BASE_URL}${user.profile_image}`}
+                              alt="Profile"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <User className="w-6 h-6 text-primary-600 dark:text-primary-400" />
+                          )}
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-gray-900 dark:text-white">
+                            {user?.first_name} {user?.last_name}
+                          </div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            {user?.email}
+                          </div>
+                        </div>
                       </div>
                     </div>
 
