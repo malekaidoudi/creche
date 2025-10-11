@@ -32,8 +32,11 @@ import userService from '../../services/userService';
 const ChildrenPage = () => {
   const { isAdmin } = useAuth();
   const { isRTL } = useLanguage();
+  const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);
   const [showAssociateModal, setShowAssociateModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [selectedChild, setSelectedChild] = useState(null);
   const [parents, setParents] = useState([]);
   const [selectedParentId, setSelectedParentId] = useState('');
@@ -83,7 +86,6 @@ const ChildrenPage = () => {
   useEffect(() => {
     loadChildren();
   }, [searchTerm, filterStatus, pagination.page]);
-
 
   // Fonction pour rafraîchir les données
   const handleRefresh = () => {
@@ -411,15 +413,15 @@ const ChildrenPage = () => {
                         {isRTL ? 'معلومات الولي' : 'Informations parent'}
                       </h4>
                       <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
-                        {child.parent ? (
+                        {child.parent_first_name ? (
                           <>
                             <div className="flex items-center space-x-2 rtl:space-x-reverse">
                               <User className="w-3 h-3" />
-                              <span>{child.parent.first_name} {child.parent.last_name}</span>
+                              <span>{child.parent_first_name} {child.parent_last_name}</span>
                             </div>
                             <div className="flex items-center space-x-2 rtl:space-x-reverse">
                               <Phone className="w-3 h-3" />
-                              <span>{child.parent.phone || (isRTL ? 'غير محدد' : 'Non spécifié')}</span>
+                              <span>{child.parent_phone || (isRTL ? 'غير محدد' : 'Non spécifié')}</span>
                             </div>
                           </>
                         ) : (

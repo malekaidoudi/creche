@@ -76,7 +76,7 @@ const LoginPage = () => {
               {isRTL ? 'تسجيل الدخول' : 'Connexion'}
             </CardTitle>
             <CardDescription className="text-gray-600 dark:text-gray-300">
-              {isRTL 
+              {isRTL
                 ? 'أدخل بياناتك للوصول إلى حسابك'
                 : 'Entrez vos identifiants pour accéder à votre compte'
               }
@@ -94,16 +94,15 @@ const LoginPage = () => {
                   <Mail className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                   <input
                     type="email"
-                    {...register('email', { 
+                    {...register('email', {
                       required: isRTL ? 'البريد الإلكتروني مطلوب' : 'Email requis',
                       pattern: {
                         value: /^\S+@\S+$/i,
                         message: isRTL ? 'بريد إلكتروني غير صحيح' : 'Email invalide'
                       }
                     })}
-                    className={`w-full pl-10 rtl:pl-4 rtl:pr-10 pr-4 py-3 border rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${
-                      errors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}
+                    className={`w-full pl-10 rtl:pl-4 rtl:pr-10 pr-4 py-3 border rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${errors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                      }`}
                     placeholder={isRTL ? 'أدخل بريدك الإلكتروني' : 'Entrez votre email'}
                   />
                 </div>
@@ -121,12 +120,11 @@ const LoginPage = () => {
                   <Lock className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                   <input
                     type={showPassword ? 'text' : 'password'}
-                    {...register('password', { 
+                    {...register('password', {
                       required: isRTL ? 'كلمة المرور مطلوبة' : 'Mot de passe requis'
                     })}
-                    className={`w-full pl-10 rtl:pl-4 rtl:pr-12 pr-12 py-3 border rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${
-                      errors.password ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}
+                    className={`w-full pl-10 rtl:pl-4 rtl:pr-12 pr-12 py-3 border rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${errors.password ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                      }`}
                     placeholder={isRTL ? 'أدخل كلمة المرور' : 'Entrez votre mot de passe'}
                   />
                   <button
@@ -178,7 +176,7 @@ const LoginPage = () => {
                 <div className="grid grid-cols-1 gap-2">
                   <button
                     type="button"
-                    onClick={() => quickLogin('admin@creche.com', 'admin123')}
+                    onClick={() => quickLogin('malekaidoudi@gmail.com', 'admin123')}
                     disabled={loading}
                     className="w-full px-4 py-2 text-sm bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
                   >

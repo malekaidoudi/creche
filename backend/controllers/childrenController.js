@@ -7,8 +7,8 @@ const childrenController = {
       const { page = 1, limit = 20, search = '', status = 'all' } = req.query;
       const offset = (page - 1) * limit;
 
-      // Requête simple pour commencer
-      const [children] = await db.query(`
+      // Requête pour récupérer les enfants
+      const [children] = await db.execute(`
         SELECT 
           c.*,
           p.first_name as parent_first_name,
@@ -17,19 +17,19 @@ const childrenController = {
           p.phone as parent_phone
         FROM children c
         LEFT JOIN users p ON c.parent_id = p.id
+        WHERE c.is_active = 1
         ORDER BY c.created_at DESC
-        LIMIT 20
+        LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}
       `);
 
       // Compter le total
-      const [countResult] = await db.query('SELECT COUNT(*) as total FROM children');
+      const [countResult] = await db.execute('SELECT COUNT(*) as total FROM children WHERE is_active = 1');
       const total = countResult[0].total;
 
       res.json({
-        children,
-        pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
+        success: true,
+        data: {
+          children,
           total,
           totalPages: Math.ceil(total / limit),
           currentPage: parseInt(page)
