@@ -15,6 +15,7 @@ const initDatabase = async () => {
         phone VARCHAR(20),
         role ENUM('admin', 'staff', 'parent') DEFAULT 'parent',
         profile_picture_url VARCHAR(500),
+        profile_image VARCHAR(500),
         is_active BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -33,6 +34,7 @@ const initDatabase = async () => {
         last_name VARCHAR(100) NOT NULL,
         birth_date DATE NOT NULL,
         gender ENUM('M', 'F') NOT NULL,
+        parent_id INT,
         medical_info TEXT,
         emergency_contact_name VARCHAR(200),
         emergency_contact_phone VARCHAR(20),
@@ -40,8 +42,10 @@ const initDatabase = async () => {
         is_active BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (parent_id) REFERENCES users(id) ON DELETE SET NULL,
         INDEX idx_name (first_name, last_name),
         INDEX idx_birth_date (birth_date),
+        INDEX idx_parent_id (parent_id),
         INDEX idx_active (is_active)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
@@ -82,9 +86,14 @@ const initDatabase = async () => {
         file_path VARCHAR(500) NOT NULL,
         file_size INT NOT NULL,
         mime_type VARCHAR(100) NOT NULL,
+        category ENUM('photo', 'document', 'profile', 'internal_document') DEFAULT 'document',
+        child_id INT,
         uploaded_by INT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (child_id) REFERENCES children(id) ON DELETE CASCADE,
         FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE SET NULL,
+        INDEX idx_child_id (child_id),
+        INDEX idx_category (category),
         INDEX idx_uploaded_by (uploaded_by),
         INDEX idx_created_at (created_at)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci

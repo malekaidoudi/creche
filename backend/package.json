@@ -9,6 +9,8 @@
     "build": "echo 'Backend build completed - no build step required'",
     "db:init": "node scripts/init-database-v1.js",
     "db:migrate": "node scripts/init-database-v1.js",
+    "seed": "node scripts/seed.js",
+    "db:reset": "node scripts/reset-database.js && npm run db:init && npm run seed",
     "railway:setup": "node scripts/railway-setup.js",
     "railway:check": "node scripts/check-railway-db.js",
     "railway:recreate": "node scripts/recreate-railway-db.js",
