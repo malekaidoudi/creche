@@ -98,16 +98,21 @@ const DashboardHeader = ({ onMenuClick }) => {
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
                 className="flex items-center space-x-3 rtl:space-x-reverse p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >
-                <div className="w-8 h-8 rounded-full overflow-hidden bg-primary-100 dark:bg-primary-900 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-full overflow-hidden bg-primary-100 dark:bg-primary-900 flex items-center justify-center flex-shrink-0">
                   {user?.profile_image ? (
                     <img
                       src={`${API_CONFIG.BASE_URL}${user.profile_image}`}
                       alt="Profile"
-                      className="w-full h-full object-cover"
+                      className="w-8 h-8 object-cover object-center"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                      }}
                     />
-                  ) : (
+                  ) : null}
+                  <div className={`w-full h-full flex items-center justify-center ${user?.profile_image ? 'hidden' : ''}`}>
                     <User className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-                  )}
+                  </div>
                 </div>
                 <div className="hidden md:block text-left rtl:text-right">
                   <div className="text-sm font-medium text-gray-900 dark:text-white">
@@ -129,16 +134,21 @@ const DashboardHeader = ({ onMenuClick }) => {
                     {/* Informations utilisateur */}
                     <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                       <div className="flex items-center space-x-3 rtl:space-x-reverse">
-                        <div className="w-10 h-10 rounded-full overflow-hidden bg-primary-100 dark:bg-primary-900 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-full overflow-hidden bg-primary-100 dark:bg-primary-900 flex items-center justify-center flex-shrink-0">
                           {user?.profile_image ? (
                             <img
                               src={`${API_CONFIG.BASE_URL}${user.profile_image}`}
                               alt="Profile"
-                              className="w-full h-full object-cover"
+                              className="w-10 h-10 object-cover object-center"
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                                e.target.nextSibling.style.display = 'flex';
+                              }}
                             />
-                          ) : (
+                          ) : null}
+                          <div className={`w-full h-full flex items-center justify-center ${user?.profile_image ? 'hidden' : ''}`}>
                             <User className="w-6 h-6 text-primary-600 dark:text-primary-400" />
-                          )}
+                          </div>
                         </div>
                         <div>
                           <div className="text-sm font-medium text-gray-900 dark:text-white">

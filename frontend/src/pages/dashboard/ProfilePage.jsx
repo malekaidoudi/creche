@@ -17,7 +17,7 @@ const ProfilePage = () => {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [profileImage, setProfileImage] = useState(user?.profile_image || '');
+  const [profileImage, setProfileImage] = useState('');
 
   const {
     register,
@@ -71,6 +71,13 @@ const ProfilePage = () => {
       loadProfile();
     }
   }, [user, reset]);
+
+  // Effet séparé pour mettre à jour l'image de profil
+  useEffect(() => {
+    if (user?.profile_image) {
+      setProfileImage(user.profile_image);
+    }
+  }, [user?.profile_image]);
 
   const onSubmit = async (data) => {
     setLoading(true);
@@ -189,18 +196,22 @@ const ProfilePage = () => {
           </CardHeader>
           <CardContent className="text-center space-y-4">
             <div className="relative inline-block">
-              <div className="w-32 h-32 mx-auto rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
+              <div className="w-32 h-32 mx-auto rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
                 {profileImage ? (
                   <img
                     src={`${API_CONFIG.BASE_URL}${profileImage}`}
                     alt="Profile"
-                    className="w-full h-full object-cover"
+                    className="w-32 h-32 object-cover object-center"
+                    onError={(e) => {
+                      console.log('Erreur chargement image:', e.target.src);
+                      e.target.style.display = 'none';
+                      e.target.nextSibling.style.display = 'flex';
+                    }}
                   />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <User className="w-16 h-16 text-gray-400" />
-                  </div>
-                )}
+                ) : null}
+                <div className={`w-full h-full flex items-center justify-center ${profileImage ? 'hidden' : ''}`}>
+                  <User className="w-16 h-16 text-gray-400" />
+                </div>
               </div>
               
               {editing && (

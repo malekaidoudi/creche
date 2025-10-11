@@ -10,6 +10,7 @@ class User {
     this.last_name = data.last_name;
     this.phone = data.phone;
     this.role = data.role;
+    this.profile_image = data.profile_image || data.profile_picture_url;
     this.is_active = data.is_active;
     this.created_at = data.created_at;
     this.updated_at = data.updated_at;
