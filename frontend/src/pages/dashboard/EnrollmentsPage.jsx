@@ -12,7 +12,9 @@ import {
   User,
   Phone,
   Mail,
-  Download
+  Download,
+  RefreshCw,
+  MessageSquare
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -20,7 +22,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../..
 import { Button } from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import toast from 'react-hot-toast';
-import api from '../../config/api';
+import enrollmentsService from '../../services/enrollmentsService';
 
 const EnrollmentsPage = () => {
   const { user } = useAuth();
@@ -34,13 +36,15 @@ const EnrollmentsPage = () => {
 
   useEffect(() => {
     fetchEnrollments();
-  }, []);
+  }, [activeTab]);
 
   const fetchEnrollments = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/enrollments');
-      setEnrollments(response.data.enrollments || []);
+      const response = await enrollmentsService.getAllEnrollments({
+        status: activeTab === 'all' ? 'all' : activeTab
+      });
+      setEnrollments(response.enrollments || []);
     } catch (error) {
       console.error('Erreur récupération inscriptions:', error);
       toast.error(isRTL ? 'خطأ في تحميل الطلبات' : 'Erreur lors du chargement des demandes');
@@ -54,11 +58,14 @@ const EnrollmentsPage = () => {
     setShowModal(true);
   };
 
-  const handleApproveEnrollment = async (enrollmentId) => {
+  const handleApproveEnrollment = async (enrollmentId, appointmentDate = null, notes = '') => {
     setActionLoading(true);
     try {
-      await api.put(`/enrollments/${enrollmentId}/approve`);
-      toast.success(isRTL ? 'تم قبول الطلب' : 'Demande approuvée');
+      await enrollmentsService.approveEnrollment(enrollmentId, {
+        appointment_date: appointmentDate,
+        notes
+      });
+      toast.success(isRTL ? 'تم قبول الطلب بنجاح' : 'Demande approuvée avec succès');
       fetchEnrollments();
       setShowModal(false);
     } catch (error) {
@@ -69,10 +76,13 @@ const EnrollmentsPage = () => {
     }
   };
 
-  const handleRejectEnrollment = async (enrollmentId, reason = '') => {
+  const handleRejectEnrollment = async (enrollmentId, reason = '', notes = '') => {
     setActionLoading(true);
     try {
-      await api.put(`/enrollments/${enrollmentId}/reject`, { reason });
+      await enrollmentsService.rejectEnrollment(enrollmentId, {
+        reason,
+        notes
+      });
       toast.success(isRTL ? 'تم رفض الطلب' : 'Demande rejetée');
       fetchEnrollments();
       setShowModal(false);
@@ -82,6 +92,11 @@ const EnrollmentsPage = () => {
     } finally {
       setActionLoading(false);
     }
+  };
+
+  // Fonction pour rafraîchir les données
+  const handleRefresh = () => {
+    fetchEnrollments();
   };
 
   const filteredEnrollments = enrollments.filter(enrollment => {
@@ -157,6 +172,16 @@ const EnrollmentsPage = () => {
             {isRTL ? 'إدارة طلبات التسجيل الجديدة' : 'Gérer les nouvelles demandes d\'inscription'}
           </p>
         </div>
+        
+        <Button 
+          onClick={handleRefresh}
+          variant="outline"
+          size="sm"
+          disabled={loading}
+        >
+          <RefreshCw className={`w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2 ${loading ? 'animate-spin' : ''}`} />
+          {isRTL ? 'تحديث' : 'Actualiser'}
+        </Button>
       </div>
 
       {/* Onglets */}

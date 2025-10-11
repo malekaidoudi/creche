@@ -301,6 +301,144 @@ const enrollmentsController = {
       console.error('Erreur statistiques inscriptions:', error);
       res.status(500).json({ error: 'Erreur serveur' });
     }
+  },
+
+  // Approuver une inscription
+  approveEnrollment: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { appointment_date, notes } = req.body;
+
+      // Récupérer l'inscription
+      const [enrollments] = await db.execute(
+        'SELECT * FROM enrollments WHERE id = ?',
+        [id]
+      );
+
+      if (enrollments.length === 0) {
+        return res.status(404).json({ error: 'Inscription non trouvée' });
+      }
+
+      const enrollment = enrollments[0];
+
+      // Vérifier si l'inscription est en attente
+      if (enrollment.status !== 'pending') {
+        return res.status(400).json({ error: 'Cette inscription a déjà été traitée' });
+      }
+
+      // Mettre à jour le statut
+      await db.execute(
+        'UPDATE enrollments SET status = ?, appointment_date = ?, notes = ?, updated_at = NOW() WHERE id = ?',
+        ['approved', appointment_date, notes, id]
+      );
+
+      // Créer le compte parent s'il n'existe pas
+      let parentId = null;
+      const [existingParents] = await db.execute(
+        'SELECT id FROM users WHERE email = ?',
+        [enrollment.parent_email]
+      );
+
+      if (existingParents.length === 0 && enrollment.parent_password) {
+        // Créer le compte parent
+        const [parentResult] = await db.execute(`
+          INSERT INTO users (first_name, last_name, email, password, phone, role)
+          VALUES (?, ?, ?, ?, ?, 'parent')
+        `, [
+          enrollment.parent_first_name,
+          enrollment.parent_last_name,
+          enrollment.parent_email,
+          enrollment.parent_password,
+          enrollment.parent_phone
+        ]);
+        parentId = parentResult.insertId;
+      } else {
+        parentId = existingParents[0]?.id;
+      }
+
+      // Créer l'enfant dans la table children
+      if (parentId) {
+        await db.execute(`
+          INSERT INTO children (
+            first_name, last_name, birth_date, gender, parent_id,
+            medical_info, emergency_contact, enrollment_status
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, 'approved')
+        `, [
+          enrollment.child_first_name,
+          enrollment.child_last_name,
+          enrollment.child_birth_date,
+          enrollment.child_gender,
+          parentId,
+          enrollment.child_medical_info,
+          `${enrollment.emergency_contact_name}: ${enrollment.emergency_contact_phone}`
+        ]);
+      }
+
+      // Envoyer email d'approbation
+      await sendApprovalEmail(
+        enrollment.parent_email,
+        enrollment.parent_first_name,
+        enrollment.child_first_name,
+        appointment_date
+      );
+
+      res.json({
+        success: true,
+        message: 'Inscription approuvée avec succès'
+      });
+
+    } catch (error) {
+      console.error('Erreur approbation inscription:', error);
+      res.status(500).json({ error: 'Erreur serveur' });
+    }
+  },
+
+  // Rejeter une inscription
+  rejectEnrollment: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { reason, notes } = req.body;
+
+      // Récupérer l'inscription
+      const [enrollments] = await db.execute(
+        'SELECT * FROM enrollments WHERE id = ?',
+        [id]
+      );
+
+      if (enrollments.length === 0) {
+        return res.status(404).json({ error: 'Inscription non trouvée' });
+      }
+
+      const enrollment = enrollments[0];
+
+      // Vérifier si l'inscription est en attente
+      if (enrollment.status !== 'pending') {
+        return res.status(400).json({ error: 'Cette inscription a déjà été traitée' });
+      }
+
+      // Mettre à jour le statut
+      await db.execute(
+        'UPDATE enrollments SET status = ?, rejection_reason = ?, notes = ?, updated_at = NOW() WHERE id = ?',
+        ['rejected', reason, notes, id]
+      );
+
+      // Envoyer email de rejet
+      await sendRejectionEmail(
+        enrollment.parent_email,
+        enrollment.parent_first_name,
+        enrollment.child_first_name,
+        reason
+      );
+
+      res.json({
+        success: true,
+        message: 'Inscription rejetée avec succès'
+      });
+
+    } catch (error) {
+      console.error('Erreur rejet inscription:', error);
+      res.status(500).json({ error: 'Erreur serveur' });
+    }
   }
 };
 
