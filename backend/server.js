@@ -33,17 +33,10 @@ console.log('🚂 Trust proxy activé globalement');
 app.use(helmet());
 app.use(compression());
 
-// Rate limiting simplifié pour Railway
+// Rate limiting désactivé temporairement sur Railway pour éviter les erreurs trust proxy
 if (process.env.RAILWAY_ENVIRONMENT) {
-  console.log('🚂 Rate limiting Railway activé');
-  app.use('/api/', rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 200, // Plus permissif sur Railway
-    message: 'Trop de requêtes, veuillez réessayer plus tard.',
-    standardHeaders: true,
-    legacyHeaders: false,
-    skipFailedRequests: true
-  }));
+  console.log('🚂 Rate limiting désactivé sur Railway');
+  // Pas de rate limiting sur Railway pour éviter les problèmes trust proxy
 } else {
   // Rate limiting local
   app.use('/api/', rateLimit({

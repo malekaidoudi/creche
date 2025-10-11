@@ -13,12 +13,12 @@ RUN npm ci
 # Copier le code source du backend
 COPY backend/ ./
 
-# Exposer le port
-EXPOSE 3001
-
 # Variables d'environnement par défaut
 ENV NODE_ENV=production
-ENV PORT=3001
+
+# Railway fournit automatiquement la variable PORT
+# Exposer le port (Railway l'assigne dynamiquement)
+EXPOSE $PORT
 
 # Commande de démarrage
 CMD ["npm", "start"]
