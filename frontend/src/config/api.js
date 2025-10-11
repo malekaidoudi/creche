@@ -21,7 +21,7 @@ const API_CONFIG = {
     } else if (isProduction) {
       // Production GitHub Pages - Backend Railway
       // TODO: Remplacer par votre URL Railway réelle après déploiement
-      return 'https://backend-production-3a21.up.railway.app';
+      return 'https://rare-emotion-production.up.railway.app';
     } else {
       // Autre environnement (preview, staging, etc.)
       return process.env.VITE_API_URL || 'http://localhost:3003';
