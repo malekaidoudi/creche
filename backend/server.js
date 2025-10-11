@@ -152,7 +152,7 @@ app.use('/api/public/enrollments', publicEnrollmentsRoutes);
 app.use('/api/articles', articleRoutes);
 app.use('/api/news', newsRoutes);
 app.use('/api/contacts', contactRoutes);
-// app.use('/api/setup', setupRoutes); // Route temporaire désactivée
+app.use('/api/setup', setupRoutes); // Route temporaire pour Railway
 
 // 404 handler
 app.use('*', (req, res) => {
