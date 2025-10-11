@@ -7,7 +7,7 @@
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",
-    "build": "cd backend && npm ci",
+    "build": "cd backend && npm install",
     "build:backend": "cd backend && npm run build",
     "build:frontend": "cd frontend && npm run build",
     "test": "npm run test:backend && npm run test:frontend",
@@ -21,7 +21,10 @@
     "deploy:frontend": "cd frontend && npm run build && npm run deploy",
     "start": "npm run start:backend",
     "start:backend": "cd backend && npm start",
-    "start:frontend": "cd frontend && npm run preview"
+    "start:frontend": "cd frontend && npm run preview",
+    "postinstall": "cd backend && npm install",
+    "pre-deploy": "node scripts/pre-deploy-check.js",
+    "railway:check": "cd backend && npm run railway:check"
   },
   "keywords": ["creche", "management", "nodejs", "react", "mysql"],
   "author": "Creche Management Team",
