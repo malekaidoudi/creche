@@ -148,6 +148,31 @@ const initDatabase = async () => {
     `);
     console.log('✅ Table settings créée/vérifiée');
 
+    // Table logs (journaux d'activité)
+    await query(`
+      CREATE TABLE IF NOT EXISTS logs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        level ENUM('info', 'warning', 'error', 'debug') DEFAULT 'info',
+        message TEXT NOT NULL,
+        action VARCHAR(100),
+        user_id INT,
+        ip_address VARCHAR(45),
+        user_agent TEXT,
+        request_method VARCHAR(10),
+        request_url VARCHAR(500),
+        response_status INT,
+        execution_time DECIMAL(10,3),
+        additional_data JSON,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+        INDEX idx_level (level),
+        INDEX idx_user_id (user_id),
+        INDEX idx_created_at (created_at),
+        INDEX idx_action (action)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+    console.log('✅ Table logs créée/vérifiée');
+
     // Table attendance
     await query(`
       CREATE TABLE IF NOT EXISTS attendance (

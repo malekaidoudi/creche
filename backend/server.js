@@ -18,6 +18,7 @@ const uploadRoutes = require('./routes/uploads');
 const documentsRoutes = require('./routes/documents');
 const reportsRoutes = require('./routes/reports');
 const settingsRoutes = require('./routes/settings');
+const logsRoutes = require('./routes/logs');
 // const publicRoutes = require('./routes/public'); // Fichier non existant
 const articleRoutes = require('./routes/articles');
 const newsRoutes = require('./routes/news');
@@ -97,10 +98,15 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Servir les fichiers statiques (uploads)
 app.use('/media', express.static(path.join(__dirname, 'uploads')));
+
 // Logging
 if (process.env.NODE_ENV === 'production') {
   app.use(morgan('combined'));
 }
+
+// Middleware de logging personnalisé pour les API routes
+const { loggerMiddleware } = require('./middleware/logger');
+app.use('/api', loggerMiddleware);
 
 // Route de base pour l'API
 app.get('/api', (req, res) => {
@@ -204,6 +210,7 @@ app.use('/api/uploads', uploadRoutes);
 app.use('/api/documents', documentsRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/logs', logsRoutes);
 app.use('/api/health', healthRoutes);
 // app.use('/api/public', publicRoutes); // Fichier non existant
 app.use('/api/public/enrollments', publicEnrollmentsRoutes);
