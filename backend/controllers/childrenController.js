@@ -51,21 +51,22 @@ const childrenController = {
       const total = countResult[0].total;
 
       res.json({
-        children: children.map(child => ({
-          ...child,
-          age: calculateAge(child.birth_date),
-          parent: child.parent_first_name ? {
-            first_name: child.parent_first_name,
-            last_name: child.parent_last_name,
-            email: child.parent_email,
-            phone: child.parent_phone
-          } : null
-        })),
-        pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
+        success: true,
+        data: {
+          children: children.map(child => ({
+            ...child,
+            age: calculateAge(child.birth_date),
+            parent: child.parent_first_name ? {
+              first_name: child.parent_first_name,
+              last_name: child.parent_last_name,
+              email: child.parent_email,
+              phone: child.parent_phone
+            } : null
+          })),
           total,
-          pages: Math.ceil(total / limit)
+          totalPages: Math.ceil(total / limit),
+          currentPage: parseInt(page),
+          limit: parseInt(limit)
         }
       });
     } catch (error) {
@@ -279,7 +280,10 @@ const childrenController = {
       // Soft delete
       await db.execute('UPDATE children SET is_active = FALSE, updated_at = NOW() WHERE id = ?', [id]);
 
-      res.json({ message: 'Enfant supprimé avec succès' });
+      res.json({ 
+        success: true, 
+        message: 'Enfant supprimé avec succès' 
+      });
     } catch (error) {
       console.error('Erreur suppression enfant:', error);
       res.status(500).json({ error: 'Erreur lors de la suppression' });

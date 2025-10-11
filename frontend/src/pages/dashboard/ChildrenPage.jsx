@@ -16,7 +16,8 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -24,6 +25,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../..
 import { Button } from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import toast from 'react-hot-toast';
+import childrenService from '../../services/childrenService';
 
 const ChildrenPage = () => {
   const { isAdmin } = useAuth();
@@ -33,79 +35,54 @@ const ChildrenPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterAge, setFilterAge] = useState('all');
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 0
+  });
 
-  useEffect(() => {
-    // Simuler le chargement des données
-    // TODO: Remplacer par de vrais appels API
-    setTimeout(() => {
-      setChildren([
-        {
-          id: 1,
-          first_name: 'Youssef',
-          last_name: 'Ben Ali',
-          birth_date: '2021-05-15',
-          gender: 'M',
-          enrollment_status: 'approved',
-          parent: {
-            first_name: 'Fatima',
-            last_name: 'Ben Ali',
-            phone: '+216 98 765 432',
-            email: 'parent@example.com'
-          },
-          medical_info: 'Aucune allergie connue',
-          emergency_contact: 'Grand-mère: +216 71 123 456',
-          attendance_today: {
-            status: 'present',
-            check_in: '08:30',
-            check_out: null
-          }
-        },
-        {
-          id: 2,
-          first_name: 'Lina',
-          last_name: 'Ben Ali',
-          birth_date: '2022-08-22',
-          gender: 'F',
-          enrollment_status: 'approved',
-          parent: {
-            first_name: 'Fatima',
-            last_name: 'Ben Ali',
-            phone: '+216 98 765 432',
-            email: 'parent@example.com'
-          },
-          medical_info: 'Allergie aux arachides',
-          emergency_contact: 'Oncle: +216 22 987 654',
-          attendance_today: {
-            status: 'absent',
-            check_in: null,
-            check_out: null
-          }
-        },
-        {
-          id: 3,
-          first_name: 'Sara',
-          last_name: 'Ahmed',
-          birth_date: '2021-03-15',
-          gender: 'F',
-          enrollment_status: 'pending',
-          parent: {
-            first_name: 'Ahmed',
-            last_name: 'Mohamed',
-            phone: '+216 25 123 789',
-            email: 'ahmed@example.com'
-          },
-          medical_info: 'Asthme léger',
-          emergency_contact: 'Père: +216 25 123 789',
-          attendance_today: {
-            status: 'not_enrolled',
-            check_in: null,
-            check_out: null
-          }
-        }
-      ]);
+  // Fonction pour charger les enfants depuis l'API
+  const loadChildren = async () => {
+    try {
+      setLoading(true);
+      const params = {
+        page: pagination.page,
+        limit: pagination.limit,
+        search: searchTerm,
+        status: filterStatus
+      };
+      
+      const response = await childrenService.getAllChildren(params);
+      
+      if (response.success) {
+        setChildren(response.data.children || []);
+        setPagination(prev => ({
+          ...prev,
+          total: response.data.total || 0,
+          totalPages: response.data.totalPages || 0
+        }));
+      } else {
+        toast.error('Erreur lors du chargement des enfants');
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des enfants:', error);
+      toast.error('Erreur de connexion, vérifiez votre connexion internet');
+    } finally {
       setLoading(false);
-    }, 1000);
-  }, []);
+    }
+  };
+
+  // Recharger quand les filtres changent
+  useEffect(() => {
+    loadChildren();
+  }, [searchTerm, filterStatus, pagination.page]);
+
+
+  // Fonction pour rafraîchir les données
+  const handleRefresh = () => {
+    loadChildren();
+  };
 
   const calculateAge = (birthDate) => {
     const today = new Date();
@@ -182,31 +159,24 @@ const ChildrenPage = () => {
     }
   };
 
-  const filteredChildren = children.filter(child => {
-    const matchesSearch = child.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         child.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         child.parent.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         child.parent.last_name.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = filterStatus === 'all' || child.enrollment_status === filterStatus;
-    
-    let matchesAge = true;
-    if (filterAge !== 'all') {
-      const ageInMonths = (new Date().getFullYear() - new Date(child.birth_date).getFullYear()) * 12 + 
-                         (new Date().getMonth() - new Date(child.birth_date).getMonth());
-      
-      if (filterAge === 'baby' && ageInMonths >= 12) matchesAge = false;
-      if (filterAge === 'toddler' && (ageInMonths < 12 || ageInMonths >= 36)) matchesAge = false;
-      if (filterAge === 'preschool' && ageInMonths < 36) matchesAge = false;
-    }
-    
-    return matchesSearch && matchesStatus && matchesAge;
-  });
+  // Les données sont déjà filtrées côté serveur via l'API
 
-  const handleDeleteChild = (childId) => {
-    if (window.confirm(isRTL ? 'هل أنت متأكد من حذف هذا الطفل؟' : 'Êtes-vous sûr de vouloir supprimer cet enfant ?')) {
-      setChildren(prev => prev.filter(child => child.id !== childId));
-      toast.success(isRTL ? 'تم حذف الطفل' : 'Enfant supprimé');
+  const handleDeleteChild = async (childId) => {
+    if (!window.confirm(isRTL ? 'هل أنت متأكد من حذف هذا الطفل؟' : 'Êtes-vous sûr de vouloir supprimer cet enfant ?')) {
+      return;
+    }
+
+    try {
+      const response = await childrenService.deleteChild(childId);
+      if (response.success) {
+        toast.success(isRTL ? 'تم حذف الطفل بنجاح' : 'Enfant supprimé avec succès');
+        loadChildren(); // Recharger la liste
+      } else {
+        toast.error(isRTL ? 'خطأ في الحذف' : 'Erreur lors de la suppression');
+      }
+    } catch (error) {
+      console.error('Erreur lors de la suppression:', error);
+      toast.error(isRTL ? 'خطأ في الاتصال' : 'Erreur de connexion');
     }
   };
 
@@ -233,20 +203,32 @@ const ChildrenPage = () => {
             </h1>
             <p className="text-gray-600 dark:text-gray-300 mt-1">
               {isRTL 
-                ? `${filteredChildren.length} طفل من أصل ${children.length}`
-                : `${filteredChildren.length} enfants sur ${children.length}`
+                ? `${children.length} طفل`
+                : `${children.length} enfants`
               }
             </p>
           </div>
           
-          {isAdmin() && (
-            <Button asChild className="mt-4 sm:mt-0">
-              <Link to="/dashboard/children/add">
-                <Plus className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
-                {isRTL ? 'إضافة طفل' : 'Ajouter enfant'}
-              </Link>
+          <div className="flex gap-2 mt-4 sm:mt-0">
+            <Button 
+              onClick={handleRefresh}
+              variant="outline"
+              size="sm"
+              disabled={loading}
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2 ${loading ? 'animate-spin' : ''}`} />
+              {isRTL ? 'تحديث' : 'Actualiser'}
             </Button>
-          )}
+            
+            {isAdmin() && (
+              <Button asChild>
+                <Link to="/dashboard/children/add">
+                  <Plus className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                  {isRTL ? 'إضافة طفل' : 'Ajouter enfant'}
+                </Link>
+              </Button>
+            )}
+          </div>
         </div>
       </motion.div>
 
@@ -308,8 +290,10 @@ const ChildrenPage = () => {
 
       {/* Liste des enfants */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {filteredChildren.map((child) => {
-          const attendanceStatus = getAttendanceStatus(child.attendance_today);
+        {children.map((child) => {
+          // Valeur par défaut pour attendance_today si pas présente
+          const attendanceToday = child.attendance_today || { status: 'absent', check_in: null, check_out: null };
+          const attendanceStatus = getAttendanceStatus(attendanceToday);
           
           return (
             <motion.div
@@ -356,16 +340,16 @@ const ChildrenPage = () => {
                           {attendanceStatus.text}
                         </span>
                       </div>
-                      {child.attendance_today.check_in && (
+                      {attendanceToday.check_in && (
                         <div className="flex items-center space-x-4 rtl:space-x-reverse mt-2 text-sm text-gray-600 dark:text-gray-400">
                           <div className="flex items-center space-x-1 rtl:space-x-reverse">
                             <Clock className="w-3 h-3" />
-                            <span>{isRTL ? 'الوصول:' : 'Arrivée:'} {child.attendance_today.check_in}</span>
+                            <span>{isRTL ? 'الوصول:' : 'Arrivée:'} {attendanceToday.check_in}</span>
                           </div>
-                          {child.attendance_today.check_out && (
+                          {attendanceToday.check_out && (
                             <div className="flex items-center space-x-1 rtl:space-x-reverse">
                               <Clock className="w-3 h-3" />
-                              <span>{isRTL ? 'المغادرة:' : 'Départ:'} {child.attendance_today.check_out}</span>
+                              <span>{isRTL ? 'المغادرة:' : 'Départ:'} {attendanceToday.check_out}</span>
                             </div>
                           )}
                         </div>
@@ -378,14 +362,22 @@ const ChildrenPage = () => {
                         {isRTL ? 'معلومات الولي' : 'Informations parent'}
                       </h4>
                       <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
-                        <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                          <User className="w-3 h-3" />
-                          <span>{child.parent.first_name} {child.parent.last_name}</span>
-                        </div>
-                        <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                          <Phone className="w-3 h-3" />
-                          <span>{child.parent.phone}</span>
-                        </div>
+                        {child.parent ? (
+                          <>
+                            <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                              <User className="w-3 h-3" />
+                              <span>{child.parent.first_name} {child.parent.last_name}</span>
+                            </div>
+                            <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                              <Phone className="w-3 h-3" />
+                              <span>{child.parent.phone || (isRTL ? 'غير محدد' : 'Non spécifié')}</span>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="text-gray-500">
+                            {isRTL ? 'لا يوجد ولي أمر مسجل' : 'Aucun parent enregistré'}
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -434,7 +426,7 @@ const ChildrenPage = () => {
       </div>
 
       {/* Message si aucun résultat */}
-      {filteredChildren.length === 0 && (
+      {children.length === 0 && (
         <div className="text-center py-12">
           <Baby className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
