@@ -9,6 +9,7 @@
     "build": "echo 'Backend build completed - no build step required'",
     "db:init": "node scripts/init-database-v1.js",
     "db:migrate": "node scripts/init-database-v1.js",
+    "railway:setup": "node scripts/railway-setup.js",
     "postinstall": "echo 'Backend dependencies installed successfully'"
   },
   "keywords": [
