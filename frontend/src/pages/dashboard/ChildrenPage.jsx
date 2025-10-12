@@ -83,19 +83,19 @@ const ChildrenPage = () => {
     }
   };
 
-  // Debounce pour la recherche
+  // Debounce pour la recherche, rechargement immédiat pour les filtres
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
+    if (searchTerm.trim() !== '') {
+      // Debounce pour la recherche
+      const timeoutId = setTimeout(() => {
+        loadChildren();
+      }, 500); // Attendre 500ms après la dernière saisie
+      return () => clearTimeout(timeoutId);
+    } else {
+      // Rechargement immédiat si pas de recherche
       loadChildren();
-    }, 300); // Attendre 300ms après la dernière saisie
-
-    return () => clearTimeout(timeoutId);
-  }, [searchTerm]);
-
-  // Recharger immédiatement pour les autres filtres
-  useEffect(() => {
-    loadChildren();
-  }, [filterStatus, filterAge, pagination.page]);
+    }
+  }, [searchTerm, filterStatus, filterAge, pagination.page]);
 
   // Fonction pour rafraîchir les données
   const handleRefresh = () => {
@@ -105,8 +105,8 @@ const ChildrenPage = () => {
   // Fonction pour voir un enfant
   const handleViewChild = (child) => {
     setSelectedChild(child);
-    // TODO: Ouvrir modal de détails ou naviguer vers page détail
-    toast.info(isRTL ? `عرض تفاصيل ${child.first_name}` : `Voir détails de ${child.first_name}`);
+    setShowAssociateModal(false);
+    setShowEditModal(false);
   };
 
   // Fonction pour modifier un enfant
@@ -184,31 +184,43 @@ const ChildrenPage = () => {
     const today = new Date();
     const birth = new Date(birthDate);
     
-    // Calcul précis en millisecondes
-    const diffTime = Math.abs(today - birth);
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    const diffMonths = Math.floor(diffDays / 30.44); // Moyenne de jours par mois
-    const diffYears = Math.floor(diffDays / 365.25); // Moyenne avec années bissextiles
+    // Calcul précis mois par mois
+    let years = today.getFullYear() - birth.getFullYear();
+    let months = today.getMonth() - birth.getMonth();
+    let days = today.getDate() - birth.getDate();
     
-    // Pour les très jeunes enfants (moins de 2 mois)
-    if (diffDays < 60) {
-      return isRTL ? `${diffDays} يوم` : `${diffDays} jour${diffDays > 1 ? 's' : ''}`;
+    // Ajustement si les jours sont négatifs
+    if (days < 0) {
+      months--;
+      const lastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+      days += lastMonth.getDate();
+    }
+    
+    // Ajustement si les mois sont négatifs
+    if (months < 0) {
+      years--;
+      months += 12;
+    }
+    
+    // Pour les très jeunes enfants (moins de 1 mois)
+    if (years === 0 && months === 0) {
+      return isRTL ? `${days} يوم` : `${days} jour${days > 1 ? 's' : ''}`;
     }
     
     // Pour les enfants de moins d'un an
-    if (diffMonths < 12) {
-      return isRTL ? `${diffMonths} شهر` : `${diffMonths} mois`;
+    if (years === 0) {
+      if (days === 0) {
+        return isRTL ? `${months} شهر` : `${months} mois`;
+      }
+      return isRTL ? `${months} شهر و ${days} يوم` : `${months} mois et ${days} jour${days > 1 ? 's' : ''}`;
     }
     
     // Pour les enfants de plus d'un an
-    const years = diffYears;
-    const remainingMonths = Math.floor((diffDays - (years * 365.25)) / 30.44);
-    
-    if (remainingMonths === 0) {
+    if (months === 0) {
       return isRTL ? `${years} سنة` : `${years} an${years > 1 ? 's' : ''}`;
     }
     
-    return isRTL ? `${years} سنة و ${remainingMonths} شهر` : `${years} an${years > 1 ? 's' : ''} et ${remainingMonths} mois`;
+    return isRTL ? `${years} سنة و ${months} شهر` : `${years} an${years > 1 ? 's' : ''} et ${months} mois`;
   };
 
   const getStatusIcon = (status) => {
@@ -219,7 +231,36 @@ const ChildrenPage = () => {
         return <XCircle className="w-4 h-4 text-red-600" />;
       case 'pending':
       default:
-        return <AlertCircle className="w-4 h-4 text-orange-600" />;
+        return <AlertCircle className="w-4 h-4 text-yellow-600" />;
+    }
+  };
+
+  const getEnrollmentStatus = (status) => {
+    switch (status) {
+      case 'approved':
+        return {
+          text: isRTL ? 'مقبول' : 'Inscrit',
+          color: 'text-green-800 dark:text-green-200',
+          bgColor: 'bg-green-100 dark:bg-green-900'
+        };
+      case 'pending':
+        return {
+          text: isRTL ? 'في الانتظار' : 'En attente',
+          color: 'text-yellow-800 dark:text-yellow-200',
+          bgColor: 'bg-yellow-100 dark:bg-yellow-900'
+        };
+      case 'rejected':
+        return {
+          text: isRTL ? 'مرفوض' : 'Rejeté',
+          color: 'text-red-800 dark:text-red-200',
+          bgColor: 'bg-red-100 dark:bg-red-900'
+        };
+      default:
+        return {
+          text: isRTL ? 'غير محدد' : 'Non défini',
+          color: 'text-gray-800 dark:text-gray-200',
+          bgColor: 'bg-gray-100 dark:bg-gray-900'
+        };
     }
   };
 
@@ -385,6 +426,7 @@ const ChildrenPage = () => {
           // Valeur par défaut pour attendance_today si pas présente
           const attendanceToday = child.attendance_today || { status: 'absent', check_in: null, check_out: null };
           const attendanceStatus = getAttendanceStatus(attendanceToday);
+          const enrollmentStatus = getEnrollmentStatus(child.status);
           
           return (
             <motion.div
@@ -411,9 +453,9 @@ const ChildrenPage = () => {
                     </div>
                     
                     <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(child.enrollment_status)}`}>
-                        {getStatusIcon(child.enrollment_status)}
-                        <span className="ml-1 rtl:ml-0 rtl:mr-1">{getStatusText(child.enrollment_status)}</span>
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${enrollmentStatus.color} ${enrollmentStatus.bgColor}`}>
+                        {getStatusIcon(child.status)}
+                        <span className="ml-1 rtl:ml-0 rtl:mr-1">{enrollmentStatus.text}</span>
                       </span>
                     </div>
                   </div>
@@ -626,6 +668,133 @@ const ChildrenPage = () => {
                   (isRTL ? 'ربط' : 'Associer')
                 }
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de visualisation d'enfant */}
+      {selectedChild && !showAssociateModal && !showEditModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  {isRTL ? 'تفاصيل الطفل' : 'Détails de l\'enfant'}
+                </h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedChild(null)}
+                >
+                  ✕
+                </Button>
+              </div>
+              
+              <div className="space-y-4">
+                {/* Informations de base */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {isRTL ? 'الاسم الأول' : 'Prénom'}
+                    </label>
+                    <p className="mt-1 text-sm text-gray-900 dark:text-white">{selectedChild.first_name}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {isRTL ? 'اسم العائلة' : 'Nom de famille'}
+                    </label>
+                    <p className="mt-1 text-sm text-gray-900 dark:text-white">{selectedChild.last_name}</p>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {isRTL ? 'تاريخ الميلاد' : 'Date de naissance'}
+                    </label>
+                    <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                      {new Date(selectedChild.birth_date).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {isRTL ? 'العمر' : 'Âge'}
+                    </label>
+                    <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                      {calculateAge(selectedChild.birth_date)}
+                    </p>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {isRTL ? 'الجنس' : 'Genre'}
+                  </label>
+                  <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                    {selectedChild.gender === 'M' ? (isRTL ? 'ذكر' : 'Garçon') : (isRTL ? 'أنثى' : 'Fille')}
+                  </p>
+                </div>
+                
+                {selectedChild.medical_info && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {isRTL ? 'المعلومات الطبية' : 'Informations médicales'}
+                    </label>
+                    <p className="mt-1 text-sm text-gray-900 dark:text-white">{selectedChild.medical_info}</p>
+                  </div>
+                )}
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {isRTL ? 'جهة الاتصال الطارئة' : 'Contact d\'urgence'}
+                    </label>
+                    <p className="mt-1 text-sm text-gray-900 dark:text-white">{selectedChild.emergency_contact_name}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {isRTL ? 'هاتف الطوارئ' : 'Téléphone d\'urgence'}
+                    </label>
+                    <p className="mt-1 text-sm text-gray-900 dark:text-white" dir="ltr">
+                      {selectedChild.emergency_contact_phone}
+                    </p>
+                  </div>
+                </div>
+                
+                {/* Informations parent */}
+                {selectedChild.parent_first_name && (
+                  <div className="border-t pt-4">
+                    <h4 className="font-medium text-gray-900 dark:text-white mb-2">
+                      {isRTL ? 'معلومات الولي' : 'Informations du parent'}
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {isRTL ? 'اسم الولي' : 'Nom du parent'}
+                        </label>
+                        <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                          {selectedChild.parent_first_name} {selectedChild.parent_last_name}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          {isRTL ? 'هاتف الولي' : 'Téléphone du parent'}
+                        </label>
+                        <p className="mt-1 text-sm text-gray-900 dark:text-white" dir="ltr">
+                          {selectedChild.parent_phone}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex justify-end mt-6">
+                <Button onClick={() => setSelectedChild(null)}>
+                  {isRTL ? 'إغلاق' : 'Fermer'}
+                </Button>
+              </div>
             </div>
           </div>
         </div>
