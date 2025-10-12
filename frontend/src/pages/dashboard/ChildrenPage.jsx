@@ -89,7 +89,7 @@ const ChildrenPage = () => {
       // Debounce pour la recherche
       const timeoutId = setTimeout(() => {
         loadChildren();
-      }, 500); // Attendre 500ms après la dernière saisie
+      }, 1000); // Attendre 1 seconde après la dernière saisie
       return () => clearTimeout(timeoutId);
     } else {
       // Rechargement immédiat si pas de recherche
@@ -795,6 +795,162 @@ const ChildrenPage = () => {
                   {isRTL ? 'إغلاق' : 'Fermer'}
                 </Button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal d'édition d'enfant */}
+      {showEditModal && selectedChild && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  {isRTL ? 'تعديل بيانات الطفل' : 'Modifier les informations de l\'enfant'}
+                </h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setSelectedChild(null);
+                  }}
+                >
+                  ✕
+                </Button>
+              </div>
+              
+              <form className="space-y-4" onSubmit={(e) => {
+                e.preventDefault();
+                // TODO: Implémenter la sauvegarde
+                toast.info(isRTL ? 'وظيفة التعديل قيد التطوير' : 'Fonction d\'édition en développement');
+              }}>
+                {/* Informations de base */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {isRTL ? 'الاسم الأول' : 'Prénom'}
+                    </label>
+                    <input
+                      type="text"
+                      defaultValue={selectedChild.first_name}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {isRTL ? 'اسم العائلة' : 'Nom de famille'}
+                    </label>
+                    <input
+                      type="text"
+                      defaultValue={selectedChild.last_name}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {isRTL ? 'تاريخ الميلاد' : 'Date de naissance'}
+                    </label>
+                    <input
+                      type="date"
+                      defaultValue={selectedChild.birth_date ? selectedChild.birth_date.split('T')[0] : ''}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {isRTL ? 'الجنس' : 'Genre'}
+                    </label>
+                    <select
+                      defaultValue={selectedChild.gender}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      required
+                    >
+                      <option value="M">{isRTL ? 'ذكر' : 'Garçon'}</option>
+                      <option value="F">{isRTL ? 'أنثى' : 'Fille'}</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {isRTL ? 'المعلومات الطبية' : 'Informations médicales'}
+                  </label>
+                  <textarea
+                    defaultValue={selectedChild.medical_info || ''}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    placeholder={isRTL ? 'أدخل المعلومات الطبية...' : 'Entrez les informations médicales...'}
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {isRTL ? 'جهة الاتصال الطارئة' : 'Contact d\'urgence'}
+                    </label>
+                    <input
+                      type="text"
+                      defaultValue={selectedChild.emergency_contact_name || ''}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {isRTL ? 'هاتف الطوارئ' : 'Téléphone d\'urgence'}
+                    </label>
+                    <input
+                      type="tel"
+                      defaultValue={selectedChild.emergency_contact_phone || ''}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      required
+                      dir="ltr"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {isRTL ? 'الحالة' : 'Statut'}
+                  </label>
+                  <select
+                    defaultValue={selectedChild.status}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  >
+                    <option value="pending">{isRTL ? 'في الانتظار' : 'En attente'}</option>
+                    <option value="approved">{isRTL ? 'مقبول' : 'Inscrit'}</option>
+                    <option value="rejected">{isRTL ? 'مرفوض' : 'Rejeté'}</option>
+                  </select>
+                </div>
+                
+                <div className="flex gap-3 mt-6">
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setShowEditModal(false);
+                      setSelectedChild(null);
+                    }}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    {isRTL ? 'إلغاء' : 'Annuler'}
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="flex-1"
+                  >
+                    {isRTL ? 'حفظ التغييرات' : 'Sauvegarder'}
+                  </Button>
+                </div>
+              </form>
             </div>
           </div>
         </div>

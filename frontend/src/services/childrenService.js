@@ -4,9 +4,9 @@ const childrenService = {
   // Obtenir tous les enfants avec pagination et filtres
   getAllChildren: async (params = {}) => {
     try {
-      const { page = 1, limit = 20, search = '', status = 'all' } = params
+      const { page = 1, limit = 20, search = '', status = 'all', age = 'all' } = params
       const response = await api.get('/children', {
-        params: { page, limit, search, status }
+        params: { page, limit, search, status, age }
       })
       return response.data
     } catch (error) {
