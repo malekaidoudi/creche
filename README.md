@@ -1,15 +1,34 @@
-# 🏠 Mima Elghalia - Site Web de la Crèche
+# 🏠 Mima Elghalia - Système de Gestion de Crèche
 
-Site web moderne et responsive pour la crèche **Mima Elghalia** (ميما الغالية) située à Médenine, Tunisie.
+Système complet de gestion pour la crèche **Mima Elghalia** (ميما الغالية) située à Médenine, Tunisie.
 
-## 🌟 Fonctionnalités
+## 🌟 Fonctionnalités Principales
 
+### 🔐 **Authentification & Sécurité**
+- **JWT sécurisé** : Authentification avec tokens
+- **Rôles utilisateurs** : Admin, Staff, Parent
+- **Permissions** : Accès contrôlé selon les rôles
+- **Sessions** : Gestion automatique des connexions
+
+### 📊 **Dashboard Administratif**
+- **Tableau de bord** : Vue d'ensemble avec statistiques
+- **Gestion enfants** : CRUD complet avec statuts
+- **Approbation** : Système d'approbation/rejet des demandes
+- **Documents** : Gestion des documents par enfant
+- **Présences** : Suivi des présences (en développement)
+
+### 👤 **Gestion Utilisateurs**
+- **Profils complets** : Informations personnelles
+- **Photos de profil** : Upload et gestion d'images
+- **Mon Espace** : Page personnalisée pour chaque utilisateur
+- **Association** : Liaison enfants-parents/staff
+
+### 🎨 **Interface Utilisateur**
 - **🌍 Multilingue** : Support complet Français/Arabe avec RTL
 - **🌙 Thème sombre** : Mode jour/nuit avec animations
 - **📱 Responsive** : Design mobile-first optimisé
-- **⚡ Performance** : Site rapide et optimisé
-- **📝 Pages complètes** : Accueil, Articles, Contact, Inscription
-- **🎨 Interface moderne** : Design épuré avec Tailwind CSS
+- **⚡ Performance** : Interface rapide et fluide
+- **🎨 Design moderne** : Interface épurée avec Tailwind CSS
 
 ## 🏢 Informations de la Crèche
 
@@ -117,6 +136,83 @@ npm run lint         # Linting
 ```bash
 npm start            # Démarrage production
 npm run dev          # Développement avec nodemon
+```
+
+## 🔑 **Comptes de Test**
+
+### Administrateur
+- **Email :** `malekaidoudi@gmail.com`
+- **Mot de passe :** `admin123`
+- **Accès :** Toutes les fonctionnalités
+
+### Personnel (Staff)
+- **Email :** `staff@creche.com`
+- **Mot de passe :** `staff123`
+- **Accès :** Gestion enfants, présences
+
+### Parent
+- **Email :** `parent@creche.com`
+- **Mot de passe :** `parent123`
+- **Accès :** Espace parent, ses enfants
+
+## 🛠️ **Technologies Utilisées**
+
+### Frontend
+- **React 18** : Framework JavaScript moderne
+- **Vite** : Build tool rapide
+- **TailwindCSS** : Framework CSS utilitaire
+- **Framer Motion** : Animations fluides
+- **React Router** : Navigation SPA
+- **React Hook Form** : Gestion des formulaires
+- **Lucide React** : Icônes modernes
+
+### Backend
+- **Node.js** : Runtime JavaScript
+- **Express.js** : Framework web
+- **MySQL** : Base de données relationnelle
+- **JWT** : Authentification sécurisée
+- **Multer** : Upload de fichiers
+- **bcryptjs** : Hachage des mots de passe
+
+## 🚀 **Installation & Démarrage**
+
+### Prérequis
+- Node.js 18+
+- MySQL 8+
+- npm ou yarn
+
+### Installation
+```bash
+# Cloner le projet
+git clone https://github.com/username/creche-site.git
+cd creche-site
+
+# Installer les dépendances backend
+cd backend
+npm install
+
+# Installer les dépendances frontend
+cd ../frontend
+npm install
+
+# Configuration base de données
+# Créer la base de données MySQL
+# Importer le schéma depuis backend/database/
+
+# Variables d'environnement
+# Copier .env.example vers .env
+# Configurer les variables DB et JWT
+```
+
+### Démarrage
+```bash
+# Terminal 1 - Backend
+cd backend
+npm start
+
+# Terminal 2 - Frontend  
+cd frontend
+npm run dev
 ```
 
 ## 🤝 Contribution
