@@ -1,18 +1,37 @@
 {
-  "name": "creche-backend-railway",
+  "name": "creche-management-system",
   "version": "2.0.0",
-  "description": "Backend Railway pour système de gestion de crèche",
+  "description": "Système complet de gestion de crèche avec backend et frontend",
   "main": "backend/server.js",
   "scripts": {
-    "build": "cd backend && npm install",
-    "start": "cd backend && npm start",
-    "postinstall": "cd backend && npm install"
+    "install": "npm run install:backend && npm run install:frontend",
+    "install:backend": "cd backend && npm install",
+    "install:frontend": "cd frontend && npm install",
+    "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
+    "start:backend": "cd backend && npm start",
+    "start:frontend": "cd frontend && npm run dev",
+    "dev": "npm run start",
+    "build": "npm run build:frontend",
+    "build:frontend": "cd frontend && npm run build",
+    "test": "npm run test:backend && npm run test:frontend",
+    "test:backend": "cd backend && npm test",
+    "test:frontend": "cd frontend && npm test"
   },
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=8.0.0"
   },
-  "keywords": ["creche", "backend", "railway"],
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "keywords": [
+    "creche",
+    "management",
+    "backend",
+    "frontend",
+    "react",
+    "nodejs"
+  ],
   "author": "Creche Management Team",
   "license": "MIT"
 }

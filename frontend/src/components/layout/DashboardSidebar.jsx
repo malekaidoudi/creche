@@ -15,7 +15,8 @@ import {
   Upload,
   Download,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  User
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -45,6 +46,13 @@ const DashboardSidebar = ({ isOpen, onClose }) => {
       icon: Home,
       path: '/dashboard',
       roles: ['admin', 'staff']
+    },
+    {
+      key: 'my-space',
+      title: isRTL ? 'مساحتي الشخصية' : 'Mon Espace',
+      icon: User,
+      path: '/dashboard/my-space',
+      roles: ['admin', 'staff', 'parent']
     },
     {
       key: 'children',

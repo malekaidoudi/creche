@@ -28,6 +28,7 @@ import AddChildPage from './pages/dashboard/AddChildPage'
 import EnrollmentsPage from './pages/dashboard/EnrollmentsPage'
 import AttendancePage from './pages/dashboard/AttendancePage'
 import DocumentsPage from './pages/dashboard/DocumentsPage'
+import MySpacePage from './pages/dashboard/MySpacePage'
 
 // Composants
 import ProtectedRoute from './components/auth/ProtectedRoute'
@@ -86,6 +87,7 @@ function App() {
         <Route path="documents" element={<DocumentsPage />} />
         <Route path="documents/download" element={<DocumentsPage />} />
         <Route path="documents/uploaded" element={<DocumentsPage />} />
+        <Route path="my-space" element={<MySpacePage />} />
         {/* TODO: Ajouter d'autres routes dashboard */}
       </Route>
 

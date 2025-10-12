@@ -9,7 +9,7 @@ import { Button } from '../../components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import toast from 'react-hot-toast';
-import api from '../../config/api';
+import childrenService from '../../services/childrenService';
 
 const AddChildPage = () => {
   const { user } = useAuth();
@@ -37,15 +37,17 @@ const AddChildPage = () => {
         medical_info: data.medical_info || '',
         emergency_contact_name: data.emergency_contact_name,
         emergency_contact_phone: data.emergency_contact_phone,
-        lunch_assistance: data.lunch_assistance || false,
-        enrollment_date: data.enrollment_date,
-        parent_id: data.parent_id || null
+        status: 'pending' // Statut par défaut
       };
 
-      const response = await api.post('/children', childData);
+      const response = await childrenService.createChild(childData);
       
-      toast.success(isRTL ? 'تم إضافة الطفل بنجاح' : 'Enfant ajouté avec succès');
-      navigate('/dashboard/children');
+      if (response.success) {
+        toast.success(isRTL ? 'تم إضافة الطفل بنجاح' : 'Enfant ajouté avec succès');
+        navigate('/dashboard/children');
+      } else {
+        toast.error(response.error || (isRTL ? 'خطأ في إضافة الطفل' : 'Erreur lors de l\'ajout'));
+      }
     } catch (error) {
       console.error('Erreur ajout enfant:', error);
       toast.error(error.response?.data?.error || (isRTL ? 'خطأ في إضافة الطفل' : 'Erreur lors de l\'ajout'));

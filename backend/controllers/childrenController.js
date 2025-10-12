@@ -1,5 +1,43 @@
 const db = require('../config/database');
 
+// Fonction pour calculer l'âge
+const calculateAge = (birthDate) => {
+  const today = new Date();
+  const birth = new Date(birthDate);
+  
+  let years = today.getFullYear() - birth.getFullYear();
+  let months = today.getMonth() - birth.getMonth();
+  let days = today.getDate() - birth.getDate();
+  
+  if (days < 0) {
+    months--;
+    const lastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+    days += lastMonth.getDate();
+  }
+  
+  if (months < 0) {
+    years--;
+    months += 12;
+  }
+  
+  if (years === 0 && months === 0) {
+    return `${days} jour${days > 1 ? 's' : ''}`;
+  }
+  
+  if (years === 0) {
+    if (days === 0) {
+      return `${months} mois`;
+    }
+    return `${months} mois et ${days} jour${days > 1 ? 's' : ''}`;
+  }
+  
+  if (months === 0) {
+    return `${years} an${years > 1 ? 's' : ''}`;
+  }
+  
+  return `${years} an${years > 1 ? 's' : ''} et ${months} mois`;
+};
+
 const childrenController = {
   // Obtenir tous les enfants
   getAllChildren: async (req, res) => {
@@ -124,9 +162,65 @@ const childrenController = {
     }
   },
 
-  // Créer un nouvel enfant
+  // Créer un nouvel enfant - VERSION SIMPLE
   createChild: async (req, res) => {
+    console.log('=== DEBUT CREATE CHILD ===');
+    
     try {
+      // 1. Récupérer les données
+      const { first_name, last_name, birth_date, gender, medical_info, emergency_contact_name, emergency_contact_phone } = req.body;
+      
+      console.log('Données reçues:', { first_name, last_name, birth_date, gender });
+      
+      // 2. Validation simple
+      if (!first_name || !last_name || !birth_date || !gender) {
+        console.log('❌ Validation échouée');
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Champs requis manquants: first_name, last_name, birth_date, gender' 
+        });
+      }
+      
+      console.log('✅ Validation OK');
+      
+      // 3. Insertion simple
+      console.log('Insertion en cours...');
+      const [result] = await db.execute(
+        'INSERT INTO children (first_name, last_name, birth_date, gender, medical_info, emergency_contact_name, emergency_contact_phone, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [first_name, last_name, birth_date, gender, medical_info || '', emergency_contact_name || '', emergency_contact_phone || '', 'pending']
+      );
+      
+      console.log('✅ Insertion réussie, ID:', result.insertId);
+      
+      // 4. Réponse simple
+      res.status(201).json({
+        success: true,
+        message: 'Enfant créé avec succès',
+        child: {
+          id: result.insertId,
+          first_name,
+          last_name,
+          birth_date,
+          gender,
+          status: 'pending'
+        }
+      });
+      
+      console.log('✅ Réponse envoyée');
+      
+    } catch (error) {
+      console.error('❌ ERREUR CREATE CHILD:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Erreur lors de la création: ' + error.message 
+      });
+    }
+  },
+
+  // Mettre à jour un enfant
+  updateChild: async (req, res) => {
+    try {
+      const { id } = req.params;
       const {
         first_name,
         last_name,
@@ -136,73 +230,9 @@ const childrenController = {
         medical_info,
         emergency_contact_name,
         emergency_contact_phone,
-        lunch_assistance,
-        enrollment_date
+        status,
+        is_active
       } = req.body;
-
-      // Validation des champs requis
-      if (!first_name || !last_name || !birth_date || !gender || !emergency_contact_name || !emergency_contact_phone) {
-        return res.status(400).json({ error: 'Champs requis manquants' });
-      }
-
-      // Vérifier que le parent existe si fourni
-      if (parent_id) {
-        const [parents] = await db.execute('SELECT id FROM users WHERE id = ? AND role = "parent"', [parent_id]);
-        if (parents.length === 0) {
-          return res.status(400).json({ error: 'Parent non trouvé' });
-        }
-      }
-
-      const [result] = await db.execute(`
-        INSERT INTO children (
-          first_name, last_name, birth_date, gender, parent_id,
-          medical_info, emergency_contact_name, emergency_contact_phone,
-          lunch_assistance, enrollment_date
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `, [
-        first_name, last_name, birth_date, gender, parent_id,
-        medical_info, emergency_contact_name, emergency_contact_phone,
-        lunch_assistance || false, enrollment_date || new Date().toISOString().split('T')[0]
-      ]);
-
-      // Récupérer l'enfant créé avec les informations du parent
-      const [newChild] = await db.execute(`
-        SELECT 
-          c.*,
-          p.first_name as parent_first_name,
-          p.last_name as parent_last_name,
-          p.email as parent_email,
-          p.phone as parent_phone
-        FROM children c
-        LEFT JOIN users p ON c.parent_id = p.id
-        WHERE c.id = ?
-      `, [result.insertId]);
-
-      const child = newChild[0];
-      res.status(201).json({
-        message: 'Enfant créé avec succès',
-        child: {
-          ...child,
-          age: calculateAge(child.birth_date),
-          parent: child.parent_first_name ? {
-            first_name: child.parent_first_name,
-            last_name: child.parent_last_name,
-            email: child.parent_email,
-            phone: child.parent_phone
-          } : null
-        }
-      });
-    } catch (error) {
-      console.error('Erreur création enfant:', error);
-      res.status(500).json({ error: 'Erreur lors de la création' });
-    }
-  },
-
-  // Mettre à jour un enfant
-  updateChild: async (req, res) => {
-    try {
-      const { id } = req.params;
-      const updateData = req.body;
 
       // Vérifier que l'enfant existe
       const [existingChildren] = await db.execute('SELECT * FROM children WHERE id = ?', [id]);
@@ -213,45 +243,46 @@ const childrenController = {
       const currentChild = existingChildren[0];
 
       // Vérifier que le parent existe si fourni
-      if (updateData.parent_id) {
-        const [parents] = await db.execute('SELECT id FROM users WHERE id = ? AND role = "parent"', [updateData.parent_id]);
+      if (parent_id) {
+        const [parents] = await db.execute('SELECT id FROM users WHERE id = ? AND role = "parent"', [parent_id]);
         if (parents.length === 0) {
           return res.status(400).json({ error: 'Parent non trouvé' });
         }
       }
 
-      // Construire la requête de mise à jour dynamiquement
-      const allowedFields = [
-        'first_name', 'last_name', 'birth_date', 'gender', 'parent_id',
-        'medical_info', 'emergency_contact_name', 'emergency_contact_phone',
-        'status', 'is_active'
-      ];
+      // Mise à jour avec les valeurs actuelles si non fournies
+      const updateValues = {
+        first_name: first_name || currentChild.first_name,
+        last_name: last_name || currentChild.last_name,
+        birth_date: birth_date || currentChild.birth_date,
+        gender: gender || currentChild.gender,
+        parent_id: parent_id !== undefined ? parent_id : currentChild.parent_id,
+        medical_info: medical_info !== undefined ? medical_info : currentChild.medical_info,
+        emergency_contact_name: emergency_contact_name !== undefined ? emergency_contact_name : currentChild.emergency_contact_name,
+        emergency_contact_phone: emergency_contact_phone !== undefined ? emergency_contact_phone : currentChild.emergency_contact_phone,
+        status: status || currentChild.status,
+        is_active: is_active !== undefined ? is_active : currentChild.is_active
+      };
 
-      const updateFields = [];
-      const updateValues = [];
-
-      allowedFields.forEach(field => {
-        if (updateData.hasOwnProperty(field)) {
-          updateFields.push(`${field} = ?`);
-          updateValues.push(updateData[field]);
-        }
-      });
-
-      if (updateFields.length === 0) {
-        return res.status(400).json({ error: 'Aucun champ à mettre à jour' });
-      }
-
-      // Ajouter updated_at
-      updateFields.push('updated_at = NOW()');
-      
-      // Ajouter l'id pour la clause WHERE à la fin
-      updateValues.push(id);
-
-      const sql = `UPDATE children SET ${updateFields.join(', ')} WHERE id = ?`;
-      console.log('SQL:', sql);
-      console.log('Values:', updateValues);
-
-      await db.execute(sql, updateValues);
+      await db.execute(`
+        UPDATE children SET
+          first_name = ?, last_name = ?, birth_date = ?, gender = ?, parent_id = ?,
+          medical_info = ?, emergency_contact_name = ?, emergency_contact_phone = ?,
+          status = ?, is_active = ?, updated_at = NOW()
+        WHERE id = ?
+      `, [
+        updateValues.first_name,
+        updateValues.last_name,
+        updateValues.birth_date,
+        updateValues.gender,
+        updateValues.parent_id,
+        updateValues.medical_info,
+        updateValues.emergency_contact_name,
+        updateValues.emergency_contact_phone,
+        updateValues.status,
+        updateValues.is_active,
+        id
+      ]);
 
       // Récupérer l'enfant mis à jour
       const [updatedChild] = await db.execute(`
@@ -493,20 +524,5 @@ const childrenController = {
     }
   }
 };
-
-// Fonction utilitaire pour calculer l'âge
-function calculateAge(birthDate) {
-  const today = new Date();
-  const birth = new Date(birthDate);
-  const ageInMonths = (today.getFullYear() - birth.getFullYear()) * 12 + (today.getMonth() - birth.getMonth());
-  
-  if (ageInMonths < 12) {
-    return `${ageInMonths} mois`;
-  } else {
-    const years = Math.floor(ageInMonths / 12);
-    const months = ageInMonths % 12;
-    return `${years} an${years > 1 ? 's' : ''} ${months > 0 ? `${months} mois` : ''}`;
-  }
-}
 
 module.exports = childrenController;

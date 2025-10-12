@@ -62,6 +62,7 @@ const userController = {
       );
 
       res.json({ 
+        success: true,
         message: 'Profil mis à jour avec succès',
         user: updatedUsers[0] 
       });

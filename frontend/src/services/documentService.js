@@ -65,6 +65,38 @@ export const documentService = {
     });
   },
 
+  // Voir un document (ouvre dans un nouvel onglet)
+  viewDocument: (document) => {
+    // Simuler l'ouverture du document
+    const blob = new Blob(['Contenu simulé du document: ' + document.name], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    
+    // Nettoyer l'URL après un délai
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    
+    return Promise.resolve({ success: true, message: 'Document ouvert' });
+  },
+
+  // Télécharger un document
+  downloadDocument: (document) => {
+    // Simuler le téléchargement
+    const blob = new Blob(['Contenu simulé du document: ' + document.name], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = document.filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Nettoyer l'URL
+    URL.revokeObjectURL(url);
+    
+    return Promise.resolve({ success: true, message: 'Document téléchargé' });
+  },
+
   // Télécharger le règlement
   downloadReglement: () => {
     // Simuler le téléchargement du règlement

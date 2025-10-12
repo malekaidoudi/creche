@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const db = require('../config/database');
 
 // Middleware pour vérifier le token JWT
 const authenticateToken = async (req, res, next) => {
@@ -17,24 +17,22 @@ const authenticateToken = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     // Récupérer l'utilisateur depuis la base de données
-    const user = await User.findById(decoded.userId);
+    const [users] = await db.execute('SELECT * FROM users WHERE id = ? AND is_active = 1', [decoded.userId]);
     
-    if (!user) {
+    if (users.length === 0) {
       return res.status(401).json({ 
-        error: 'Utilisateur non trouvé' 
+        error: 'Utilisateur non trouvé ou compte désactivé' 
       });
     }
 
-    if (!user.is_active) {
-      return res.status(401).json({ 
-        error: 'Compte désactivé' 
-      });
-    }
+    const user = users[0];
 
     // Ajouter l'utilisateur à la requête
     req.user = user;
     next();
   } catch (error) {
+    console.error('Erreur authentification:', error);
+    
     if (error.name === 'JsonWebTokenError') {
       return res.status(401).json({ 
         error: 'Token invalide' 
@@ -118,13 +116,12 @@ const requireChildAccess = async (req, res, next) => {
 
     // Pour les parents, vérifier qu'ils ont accès à cet enfant
     if (req.user.role === 'parent') {
-      const { query } = require('../config/database');
       const sql = `
         SELECT COUNT(*) as count FROM enrollments 
         WHERE parent_id = ? AND child_id = ? AND status = 'approved'
       `;
       
-      const result = await query(sql, [req.user.id, childId]);
+      const [result] = await db.execute(sql, [req.user.id, childId]);
       
       if (result[0].count === 0) {
         return res.status(403).json({ 
@@ -154,9 +151,9 @@ const optionalAuth = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.userId);
+    const [users] = await db.execute('SELECT * FROM users WHERE id = ? AND is_active = 1', [decoded.userId]);
     
-    req.user = user && user.is_active ? user : null;
+    req.user = users.length > 0 ? users[0] : null;
     next();
   } catch (error) {
     // En cas d'erreur, continuer sans utilisateur
