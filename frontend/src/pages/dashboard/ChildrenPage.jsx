@@ -30,7 +30,7 @@ import childrenService from '../../services/childrenService';
 import userService from '../../services/userService';
 
 const ChildrenPage = () => {
-  const { isAdmin } = useAuth();
+  const { user, isAdmin, isStaff } = useAuth();
   const { isRTL } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);
@@ -59,7 +59,8 @@ const ChildrenPage = () => {
         page: pagination.page,
         limit: pagination.limit,
         search: searchTerm,
-        status: filterStatus
+        status: filterStatus,
+        age: filterAge
       };
       
       const response = await childrenService.getAllChildren(params);
@@ -82,14 +83,55 @@ const ChildrenPage = () => {
     }
   };
 
-  // Recharger quand les filtres changent
+  // Debounce pour la recherche
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      loadChildren();
+    }, 300); // Attendre 300ms après la dernière saisie
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
+
+  // Recharger immédiatement pour les autres filtres
   useEffect(() => {
     loadChildren();
-  }, [searchTerm, filterStatus, pagination.page]);
+  }, [filterStatus, filterAge, pagination.page]);
 
   // Fonction pour rafraîchir les données
   const handleRefresh = () => {
     loadChildren();
+  };
+
+  // Fonction pour voir un enfant
+  const handleViewChild = (child) => {
+    setSelectedChild(child);
+    // TODO: Ouvrir modal de détails ou naviguer vers page détail
+    toast.info(isRTL ? `عرض تفاصيل ${child.first_name}` : `Voir détails de ${child.first_name}`);
+  };
+
+  // Fonction pour modifier un enfant
+  const handleEditChild = (child) => {
+    setSelectedChild(child);
+    setShowEditModal(true);
+  };
+
+  // Fonction pour supprimer un enfant
+  const handleDeleteChild = async (childId) => {
+    if (!window.confirm(isRTL ? 'هل أنت متأكد من حذف هذا الطفل؟' : 'Êtes-vous sûr de vouloir supprimer cet enfant ?')) {
+      return;
+    }
+
+    try {
+      setActionLoading(childId);
+      await childrenService.deleteChild(childId);
+      toast.success(isRTL ? 'تم حذف الطفل بنجاح' : 'Enfant supprimé avec succès');
+      loadChildren(); // Recharger la liste
+    } catch (error) {
+      console.error('Erreur suppression enfant:', error);
+      toast.error(error.response?.data?.error || (isRTL ? 'خطأ في حذف الطفل' : 'Erreur lors de la suppression'));
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   // Fonction pour ouvrir le modal d'association parent
@@ -100,8 +142,11 @@ const ChildrenPage = () => {
       
       // Charger la liste des parents
       const response = await userService.getAllUsers({ role: 'parent' });
+      console.log('Parents response:', response);
       if (response.users) {
         setParents(response.users);
+      } else if (response.data?.users) {
+        setParents(response.data.users);
       }
     } catch (error) {
       console.error('Erreur chargement parents:', error);
@@ -138,18 +183,32 @@ const ChildrenPage = () => {
   const calculateAge = (birthDate) => {
     const today = new Date();
     const birth = new Date(birthDate);
-    const ageInMonths = (today.getFullYear() - birth.getFullYear()) * 12 + (today.getMonth() - birth.getMonth());
     
-    if (ageInMonths < 12) {
-      return isRTL ? `${ageInMonths} أشهر` : `${ageInMonths} mois`;
-    } else {
-      const years = Math.floor(ageInMonths / 12);
-      const months = ageInMonths % 12;
-      if (months === 0) {
-        return isRTL ? `${years} سنة` : `${years} an${years > 1 ? 's' : ''}`;
-      }
-      return isRTL ? `${years} سنة و ${months} أشهر` : `${years} an${years > 1 ? 's' : ''} et ${months} mois`;
+    // Calcul précis en millisecondes
+    const diffTime = Math.abs(today - birth);
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    const diffMonths = Math.floor(diffDays / 30.44); // Moyenne de jours par mois
+    const diffYears = Math.floor(diffDays / 365.25); // Moyenne avec années bissextiles
+    
+    // Pour les très jeunes enfants (moins de 2 mois)
+    if (diffDays < 60) {
+      return isRTL ? `${diffDays} يوم` : `${diffDays} jour${diffDays > 1 ? 's' : ''}`;
     }
+    
+    // Pour les enfants de moins d'un an
+    if (diffMonths < 12) {
+      return isRTL ? `${diffMonths} شهر` : `${diffMonths} mois`;
+    }
+    
+    // Pour les enfants de plus d'un an
+    const years = diffYears;
+    const remainingMonths = Math.floor((diffDays - (years * 365.25)) / 30.44);
+    
+    if (remainingMonths === 0) {
+      return isRTL ? `${years} سنة` : `${years} an${years > 1 ? 's' : ''}`;
+    }
+    
+    return isRTL ? `${years} سنة و ${remainingMonths} شهر` : `${years} an${years > 1 ? 's' : ''} et ${remainingMonths} mois`;
   };
 
   const getStatusIcon = (status) => {
@@ -211,25 +270,6 @@ const ChildrenPage = () => {
   };
 
   // Les données sont déjà filtrées côté serveur via l'API
-
-  const handleDeleteChild = async (childId) => {
-    if (!window.confirm(isRTL ? 'هل أنت متأكد من حذف هذا الطفل؟' : 'Êtes-vous sûr de vouloir supprimer cet enfant ?')) {
-      return;
-    }
-
-    try {
-      const response = await childrenService.deleteChild(childId);
-      if (response.success) {
-        toast.success(isRTL ? 'تم حذف الطفل بنجاح' : 'Enfant supprimé avec succès');
-        loadChildren(); // Recharger la liste
-      } else {
-        toast.error(isRTL ? 'خطأ في الحذف' : 'Erreur lors de la suppression');
-      }
-    } catch (error) {
-      console.error('Erreur lors de la suppression:', error);
-      toast.error(isRTL ? 'خطأ في الاتصال' : 'Erreur de connexion');
-    }
-  };
 
   if (loading) {
     return (
@@ -421,7 +461,9 @@ const ChildrenPage = () => {
                             </div>
                             <div className="flex items-center space-x-2 rtl:space-x-reverse">
                               <Phone className="w-3 h-3" />
-                              <span>{child.parent_phone || (isRTL ? 'غير محدد' : 'Non spécifié')}</span>
+                              <span dir="ltr" className={isRTL ? 'text-right' : 'text-left'}>
+                                {child.parent_phone || (isRTL ? 'غير محدد' : 'Non spécifié')}
+                              </span>
                             </div>
                           </>
                         ) : (
@@ -457,27 +499,23 @@ const ChildrenPage = () => {
 
                     {/* Actions */}
                     <div className="flex items-center justify-end space-x-2 rtl:space-x-reverse pt-2 border-t border-gray-200 dark:border-gray-700">
-                      <Button size="sm" variant="outline">
+                      <Button size="sm" variant="outline" onClick={() => handleViewChild(child)}>
                         <Eye className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
                         {isRTL ? 'عرض' : 'Voir'}
                       </Button>
                       
-                      {isAdmin() && (
+                      {(isAdmin() || isStaff()) && (
                         <>
-                          <Button size="sm" variant="outline">
+                          <Button size="sm" variant="outline" onClick={() => handleEditChild(child)}>
                             <Edit className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
                             {isRTL ? 'تعديل' : 'Modifier'}
                           </Button>
-                          
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleDeleteChild(child.id)}
-                            className="text-red-600 border-red-600 hover:bg-red-50"
-                          >
-                            <Trash2 className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
-                            {isRTL ? 'حذف' : 'Supprimer'}
-                          </Button>
+                          {isAdmin() && (
+                            <Button size="sm" variant="destructive" onClick={() => handleDeleteChild(child.id)}>
+                              <Trash2 className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
+                              {isRTL ? 'حذف' : 'Supprimer'}
+                            </Button>
+                          )}
                         </>
                       )}
                     </div>

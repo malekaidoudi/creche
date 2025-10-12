@@ -4,11 +4,51 @@ const childrenController = {
   // Obtenir tous les enfants
   getAllChildren: async (req, res) => {
     try {
-      const { page = 1, limit = 20, search = '', status = 'all' } = req.query;
+      const { page = 1, limit = 20, search = '', status = 'all', age = 'all' } = req.query;
       const offset = (page - 1) * limit;
 
+      // Construction des conditions WHERE
+      let whereConditions = ['c.is_active = 1'];
+      let params = [];
+
+      // Filtre par recherche (nom ou prénom)
+      if (search && search.trim() !== '') {
+        whereConditions.push('(c.first_name LIKE ? OR c.last_name LIKE ?)');
+        params.push(`%${search}%`, `%${search}%`);
+      }
+
+      // Filtre par statut
+      if (status !== 'all') {
+        whereConditions.push('c.status = ?');
+        params.push(status);
+      }
+
+      // Filtre par âge
+      if (age !== 'all') {
+        const today = new Date();
+        if (age === 'baby') {
+          // Moins d'1 an
+          const oneYearAgo = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate());
+          whereConditions.push('c.birth_date > ?');
+          params.push(oneYearAgo.toISOString().split('T')[0]);
+        } else if (age === 'toddler') {
+          // 1-3 ans
+          const oneYearAgo = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate());
+          const threeYearsAgo = new Date(today.getFullYear() - 3, today.getMonth(), today.getDate());
+          whereConditions.push('c.birth_date <= ? AND c.birth_date > ?');
+          params.push(oneYearAgo.toISOString().split('T')[0], threeYearsAgo.toISOString().split('T')[0]);
+        } else if (age === 'preschool') {
+          // Plus de 3 ans
+          const threeYearsAgo = new Date(today.getFullYear() - 3, today.getMonth(), today.getDate());
+          whereConditions.push('c.birth_date <= ?');
+          params.push(threeYearsAgo.toISOString().split('T')[0]);
+        }
+      }
+
+      const whereClause = whereConditions.join(' AND ');
+
       // Requête pour récupérer les enfants
-      const [children] = await db.execute(`
+      const query = `
         SELECT 
           c.*,
           p.first_name as parent_first_name,
@@ -17,13 +57,16 @@ const childrenController = {
           p.phone as parent_phone
         FROM children c
         LEFT JOIN users p ON c.parent_id = p.id
-        WHERE c.is_active = 1
+        WHERE ${whereClause}
         ORDER BY c.created_at DESC
         LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}
-      `);
+      `;
 
-      // Compter le total
-      const [countResult] = await db.execute('SELECT COUNT(*) as total FROM children WHERE is_active = 1');
+      const [children] = await db.execute(query, params);
+
+      // Compter le total avec les mêmes filtres
+      const countQuery = `SELECT COUNT(*) as total FROM children c WHERE ${whereClause}`;
+      const [countResult] = await db.execute(countQuery, params);
       const total = countResult[0].total;
 
       res.json({
