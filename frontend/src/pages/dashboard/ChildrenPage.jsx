@@ -20,8 +20,7 @@ import {
   RefreshCw,
   UserPlus,
   FileText,
-  Download,
-  Eye
+  Download
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
