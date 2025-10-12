@@ -44,6 +44,7 @@ const ChildrenPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterAge, setFilterAge] = useState('all');
+  const [editFormData, setEditFormData] = useState({});
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 20,
@@ -112,6 +113,16 @@ const ChildrenPage = () => {
   // Fonction pour modifier un enfant
   const handleEditChild = (child) => {
     setSelectedChild(child);
+    setEditFormData({
+      first_name: child.first_name || '',
+      last_name: child.last_name || '',
+      birth_date: child.birth_date ? child.birth_date.split('T')[0] : '',
+      gender: child.gender || 'M',
+      medical_info: child.medical_info || '',
+      emergency_contact_name: child.emergency_contact_name || '',
+      emergency_contact_phone: child.emergency_contact_phone || '',
+      status: child.status || 'pending'
+    });
     setShowEditModal(true);
   };
 
@@ -132,6 +143,47 @@ const ChildrenPage = () => {
     } finally {
       setActionLoading(null);
     }
+  };
+
+  // Fonction pour sauvegarder les modifications d'un enfant
+  const handleSaveChild = async (e) => {
+    e.preventDefault();
+    
+    if (!selectedChild) return;
+
+    try {
+      setActionLoading('save');
+      
+      // Appeler l'API pour mettre à jour l'enfant
+      const response = await childrenService.updateChild(selectedChild.id, editFormData);
+      
+      if (response.success) {
+        toast.success(isRTL ? 'تم تحديث بيانات الطفل بنجاح' : 'Informations de l\'enfant mises à jour avec succès');
+        
+        // Fermer le modal
+        setShowEditModal(false);
+        setSelectedChild(null);
+        setEditFormData({});
+        
+        // Recharger la liste des enfants
+        loadChildren();
+      } else {
+        toast.error(response.error || (isRTL ? 'خطأ في التحديث' : 'Erreur lors de la mise à jour'));
+      }
+    } catch (error) {
+      console.error('Erreur sauvegarde enfant:', error);
+      toast.error(error.response?.data?.error || (isRTL ? 'خطأ في الاتصال' : 'Erreur de connexion'));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Fonction pour mettre à jour les données du formulaire
+  const handleFormChange = (field, value) => {
+    setEditFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   // Fonction pour ouvrir le modal d'association parent
@@ -821,11 +873,7 @@ const ChildrenPage = () => {
                 </Button>
               </div>
               
-              <form className="space-y-4" onSubmit={(e) => {
-                e.preventDefault();
-                // TODO: Implémenter la sauvegarde
-                toast.info(isRTL ? 'وظيفة التعديل قيد التطوير' : 'Fonction d\'édition en développement');
-              }}>
+              <form className="space-y-4" onSubmit={handleSaveChild}>
                 {/* Informations de base */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -834,7 +882,8 @@ const ChildrenPage = () => {
                     </label>
                     <input
                       type="text"
-                      defaultValue={selectedChild.first_name}
+                      value={editFormData.first_name || ''}
+                      onChange={(e) => handleFormChange('first_name', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                       required
                     />
@@ -845,7 +894,8 @@ const ChildrenPage = () => {
                     </label>
                     <input
                       type="text"
-                      defaultValue={selectedChild.last_name}
+                      value={editFormData.last_name || ''}
+                      onChange={(e) => handleFormChange('last_name', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                       required
                     />
@@ -859,7 +909,8 @@ const ChildrenPage = () => {
                     </label>
                     <input
                       type="date"
-                      defaultValue={selectedChild.birth_date ? selectedChild.birth_date.split('T')[0] : ''}
+                      value={editFormData.birth_date || ''}
+                      onChange={(e) => handleFormChange('birth_date', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                       required
                     />
@@ -869,7 +920,8 @@ const ChildrenPage = () => {
                       {isRTL ? 'الجنس' : 'Genre'}
                     </label>
                     <select
-                      defaultValue={selectedChild.gender}
+                      value={editFormData.gender || 'M'}
+                      onChange={(e) => handleFormChange('gender', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                       required
                     >
@@ -884,7 +936,8 @@ const ChildrenPage = () => {
                     {isRTL ? 'المعلومات الطبية' : 'Informations médicales'}
                   </label>
                   <textarea
-                    defaultValue={selectedChild.medical_info || ''}
+                    value={editFormData.medical_info || ''}
+                    onChange={(e) => handleFormChange('medical_info', e.target.value)}
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     placeholder={isRTL ? 'أدخل المعلومات الطبية...' : 'Entrez les informations médicales...'}
@@ -898,7 +951,8 @@ const ChildrenPage = () => {
                     </label>
                     <input
                       type="text"
-                      defaultValue={selectedChild.emergency_contact_name || ''}
+                      value={editFormData.emergency_contact_name || ''}
+                      onChange={(e) => handleFormChange('emergency_contact_name', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                       required
                     />
@@ -909,7 +963,8 @@ const ChildrenPage = () => {
                     </label>
                     <input
                       type="tel"
-                      defaultValue={selectedChild.emergency_contact_phone || ''}
+                      value={editFormData.emergency_contact_phone || ''}
+                      onChange={(e) => handleFormChange('emergency_contact_phone', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                       required
                       dir="ltr"
@@ -922,7 +977,8 @@ const ChildrenPage = () => {
                     {isRTL ? 'الحالة' : 'Statut'}
                   </label>
                   <select
-                    defaultValue={selectedChild.status}
+                    value={editFormData.status || 'pending'}
+                    onChange={(e) => handleFormChange('status', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   >
                     <option value="pending">{isRTL ? 'في الانتظار' : 'En attente'}</option>
@@ -937,17 +993,27 @@ const ChildrenPage = () => {
                     onClick={() => {
                       setShowEditModal(false);
                       setSelectedChild(null);
+                      setEditFormData({});
                     }}
                     variant="outline"
                     className="flex-1"
+                    disabled={actionLoading === 'save'}
                   >
                     {isRTL ? 'إلغاء' : 'Annuler'}
                   </Button>
                   <Button
                     type="submit"
                     className="flex-1"
+                    disabled={actionLoading === 'save'}
                   >
-                    {isRTL ? 'حفظ التغييرات' : 'Sauvegarder'}
+                    {actionLoading === 'save' ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2 animate-spin" />
+                        {isRTL ? 'جاري الحفظ...' : 'Sauvegarde...'}
+                      </>
+                    ) : (
+                      isRTL ? 'حفظ التغييرات' : 'Sauvegarder'
+                    )}
                   </Button>
                 </div>
               </form>
