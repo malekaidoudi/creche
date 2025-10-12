@@ -22,6 +22,49 @@ export const documentService = {
     })
   },
 
+  // Récupérer les documents d'un enfant
+  getChildDocuments: async (childId) => {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        // Simuler des documents pour l'enfant
+        const documents = [
+          {
+            id: 1,
+            name: 'Acte de naissance',
+            type: 'acte_naissance',
+            filename: 'acte_naissance.pdf',
+            uploadDate: '2025-01-15',
+            status: 'approved',
+            size: '245 KB'
+          },
+          {
+            id: 2,
+            name: 'Carnet médical',
+            type: 'carnet_medical',
+            filename: 'carnet_medical.pdf',
+            uploadDate: '2025-01-16',
+            status: 'pending',
+            size: '1.2 MB'
+          },
+          {
+            id: 3,
+            name: 'Certificat médical',
+            type: 'certificat_medical',
+            filename: 'certificat_medical.pdf',
+            uploadDate: '2025-01-17',
+            status: 'approved',
+            size: '180 KB'
+          }
+        ];
+        
+        resolve({
+          success: true,
+          documents: documents
+        });
+      }, 500);
+    });
+  },
+
   // Télécharger le règlement
   downloadReglement: () => {
     // Simuler le téléchargement du règlement

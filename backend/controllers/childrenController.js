@@ -202,45 +202,56 @@ const childrenController = {
   updateChild: async (req, res) => {
     try {
       const { id } = req.params;
-      const {
-        first_name,
-        last_name,
-        birth_date,
-        gender,
-        parent_id,
-        medical_info,
-        emergency_contact_name,
-        emergency_contact_phone,
-        lunch_assistance,
-        enrollment_date,
-        is_active
-      } = req.body;
+      const updateData = req.body;
 
       // Vérifier que l'enfant existe
-      const [existingChildren] = await db.execute('SELECT id FROM children WHERE id = ?', [id]);
+      const [existingChildren] = await db.execute('SELECT * FROM children WHERE id = ?', [id]);
       if (existingChildren.length === 0) {
         return res.status(404).json({ error: 'Enfant non trouvé' });
       }
 
+      const currentChild = existingChildren[0];
+
       // Vérifier que le parent existe si fourni
-      if (parent_id) {
-        const [parents] = await db.execute('SELECT id FROM users WHERE id = ? AND role = "parent"', [parent_id]);
+      if (updateData.parent_id) {
+        const [parents] = await db.execute('SELECT id FROM users WHERE id = ? AND role = "parent"', [updateData.parent_id]);
         if (parents.length === 0) {
           return res.status(400).json({ error: 'Parent non trouvé' });
         }
       }
 
-      await db.execute(`
-        UPDATE children SET
-          first_name = ?, last_name = ?, birth_date = ?, gender = ?, parent_id = ?,
-          medical_info = ?, emergency_contact_name = ?, emergency_contact_phone = ?,
-          lunch_assistance = ?, enrollment_date = ?, is_active = ?, updated_at = NOW()
-        WHERE id = ?
-      `, [
-        first_name, last_name, birth_date, gender, parent_id,
-        medical_info, emergency_contact_name, emergency_contact_phone,
-        lunch_assistance, enrollment_date, is_active !== undefined ? is_active : true, id
-      ]);
+      // Construire la requête de mise à jour dynamiquement
+      const allowedFields = [
+        'first_name', 'last_name', 'birth_date', 'gender', 'parent_id',
+        'medical_info', 'emergency_contact_name', 'emergency_contact_phone',
+        'status', 'is_active'
+      ];
+
+      const updateFields = [];
+      const updateValues = [];
+
+      allowedFields.forEach(field => {
+        if (updateData.hasOwnProperty(field)) {
+          updateFields.push(`${field} = ?`);
+          updateValues.push(updateData[field]);
+        }
+      });
+
+      if (updateFields.length === 0) {
+        return res.status(400).json({ error: 'Aucun champ à mettre à jour' });
+      }
+
+      // Ajouter updated_at
+      updateFields.push('updated_at = NOW()');
+      
+      // Ajouter l'id pour la clause WHERE à la fin
+      updateValues.push(id);
+
+      const sql = `UPDATE children SET ${updateFields.join(', ')} WHERE id = ?`;
+      console.log('SQL:', sql);
+      console.log('Values:', updateValues);
+
+      await db.execute(sql, updateValues);
 
       // Récupérer l'enfant mis à jour
       const [updatedChild] = await db.execute(`
@@ -257,6 +268,7 @@ const childrenController = {
 
       const child = updatedChild[0];
       res.json({
+        success: true,
         message: 'Enfant mis à jour avec succès',
         child: {
           ...child,

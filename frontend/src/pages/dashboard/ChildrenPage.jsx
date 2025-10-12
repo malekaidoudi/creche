@@ -18,16 +18,20 @@ import {
   XCircle,
   AlertCircle,
   RefreshCw,
-  UserPlus
+  UserPlus,
+  FileText,
+  Download,
+  Eye
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import toast from 'react-hot-toast';
 import childrenService from '../../services/childrenService';
 import userService from '../../services/userService';
+import { documentService } from '../../services/documentService';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card';
 
 const ChildrenPage = () => {
   const { user, isAdmin, isStaff } = useAuth();
@@ -45,6 +49,8 @@ const ChildrenPage = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterAge, setFilterAge] = useState('all');
   const [editFormData, setEditFormData] = useState({});
+  const [childDocuments, setChildDocuments] = useState([]);
+  const [documentsLoading, setDocumentsLoading] = useState(false);
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 20,
@@ -104,10 +110,24 @@ const ChildrenPage = () => {
   };
 
   // Fonction pour voir un enfant
-  const handleViewChild = (child) => {
+  const handleViewChild = async (child) => {
     setSelectedChild(child);
     setShowAssociateModal(false);
     setShowEditModal(false);
+    
+    // Charger les documents de l'enfant
+    try {
+      setDocumentsLoading(true);
+      const response = await documentService.getChildDocuments(child.id);
+      if (response.success) {
+        setChildDocuments(response.documents);
+      }
+    } catch (error) {
+      console.error('Erreur chargement documents:', error);
+      setChildDocuments([]);
+    } finally {
+      setDocumentsLoading(false);
+    }
   };
 
   // Fonction pour modifier un enfant
@@ -840,10 +860,109 @@ const ChildrenPage = () => {
                     </div>
                   </div>
                 )}
+
+                {/* Section Documents */}
+                <div className="border-t pt-4">
+                  <h4 className="font-medium text-gray-900 dark:text-white mb-3">
+                    {isRTL ? 'الوثائق المطلوبة' : 'Documents requis'}
+                  </h4>
+                  
+                  {documentsLoading ? (
+                    <div className="flex items-center justify-center py-4">
+                      <RefreshCw className="w-5 h-5 animate-spin mr-2" />
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        {isRTL ? 'تحميل الوثائق...' : 'Chargement des documents...'}
+                      </span>
+                    </div>
+                  ) : childDocuments.length > 0 ? (
+                    <div className="space-y-3">
+                      {childDocuments.map((doc) => (
+                        <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                          <div className="flex items-center space-x-3 rtl:space-x-reverse">
+                            <FileText className="w-5 h-5 text-blue-600" />
+                            <div>
+                              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                {doc.name}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                {doc.size} • {new Date(doc.uploadDate).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                              doc.status === 'approved' 
+                                ? 'text-green-800 bg-green-100 dark:text-green-200 dark:bg-green-900'
+                                : doc.status === 'pending'
+                                ? 'text-yellow-800 bg-yellow-100 dark:text-yellow-200 dark:bg-yellow-900'
+                                : 'text-red-800 bg-red-100 dark:text-red-200 dark:bg-red-900'
+                            }`}>
+                              {doc.status === 'approved' 
+                                ? (isRTL ? 'مقبول' : 'Approuvé')
+                                : doc.status === 'pending'
+                                ? (isRTL ? 'في الانتظار' : 'En attente')
+                                : (isRTL ? 'مرفوض' : 'Rejeté')
+                              }
+                            </span>
+                            
+                            <Button size="sm" variant="outline">
+                              <Eye className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
+                              {isRTL ? 'عرض' : 'Voir'}
+                            </Button>
+                            
+                            <Button size="sm" variant="outline">
+                              <Download className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
+                              {isRTL ? 'تحميل' : 'Télécharger'}
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-4">
+                      <FileText className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        {isRTL ? 'لا توجد وثائق مرفوعة' : 'Aucun document téléchargé'}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Actions pour admin */}
+                  {isAdmin() && selectedChild?.status === 'pending' && (
+                    <div className="flex gap-3 mt-4 pt-4 border-t">
+                      <Button 
+                        className="flex-1 bg-green-600 hover:bg-green-700"
+                        onClick={() => {
+                          // TODO: Implémenter l'approbation
+                          toast.success(isRTL ? 'تم قبول الطلب' : 'Demande approuvée');
+                        }}
+                      >
+                        <CheckCircle className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                        {isRTL ? 'قبول الطلب' : 'Approuver la demande'}
+                      </Button>
+                      
+                      <Button 
+                        variant="destructive" 
+                        className="flex-1"
+                        onClick={() => {
+                          // TODO: Implémenter le rejet
+                          toast.error(isRTL ? 'تم رفض الطلب' : 'Demande rejetée');
+                        }}
+                      >
+                        <XCircle className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                        {isRTL ? 'رفض الطلب' : 'Rejeter la demande'}
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
               
               <div className="flex justify-end mt-6">
-                <Button onClick={() => setSelectedChild(null)}>
+                <Button onClick={() => {
+                  setSelectedChild(null);
+                  setChildDocuments([]);
+                }}>
                   {isRTL ? 'إغلاق' : 'Fermer'}
                 </Button>
               </div>
