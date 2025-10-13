@@ -17,7 +17,7 @@ const DashboardLayout = () => {
       />
 
       {/* Main content */}
-      <div className="lg:pl-64 rtl:lg:pl-0 rtl:lg:pr-64">
+      <div className={`${isRTL ? 'lg:pr-64' : 'lg:pl-64'}`}>
         {/* Header */}
         <DashboardHeader 
           onMenuClick={() => setSidebarOpen(true)} 

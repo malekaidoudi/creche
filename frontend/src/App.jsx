@@ -81,9 +81,13 @@ function App() {
         <Route path="children" element={<ChildrenPage />} />
         <Route path="children/add" element={<AddChildPage />} />
         <Route path="enrollments" element={<EnrollmentsPage />} />
+        <Route path="enrollments/today" element={<EnrollmentsPage />} />
+        <Route path="enrollments/history" element={<EnrollmentsPage />} />
+        <Route path="enrollments/stats" element={<EnrollmentsPage />} />
         <Route path="attendance" element={<AttendancePage />} />
         <Route path="attendance/today" element={<AttendancePage />} />
         <Route path="attendance/history" element={<AttendancePage />} />
+        <Route path="attendance/stats" element={<AttendancePage />} />
         <Route path="documents" element={<DocumentsPage />} />
         <Route path="documents/download" element={<DocumentsPage />} />
         <Route path="documents/uploaded" element={<DocumentsPage />} />

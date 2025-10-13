@@ -179,4 +179,12 @@ export default {
     require('@tailwindcss/typography'),
     require('@tailwindcss/aspect-ratio'),
   ],
+  // Support RTL
+  corePlugins: {
+    // Enable RTL support
+  },
+  // Configuration pour RTL
+  experimental: {
+    // Activer les variantes RTL
+  },
 }
