@@ -16,35 +16,82 @@ import {
   RefreshCw,
   MessageSquare
 } from 'lucide-react';
-import { useAuth } from '../../hooks/useAuth';
-import { useLanguage } from '../../hooks/useLanguage';
+import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import toast from 'react-hot-toast';
+import { toast } from 'react-hot-toast';
 import enrollmentsService from '../../services/enrollmentsService';
 
 const EnrollmentsPage = () => {
   const { user } = useAuth();
+  const isAdmin = () => user?.role === 'admin';
+  const isStaff = () => user?.role === 'staff';
   const { isRTL } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [enrollments, setEnrollments] = useState([]);
-  const [activeTab, setActiveTab] = useState('pending');
+  const [activeTab, setActiveTab] = useState('all');
   const [selectedEnrollment, setSelectedEnrollment] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [showApprovalForm, setShowApprovalForm] = useState(false);
+  const [approvalData, setApprovalData] = useState({
+    appointment_date: '',
+    admin_comment: ''
+  });
+  const [usingDemoData, setUsingDemoData] = useState(false);
+  const [allEnrollmentsForCounts, setAllEnrollmentsForCounts] = useState([]);
 
   useEffect(() => {
     fetchEnrollments();
   }, [activeTab]);
 
+  // Charger toutes les inscriptions pour les compteurs
+  useEffect(() => {
+    const fetchAllForCounts = async () => {
+      try {
+        const response = await enrollmentsService.getAllEnrollments({
+          status: 'all',
+          limit: 1000
+        });
+        if (response.enrollments) {
+          setAllEnrollmentsForCounts(response.enrollments);
+        }
+      } catch (error) {
+        console.warn('Erreur chargement compteurs:', error);
+        // Utiliser les données actuelles comme fallback
+        setAllEnrollmentsForCounts(enrollments);
+      }
+    };
+    fetchAllForCounts();
+  }, []);
+
   const fetchEnrollments = async () => {
     try {
       setLoading(true);
-      const response = await enrollmentsService.getAllEnrollments({
-        status: activeTab === 'all' ? 'all' : activeTab
-      });
-      setEnrollments(response.enrollments || []);
+      
+      // Essayer de récupérer les données réelles de la base de données
+      try {
+        const response = await enrollmentsService.getAllEnrollments({
+          status: activeTab === 'all' ? 'all' : activeTab,
+          limit: 100 // Récupérer plus d'inscriptions
+        });
+        
+        
+        if (response.enrollments) {
+          // Utiliser les données de l'API même si la liste est vide
+          setEnrollments(response.enrollments);
+          setUsingDemoData(false);
+          return;
+        }
+      } catch (apiError) {
+        console.error('❌ Erreur API:', apiError);
+        console.error('Détails erreur:', apiError.response?.data || apiError.message);
+        // En cas d'erreur API, afficher une liste vide
+        setEnrollments([]);
+        setUsingDemoData(true);
+      }
     } catch (error) {
       console.error('Erreur récupération inscriptions:', error);
       toast.error(isRTL ? 'خطأ في تحميل الطلبات' : 'Erreur lors du chargement des demandes');
@@ -58,21 +105,79 @@ const EnrollmentsPage = () => {
     setShowModal(true);
   };
 
-  const handleApproveEnrollment = async (enrollmentId, appointmentDate = null, notes = '') => {
+  const handleApproveEnrollment = async (enrollmentId) => {
+    // Ouvrir le formulaire d'approbation
+    setShowApprovalForm(true);
+  };
+
+  const submitApproval = async () => {
+    if (!selectedEnrollment) return;
+    
     setActionLoading(true);
     try {
-      await enrollmentsService.approveEnrollment(enrollmentId, {
-        appointment_date: appointmentDate,
-        notes
+      await enrollmentsService.approveEnrollment(selectedEnrollment.id, {
+        appointment_date: approvalData.appointment_date || null,
+        admin_comment: approvalData.admin_comment || ''
       });
-      toast.success(isRTL ? 'تم قبول الطلب بنجاح' : 'Demande approuvée avec succès');
-      fetchEnrollments();
+      
+      // Rafraîchir la liste
+      await fetchEnrollments();
+      
+      // Fermer les modals et réinitialiser
       setShowModal(false);
+      setShowApprovalForm(false);
+      setSelectedEnrollment(null);
+      setApprovalData({ appointment_date: '', admin_comment: '' });
     } catch (error) {
-      console.error('Erreur approbation:', error);
-      toast.error(error.response?.data?.error || (isRTL ? 'خطأ في الموافقة' : 'Erreur lors de l\'approbation'));
+      console.error('Erreur lors de l\'approbation:', error);
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const handleViewFile = async (fileId) => {
+    try {
+      const response = await fetch(`http://localhost:3003/api/uploads/view/${fileId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+      } else {
+        console.error('Erreur lors de l\'affichage du fichier');
+      }
+    } catch (error) {
+      console.error('Erreur:', error);
+    }
+  };
+
+  const handleDownloadFile = async (fileId, fileName) => {
+    try {
+      const response = await fetch(`http://localhost:3003/api/uploads/download/${fileId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName || `document_${fileId}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } else {
+        console.error('Erreur lors du téléchargement du fichier');
+      }
+    } catch (error) {
+      console.error('Erreur:', error);
     }
   };
 
@@ -100,7 +205,6 @@ const EnrollmentsPage = () => {
   };
 
   const filteredEnrollments = enrollments.filter(enrollment => {
-    if (activeTab === 'all') return true;
     return enrollment.status === activeTab;
   });
 
@@ -154,10 +258,10 @@ const EnrollmentsPage = () => {
   };
 
   const tabs = [
-    { id: 'pending', label: isRTL ? 'في الانتظار' : 'En attente', count: enrollments.filter(e => e.status === 'pending').length },
-    { id: 'approved', label: isRTL ? 'مقبولة' : 'Approuvées', count: enrollments.filter(e => e.status === 'approved').length },
-    { id: 'rejected', label: isRTL ? 'مرفوضة' : 'Rejetées', count: enrollments.filter(e => e.status === 'rejected').length },
-    { id: 'all', label: isRTL ? 'الكل' : 'Toutes', count: enrollments.length }
+    { id: 'all', label: isRTL ? 'الكل' : 'Toutes', count: allEnrollmentsForCounts.length },
+    { id: 'pending', label: isRTL ? 'في الانتظار' : 'En attente', count: allEnrollmentsForCounts.filter(e => e.status === 'pending').length },
+    { id: 'approved', label: isRTL ? 'مقبولة' : 'Approuvées', count: allEnrollmentsForCounts.filter(e => e.status === 'approved').length },
+    { id: 'rejected', label: isRTL ? 'مرفوضة' : 'Rejetées', count: allEnrollmentsForCounts.filter(e => e.status === 'rejected').length }
   ];
 
   return (
@@ -166,10 +270,10 @@ const EnrollmentsPage = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            {isRTL ? 'طلبات التسجيل' : 'Demandes d\'inscription'}
+            {isRTL ? 'جميع طلبات التسجيل' : 'Toutes les inscriptions'}
           </h1>
           <p className="text-gray-600 dark:text-gray-300">
-            {isRTL ? 'إدارة طلبات التسجيل الجديدة' : 'Gérer les nouvelles demandes d\'inscription'}
+            {isRTL ? 'عرض وتتبع جميع طلبات التسجيل وحالاتها' : 'Consulter et suivre toutes les demandes d\'inscription et leur statut'}
           </p>
         </div>
         
@@ -183,6 +287,28 @@ const EnrollmentsPage = () => {
           {isRTL ? 'تحديث' : 'Actualiser'}
         </Button>
       </div>
+
+      {/* Message d'information sur le type de données */}
+      {usingDemoData && (
+        <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
+          <div className="flex items-center space-x-3 rtl:space-x-reverse">
+            <div className="flex-shrink-0">
+              <svg className="w-5 h-5 text-orange-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-orange-800 dark:text-orange-200">
+                {isRTL ? 'بيانات تجريبية' : 'Données de démonstration'}
+              </h3>
+              <p className="text-sm text-orange-700 dark:text-orange-300 mt-1">
+                {isRTL ? 'لا يمكن الاتصال بقاعدة البيانات. يتم عرض بيانات تجريبية.' : 'Impossible de se connecter à la base de données. Affichage des données de démonstration.'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* Onglets */}
       <div className="border-b border-gray-200 dark:border-gray-700">
@@ -210,12 +336,12 @@ const EnrollmentsPage = () => {
         </nav>
       </div>
 
-      {/* Liste des demandes */}
+      {/* Contenu des onglets */}
       {loading ? (
         <div className="flex justify-center py-8">
           <LoadingSpinner size="lg" />
         </div>
-      ) : filteredEnrollments.length === 0 ? (
+      ) : enrollments.length === 0 ? (
         <Card>
           <CardContent className="text-center py-8">
             <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
@@ -226,7 +352,7 @@ const EnrollmentsPage = () => {
         </Card>
       ) : (
         <div className="grid grid-cols-1 gap-4">
-          {filteredEnrollments.map((enrollment) => (
+          {enrollments.map((enrollment) => (
             <motion.div
               key={enrollment.id}
               initial={{ opacity: 0, y: 20 }}
@@ -259,6 +385,54 @@ const EnrollmentsPage = () => {
                               <Calendar className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
                               {calculateAge(enrollment.child_birth_date)} ({enrollment.child_gender === 'M' ? (isRTL ? 'ذكر' : 'Garçon') : (isRTL ? 'أنثى' : 'Fille')})
                             </div>
+                            
+                            {/* Informations de décision */}
+                            {enrollment.decision_by && (
+                              <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                <h5 className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                  {isRTL ? 'معلومات القرار' : 'Informations de décision'}
+                                </h5>
+                                <div className="space-y-1 text-xs">
+                                  <div className="flex items-center">
+                                    <User className="w-3 h-3 mr-1 rtl:mr-0 rtl:ml-1" />
+                                    <span>{enrollment.decision_by} ({enrollment.decision_by_role})</span>
+                                  </div>
+                                  <div className="flex items-center">
+                                    <Clock className="w-3 h-3 mr-1 rtl:mr-0 rtl:ml-1" />
+                                    <span>
+                                      {isRTL ? 'تاريخ القرار:' : 'Décision:'} {new Date(enrollment.decision_date).toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                  {enrollment.processed_date && (
+                                    <div className="flex items-center">
+                                      <CheckCircle className="w-3 h-3 mr-1 rtl:mr-0 rtl:ml-1" />
+                                      <span>
+                                        {isRTL ? 'تاريخ المعالجة:' : 'Traitement:'} {new Date(enrollment.processed_date).toLocaleDateString()}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {enrollment.admin_comment && (
+                                    <div className="mt-2 text-xs italic text-gray-600 dark:text-gray-400">
+                                      "{enrollment.admin_comment}"
+                                    </div>
+                                  )}
+                                  {enrollment.rejection_reason && (
+                                    <div className="mt-2 text-xs text-red-600 dark:text-red-400">
+                                      {isRTL ? 'سبب الرفض:' : 'Raison du rejet:'} {enrollment.rejection_reason}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {!enrollment.decision_by && enrollment.status === 'pending' && (
+                              <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                                <div className="flex items-center text-xs text-yellow-700 dark:text-yellow-300">
+                                  <Clock className="w-3 h-3 mr-1 rtl:mr-0 rtl:ml-1" />
+                                  <span>{isRTL ? 'في انتظار المراجعة' : 'En attente de révision'}</span>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
 
@@ -273,14 +447,16 @@ const EnrollmentsPage = () => {
                             </div>
                             <div className="flex items-center">
                               <Mail className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
-                              {enrollment.parent_email}
+                              <a href={`mailto:${enrollment.parent_email}`} className="text-blue-600 hover:text-blue-800">
+                                {enrollment.parent_email}
+                              </a>
                             </div>
-                            {enrollment.parent_phone && (
-                              <div className="flex items-center">
-                                <Phone className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
-                                {enrollment.parent_phone}
-                              </div>
-                            )}
+                            <div className="flex items-center">
+                              <Phone className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                              <a href={`tel:${enrollment.parent_phone || ''}`} className="text-blue-600 hover:text-blue-800" dir="ltr">
+                                {enrollment.parent_phone || 'Téléphone non disponible'}
+                              </a>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -293,33 +469,9 @@ const EnrollmentsPage = () => {
                         onClick={() => handleViewEnrollment(enrollment)}
                       >
                         <Eye className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
-                        {isRTL ? 'عرض' : 'Voir'}
+                        {isRTL ? 'عرض التفاصيل' : 'Voir détails'}
                       </Button>
 
-                      {enrollment.status === 'pending' && (
-                        <>
-                          <Button
-                            variant="default"
-                            size="sm"
-                            onClick={() => handleApproveEnrollment(enrollment.id)}
-                            disabled={actionLoading}
-                            className="bg-green-600 hover:bg-green-700"
-                          >
-                            <Check className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
-                            {isRTL ? 'قبول' : 'Approuver'}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleRejectEnrollment(enrollment.id)}
-                            disabled={actionLoading}
-                            className="border-red-300 text-red-600 hover:bg-red-50"
-                          >
-                            <X className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
-                            {isRTL ? 'رفض' : 'Rejeter'}
-                          </Button>
-                        </>
-                      )}
                     </div>
                   </div>
                 </CardContent>
@@ -470,50 +622,103 @@ const EnrollmentsPage = () => {
                   </div>
                 )}
 
-                {/* Fichiers */}
-                {selectedEnrollment.files && selectedEnrollment.files.length > 0 && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-                      {isRTL ? 'الملفات المرفقة' : 'Fichiers joints'}
-                    </h3>
-                    <div className="space-y-2">
-                      {selectedEnrollment.files.map((file, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                          <span className="text-sm text-gray-700 dark:text-gray-300">
-                            {file.name || `Document ${index + 1}`}
-                          </span>
-                          <Button variant="outline" size="sm">
-                            <Download className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
-                            {isRTL ? 'تحميل' : 'Télécharger'}
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
 
                 {/* Actions */}
                 {selectedEnrollment.status === 'pending' && (
-                  <div className="flex justify-end space-x-4 rtl:space-x-reverse pt-4 border-t">
+                  <div className="flex justify-end pt-4 border-t">
                     <Button
-                      variant="outline"
-                      onClick={() => handleRejectEnrollment(selectedEnrollment.id)}
+                      onClick={() => {
+                        setShowModal(false);
+                        window.location.href = `/dashboard/pending-enrollments?highlight=${selectedEnrollment.id}`;
+                      }}
                       disabled={actionLoading}
-                      className="border-red-300 text-red-600 hover:bg-red-50"
+                      className="bg-blue-600 hover:bg-blue-700"
                     >
-                      {actionLoading ? <LoadingSpinner size="sm" /> : <X className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />}
-                      {isRTL ? 'رفض' : 'Rejeter'}
-                    </Button>
-                    <Button
-                      onClick={() => handleApproveEnrollment(selectedEnrollment.id)}
-                      disabled={actionLoading}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      {actionLoading ? <LoadingSpinner size="sm" /> : <Check className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />}
-                      {isRTL ? 'قبول' : 'Approuver'}
+                      <FileText className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
+                      {isRTL ? 'معالجة الملف الآن' : 'Traitement le dossier maintenant'}
                     </Button>
                   </div>
                 )}
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Modal de formulaire d'approbation */}
+      {showApprovalForm && selectedEnrollment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full"
+          >
+            <div className="p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                {isRTL ? 'قبول طلب التسجيل' : 'Approuver la demande d\'inscription'}
+              </h3>
+              
+              <div className="space-y-4">
+                {/* Informations de l'enfant */}
+                <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
+                  <p className="font-medium text-gray-900 dark:text-white">
+                    {selectedEnrollment.child_first_name} {selectedEnrollment.child_last_name}
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    {isRTL ? 'الوالد:' : 'Parent:'} {selectedEnrollment.parent_first_name} {selectedEnrollment.parent_last_name}
+                  </p>
+                </div>
+
+                {/* Date de rendez-vous */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    {isRTL ? 'تاريخ الموعد (اختياري)' : 'Date de rendez-vous (optionnel)'}
+                  </label>
+                  <input
+                    type="date"
+                    value={approvalData.appointment_date}
+                    onChange={(e) => setApprovalData(prev => ({ ...prev, appointment_date: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    min={new Date().toISOString().split('T')[0]}
+                  />
+                </div>
+
+                {/* Commentaire admin */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    {isRTL ? 'ملاحظات إضافية (اختياري)' : 'Commentaires additionnels (optionnel)'}
+                  </label>
+                  <textarea
+                    value={approvalData.admin_comment}
+                    onChange={(e) => setApprovalData(prev => ({ ...prev, admin_comment: e.target.value }))}
+                    placeholder={isRTL ? 'أضف ملاحظات للوالد...' : 'Ajoutez des notes pour le parent...'}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none"
+                    rows="3"
+                  />
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex justify-end space-x-3 rtl:space-x-reverse mt-6">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowApprovalForm(false);
+                    setApprovalData({ appointment_date: '', admin_comment: '' });
+                  }}
+                  disabled={actionLoading}
+                >
+                  {isRTL ? 'إلغاء' : 'Annuler'}
+                </Button>
+                <Button
+                  onClick={submitApproval}
+                  disabled={actionLoading}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  {actionLoading ? <LoadingSpinner size="sm" /> : <Check className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />}
+                  {isRTL ? 'تأكيد القبول' : 'Confirmer l\'approbation'}
+                </Button>
               </div>
             </div>
           </motion.div>

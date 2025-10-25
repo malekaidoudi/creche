@@ -26,12 +26,19 @@ const contactRoutes = require('./routes/contacts');
 const healthRoutes = require('./routes/health');
 const publicEnrollmentsRoutes = require('./routes/publicEnrollments');
 const setupRoutes = require('./routes/setup');
+const profileRoutes = require('./routes/profile');
+const absenceRequestsRoutes = require('./routes/absenceRequests');
+const nurserySettingsRoutes = require('./routes/nurserySettings');
+const notificationsRoutes = require('./routes/notifications');
+const fixUserRoleRoutes = require('./routes/fixUserRole');
+const userChildrenRoutes = require('./routes/userChildren');
+const absencesRoutes = require('./routes/absences');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Configuration pour Railway proxy - DOIT être en premier
+// Configuration proxy pour production
 app.set('trust proxy', true);
-console.log('🚂 Trust proxy activé globalement');
+console.log('🔧 Trust proxy activé');
 
 // Security middleware avec configuration pour les images
 app.use(helmet({
@@ -49,19 +56,14 @@ app.use(helmet({
 }));
 app.use(compression());
 
-// Rate limiting temporairement désactivé pour éviter les erreurs
-// if (process.env.RAILWAY_ENVIRONMENT) {
-//   console.log('🚂 Rate limiting temporairement désactivé pour éviter les erreurs');
-// } else {
-//   // Rate limiting local
-//   app.use('/api/', rateLimit({
-//     windowMs: 15 * 60 * 1000,
-//     max: 100,
-//     message: 'Trop de requêtes depuis cette IP, veuillez réessayer plus tard.'
-//   }));
-// }
+// Rate limiting
+app.use('/api/', rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limite chaque IP à 100 requêtes par windowMs
+  trustProxy: false // Désactiver trust proxy pour le rate limiting
+}));
 
-// CORS configuration - Support multiple origins for Railway deployment
+// CORS configuration - Support multiple origins
 const allowedOrigins = [
   'https://malekaidoudi.github.io',      // GitHub Pages racine
   'https://malekaidoudi.github.io/creche', // GitHub Pages avec path
@@ -127,7 +129,7 @@ app.get('/api', (req, res) => {
     message: 'API Crèche - Backend fonctionnel',
     version: '1.0.0',
     environment: process.env.NODE_ENV || 'development',
-    railway: !!process.env.RAILWAY_ENVIRONMENT,
+    production: process.env.NODE_ENV === 'production',
     endpoints: [
       '/api/health',
       '/api/auth',
@@ -195,11 +197,11 @@ app.get('/api/debug', async (req, res) => {
     
     res.json({
       status: 'OK',
-      message: 'Debug Railway',
+      message: 'Debug Database',
       environment: process.env.NODE_ENV,
       database: {
-        host: process.env.MYSQLHOST || 'localhost',
-        database: process.env.MYSQLDATABASE || 'railway'
+        host: process.env.DB_HOST || 'localhost',
+        database: process.env.DB_NAME || 'mima_elghalia_db'
       },
       users: users
     });
@@ -215,6 +217,7 @@ app.get('/api/debug', async (req, res) => {
 
 // API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/profile', profileRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/children', childrenRoutes);
 app.use('/api/enrollments', enrollmentRoutes);
@@ -230,7 +233,15 @@ app.use('/api/public/enrollments', publicEnrollmentsRoutes);
 app.use('/api/articles', articleRoutes);
 app.use('/api/news', newsRoutes);
 app.use('/api/contacts', contactRoutes);
-app.use('/api/setup', setupRoutes); // Route temporaire pour Railway
+app.use('/api/absence-requests', absenceRequestsRoutes);
+app.use('/api/notifications', notificationsRoutes);
+app.use('/api/nursery-settings', nurserySettingsRoutes);
+app.use('/api/holidays', require('./routes/holidays'));
+app.use('/api/schedule-settings', require('./routes/schedule-settings'));
+app.use('/api/fix-user-role', fixUserRoleRoutes);
+app.use('/api/user', userChildrenRoutes);
+app.use('/api/absences', absencesRoutes);
+app.use('/api/setup', setupRoutes); // Route de configuration
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -269,17 +280,49 @@ app.use((err, req, res, next) => {
   });
 });
 
+// Fonction pour initialiser la base de données
+async function initializeDatabase() {
+  try {
+    console.log('🔄 Vérification de la base de données...');
+    
+    // Créer la table holidays si elle n'existe pas
+    await db.execute(`
+      CREATE TABLE IF NOT EXISTS holidays (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL COMMENT 'Nom du jour férié ou événement',
+        date DATE NOT NULL COMMENT 'Date du jour férié',
+        is_closed BOOLEAN DEFAULT TRUE COMMENT 'Si la crèche est fermée ce jour',
+        description TEXT COMMENT 'Description optionnelle',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY unique_holiday_date (date)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+    
+    console.log('✅ Table holidays vérifiée/créée');
+    
+    // Vérifier si la table a des données
+    const [holidays] = await db.execute('SELECT COUNT(*) as count FROM holidays');
+    console.log(`📊 Jours fériés en base: ${holidays[0].count}`);
+    
+  } catch (error) {
+    console.error('❌ Erreur initialisation base de données:', error);
+  }
+}
+
 // Start server
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, '0.0.0.0', () => {
+  app.listen(PORT, '0.0.0.0', async () => {
     console.log(`🚀 Serveur démarré sur le port ${PORT}`);
     console.log(`📊 Environnement: ${process.env.NODE_ENV || 'development'}`);
     console.log(`🔗 API disponible sur: http://localhost:${PORT}/api`);
     
-    // Informations spécifiques à Railway
-    if (process.env.RAILWAY_ENVIRONMENT) {
-      console.log(`🚂 Déployé sur Railway`);
-      console.log(`🌍 URL publique: ${process.env.RAILWAY_PUBLIC_DOMAIN || 'En cours de génération...'}`);
+    // Initialiser la base de données
+    await initializeDatabase();
+    
+    // Informations de déploiement
+    if (process.env.NODE_ENV === 'production') {
+      console.log(`🌍 Mode production activé`);
       console.log(`🔒 CORS autorisé pour: ${allowedOrigins.join(', ')}`);
     }
     

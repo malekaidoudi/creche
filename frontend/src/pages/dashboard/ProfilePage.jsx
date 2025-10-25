@@ -1,396 +1,376 @@
-import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { User, Mail, Phone, Camera, Save, Edit, RefreshCw } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { User, Mail, Phone, Lock, Camera, Save, ArrowLeft, Eye, EyeOff, Shield, Edit3 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
+import { useTheme } from '../../hooks/useTheme';
+import { useProfileImage } from '../../hooks/useProfileImage';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card';
-import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import toast from 'react-hot-toast';
-import userService from '../../services/userService';
-import API_CONFIG from '../../config/api';
 
 const ProfilePage = () => {
   const { user, updateUser } = useAuth();
   const { isRTL } = useLanguage();
+  const { isDark } = useTheme();
+  const { getImageUrl, hasImage } = useProfileImage();
+  const navigate = useNavigate();
+  
   const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [editing, setEditing] = useState(false);
-  const [profileImage, setProfileImage] = useState('');
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    reset
-  } = useForm({
-    defaultValues: {
-      first_name: user?.first_name || '',
-      last_name: user?.last_name || '',
-      email: user?.email || '',
-      phone: user?.phone || ''
-    }
+  const [editMode, setEditMode] = useState(false);
+  const [showPasswordSection, setShowPasswordSection] = useState(false);
+  const [formData, setFormData] = useState({
+    first_name: user?.first_name || '',
+    last_name: user?.last_name || '',
+    email: user?.email || '',
+    phone: user?.phone || '',
+    current_password: '',
+    new_password: '',
+    confirm_password: ''
   });
-
-  // Fonction pour charger le profil depuis l'API
-  const loadProfile = async () => {
-    try {
-      setLoading(true);
-      const response = await userService.getProfile();
-      if (response.user) {
-        const userData = response.user;
-        reset({
-          first_name: userData.first_name || '',
-          last_name: userData.last_name || '',
-          email: userData.email || '',
-          phone: userData.phone || ''
-        });
-        setProfileImage(userData.profile_image || '');
-        updateUser(userData); // Mettre à jour le contexte
-      }
-    } catch (error) {
-      console.error('Erreur chargement profil:', error);
-      toast.error(isRTL ? 'خطأ في تحميل الملف الشخصي' : 'Erreur lors du chargement du profil');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
     if (user) {
-      reset({
+      setFormData({
         first_name: user.first_name || '',
         last_name: user.last_name || '',
         email: user.email || '',
-        phone: user.phone || ''
+        phone: user.phone || '',
+        current_password: '',
+        new_password: '',
+        confirm_password: ''
       });
-      setProfileImage(user.profile_image || '');
-    } else {
-      // Si pas d'utilisateur en contexte, charger depuis l'API
-      loadProfile();
     }
-  }, [user, reset]);
+  }, [user]);
 
-  // Effet séparé pour mettre à jour l'image de profil
-  useEffect(() => {
-    if (user?.profile_image) {
-      setProfileImage(user.profile_image);
-    }
-  }, [user?.profile_image]);
-
-  const onSubmit = async (data) => {
-    setLoading(true);
+  const handleImageUpload = async (file) => {
+    if (!file) return;
+    
     try {
-      const response = await userService.updateProfile(data);
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      const uploadFormData = new FormData();
+      uploadFormData.append('image', file);
+
+      const response = await fetch('/api/profile/upload', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: uploadFormData
+      });
+
+      const result = await response.json();
       
-      // Mettre à jour le contexte utilisateur
-      if (response.user) {
-        updateUser(response.user);
+      if (result.success) {
+        updateUser({ ...user, profile_image: result.imageUrl });
+        toast.success(isRTL ? 'تم تحديث الصورة' : 'Photo mise à jour');
+      } else {
+        throw new Error(result.error || 'Erreur upload');
       }
-      
-      toast.success(isRTL ? 'تم تحديث الملف الشخصي بنجاح' : 'Profil mis à jour avec succès');
-      setEditing(false);
     } catch (error) {
-      console.error('Erreur mise à jour profil:', error);
-      toast.error(error.response?.data?.error || (isRTL ? 'خطأ في تحديث الملف الشخصي' : 'Erreur lors de la mise à jour'));
+      console.error('Erreur upload image:', error);
+      toast.error(error.message || 'Erreur lors de l\'upload');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleImageUpload = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    // Validation
-    if (!file.type.startsWith('image/')) {
-      toast.error(isRTL ? 'يرجى اختيار صورة صالحة' : 'Veuillez sélectionner une image valide');
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error(isRTL ? 'حجم الصورة كبير جداً (الحد الأقصى 5 ميجابايت)' : 'Image trop volumineuse (5MB max)');
-      return;
-    }
-
-    setUploading(true);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!editMode && !showPasswordSection) return;
+    
+    setLoading(true);
+    
     try {
-      const response = await userService.uploadProfileImage(file);
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(formData)
+      });
       
-      if (response.success) {
-        // Mettre à jour l'image locale
-        setProfileImage(response.profile_image);
-        
-        // Mettre à jour le contexte utilisateur
-        const updatedUser = {
-          ...user,
-          profile_image: response.profile_image
-        };
-        updateUser(updatedUser);
-        
-        toast.success(isRTL ? 'تم تحديث صورة الملف الشخصي بنجاح' : 'Photo de profil mise à jour avec succès');
+      const result = await response.json();
+      
+      if (response.ok) {
+        updateUser(result.user);
+        toast.success(isRTL ? 'تم التحديث بنجاح' : 'Profil mis à jour');
+        setFormData(prev => ({ ...prev, current_password: '', new_password: '', confirm_password: '' }));
+        setEditMode(false);
+        setShowPasswordSection(false);
+      } else {
+        throw new Error(result.error);
       }
     } catch (error) {
-      console.error('Erreur upload image:', error);
-      toast.error(error.response?.data?.error || (isRTL ? 'خطأ في رفع الصورة' : 'Erreur lors de l\'upload'));
+      toast.error(error.message || 'Erreur');
     } finally {
-      setUploading(false);
+      setLoading(false);
     }
   };
 
-  const getRoleLabel = (role) => {
-    const roles = {
+  const getRoleBadge = () => {
+    const roleColors = {
+      admin: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400',
+      staff: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
+      parent: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+    };
+    
+    const roleLabels = {
       admin: isRTL ? 'مدير' : 'Administrateur',
       staff: isRTL ? 'موظف' : 'Personnel',
       parent: isRTL ? 'ولي أمر' : 'Parent'
     };
-    return roles[role] || role;
-  };
 
-  // Fonction pour rafraîchir le profil
-  const handleRefresh = () => {
-    loadProfile();
+    return (
+      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${roleColors[user?.role] || roleColors.parent}`}>
+        <Shield className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
+        {roleLabels[user?.role] || roleLabels.parent}
+      </span>
+    );
   };
 
   return (
-    <div className="space-y-6">
-      {/* En-tête */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            {isRTL ? 'الملف الشخصي' : 'Mon Profil'}
-          </h1>
-          <p className="text-gray-600 dark:text-gray-300">
-            {isRTL ? 'إدارة معلوماتك الشخصية' : 'Gérez vos informations personnelles'}
-          </p>
-        </div>
-        
-        <div className="flex gap-2">
-          <Button
-            onClick={handleRefresh}
-            variant="outline"
-            size="sm"
-            disabled={loading}
-          >
-            <RefreshCw className={`w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2 ${loading ? 'animate-spin' : ''}`} />
-            {isRTL ? 'تحديث' : 'Actualiser'}
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-6">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }} 
+          animate={{ opacity: 1, y: 0 }} 
+          className="mb-8"
+        >
+          <Button variant="ghost" onClick={() => navigate(-1)} className="mb-4">
+            <ArrowLeft className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+            {isRTL ? 'رجوع' : 'Retour'}
           </Button>
-          
-          <Button
-            onClick={() => setEditing(!editing)}
-            variant={editing ? 'outline' : 'default'}
-          >
-            <Edit className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
-            {editing ? (isRTL ? 'إلغاء' : 'Annuler') : (isRTL ? 'تعديل' : 'Modifier')}
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Photo de profil */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-center">
-              {isRTL ? 'صورة الملف الشخصي' : 'Photo de profil'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-center space-y-4">
-            <div className="relative inline-block">
-              {/* Photo de profil */}
-              <div className="w-32 h-32 mx-auto rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                {profileImage ? (
-                  <img
-                    src={`${API_CONFIG.BASE_URL}${profileImage}`}
-                    alt="Photo de profil"
-                    className="w-32 h-32 object-cover"
-                    crossOrigin="anonymous"
-                    onLoad={() => console.log('✅ Image profil chargée:', profileImage)}
-                    onError={(e) => {
-                      console.error('❌ Erreur chargement image profil:', e.target.src);
-                      setProfileImage(''); // Reset si erreur
-                    }}
-                  />
-                ) : (
-                  <User className="w-16 h-16 text-gray-400" />
-                )}
-              </div>
-              
-              {/* Bouton de modification - visible uniquement en mode édition */}
-              {editing && (
-                <label className="absolute bottom-0 right-0 bg-primary-600 hover:bg-primary-700 text-white p-2 rounded-full cursor-pointer transition-colors shadow-lg">
-                  <Camera className="w-4 h-4" />
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                    disabled={uploading}
-                  />
-                </label>
-              )}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                {isRTL ? 'الملف الشخصي' : 'Mon Profil'}
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400">
+                {isRTL ? 'إدارة معلوماتك الشخصية' : 'Gérez vos informations personnelles'}
+              </p>
             </div>
-            
-            {/* Indicateur de chargement */}
-            {uploading && (
-              <div className="flex items-center justify-center space-x-2 rtl:space-x-reverse">
-                <LoadingSpinner size="sm" />
-                <span className="text-sm text-gray-600 dark:text-gray-300">
-                  {isRTL ? 'جاري الرفع...' : 'Upload en cours...'}
-                </span>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            {getRoleBadge()}
+          </div>
+        </motion.div>
 
-        {/* Informations personnelles */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>
-              {isRTL ? 'المعلومات الشخصية' : 'Informations personnelles'}
-            </CardTitle>
-            <CardDescription>
-              {isRTL ? 'معلوماتك الأساسية' : 'Vos informations de base'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Prénom */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    {isRTL ? 'الاسم الأول' : 'Prénom'}
-                  </label>
-                  <div className="relative">
-                    <User className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Profile Card */}
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }} 
+            animate={{ opacity: 1, x: 0 }} 
+            transition={{ delay: 0.1 }}
+            className="lg:col-span-1"
+          >
+            <Card className="bg-white dark:bg-gray-800 shadow-xl border-0">
+              <CardContent className="p-6">
+                <div className="text-center">
+                  <div className="relative mb-6">
+                    <div className="w-32 h-32 mx-auto bg-gradient-to-br from-primary-400 to-primary-600 rounded-full flex items-center justify-center overflow-hidden shadow-lg ring-4 ring-white dark:ring-gray-800">
+                      {hasImage() ? (
+                        <img
+                          src={getImageUrl()}
+                          alt="Photo de profil"
+                          className="w-32 h-32 object-cover rounded-full"
+                        />
+                      ) : (
+                        <User className="w-16 h-16 text-white" />
+                      )}
+                    </div>
+                    <button
+                      onClick={() => document.getElementById('photo-upload').click()}
+                      className="absolute bottom-2 right-1/2 transform translate-x-1/2 translate-y-1/2 bg-primary-600 hover:bg-primary-700 text-white p-3 rounded-full shadow-lg transition-all hover:scale-110"
+                    >
+                      <Camera className="w-4 h-4" />
+                    </button>
                     <input
-                      type="text"
-                      {...register('first_name', { 
-                        required: isRTL ? 'الاسم الأول مطلوب' : 'Prénom requis' 
-                      })}
-                      disabled={!editing}
-                      className={`w-full pl-10 rtl:pl-4 rtl:pr-10 pr-4 py-3 border rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${
-                        !editing ? 'cursor-not-allowed opacity-60' : ''
-                      } ${errors.first_name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
+                      id="photo-upload"
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files[0];
+                        if (file) handleImageUpload(file);
+                      }}
+                      className="hidden"
                     />
                   </div>
-                  {errors.first_name && (
-                    <p className="text-red-500 text-sm mt-1">{errors.first_name.message}</p>
-                  )}
-                </div>
-
-                {/* Nom */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    {isRTL ? 'اسم العائلة' : 'Nom'}
-                  </label>
-                  <div className="relative">
-                    <User className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                    <input
-                      type="text"
-                      {...register('last_name', { 
-                        required: isRTL ? 'اسم العائلة مطلوب' : 'Nom requis' 
-                      })}
-                      disabled={!editing}
-                      className={`w-full pl-10 rtl:pl-4 rtl:pr-10 pr-4 py-3 border rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${
-                        !editing ? 'cursor-not-allowed opacity-60' : ''
-                      } ${errors.last_name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
-                    />
+                  
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                    {user?.first_name} {user?.last_name}
+                  </h2>
+                  <p className="text-gray-600 dark:text-gray-400 mb-4">{user?.email}</p>
+                  
+                  <div className="space-y-3 text-sm">
+                    <div className="flex items-center justify-center text-gray-600 dark:text-gray-400">
+                      <Phone className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                      {user?.phone || (isRTL ? 'غير محدد' : 'Non renseigné')}
+                    </div>
                   </div>
-                  {errors.last_name && (
-                    <p className="text-red-500 text-sm mt-1">{errors.last_name.message}</p>
-                  )}
                 </div>
-              </div>
+              </CardContent>
+            </Card>
+          </motion.div>
 
-              {/* Email */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  {isRTL ? 'البريد الإلكتروني' : 'Email'}
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                  <input
-                    type="email"
-                    {...register('email', { 
-                      required: isRTL ? 'البريد الإلكتروني مطلوب' : 'Email requis',
-                      pattern: {
-                        value: /^\S+@\S+$/i,
-                        message: isRTL ? 'بريد إلكتروني غير صحيح' : 'Email invalide'
-                      }
-                    })}
-                    disabled={!editing}
-                    className={`w-full pl-10 rtl:pl-4 rtl:pr-10 pr-4 py-3 border rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${
-                      !editing ? 'cursor-not-allowed opacity-60' : ''
-                    } ${errors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
-                  />
-                </div>
-                {errors.email && (
-                  <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
-                )}
-              </div>
-
-              {/* Téléphone */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  {isRTL ? 'رقم الهاتف' : 'Téléphone'}
-                </label>
-                <div className="relative">
-                  <Phone className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                  <input
-                    type="tel"
-                    {...register('phone')}
-                    disabled={!editing}
-                    className={`w-full pl-10 rtl:pl-4 rtl:pr-10 pr-4 py-3 border rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${
-                      !editing ? 'cursor-not-allowed opacity-60' : ''
-                    } ${errors.phone ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
-                  />
-                </div>
-                {errors.phone && (
-                  <p className="text-red-500 text-sm mt-1">{errors.phone.message}</p>
-                )}
-              </div>
-
-              {/* Rôle (lecture seule) */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  {isRTL ? 'الدور' : 'Rôle'}
-                </label>
-                <div className="px-4 py-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-700 dark:text-gray-300">
-                  {getRoleLabel(user?.role)}
-                </div>
-              </div>
-
-              {editing && (
-                <div className="flex justify-end space-x-4 rtl:space-x-reverse">
+          {/* Information Form */}
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }} 
+            animate={{ opacity: 1, x: 0 }} 
+            transition={{ delay: 0.2 }}
+            className="lg:col-span-2"
+          >
+            <Card className="bg-white dark:bg-gray-800 shadow-xl border-0">
+              <CardHeader className="border-b border-gray-200 dark:border-gray-700">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-gray-900 dark:text-white flex items-center">
+                    <Edit3 className="w-5 h-5 mr-2 rtl:mr-0 rtl:ml-2" />
+                    {isRTL ? 'المعلومات الشخصية' : 'Informations personnelles'}
+                  </CardTitle>
                   <Button
-                    type="button"
                     variant="outline"
-                    onClick={() => {
-                      setEditing(false);
-                      reset();
-                    }}
+                    size="sm"
+                    onClick={() => setEditMode(!editMode)}
                   >
-                    {isRTL ? 'إلغاء' : 'Annuler'}
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <LoadingSpinner size="sm" />
-                    ) : (
-                      <>
-                        <Save className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
-                        {isRTL ? 'حفظ' : 'Sauvegarder'}
-                      </>
-                    )}
+                    {editMode ? (isRTL ? 'إلغاء' : 'Annuler') : (isRTL ? 'تعديل' : 'Modifier')}
                   </Button>
                 </div>
-              )}
-            </form>
-          </CardContent>
-        </Card>
+              </CardHeader>
+              <CardContent className="p-6">
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {isRTL ? 'الاسم الأول' : 'Prénom'}
+                      </label>
+                      <div className="relative">
+                        <User className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                        <input
+                          type="text"
+                          value={formData.first_name}
+                          onChange={(e) => setFormData({...formData, first_name: e.target.value})}
+                          disabled={!editMode}
+                          className="w-full pl-10 rtl:pl-3 rtl:pr-10 pr-3 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-gray-50 dark:disabled:bg-gray-800 disabled:text-gray-500 transition-all"
+                          required
+                        />
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {isRTL ? 'اسم العائلة' : 'Nom de famille'}
+                      </label>
+                      <div className="relative">
+                        <User className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                        <input
+                          type="text"
+                          value={formData.last_name}
+                          onChange={(e) => setFormData({...formData, last_name: e.target.value})}
+                          disabled={!editMode}
+                          className="w-full pl-10 rtl:pl-3 rtl:pr-10 pr-3 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-gray-50 dark:disabled:bg-gray-800 disabled:text-gray-500 transition-all"
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      {isRTL ? 'البريد الإلكتروني' : 'Adresse email'}
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <input
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => setFormData({...formData, email: e.target.value})}
+                        disabled={!editMode}
+                        className="w-full pl-10 rtl:pl-3 rtl:pr-10 pr-3 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-gray-50 dark:disabled:bg-gray-800 disabled:text-gray-500 transition-all"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      {isRTL ? 'رقم الهاتف' : 'Numéro de téléphone'}
+                    </label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <input
+                        type="tel"
+                        value={formData.phone}
+                        onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                        disabled={!editMode}
+                        className="w-full pl-10 rtl:pl-3 rtl:pr-10 pr-3 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-gray-50 dark:disabled:bg-gray-800 disabled:text-gray-500 transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Section mot de passe */}
+                  <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white flex items-center">
+                        <Lock className="w-5 h-5 mr-2 rtl:mr-0 rtl:ml-2" />
+                        {isRTL ? 'الأمان' : 'Sécurité'}
+                      </h3>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowPasswordSection(!showPasswordSection)}
+                      >
+                        {showPasswordSection ? (isRTL ? 'إخفاء' : 'Masquer') : (isRTL ? 'تغيير كلمة المرور' : 'Changer le mot de passe')}
+                      </Button>
+                    </div>
+
+                    {showPasswordSection && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        className="space-y-4"
+                      >
+                        <input
+                          type="password"
+                          placeholder={isRTL ? 'كلمة المرور الحالية' : 'Mot de passe actuel'}
+                          value={formData.current_password}
+                          onChange={(e) => setFormData({...formData, current_password: e.target.value})}
+                          className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        />
+                        <input
+                          type="password"
+                          placeholder={isRTL ? 'كلمة المرور الجديدة' : 'Nouveau mot de passe'}
+                          value={formData.new_password}
+                          onChange={(e) => setFormData({...formData, new_password: e.target.value})}
+                          className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        />
+                        <input
+                          type="password"
+                          placeholder={isRTL ? 'تأكيد كلمة المرور' : 'Confirmer le mot de passe'}
+                          value={formData.confirm_password}
+                          onChange={(e) => setFormData({...formData, confirm_password: e.target.value})}
+                          className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        />
+                      </motion.div>
+                    )}
+                  </div>
+
+                  {(editMode || showPasswordSection) && (
+                    <div className="flex gap-3">
+                      <Button type="submit" disabled={loading} className="flex-1">
+                        <Save className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                        {loading ? (isRTL ? 'جاري الحفظ...' : 'Sauvegarde...') : (isRTL ? 'حفظ التغييرات' : 'Sauvegarder')}
+                      </Button>
+                    </div>
+                  )}
+                </form>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
       </div>
     </div>
   );

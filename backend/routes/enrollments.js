@@ -12,6 +12,9 @@ router.get('/', authenticateToken, enrollmentsController.getAllEnrollments);
 // Obtenir les statistiques des inscriptions
 router.get('/stats', authenticateToken, enrollmentsController.getEnrollmentStats);
 
+// Obtenir les inscriptions d'un parent spécifique (AVANT /:id pour éviter les conflits)
+router.get('/parent/:parentId', authenticateToken, enrollmentsController.getEnrollmentsByParent);
+
 // Obtenir une inscription par ID
 router.get('/:id', authenticateToken, enrollmentsController.getEnrollmentById);
 

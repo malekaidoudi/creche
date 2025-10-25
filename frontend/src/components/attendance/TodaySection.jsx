@@ -14,6 +14,7 @@ import { useLanguage } from '../../hooks/useLanguage';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
 import { Button } from '../ui/Button';
 import LoadingSpinner from '../ui/LoadingSpinner';
+import { formatTime } from '../../utils/dateUtils';
 
 const TodaySection = ({ 
   currentlyPresent, 
@@ -38,40 +39,6 @@ const TodaySection = ({
     }
   };
 
-  const formatTime = (timeString) => {
-    if (!timeString || timeString === 'null') return '-';
-    
-    try {
-      let date;
-      
-      // Si c'est déjà au format complet (YYYY-MM-DD HH:mm:ss)
-      if (timeString.includes(' ')) {
-        date = new Date(timeString);
-      }
-      // Si c'est juste l'heure (HH:mm:ss)
-      else if (timeString.includes(':')) {
-        const today = new Date().toISOString().split('T')[0];
-        date = new Date(`${today} ${timeString}`);
-      }
-      // Sinon, essayer de parser directement
-      else {
-        date = new Date(timeString);
-      }
-      
-      // Vérifier si la date est valide
-      if (isNaN(date.getTime())) {
-        return 'Invalid date';
-      }
-      
-      return date.toLocaleTimeString(isRTL ? 'ar-TN' : 'fr-FR', {
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch (error) {
-      console.error('Erreur formatTime:', error, 'pour:', timeString);
-      return 'Invalid date';
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -192,7 +159,7 @@ const TodaySection = ({
                         {isRTL ? 'وقت الوصول:' : 'Arrivée:'}
                       </span>
                       <span className="font-medium">
-                        {formatTime(child.check_in_time)}
+                        {formatTime(child.check_in_time, isRTL)}
                       </span>
                     </div>
                     
@@ -280,7 +247,7 @@ const TodaySection = ({
                           {isRTL ? 'وصل:' : 'Arrivée:'}
                         </span>
                         <span className="font-medium">
-                          {formatTime(record.check_in_time)}
+                          {formatTime(record.check_in_time, isRTL)}
                         </span>
                       </div>
                     )}
@@ -291,7 +258,7 @@ const TodaySection = ({
                           {isRTL ? 'غادر:' : 'Départ:'}
                         </span>
                         <span className="font-medium">
-                          {formatTime(record.check_out_time)}
+                          {formatTime(record.check_out_time, isRTL)}
                         </span>
                       </div>
                     )}

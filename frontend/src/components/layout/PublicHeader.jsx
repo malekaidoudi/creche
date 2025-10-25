@@ -4,15 +4,20 @@ import { useTranslation } from 'react-i18next'
 import { Menu, X, User, LogOut, Settings, LayoutDashboard } from 'lucide-react'
 import { useLanguage } from '../../hooks/useLanguage'
 import { useAuth } from '../../hooks/useAuth'
+import { useProfileImage } from '../../hooks/useProfileImage'
+import { useMySpaceAccess } from '../../hooks/useMySpaceAccess'
 import LanguageToggle from '../ui/LanguageToggle'
 import ThemeToggle from '../ui/ThemeToggle'
 import { ImageWithFallback, defaultImages } from '../../utils/imageUtils.jsx'
 import { Button } from '../ui/Button'
+import API_CONFIG from '../../config/api'
 
 const PublicHeader = () => {
   const { t } = useTranslation()
   const { isRTL } = useLanguage()
   const { isAuthenticated, user, logout, isStaff } = useAuth()
+  const { getImageUrl, hasImage } = useProfileImage()
+  const { hasAccess: hasMySpaceAccess } = useMySpaceAccess()
   const location = useLocation()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
@@ -24,10 +29,20 @@ const PublicHeader = () => {
     logo: '/images/logo.jpg'
   }
 
+  // Navigation dynamique selon l'état de connexion
   const navigation = [
     { name: t('nav.home'), href: '/' },
-    { name: t('nav.articles'), href: '/articles' },
-    { name: t('nav.enrollment'), href: '/inscription' },
+    // { name: t('nav.articles'), href: '/articles' }, // Masqué temporairement
+    // Afficher Dashboard si connecté (sauf parents), sinon Inscription
+    ...(isAuthenticated ? [
+      // Dashboard seulement pour admin et staff
+      ...(user?.role === 'admin' || user?.role === 'staff' ? [
+        { name: isRTL ? 'لوحة التحكم' : 'Dashboard', href: '/dashboard' }
+      ] : []),
+      ...(hasMySpaceAccess ? [{ name: isRTL ? 'مساحتي' : 'Mon Espace', href: '/mon-espace' }] : [])
+    ] : [
+      { name: t('nav.enrollment'), href: '/inscription' }
+    ]),
     { name: t('nav.contact'), href: '/contact' }
   ]
 
@@ -91,39 +106,38 @@ const PublicHeader = () => {
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
                   className="flex items-center space-x-2 rtl:space-x-reverse p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                 >
-                  <div className="w-8 h-8 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center">
-                    <User className="w-4 h-4 text-primary-600 dark:text-primary-400" />
+                  <div className="w-8 h-8 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center overflow-hidden">
+                    {hasImage() ? (
+                      <img
+                        src={getImageUrl()}
+                        alt="Photo de profil"
+                        className="w-8 h-8 object-cover rounded-full"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.nextElementSibling.style.display = 'flex';
+                        }}
+                      />
+                    ) : null}
+                    <User className={`w-4 h-4 text-primary-600 dark:text-primary-400 ${hasImage() ? 'hidden' : ''}`} />
                   </div>
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     {user?.first_name}
                   </span>
                 </button>
 
-                {/* Menu utilisateur */}
+                {/* Menu utilisateur simplifié */}
                 {userMenuOpen && (
                   <div className="absolute right-0 rtl:right-auto rtl:left-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg ring-1 ring-black ring-opacity-5 z-50">
                     <div className="py-1">
-                      {user?.role === 'parent' && (
-                        <Link
-                          to="/mon-espace"
-                          onClick={() => setUserMenuOpen(false)}
-                          className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                        >
-                          <User className="w-4 h-4 mr-3 rtl:mr-0 rtl:ml-3" />
-                          {isRTL ? 'مساحتي' : 'Mon espace'}
-                        </Link>
-                      )}
-                      
-                      {isStaff() && (
-                        <Link
-                          to="/dashboard"
-                          onClick={() => setUserMenuOpen(false)}
-                          className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                        >
-                          <LayoutDashboard className="w-4 h-4 mr-3 rtl:mr-0 rtl:ml-3" />
-                          {isRTL ? 'لوحة التحكم' : 'Dashboard'}
-                        </Link>
-                      )}
+                      {/* Modifier profil */}
+                      <Link
+                        to="/profile"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      >
+                        <Settings className="w-4 h-4 mr-3 rtl:mr-0 rtl:ml-3" />
+                        {isRTL ? 'الملف الشخصي' : 'Profil'}
+                      </Link>
                       
                       <div className="border-t border-gray-200 dark:border-gray-700">
                         <button
@@ -200,8 +214,19 @@ const PublicHeader = () => {
               {isAuthenticated ? (
                 <div className="px-3 space-y-3">
                   <div className="flex items-center space-x-3 rtl:space-x-reverse p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                    <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center">
-                      <User className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                    <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center overflow-hidden">
+                      {hasImage() ? (
+                        <img
+                          src={getImageUrl()}
+                          alt="Photo de profil"
+                          className="w-10 h-10 object-cover rounded-full"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.nextElementSibling.style.display = 'flex';
+                          }}
+                        />
+                      ) : null}
+                      <User className={`w-5 h-5 text-primary-600 dark:text-primary-400 ${hasImage() ? 'hidden' : ''}`} />
                     </div>
                     <div>
                       <p className="font-medium text-gray-900 dark:text-white">
@@ -215,7 +240,7 @@ const PublicHeader = () => {
                     </div>
                   </div>
                   
-                  {user?.role === 'parent' && (
+                  {hasMySpaceAccess && (
                     <Link
                       to="/mon-espace"
                       onClick={() => setIsMenuOpen(false)}
@@ -236,6 +261,15 @@ const PublicHeader = () => {
                       {isRTL ? 'لوحة التحكم' : 'Dashboard'}
                     </Link>
                   )}
+                  
+                  <Link
+                    to="/profile"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="flex items-center w-full px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                  >
+                    <Settings className="w-4 h-4 mr-3 rtl:mr-0 rtl:ml-3" />
+                    {isRTL ? 'الملف الشخصي' : 'Profil'}
+                  </Link>
                   
                   <button
                     onClick={() => {

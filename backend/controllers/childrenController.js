@@ -374,20 +374,34 @@ const childrenController = {
     try {
       const { parentId } = req.params;
 
+      console.log('📋 Récupération des enfants pour le parent:', parentId);
+      console.log('🔐 Vérification permissions:', { userRole: req.user.role, userId: req.user.id, requestedParentId: parentId });
+
+      // Vérifier les permissions
+      if (req.user.role !== 'admin' && req.user.role !== 'staff' && req.user.id != parentId) {
+        return res.status(403).json({ error: 'Accès non autorisé' });
+      }
+
+      // Récupérer les enfants via la table enrollments (seulement les approuvés)
       const [children] = await db.execute(`
-        SELECT * FROM children 
-        WHERE parent_id = ? AND is_active = TRUE
-        ORDER BY first_name, last_name
+        SELECT c.*, e.status as enrollment_status, e.created_at as enrollment_date
+        FROM children c 
+        INNER JOIN enrollments e ON c.id = e.child_id
+        WHERE e.parent_id = ? AND e.status = 'approved' AND c.is_active = TRUE
+        ORDER BY c.first_name, c.last_name
       `, [parentId]);
 
+      console.log('✅', children.length, 'enfants approuvés trouvés pour le parent', parentId);
+
       res.json({
+        success: true,
         children: children.map(child => ({
           ...child,
           age: calculateAge(child.birth_date)
         }))
       });
     } catch (error) {
-      console.error('Erreur récupération enfants parent:', error);
+      console.error('❌ Erreur récupération enfants parent:', error);
       res.status(500).json({ error: 'Erreur serveur' });
     }
   },
@@ -521,6 +535,56 @@ const childrenController = {
     } catch (error) {
       console.error('Erreur récupération enfants orphelins:', error);
       res.status(500).json({ error: 'Erreur serveur' });
+    }
+  },
+
+  // Désactiver le compte parent d'un enfant
+  deactivateParent: async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      console.log('🔒 Désactivation du parent pour l\'enfant ID:', id);
+
+      // Récupérer l'enfant et son parent
+      const [children] = await db.execute(
+        'SELECT * FROM children WHERE id = ?',
+        [id]
+      );
+
+      if (children.length === 0) {
+        return res.status(404).json({ error: 'Enfant non trouvé' });
+      }
+
+      const child = children[0];
+      
+      if (!child.parent_id) {
+        return res.status(400).json({ error: 'Cet enfant n\'a pas de parent associé' });
+      }
+
+      // Désactiver le compte parent
+      await db.execute(
+        'UPDATE users SET is_active = 0, updated_at = NOW() WHERE id = ?',
+        [child.parent_id]
+      );
+
+      // Optionnel : Marquer l'enfant comme inactif aussi
+      await db.execute(
+        'UPDATE children SET is_active = 0, updated_at = NOW() WHERE id = ?',
+        [id]
+      );
+
+      console.log('✅ Compte parent désactivé avec succès');
+
+      res.json({
+        success: true,
+        message: 'Compte parent désactivé avec succès',
+        childId: id,
+        parentId: child.parent_id
+      });
+
+    } catch (error) {
+      console.error('❌ Erreur désactivation parent:', error);
+      res.status(500).json({ error: 'Erreur lors de la désactivation du compte parent' });
     }
   }
 };

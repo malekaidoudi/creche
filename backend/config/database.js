@@ -4,47 +4,24 @@ const path = require('path');
 // Charger le .env depuis la racine du projet
 require('dotenv').config({ path: path.join(__dirname, '../../.env') });
 
-// Debug des variables d'environnement (commenté après résolution)
-// console.log('🔍 Variables d\'environnement DB:');
-// console.log('DB_SOCKET:', process.env.DB_SOCKET);
-// console.log('DB_HOST:', process.env.DB_HOST);
-// console.log('DB_PORT:', process.env.DB_PORT);
-// console.log('DB_USER:', process.env.DB_USER);
-
-// Configuration de la base de données avec support Railway
-let dbConfig = {
-  user: process.env.DB_USER || process.env.MYSQLUSER || 'root',
-  password: process.env.DB_PASS || process.env.MYSQLPASSWORD || 'root',
-  database: process.env.DB_NAME || process.env.MYSQLDATABASE || 'creche_app',
+// Configuration de base de données
+const dbConfig = {
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'mima_elghalia_db',
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0,
-  acquireTimeout: 60000,
-  timeout: 60000,
-  reconnect: true
+  queueLimit: 0
 };
 
-// Configuration spécifique Railway (variables automatiques)
-if (process.env.RAILWAY_ENVIRONMENT) {
-  console.log('🚂 Configuration Railway détectée');
-  dbConfig.host = process.env.MYSQLHOST || process.env.DB_HOST;
-  dbConfig.port = process.env.MYSQLPORT || process.env.DB_PORT || 3306;
-  
-  // Railway utilise souvent SSL en production
-  if (process.env.NODE_ENV === 'production') {
-    dbConfig.ssl = {
-      rejectUnauthorized: false
-    };
-  }
-} 
 // Configuration locale (MAMP/XAMPP)
-else if (process.env.DB_SOCKET) {
+if (process.env.DB_SOCKET) {
   console.log('📡 Utilisation du socket MAMP:', process.env.DB_SOCKET);
   dbConfig.socketPath = process.env.DB_SOCKET;
 } 
 // Configuration standard host/port
 else {
-  console.log('🌐 Utilisation host/port:', process.env.DB_HOST, process.env.DB_PORT);
+  console.log('🌐 Utilisation host/port:', process.env.DB_HOST || 'localhost', process.env.DB_PORT || 3306);
   dbConfig.host = process.env.DB_HOST || 'localhost';
   dbConfig.port = process.env.DB_PORT || 3306;
 }

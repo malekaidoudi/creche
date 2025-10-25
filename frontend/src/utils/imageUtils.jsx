@@ -38,15 +38,7 @@ export const ImageWithFallback = ({
   ...props 
 }) => {
   const handleError = (e) => {
-    console.error('❌ ImageWithFallback: Erreur chargement image:', {
-      originalSrc: src,
-      processedSrc: e.target.src,
-      fallback: fallback,
-      error: e
-    });
-    
     if (e.target.src !== fallback) {
-      console.log('🔄 ImageWithFallback: Basculement vers fallback');
       e.target.src = fallback;
     }
     
@@ -55,22 +47,13 @@ export const ImageWithFallback = ({
   }
 
   const handleLoad = (e) => {
-    console.log('✅ ImageWithFallback: Image chargée avec succès:', {
-      src: e.target.src,
-      originalSrc: src
-    });
-    
     // Appeler le onLoad personnalisé s'il existe
     if (onLoad) onLoad(e);
   }
 
   const imageUrl = getImageUrl(src) || fallback;
   
-  console.log('🖼️ ImageWithFallback: Traitement image:', {
-    originalSrc: src,
-    processedUrl: imageUrl,
-    srcType: src ? (src.startsWith('blob:') ? 'Blob URL' : src.startsWith('data:') ? 'Base64' : 'Chemin') : 'undefined'
-  });
+  // Debug supprimé pour production
 
   return (
     <img

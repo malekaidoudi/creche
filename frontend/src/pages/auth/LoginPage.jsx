@@ -176,7 +176,7 @@ const LoginPage = () => {
                 <div className="grid grid-cols-1 gap-2">
                   <button
                     type="button"
-                    onClick={() => quickLogin('malekaidoudi@gmail.com', 'admin123')}
+                    onClick={() => quickLogin('crechemimaelghalia@gmail.com', 'admin123')}
                     disabled={loading}
                     className="w-full px-4 py-2 text-sm bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
                   >

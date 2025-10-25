@@ -14,6 +14,7 @@ import {
 import { useLanguage } from '../../hooks/useLanguage';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
 import { Button } from '../ui/Button';
+import { formatTime, formatDate, calculateDuration } from '../../utils/dateUtils';
 
 const HistorySection = ({ 
   attendanceData, 
@@ -40,17 +41,6 @@ const HistorySection = ({
     }
   };
 
-  const formatTime = (timeString) => {
-    if (!timeString) return '-';
-    return new Date(timeString).toLocaleTimeString(isRTL ? 'ar-TN' : 'fr-FR', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString(isRTL ? 'ar-TN' : 'fr-FR');
-  };
 
   const getRecordStatus = (record) => {
     // Vérifier si l'enregistrement existe
@@ -115,11 +105,11 @@ const HistorySection = ({
     const details = {
       enfant: `${record.child?.first_name} ${record.child?.last_name}`,
       age: calculateAge(record.child?.birth_date),
-      date: formatDate(record.date || selectedDate),
-      arrivee: formatTime(record.check_in_time),
-      depart: formatTime(record.check_out_time),
-      duree: record.check_in_time && record.check_out_time 
-        ? `${Math.round((new Date(record.check_out_time) - new Date(record.check_in_time)) / (1000 * 60 * 60) * 10) / 10}h`
+      date: formatDate(record.date || selectedDate, isRTL),
+      arrivee: formatTime(record.check_in_time, isRTL),
+      depart: formatTime(record.check_out_time, isRTL),
+      duree: calculateDuration(record.check_in_time, record.check_out_time) 
+        ? `${calculateDuration(record.check_in_time, record.check_out_time)}h`
         : '-',
       notes: record.notes || (isRTL ? 'لا توجد ملاحظات' : 'Aucune note')
     };
@@ -150,16 +140,14 @@ const HistorySection = ({
 
     const csvData = filteredAttendance.map(record => {
       const status = getRecordStatus(record);
-      const duration = record.check_in_time && record.check_out_time 
-        ? Math.round((new Date(record.check_out_time) - new Date(record.check_in_time)) / (1000 * 60 * 60) * 10) / 10
-        : '';
+      const duration = calculateDuration(record.check_in_time, record.check_out_time);
 
       return [
         `${record.child?.first_name} ${record.child?.last_name}`,
         calculateAge(record.child?.birth_date),
-        formatDate(record.date || selectedDate),
-        formatTime(record.check_in_time),
-        formatTime(record.check_out_time),
+        formatDate(record.date || selectedDate, isRTL),
+        formatTime(record.check_in_time, isRTL),
+        formatTime(record.check_out_time, isRTL),
         duration ? `${duration}h` : '',
         getStatusLabel(status),
         record.notes || ''
@@ -324,9 +312,7 @@ const HistorySection = ({
                 <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                   {filteredAttendance.map((record) => {
                     const status = getRecordStatus(record);
-                    const duration = record.check_in_time && record.check_out_time 
-                      ? Math.round((new Date(record.check_out_time) - new Date(record.check_in_time)) / (1000 * 60 * 60 * 100)) / 10
-                      : null;
+                    const duration = calculateDuration(record.check_in_time, record.check_out_time);
 
                     return (
                       <motion.tr
@@ -351,10 +337,10 @@ const HistorySection = ({
                           {calculateAge(record.child?.birth_date)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {formatTime(record.check_in_time)}
+                          {formatTime(record.check_in_time, isRTL)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {formatTime(record.check_out_time)}
+                          {formatTime(record.check_out_time, isRTL)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                           {duration ? `${duration}h` : '-'}

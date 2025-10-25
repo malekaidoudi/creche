@@ -35,4 +35,7 @@ router.put('/:childId/associate-parent', authenticateToken, requireStaff, childr
 // Obtenir les enfants sans parent (orphelins) (Admin/Staff seulement)
 router.get('/orphans', authenticateToken, requireStaff, childrenController.getOrphanChildren);
 
+// Désactiver le compte parent d'un enfant (Admin seulement)
+router.put('/:id/deactivate-parent', authenticateToken, requireStaff, childrenController.deactivateParent);
+
 module.exports = router;

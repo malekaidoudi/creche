@@ -5,6 +5,7 @@ const { pool, transaction } = require('../config/database');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const nodemailer = require('nodemailer');
 
 // Configuration multer pour les documents
 const storage = multer.diskStorage({
@@ -50,17 +51,15 @@ router.post('/',
     { name: 'certificat_medical', maxCount: 1 }
   ]),
   [
-    body('parent_first_name').isLength({ min: 1 }).withMessage('Prénom parent requis'),
-    body('parent_last_name').isLength({ min: 1 }).withMessage('Nom parent requis'),
+    body('parent_first_name').notEmpty().withMessage('Prénom parent requis'),
+    body('parent_last_name').notEmpty().withMessage('Nom parent requis'),
     body('parent_email').isEmail().withMessage('Email parent invalide'),
     body('parent_password').isLength({ min: 6 }).withMessage('Mot de passe parent invalide'),
-    body('child_first_name').isLength({ min: 1 }).withMessage('Prénom enfant requis'),
-    body('child_last_name').isLength({ min: 1 }).withMessage('Nom enfant requis'),
-    body('birth_date').isISO8601().withMessage('Date de naissance invalide'),
+    body('child_first_name').notEmpty().withMessage('Prénom enfant requis'),
+    body('child_last_name').notEmpty().withMessage('Nom enfant requis'),
+    body('birth_date').notEmpty().withMessage('Date de naissance requise'),
     body('gender').isIn(['M','F']).withMessage('Sexe invalide'),
-    body('enrollment_date').isISO8601().withMessage('Date d\'inscription invalide'),
-    body('lunch_assistance').optional().isBoolean(),
-    body('regulation_accepted').optional().isBoolean()
+    body('enrollment_date').notEmpty().withMessage('Date d\'inscription requise')
   ], 
   async (req, res) => {
   try {
@@ -90,24 +89,24 @@ router.post('/',
 
       const hashed = await bcrypt.hash(parent_password, 10);
 
-      // Créer utilisateur parent
+      // Créer utilisateur parent (inactif jusqu'à approbation de l'enfant)
       const [userRes] = await conn.execute(
-        'INSERT INTO users (email, password, first_name, last_name, phone, role) VALUES (?, ?, ?, ?, ?, ?)',
-        [parent_email, hashed, parent_first_name, parent_last_name, parent_phone || null, 'parent']
+        'INSERT INTO users (email, password, first_name, last_name, phone, role, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [parent_email, hashed, parent_first_name, parent_last_name, parent_phone || null, 'parent', 0]
       );
       const parentId = userRes.insertId;
 
-      // Créer enfant
+      // Créer l'enfant avec status 'pending'
       const [childRes] = await conn.execute(
-        'INSERT INTO children (first_name, last_name, birth_date, gender, medical_info, emergency_contact_name, emergency_contact_phone, parent_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [child_first_name, child_last_name, birth_date, gender, medical_info || null, emergency_contact_name || null, emergency_contact_phone || null, parentId]
+        'INSERT INTO children (first_name, last_name, birth_date, gender, parent_id, medical_info, emergency_contact_name, emergency_contact_phone, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [child_first_name, child_last_name, birth_date, gender, parentId, medical_info || null, emergency_contact_name || null, emergency_contact_phone || null, 'pending']
       );
       const childId = childRes.insertId;
 
       // Créer inscription
       const [enrollRes] = await conn.execute(
-        'INSERT INTO enrollments (parent_id, child_id, child_first_name, child_last_name, parent_first_name, parent_last_name, parent_email, parent_phone, birth_date, gender, medical_info, emergency_contact_name, emergency_contact_phone, enrollment_date, status, lunch_assistance, regulation_accepted, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [parentId, childId, child_first_name, child_last_name, parent_first_name, parent_last_name, parent_email, parent_phone || null, birth_date, gender, medical_info || null, emergency_contact_name || null, emergency_contact_phone || null, enrollment_date, 'pending', lunch_assistance ? 1 : 0, regulation_accepted ? 1 : 0, notes || null]
+        'INSERT INTO enrollments (parent_id, child_id, enrollment_date, status, lunch_assistance, regulation_accepted, admin_notes) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [parentId, childId, enrollment_date, 'pending', lunch_assistance ? 1 : 0, regulation_accepted ? 1 : 0, notes || null]
       );
       const enrollmentId = enrollRes.insertId;
 
@@ -118,16 +117,26 @@ router.post('/',
         if (uploadedFiles[docType] && uploadedFiles[docType][0]) {
           const file = uploadedFiles[docType][0];
           
-          // Enregistrer dans la table uploads
+          // Enregistrer dans la table uploads avec les bons noms de champs
           const [uploadRes] = await conn.execute(
-            'INSERT INTO uploads (filename, original_name, mime_type, size, path, uploaded_by_user_id, child_id, category) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-            [file.filename, file.originalname, file.mimetype, file.size, file.path, parentId, childId, docType]
+            'INSERT INTO uploads (filename, original_name, file_path, file_size, mime_type, uploaded_by, child_id, category) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [file.filename, file.originalname, `/uploads/documents/${file.filename}`, file.size, file.mimetype, parentId, childId, 'document']
           );
         }
       }
 
       return { parentId, childId, enrollmentId };
     });
+
+    // Envoyer un email de confirmation
+    try {
+      console.log('📧 Tentative d\'envoi email de confirmation à:', parent_email);
+      await sendConfirmationEmail(parent_email, parent_first_name, child_first_name);
+      console.log('✅ Email de confirmation envoyé');
+    } catch (emailError) {
+      console.error('❌ Erreur envoi email:', emailError.message);
+      // Ne pas faire échouer l'inscription si l'email échoue
+    }
 
     res.status(201).json({
       message: 'Pré-inscription créée avec succès',
@@ -141,5 +150,39 @@ router.post('/',
     res.status(status).json({ error: error.message || 'Erreur lors de la création de la pré-inscription' });
   }
 });
+
+// Fonction utilitaire pour l'envoi d'email de confirmation
+async function sendConfirmationEmail(email, parentName, childName) {
+  try {
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: process.env.SMTP_PORT,
+      secure: false,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASSWORD
+      }
+    });
+
+    const mailOptions = {
+      from: process.env.EMAIL_FROM || process.env.SMTP_USER,
+      to: email,
+      subject: 'Confirmation de votre demande d\'inscription - Crèche Mima Elghalia',
+      html: `
+        <h2>Confirmation de demande d'inscription</h2>
+        <p>Bonjour ${parentName},</p>
+        <p>Nous avons bien reçu votre demande d'inscription pour <strong>${childName}</strong>.</p>
+        <p>Votre demande est en cours de traitement. Nous vous contacterons prochainement.</p>
+        <p><strong>Important :</strong> Votre compte parent sera activé une fois que votre demande sera approuvée par notre équipe.</p>
+        <p>Cordialement,<br>L'équipe de la Crèche Mima Elghalia</p>
+      `
+    };
+
+    await transporter.sendMail(mailOptions);
+  } catch (error) {
+    console.error('Erreur envoi email confirmation:', error);
+    throw error;
+  }
+}
 
 module.exports = router;

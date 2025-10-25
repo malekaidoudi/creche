@@ -103,6 +103,42 @@ const uploadController = {
     }
   },
 
+  // Voir un fichier (affichage dans le navigateur)
+  viewFile: async (req, res) => {
+    try {
+      const { fileId } = req.params;
+      
+      const [files] = await db.execute(
+        'SELECT * FROM uploads WHERE id = ?',
+        [fileId]
+      );
+
+      if (files.length === 0) {
+        return res.status(404).json({ error: 'Fichier non trouvé' });
+      }
+
+      const file = files[0];
+      const filePath = path.join(__dirname, '..', file.file_path);
+      
+      // Vérifier que le fichier existe
+      const fs = require('fs');
+      if (!fs.existsSync(filePath)) {
+        console.log('Fichier non trouvé:', filePath);
+        return res.status(404).json({ error: 'Fichier physique non trouvé' });
+      }
+
+      // Définir les headers pour l'affichage
+      res.setHeader('Content-Type', file.mime_type);
+      res.setHeader('Content-Disposition', `inline; filename="${file.original_name}"`);
+      
+      // Envoyer le fichier
+      res.sendFile(path.resolve(filePath));
+    } catch (error) {
+      console.error('Erreur affichage:', error);
+      res.status(500).json({ error: 'Erreur lors de l\'affichage' });
+    }
+  },
+
   // Télécharger un fichier
   downloadFile: async (req, res) => {
     try {
@@ -118,11 +154,12 @@ const uploadController = {
       }
 
       const file = files[0];
-      const filePath = path.join(__dirname, '../uploads', file.path.replace('/media/', ''));
+      const filePath = path.join(__dirname, '..', file.file_path);
       
       // Vérifier que le fichier existe
       const fs = require('fs');
       if (!fs.existsSync(filePath)) {
+        console.log('Fichier non trouvé:', filePath);
         return res.status(404).json({ error: 'Fichier physique non trouvé' });
       }
 
@@ -131,7 +168,7 @@ const uploadController = {
       res.setHeader('Content-Type', file.mime_type);
       
       // Envoyer le fichier
-      res.sendFile(filePath);
+      res.sendFile(path.resolve(filePath));
     } catch (error) {
       console.error('Erreur téléchargement:', error);
       res.status(500).json({ error: 'Erreur lors du téléchargement' });

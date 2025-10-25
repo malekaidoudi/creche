@@ -15,8 +15,8 @@ const attendanceController = {
           c.gender,
           a.id as attendance_id,
           a.date,
-          CASE WHEN a.check_in_time IS NOT NULL THEN CONCAT(a.date, ' ', a.check_in_time) ELSE NULL END as check_in_time,
-          CASE WHEN a.check_out_time IS NOT NULL THEN CONCAT(a.date, ' ', a.check_out_time) ELSE NULL END as check_out_time,
+          a.check_in_time,
+          a.check_out_time,
           a.notes,
           CASE 
             WHEN a.check_in_time IS NULL THEN 'absent'
@@ -42,8 +42,8 @@ const attendanceController = {
         },
         attendance_id: record.attendance_id,
         date: record.date,
-        check_in_time: record.check_in_time ? `${today} ${record.check_in_time}` : null,
-        check_out_time: record.check_out_time ? `${today} ${record.check_out_time}` : null,
+        check_in_time: record.check_in_time,
+        check_out_time: record.check_out_time,
         notes: record.notes,
         status: record.status
       }));
@@ -72,8 +72,8 @@ const attendanceController = {
           c.gender,
           a.id as attendance_id,
           a.date,
-          CASE WHEN a.check_in_time IS NOT NULL THEN CONCAT(a.date, ' ', a.check_in_time) ELSE NULL END as check_in_time,
-          CASE WHEN a.check_out_time IS NOT NULL THEN CONCAT(a.date, ' ', a.check_out_time) ELSE NULL END as check_out_time,
+          a.check_in_time,
+          a.check_out_time,
           a.notes,
           CASE 
             WHEN a.check_in_time IS NULL THEN 'absent'
@@ -99,8 +99,8 @@ const attendanceController = {
         },
         attendance_id: record.attendance_id,
         date: record.date,
-        check_in_time: record.check_in_time ? `${date} ${record.check_in_time}` : null,
-        check_out_time: record.check_out_time ? `${date} ${record.check_out_time}` : null,
+        check_in_time: record.check_in_time,
+        check_out_time: record.check_out_time,
         notes: record.notes,
         status: record.status
       }));
@@ -264,6 +264,120 @@ const attendanceController = {
     } catch (error) {
       console.error('Erreur checkOut:', error);
       res.status(500).json({ error: 'Erreur lors de l\'enregistrement' });
+    }
+  },
+
+  // Obtenir les présences d'un enfant pour un mois donné
+  getChildMonthlyAttendance: async (req, res) => {
+    try {
+      const { childId } = req.params;
+      const { year, month } = req.query;
+      
+      console.log(`📅 Récupération présences enfant ${childId} pour ${year}-${month}`);
+      
+      // Vérifier les permissions (parent peut voir ses enfants, admin/staff peuvent tout voir)
+      if (req.user.role === 'parent') {
+        // Vérifier que l'enfant appartient au parent
+        const [childCheck] = await db.execute(
+          'SELECT COUNT(*) as count FROM enrollments WHERE parent_id = ? AND child_id = ? AND status = "approved"',
+          [req.user.id, childId]
+        );
+        
+        if (childCheck[0].count === 0) {
+          return res.status(403).json({ error: 'Accès non autorisé à cet enfant' });
+        }
+      }
+
+      // Construire la requête pour le mois demandé
+      let dateCondition = '';
+      let params = [childId];
+      
+      if (year && month) {
+        dateCondition = 'AND YEAR(a.date) = ? AND MONTH(a.date) = ?';
+        params.push(year, month);
+      } else {
+        // Par défaut, mois actuel
+        const now = new Date();
+        dateCondition = 'AND YEAR(a.date) = ? AND MONTH(a.date) = ?';
+        params.push(now.getFullYear(), now.getMonth() + 1);
+      }
+
+      const [attendances] = await db.execute(`
+        SELECT 
+          a.id,
+          a.date,
+          a.check_in_time,
+          a.check_out_time,
+          a.notes,
+          a.created_at
+        FROM attendance a
+        WHERE a.child_id = ? ${dateCondition}
+        ORDER BY a.date DESC
+      `, params);
+
+      console.log(`✅ ${attendances.length} présences trouvées`);
+
+      res.json({
+        success: true,
+        attendance: attendances
+      });
+
+    } catch (error) {
+      console.error('Erreur récupération présences mensuelles:', error);
+      res.status(500).json({ 
+        error: 'Erreur interne du serveur',
+        details: error.message 
+      });
+    }
+  },
+
+  // Obtenir un rapport d'attendance avec filtres
+  getAttendanceReport: async (req, res) => {
+    try {
+      // Version simplifiée pour tester
+      const [attendances] = await db.execute(`
+        SELECT 
+          a.id,
+          a.date,
+          a.check_in_time,
+          a.check_out_time,
+          c.first_name,
+          c.last_name,
+          CASE 
+            WHEN a.check_in_time IS NULL THEN 'absent'
+            ELSE 'present'
+          END as status
+        FROM attendance a
+        JOIN children c ON a.child_id = c.id
+        ORDER BY a.date DESC
+        LIMIT 50
+      `);
+      
+      res.json({
+        success: true,
+        attendances: attendances.map(record => ({
+          id: record.id,
+          child_name: `${record.first_name} ${record.last_name}`,
+          date: record.date,
+          check_in: record.check_in_time,
+          check_out: record.check_out_time,
+          status: record.status
+        })),
+        summary: {
+          totalRecords: attendances.length,
+          presentCount: attendances.filter(a => a.status === 'present').length,
+          absentCount: attendances.filter(a => a.status === 'absent').length,
+          lateCount: 0,
+          averageHours: 8
+        }
+      });
+      
+    } catch (error) {
+      console.error('❌ Erreur rapport attendance:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Erreur serveur'
+      });
     }
   }
 };

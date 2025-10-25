@@ -4,6 +4,7 @@ import { useLanguage } from '../hooks/useLanguage'
 //import { useAuth } from '../hooks/useAuth'
 import PublicHeader from '../components/layout/PublicHeader'
 import PublicFooter from '../components/layout/PublicFooter'
+import ErrorBoundary from '../components/ui/ErrorBoundary'
 
 const PublicLayout = () => {
   const { t } = useTranslation()
@@ -15,10 +16,14 @@ const PublicLayout = () => {
       <PublicHeader />
 
       <main className="flex-1">
-        <Outlet />
+        <ErrorBoundary>
+          <Outlet />
+        </ErrorBoundary>
       </main>
 
-      <PublicFooter />
+      <ErrorBoundary>
+        <PublicFooter />
+      </ErrorBoundary>
     </div>
   )
 }

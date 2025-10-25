@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { motion } from 'framer-motion';
 import { Baby, User, Calendar, Phone, AlertTriangle, Save, ArrowLeft } from 'lucide-react';
@@ -15,15 +15,26 @@ const AddChildPage = () => {
   const { user } = useAuth();
   const { isRTL } = useLanguage();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [parents, setParents] = useState([]);
+  const isPersonal = searchParams.get('personal') === 'true';
 
   const {
     register,
     handleSubmit,
     formState: { errors },
-    watch
+    watch,
+    setValue
   } = useForm();
+
+  // Pré-remplir les informations si c'est pour l'enfant personnel du staff
+  useEffect(() => {
+    if (isPersonal && user) {
+      setValue('emergency_contact_name', `${user.first_name} ${user.last_name}`);
+      setValue('emergency_contact_phone', user.phone || '');
+    }
+  }, [isPersonal, user, setValue]);
 
   const onSubmit = async (data) => {
     setLoading(true);
@@ -89,10 +100,16 @@ const AddChildPage = () => {
           </Button>
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              {isRTL ? 'إضافة طفل جديد' : 'Ajouter un enfant'}
+              {isPersonal ? 
+                (isRTL ? 'إضافة طفلي' : 'Ajouter mon enfant') : 
+                (isRTL ? 'إضافة طفل جديد' : 'Ajouter un enfant')
+              }
             </h1>
             <p className="text-gray-600 dark:text-gray-300">
-              {isRTL ? 'إدخال معلومات الطفل الجديد' : 'Saisir les informations du nouvel enfant'}
+              {isPersonal ? 
+                (isRTL ? 'إدخال معلومات طفلي الشخصي' : 'Saisir les informations de mon enfant personnel') :
+                (isRTL ? 'إدخال معلومات الطفل الجديد' : 'Saisir les informations du nouvel enfant')
+              }
             </p>
           </div>
         </div>

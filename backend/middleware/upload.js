@@ -16,7 +16,7 @@ const storage = multer.diskStorage({
     // Organiser par catégorie
     if (req.body.category) {
       uploadPath = path.join(uploadsDir, req.body.category);
-    } else if (file.fieldname === 'profile') {
+    } else if (file.fieldname === 'profile' || file.fieldname === 'profile_image' || file.fieldname === 'image') {
       uploadPath = path.join(uploadsDir, 'profiles');
     } else if (file.fieldname === 'document') {
       uploadPath = path.join(uploadsDir, 'documents');
@@ -39,7 +39,7 @@ const storage = multer.diskStorage({
 
 // Filtrer les types de fichiers
 const fileFilter = (req, file, cb) => {
-  if (file.fieldname === 'profile') {
+  if (file.fieldname === 'profile' || file.fieldname === 'image') {
     // Images seulement pour les profils
     if (file.mimetype.startsWith('image/')) {
       cb(null, true);

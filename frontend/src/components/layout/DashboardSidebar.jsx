@@ -20,11 +20,13 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
+import { useHasChildren } from '../../hooks/useHasChildren';
 import { ImageWithFallback, defaultImages } from '../../utils/imageUtils.jsx';
 
 const DashboardSidebar = ({ isOpen, onClose }) => {
   const { user, isAdmin, isStaff } = useAuth();
   const { isRTL, currentLanguage } = useLanguage();
+  const { hasChildren } = useHasChildren();
   const location = useLocation();
   const [expandedMenus, setExpandedMenus] = useState({});
 
@@ -48,13 +50,14 @@ const DashboardSidebar = ({ isOpen, onClose }) => {
       path: '/dashboard',
       roles: ['admin', 'staff']
     },
-    {
+    // Mon Espace - Affiché seulement si l'utilisateur a des enfants
+    ...(hasChildren ? [{
       key: 'my-space',
-      title: isRTL ? 'مساحتي الشخصية' : 'Mon Espace',
+      title: isRTL ? 'مساحتي' : 'Mon Espace',
       icon: User,
-      path: '/dashboard/my-space',
+      path: '/mon-espace',
       roles: ['admin', 'staff', 'parent']
-    },
+    }] : []),
     {
       key: 'children',
       title: isRTL ? 'الأطفال' : 'Enfants',
@@ -104,7 +107,7 @@ const DashboardSidebar = ({ isOpen, onClose }) => {
       submenu: [
         {
           title: isRTL ? 'الطلبات المعلقة' : 'Demandes en attente',
-          path: '/dashboard/enrollments/pending',
+          path: '/dashboard/pending-enrollments',
           roles: ['admin', 'staff']
         },
         {
@@ -114,7 +117,7 @@ const DashboardSidebar = ({ isOpen, onClose }) => {
         },
         {
           title: isRTL ? 'الوثائق' : 'Documents',
-          path: '/dashboard/enrollments/documents',
+          path: '/dashboard/documents',
           roles: ['admin', 'staff']
         }
       ]
@@ -127,36 +130,18 @@ const DashboardSidebar = ({ isOpen, onClose }) => {
       submenu: [
         {
           title: isRTL ? 'الأولياء' : 'Parents',
-          path: '/dashboard/users/parents',
+          path: '/dashboard/parents',
           roles: ['admin']
         },
         {
           title: isRTL ? 'الموظفون' : 'Personnel',
-          path: '/dashboard/users/staff',
+          path: '/dashboard/staff',
           roles: ['admin']
         },
         {
           title: isRTL ? 'إضافة مستخدم' : 'Ajouter utilisateur',
-          path: '/dashboard/users/add',
+          path: '/dashboard/add-user',
           roles: ['admin']
-        }
-      ]
-    },
-    {
-      key: 'documents',
-      title: isRTL ? 'الوثائق' : 'Documents',
-      icon: FileText,
-      roles: ['admin', 'staff'],
-      submenu: [
-        {
-          title: isRTL ? 'وثائق التحميل' : 'Documents à télécharger',
-          path: '/dashboard/documents/download',
-          roles: ['admin', 'staff']
-        },
-        {
-          title: isRTL ? 'الوثائق المرفوعة' : 'Documents uploadés',
-          path: '/dashboard/documents/uploaded',
-          roles: ['admin', 'staff']
         }
       ]
     },
@@ -168,12 +153,12 @@ const DashboardSidebar = ({ isOpen, onClose }) => {
       submenu: [
         {
           title: isRTL ? 'إحصائيات عامة' : 'Statistiques générales',
-          path: '/dashboard/reports/stats',
+          path: '/dashboard/general-stats',
           roles: ['admin']
         },
         {
           title: isRTL ? 'تقرير الحضور' : 'Rapport présences',
-          path: '/dashboard/reports/attendance',
+          path: '/dashboard/attendance-report',
           roles: ['admin']
         }
       ]
@@ -184,7 +169,15 @@ const DashboardSidebar = ({ isOpen, onClose }) => {
       icon: Settings,
       path: '/dashboard/settings',
       roles: ['admin']
-    }
+    },
+    // Profil Parent - Affiché seulement si l'utilisateur a des enfants
+    ...(hasChildren ? [{
+      key: 'parent-profile',
+      title: isRTL ? 'ملفي الشخصي' : 'Mon Profil',
+      icon: User,
+      path: '/parent/profile',
+      roles: ['admin', 'staff', 'parent']
+    }] : [])
   ];
 
   const hasAccess = (roles) => {

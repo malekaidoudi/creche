@@ -10,7 +10,7 @@ import { Button } from '../../components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card'
 import DocumentUpload from '../../components/ui/DocumentUpload'
 import toast from 'react-hot-toast'
-import api from '../../config/api'
+import api from '../../services/api'
 
 const EnrollmentPage = () => {
   const { isRTL } = useLanguage()
@@ -22,6 +22,7 @@ const EnrollmentPage = () => {
   const [availableChildren, setAvailableChildren] = useState([])
   const [regulationScrolled, setRegulationScrolled] = useState(false)
   const regulationRef = useRef(null)
+  const [hasDifferentEmergencyContact, setHasDifferentEmergencyContact] = useState(false)
 
   // États pour les documents
   const [documents, setDocuments] = useState({
@@ -163,8 +164,16 @@ const EnrollmentPage = () => {
         formData.append('birth_date', data.birth_date)
         formData.append('gender', data.gender)
         formData.append('medical_info', data.medical_info || '')
-        formData.append('emergency_contact_name', data.emergency_contact_name)
-        formData.append('emergency_contact_phone', data.emergency_contact_phone)
+        // Contact d'urgence : utiliser le parent si pas de contact différent
+        const emergencyName = hasDifferentEmergencyContact && data.emergency_contact_name 
+          ? data.emergency_contact_name 
+          : `${data.parent_first_name} ${data.parent_last_name}`;
+        const emergencyPhone = hasDifferentEmergencyContact && data.emergency_contact_phone 
+          ? data.emergency_contact_phone 
+          : data.parent_phone;
+          
+        formData.append('emergency_contact_name', emergencyName)
+        formData.append('emergency_contact_phone', emergencyPhone)
         
         // Données du parent
         formData.append('parent_first_name', data.parent_first_name)
@@ -190,7 +199,7 @@ const EnrollmentPage = () => {
           formData.append('certificat_medical', documents.certificat_medical)
         }
 
-        const response = await api.post('/enrollments', formData, {
+        const response = await api.post('/public/enrollments', formData, {
           headers: {
             'Content-Type': 'multipart/form-data'
           }
@@ -448,41 +457,90 @@ const EnrollmentPage = () => {
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        {isRTL ? 'اسم جهة الاتصال للطوارئ' : 'Contact d\'urgence - Nom'} *
+                  {/* Contact d'urgence */}
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                      {isRTL ? 'جهة الاتصال للطوارئ' : 'Contact d\'urgence'}
+                    </h3>
+                    
+                    <div className="flex items-center justify-between mb-4">
+                      <label htmlFor="differentContact" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {isRTL ? 'شخص مختلف عن الوالد' : 'Personne différente du parent'}
                       </label>
-                      <input
-                        type="text"
-                        className={`w-full px-4 py-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent ${errors.emergency_contact_name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
-                        placeholder={isRTL ? 'اسم الشخص للاتصال' : 'Nom de la personne à contacter'}
-                        {...register('emergency_contact_name', {
-                          required: isRTL ? 'اسم جهة الاتصال مطلوب' : 'Le nom du contact est requis'
-                        })}
-                      />
-                      {errors.emergency_contact_name && (
-                        <p className="text-red-500 text-sm mt-1">{errors.emergency_contact_name.message}</p>
-                      )}
+                      
+                      {/* Toggle Switch */}
+                      <div className="relative">
+                        <input
+                          type="checkbox"
+                          id="differentContact"
+                          checked={hasDifferentEmergencyContact}
+                          onChange={(e) => setHasDifferentEmergencyContact(e.target.checked)}
+                          className="sr-only"
+                        />
+                        <label
+                          htmlFor="differentContact"
+                          className={`flex items-center cursor-pointer transition-colors duration-200 ${
+                            hasDifferentEmergencyContact ? 'text-primary-600' : 'text-gray-400'
+                          }`}
+                        >
+                          <div className={`relative w-12 h-6 rounded-full transition-colors duration-200 ${
+                            hasDifferentEmergencyContact ? 'bg-primary-600' : 'bg-gray-300 dark:bg-gray-600'
+                          }`}>
+                            <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-200 ${
+                              hasDifferentEmergencyContact ? 'translate-x-6' : 'translate-x-0'
+                            }`}></div>
+                          </div>
+                        </label>
+                      </div>
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        {isRTL ? 'هاتف جهة الاتصال للطوارئ' : 'Contact d\'urgence - Téléphone'} *
-                      </label>
-                      <input
-                        type="tel"
-                        className={`w-full px-4 py-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent ${errors.emergency_contact_phone ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
-                        placeholder={isRTL ? 'رقم الهاتف' : 'Numéro de téléphone'}
-                        {...register('emergency_contact_phone', {
-                          required: isRTL ? 'رقم الهاتف مطلوب' : 'Le numéro de téléphone est requis'
-                        })}
-                      />
-                      {errors.emergency_contact_phone && (
-                        <p className="text-red-500 text-sm mt-1">{errors.emergency_contact_phone.message}</p>
-                      )}
-                    </div>
+                    {!hasDifferentEmergencyContact && (
+                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
+                        <p className="text-sm text-blue-800 dark:text-blue-200">
+                          {isRTL ? 'سيتم استخدام معلومات الوالد كجهة اتصال للطوارئ' : 'Les informations du parent seront utilisées comme contact d\'urgence'}
+                        </p>
+                      </div>
+                    )}
                   </div>
+
+                  {/* Champs contact d'urgence (conditionnels) */}
+                  {hasDifferentEmergencyContact && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          {isRTL ? 'اسم جهة الاتصال للطوارئ' : 'Contact d\'urgence - Nom'} *
+                        </label>
+                        <input
+                          type="text"
+                          className={`w-full px-4 py-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent ${errors.emergency_contact_name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
+                          placeholder={isRTL ? 'اسم الشخص للاتصال' : 'Nom de la personne à contacter'}
+                          {...register('emergency_contact_name', {
+                            required: hasDifferentEmergencyContact ? (isRTL ? 'اسم جهة الاتصال مطلوب' : 'Le nom du contact est requis') : false
+                          })}
+                        />
+                        {errors.emergency_contact_name && (
+                          <p className="text-red-500 text-sm mt-1">{errors.emergency_contact_name.message}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          {isRTL ? 'هاتف جهة الاتصال للطوارئ' : 'Contact d\'urgence - Téléphone'} *
+                        </label>
+                        <input
+                          type="tel"
+                          className={`w-full px-4 py-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent ${errors.emergency_contact_phone ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
+                          placeholder={isRTL ? 'رقم الهاتف' : 'Numéro de téléphone'}
+                          {...register('emergency_contact_phone', {
+                            required: hasDifferentEmergencyContact ? (isRTL ? 'رقم الهاتف مطلوب' : 'Le numéro de téléphone est requis') : false
+                          })}
+                        />
+                        {errors.emergency_contact_phone && (
+                          <p className="text-red-500 text-sm mt-1">{errors.emergency_contact_phone.message}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -592,11 +650,7 @@ const EnrollmentPage = () => {
                       className={`w-full px-4 py-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent ${errors.parent_email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
                       placeholder={isRTL ? 'البريد الإلكتروني' : 'votre.email@exemple.com'}
                       {...register('parent_email', {
-                        required: isRTL ? 'البريد الإلكتروني مطلوب' : 'L\'email est requis',
-                        pattern: {
-                          value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                          message: isRTL ? 'البريد الإلكتروني غير صحيح' : 'Email invalide'
-                        }
+                        required: isRTL ? 'البريد الإلكتروني مطلوب' : 'L\'email est requis'
                       })}
                     />
                     {errors.parent_email && (
@@ -652,6 +706,7 @@ const EnrollmentPage = () => {
                       </label>
                       <input
                         type="date"
+                        defaultValue={new Date().toISOString().split('T')[0]}
                         className={`w-full px-4 py-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent ${errors.enrollment_date ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
                         {...register('enrollment_date', {
                           required: !isExistingChild ? (isRTL ? 'تاريخ التسجيل مطلوب' : 'La date d\'inscription est requise') : false
@@ -972,14 +1027,15 @@ const EnrollmentPage = () => {
                           {watch('enrollment_date')}
                         </span>
                       </div>
-                      {watch('emergency_contact_name') && (
-                        <div className="md:col-span-2">
-                          <span className="text-gray-600 dark:text-gray-300">{isRTL ? 'جهة الاتصال للطوارئ:' : 'Contact d\'urgence :'}</span>
-                          <span className="ml-2 rtl:ml-0 rtl:mr-2 font-medium text-gray-900 dark:text-white">
-                            {watch('emergency_contact_name')} - {watch('emergency_contact_phone')}
-                          </span>
-                        </div>
-                      )}
+                      <div className="md:col-span-2">
+                        <span className="text-gray-600 dark:text-gray-300">{isRTL ? 'جهة الاتصال للطوارئ:' : 'Contact d\'urgence :'}</span>
+                        <span className="ml-2 rtl:ml-0 rtl:mr-2 font-medium text-gray-900 dark:text-white">
+                          {hasDifferentEmergencyContact && watch('emergency_contact_name') 
+                            ? `${watch('emergency_contact_name')} - ${watch('emergency_contact_phone')}`
+                            : `${watch('parent_first_name')} ${watch('parent_last_name')} - ${watch('parent_phone')} ${isRTL ? '(الوالد)' : '(Parent)'}`
+                          }
+                        </span>
+                      </div>
                     </div>
                   </div>
 

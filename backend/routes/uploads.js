@@ -13,6 +13,9 @@ router.post('/document', authenticateToken, upload.single('document'), uploadCon
 // Lister les fichiers d'un enfant
 router.get('/child/:childId', authenticateToken, uploadController.getChildFiles);
 
+// Voir un fichier (affichage dans le navigateur)
+router.get('/view/:fileId', authenticateToken, uploadController.viewFile);
+
 // Télécharger un fichier
 router.get('/download/:fileId', authenticateToken, uploadController.downloadFile);
 

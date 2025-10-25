@@ -1,6 +1,8 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
+const multer = require('multer');
+const path = require('path');
 const User = require('../models/User');
 
 const router = express.Router();
@@ -8,6 +10,31 @@ const router = express.Router();
 // Configuration JWT
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+
+// Configuration Multer pour l'upload de photos de profil
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/profiles/')
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
+    cb(null, 'profile_image-' + uniqueSuffix + path.extname(file.originalname))
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB max
+  },
+  fileFilter: function (req, file, cb) {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Seules les images sont autorisées'), false);
+    }
+  }
+});
 
 // POST /api/auth/login
 router.post('/login', [
@@ -258,6 +285,72 @@ router.post('/change-password', [
     if (error.message.includes('incorrect')) {
       return res.status(400).json({ error: error.message });
     }
+    
+    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Token invalide ou expiré' });
+    }
+    
+    res.status(500).json({ error: 'Erreur interne du serveur' });
+  }
+});
+
+// PUT /api/auth/profile - Mettre à jour le profil utilisateur
+router.put('/profile', upload.single('profile_image'), [
+  body('first_name').optional().isLength({ min: 1 }).withMessage('Prénom requis'),
+  body('last_name').optional().isLength({ min: 1 }).withMessage('Nom requis'),
+  body('phone').optional().isMobilePhone('any').withMessage('Numéro de téléphone invalide')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        error: 'Données invalides', 
+        details: errors.array() 
+      });
+    }
+
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({ error: 'Token manquant' });
+    }
+
+    // Vérifier le token
+    const decoded = jwt.verify(token, JWT_SECRET);
+    
+    // Récupérer l'utilisateur actuel
+    const user = await User.findById(decoded.userId);
+    if (!user) {
+      return res.status(401).json({ error: 'Utilisateur non trouvé' });
+    }
+
+    // Préparer les données à mettre à jour
+    const updateData = {};
+    
+    if (req.body.first_name) updateData.first_name = req.body.first_name;
+    if (req.body.last_name) updateData.last_name = req.body.last_name;
+    if (req.body.phone) updateData.phone = req.body.phone;
+    
+    // Si une image a été uploadée
+    if (req.file) {
+      updateData.profile_image = `/uploads/profiles/${req.file.filename}`;
+    }
+
+    console.log('🔄 Données à mettre à jour:', updateData);
+    
+    // Mettre à jour l'utilisateur
+    const updatedUser = await User.updateProfile(decoded.userId, updateData);
+    
+    console.log('✅ Utilisateur mis à jour:', updatedUser);
+
+    res.json({
+      success: true,
+      message: 'Profil mis à jour avec succès',
+      user: updatedUser
+    });
+
+  } catch (error) {
+    console.error('Erreur lors de la mise à jour du profil:', error);
     
     if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
       return res.status(401).json({ error: 'Token invalide ou expiré' });

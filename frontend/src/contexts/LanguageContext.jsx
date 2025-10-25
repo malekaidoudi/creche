@@ -31,13 +31,8 @@ export function LanguageProvider({ children }) {
     if (LANGUAGES[languageCode]) {
       try {
         await i18n.changeLanguage(languageCode)
-        setCurrentLanguage(languageCode)
+        setCurrentLanguage(LANGUAGES[languageCode])
         localStorage.setItem('language', languageCode)
-        
-        // Mettre à jour les attributs du document
-        document.documentElement.lang = languageCode
-        document.documentElement.dir = LANGUAGES[languageCode].direction
-        
         // Mettre à jour le titre de la page si nécessaire
         if (languageCode === 'ar') {
           document.title = 'نظام إدارة الحضانة'

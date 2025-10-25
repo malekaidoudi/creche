@@ -55,18 +55,25 @@ const authenticateToken = async (req, res, next) => {
 // Middleware pour vérifier les rôles
 const requireRole = (...roles) => {
   return (req, res, next) => {
+    console.log('🔐 Vérification rôle - Utilisateur:', req.user);
+    console.log('🔐 Rôles requis:', roles);
+    console.log('🔐 Rôle utilisateur:', req.user?.role);
+    
     if (!req.user) {
+      console.log('❌ Pas d\'utilisateur dans req.user');
       return res.status(401).json({ 
         error: 'Authentification requise' 
       });
     }
 
     if (!roles.includes(req.user.role)) {
+      console.log('❌ Rôle insuffisant:', req.user.role, 'requis:', roles);
       return res.status(403).json({ 
         error: 'Accès refusé - Privilèges insuffisants' 
       });
     }
 
+    console.log('✅ Rôle autorisé:', req.user.role);
     next();
   };
 };

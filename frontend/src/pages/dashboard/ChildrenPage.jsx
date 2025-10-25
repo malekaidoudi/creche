@@ -12,6 +12,8 @@ import {
   Calendar,
   User,
   Phone,
+  Mail,
+  MessageSquare,
   MapPin,
   Clock,
   CheckCircle,
@@ -65,7 +67,7 @@ const ChildrenPage = () => {
         page: pagination.page,
         limit: pagination.limit,
         search: searchTerm,
-        status: filterStatus,
+        status: 'approved', // Toujours filtrer sur les enfants approuvés
         age: filterAge
       };
       
@@ -101,7 +103,7 @@ const ChildrenPage = () => {
       // Rechargement immédiat si pas de recherche
       loadChildren();
     }
-  }, [searchTerm, filterStatus, filterAge, pagination.page]);
+  }, [searchTerm, filterAge, pagination.page]);
 
   // Fonction pour rafraîchir les données
   const handleRefresh = () => {
@@ -145,20 +147,37 @@ const ChildrenPage = () => {
     setShowEditModal(true);
   };
 
-  // Fonction pour supprimer un enfant
-  const handleDeleteChild = async (childId) => {
-    if (!window.confirm(isRTL ? 'هل أنت متأكد من حذف هذا الطفل؟' : 'Êtes-vous sûr de vouloir supprimer cet enfant ?')) {
+  // Fonction pour désactiver le compte parent (remplace la suppression)
+  const handleDeactivateParent = async (child) => {
+    const confirmMessage = isRTL 
+      ? `هل أنت متأكد من إلغاء تفعيل حساب الوالد لـ ${child.first_name} ${child.last_name}؟\n\nسيتم:\n- إلغاء تفعيل حساب الوالد\n- إخفاء الطفل من القائمة\n- منع الوالد من الدخول للنظام`
+      : `Êtes-vous sûr de vouloir désactiver le compte parent de ${child.first_name} ${child.last_name} ?\n\nCeci va :\n- Désactiver le compte parent\n- Masquer l'enfant de la liste\n- Empêcher le parent de se connecter`;
+    
+    if (!window.confirm(confirmMessage)) {
       return;
     }
 
     try {
-      setActionLoading(childId);
-      await childrenService.deleteChild(childId);
-      toast.success(isRTL ? 'تم حذف الطفل بنجاح' : 'Enfant supprimé avec succès');
-      loadChildren(); // Recharger la liste
+      setActionLoading(child.id);
+      
+      // Appel API pour désactiver le parent
+      const response = await fetch(`http://localhost:3003/api/children/${child.id}/deactivate-parent`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        toast.success(isRTL ? 'تم إلغاء تفعيل حساب الوالد بنجاح' : 'Compte parent désactivé avec succès');
+        loadChildren(); // Recharger la liste
+      } else {
+        throw new Error('Erreur lors de la désactivation');
+      }
     } catch (error) {
-      console.error('Erreur suppression enfant:', error);
-      toast.error(error.response?.data?.error || (isRTL ? 'خطأ في حذف الطفل' : 'Erreur lors de la suppression'));
+      console.error('Erreur lors de la désactivation:', error);
+      toast.error(isRTL ? 'خطأ في إلغاء تفعيل الحساب' : 'Erreur lors de la désactivation du compte');
     } finally {
       setActionLoading(null);
     }
@@ -504,13 +523,23 @@ const ChildrenPage = () => {
               {isRTL ? 'تحديث' : 'Actualiser'}
             </Button>
             
-            {isAdmin() && (
-              <Button asChild>
-                <Link to="/dashboard/children/add">
-                  <Plus className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
-                  {isRTL ? 'إضافة طفل' : 'Ajouter enfant'}
-                </Link>
-              </Button>
+            {(isAdmin() || isStaff()) && (
+              <div className="flex gap-2">
+                <Button asChild>
+                  <Link to="/dashboard/children/add">
+                    <Plus className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                    {isRTL ? 'إضافة طفل' : 'Ajouter enfant'}
+                  </Link>
+                </Button>
+                {isStaff() && (
+                  <Button asChild variant="outline">
+                    <Link to="/dashboard/children/add?personal=true">
+                      <UserPlus className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                      {isRTL ? 'إضافة طفلي' : 'Mon enfant'}
+                    </Link>
+                  </Button>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -532,17 +561,6 @@ const ChildrenPage = () => {
               />
             </div>
 
-            {/* Filtre par statut */}
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            >
-              <option value="all">{isRTL ? 'جميع الحالات' : 'Tous les statuts'}</option>
-              <option value="approved">{isRTL ? 'مقبول' : 'Inscrits'}</option>
-              <option value="pending">{isRTL ? 'في الانتظار' : 'En attente'}</option>
-              <option value="rejected">{isRTL ? 'مرفوض' : 'Rejetés'}</option>
-            </select>
 
             {/* Filtre par âge */}
             <select
@@ -655,9 +673,19 @@ const ChildrenPage = () => {
                             </div>
                             <div className="flex items-center space-x-2 rtl:space-x-reverse">
                               <Phone className="w-3 h-3" />
-                              <span dir="ltr" className={isRTL ? 'text-right' : 'text-left'}>
-                                {child.parent_phone || (isRTL ? 'غير محدد' : 'Non spécifié')}
-                              </span>
+                              {child.parent_phone ? (
+                                <a 
+                                  href={`tel:${child.parent_phone}`}
+                                  className="text-blue-600 hover:text-blue-800 underline"
+                                  dir="ltr"
+                                >
+                                  {child.parent_phone}
+                                </a>
+                              ) : (
+                                <span dir="ltr" className={isRTL ? 'text-right' : 'text-left'}>
+                                  {isRTL ? 'غير محدد' : 'Non spécifié'}
+                                </span>
+                              )}
                             </div>
                           </>
                         ) : (
@@ -682,14 +710,14 @@ const ChildrenPage = () => {
                     </div>
 
                     {/* Informations médicales */}
-                    {child.medical_info && (
-                      <div className="text-sm">
-                        <span className="font-medium text-gray-900 dark:text-white">
-                          {isRTL ? 'معلومات طبية:' : 'Infos médicales:'}
-                        </span>
-                        <p className="text-gray-600 dark:text-gray-400 mt-1">{child.medical_info}</p>
-                      </div>
-                    )}
+                    <div className="text-sm">
+                      <span className="font-medium text-gray-900 dark:text-white">
+                        {isRTL ? 'معلومات طبية:' : 'Infos médicales:'}
+                      </span>
+                      <p className="text-gray-600 dark:text-gray-400 mt-1">
+                        {child.medical_info || (isRTL ? 'لا توجد معلومات طبية' : 'Aucune information médicale')}
+                      </p>
+                    </div>
 
                     {/* Actions */}
                     <div className="flex items-center justify-end space-x-2 rtl:space-x-reverse pt-2 border-t border-gray-200 dark:border-gray-700">
@@ -705,7 +733,12 @@ const ChildrenPage = () => {
                             {isRTL ? 'تعديل' : 'Modifier'}
                           </Button>
                           {isAdmin() && (
-                            <Button size="sm" variant="destructive" onClick={() => handleDeleteChild(child.id)}>
+                            <Button 
+                              size="sm" 
+                              variant="destructive" 
+                              onClick={() => handleDeactivateParent(child)}
+                              disabled={actionLoading === child.id}
+                            >
                               <Trash2 className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
                               {isRTL ? 'حذف' : 'Supprimer'}
                             </Button>
@@ -914,232 +947,141 @@ const ChildrenPage = () => {
                   </div>
                 </div>
                 
-                {/* Informations parent */}
-                {selectedChild.parent_first_name && (
-                  <div className="border-t pt-4">
-                    <h4 className="font-medium text-gray-900 dark:text-white mb-2">
-                      {isRTL ? 'معلومات الولي' : 'Informations du parent'}
-                    </h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                          {isRTL ? 'اسم الولي' : 'Nom du parent'}
-                        </label>
-                        <p className="mt-1 text-sm text-gray-900 dark:text-white">
-                          {selectedChild.parent_first_name} {selectedChild.parent_last_name}
-                        </p>
+                {/* Informations et actions de contact */}
+                <div className="border-t pt-6">
+                  <h4 className="font-medium text-gray-900 dark:text-white mb-4">
+                    {isRTL ? 'معلومات ووسائل الاتصال' : 'Informations et moyens de contact'}
+                  </h4>
+                  
+                  {/* Contact Parent */}
+                  {selectedChild.parent_first_name && (
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h5 className="font-medium text-blue-900 dark:text-blue-100">
+                          {isRTL ? '👤 الوالد' : '👤 Parent'}
+                        </h5>
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                          {isRTL ? 'هاتف الولي' : 'Téléphone du parent'}
-                        </label>
-                        <p className="mt-1 text-sm text-gray-900 dark:text-white" dir="ltr">
-                          {selectedChild.parent_phone}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Section Documents - Visible seulement pour admin et si demande pas encore approuvée */}
-                {isAdmin() && selectedChild?.status !== 'approved' && (
-                  <div className="border-t pt-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
-                        {isRTL ? 'الوثائق المطلوبة' : 'Documents requis'}
-                      </h4>
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        selectedChild?.status === 'pending'
-                          ? 'text-yellow-800 bg-yellow-100 dark:text-yellow-200 dark:bg-yellow-900'
-                          : 'text-red-800 bg-red-100 dark:text-red-200 dark:bg-red-900'
-                      }`}>
-                        {selectedChild?.status === 'pending'
-                          ? (isRTL ? 'في الانتظار' : 'En attente')
-                          : (isRTL ? 'مرفوض' : 'Rejeté')
-                        }
-                      </span>
-                    </div>
-                    
-                    {documentsLoading ? (
-                      <div className="flex items-center justify-center py-8">
-                        <RefreshCw className="w-6 h-6 animate-spin mr-3" />
-                        <span className="text-gray-600 dark:text-gray-400">
-                          {isRTL ? 'تحميل الوثائق...' : 'Chargement des documents...'}
-                        </span>
-                      </div>
-                    ) : childDocuments.length > 0 ? (
-                      <div className="grid gap-4">
-                        {childDocuments.map((doc) => (
-                          <div key={doc.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm">
-                            <div className="flex items-start justify-between">
-                              <div className="flex items-start space-x-3 rtl:space-x-reverse flex-1">
-                                <div className="flex-shrink-0">
-                                  <FileText className="w-8 h-8 text-blue-600" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <h5 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
-                                    {doc.name}
-                                  </h5>
-                                  <div className="flex items-center space-x-4 rtl:space-x-reverse text-xs text-gray-500 dark:text-gray-400">
-                                    <span>{doc.size}</span>
-                                    <span>•</span>
-                                    <span>{new Date(doc.uploadDate).toLocaleDateString()}</span>
-                                  </div>
-                                  <div className="mt-2">
-                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                      doc.status === 'approved' 
-                                        ? 'text-green-800 bg-green-100 dark:text-green-200 dark:bg-green-900'
-                                        : doc.status === 'pending'
-                                        ? 'text-yellow-800 bg-yellow-100 dark:text-yellow-200 dark:bg-yellow-900'
-                                        : 'text-red-800 bg-red-100 dark:text-red-200 dark:bg-red-900'
-                                    }`}>
-                                      {doc.status === 'approved' 
-                                        ? (isRTL ? '✓ مقبول' : '✓ Approuvé')
-                                        : doc.status === 'pending'
-                                        ? (isRTL ? '⏳ في الانتظار' : '⏳ En attente')
-                                        : (isRTL ? '✗ مرفوض' : '✗ Rejeté')
-                                      }
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                              
-                              {/* Boutons sur même ligne */}
-                              <div className="flex space-x-2 rtl:space-x-reverse ml-4 rtl:ml-0 rtl:mr-4">
-                                <Button 
-                                  size="sm" 
-                                  variant="outline"
-                                  onClick={() => handleViewDocument(doc)}
-                                  className="whitespace-nowrap"
-                                >
-                                  <Eye className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
-                                  {isRTL ? 'عرض' : 'Voir'}
-                                </Button>
-                                
-                                <Button 
-                                  size="sm" 
-                                  variant="outline"
-                                  onClick={() => handleDownloadDocument(doc)}
-                                  className="whitespace-nowrap"
-                                >
-                                  <Download className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
-                                  {isRTL ? 'تحميل' : 'Télécharger'}
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                        <FileText className="w-16 h-16 text-gray-400 mx-auto mb-3" />
-                        <p className="text-gray-500 dark:text-gray-400 mb-2">
-                          {isRTL ? 'لا توجد وثائق مرفوعة' : 'Aucun document téléchargé'}
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          {isRTL ? 'يرجى من الولي رفع الوثائق المطلوبة' : 'Le parent doit télécharger les documents requis'}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Actions d'approbation - Seulement pour admin */}
-                {isAdmin() && (
-                  <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                    <h5 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
-                      {isRTL ? 'إجراءات الإدارة' : 'Actions administratives'}
-                    </h5>
-                    
-                    {selectedChild?.status === 'pending' ? (
-                      <div className="flex gap-3">
-                        <Button 
-                          className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                          onClick={() => handleApproveChild(selectedChild)}
-                          disabled={actionLoading === 'approve'}
-                        >
-                          {actionLoading === 'approve' ? (
-                            <>
-                              <RefreshCw className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2 animate-spin" />
-                              {isRTL ? 'جاري القبول...' : 'Approbation...'}
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
-                              {isRTL ? 'قبول الطلب' : 'Approuver la demande'}
-                            </>
-                          )}
-                        </Button>
-                        
-                        <Button 
-                          variant="destructive" 
-                          className="flex-1"
-                          onClick={() => handleRejectChild(selectedChild)}
-                          disabled={actionLoading === 'reject'}
-                        >
-                          {actionLoading === 'reject' ? (
-                            <>
-                              <RefreshCw className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2 animate-spin" />
-                              {isRTL ? 'جاري الرفض...' : 'Rejet...'}
-                            </>
-                          ) : (
-                            <>
-                              <XCircle className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
-                              {isRTL ? 'رفض الطلب' : 'Rejeter la demande'}
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    ) : selectedChild?.status === 'approved' ? (
-                      <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-                        <div className="flex items-center">
-                          <CheckCircle className="w-5 h-5 text-green-600 mr-2 rtl:mr-0 rtl:ml-2" />
-                          <p className="text-sm text-green-800 dark:text-green-200">
-                            {isRTL ? 'تم قبول هذا الطلب وإدراج الطفل في النظام' : 'Cette demande a été approuvée et l\'enfant est inscrit'}
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <label className="block text-sm font-medium text-blue-700 dark:text-blue-300">
+                            {isRTL ? 'الاسم' : 'Nom'}
+                          </label>
+                          <p className="mt-1 text-sm text-blue-900 dark:text-blue-100">
+                            {selectedChild.parent_first_name} {selectedChild.parent_last_name}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-blue-700 dark:text-blue-300">
+                            {isRTL ? 'البريد الإلكتروني' : 'Email'}
+                          </label>
+                          <p className="mt-1 text-sm text-blue-900 dark:text-blue-100" dir="ltr">
+                            {selectedChild.parent_email || 'Non renseigné'}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-blue-700 dark:text-blue-300">
+                            {isRTL ? 'الهاتف' : 'Téléphone'}
+                          </label>
+                          <p className="mt-1 text-sm text-blue-900 dark:text-blue-100" dir="ltr">
+                            {selectedChild.parent_phone}
                           </p>
                         </div>
                       </div>
-                    ) : (
-                      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
-                        <p className="text-sm text-gray-600 dark:text-gray-400 text-center mb-3">
-                          {isRTL ? 'تم رفض هذا الطلب مسبقاً' : 'Cette demande a été rejetée'}
-                        </p>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="w-full"
-                          onClick={() => handleApproveChild(selectedChild)}
+                      
+                      {/* Actions de contact parent */}
+                      <div className="flex flex-wrap gap-2">
+                        {selectedChild.parent_email && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-blue-300 text-blue-700 hover:bg-blue-100"
+                            onClick={() => window.location.href = `mailto:${selectedChild.parent_email}`}
+                          >
+                            <Mail className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
+                            {isRTL ? 'إرسال إيميل' : 'Envoyer email'}
+                          </Button>
+                        )}
+                        {selectedChild.parent_phone && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-green-300 text-green-700 hover:bg-green-100"
+                              onClick={() => window.location.href = `tel:${selectedChild.parent_phone}`}
+                            >
+                              <Phone className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
+                              {isRTL ? 'اتصال' : 'Appeler'}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-purple-300 text-purple-700 hover:bg-purple-100"
+                              onClick={() => window.location.href = `sms:${selectedChild.parent_phone}`}
+                            >
+                              <MessageSquare className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
+                              {isRTL ? 'رسالة نصية' : 'SMS'}
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Contact d'urgence (si différent du parent) */}
+                  {selectedChild.emergency_contact_name && 
+                   selectedChild.emergency_contact_name !== `${selectedChild.parent_first_name} ${selectedChild.parent_last_name}` && (
+                    <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h5 className="font-medium text-orange-900 dark:text-orange-100">
+                          {isRTL ? '🚨 جهة الاتصال للطوارئ' : '🚨 Contact d\'urgence'}
+                        </h5>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <label className="block text-sm font-medium text-orange-700 dark:text-orange-300">
+                            {isRTL ? 'الاسم' : 'Nom'}
+                          </label>
+                          <p className="mt-1 text-sm text-orange-900 dark:text-orange-100">
+                            {selectedChild.emergency_contact_name}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-orange-700 dark:text-orange-300">
+                            {isRTL ? 'الهاتف' : 'Téléphone'}
+                          </label>
+                          <p className="mt-1 text-sm text-orange-900 dark:text-orange-100" dir="ltr">
+                            {selectedChild.emergency_contact_phone}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Actions de contact urgence */}
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-red-300 text-red-700 hover:bg-red-100"
+                          onClick={() => window.location.href = `tel:${selectedChild.emergency_contact_phone}`}
                         >
-                          {isRTL ? 'إعادة النظر في الطلب' : 'Reconsidérer la demande'}
+                          <Phone className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
+                          {isRTL ? 'اتصال طارئ' : 'Appel d\'urgence'}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-red-300 text-red-700 hover:bg-red-100"
+                          onClick={() => window.location.href = `sms:${selectedChild.emergency_contact_phone}`}
+                        >
+                          <MessageSquare className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
+                          {isRTL ? 'رسالة طارئة' : 'SMS d\'urgence'}
                         </Button>
                       </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Message pour non-admin */}
-                {!isAdmin() && (
-                  <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                      <p className="text-sm text-blue-800 dark:text-blue-200 text-center">
-                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                          selectedChild?.status === 'approved' 
-                            ? 'text-green-800 bg-green-100 dark:text-green-200 dark:bg-green-900'
-                            : selectedChild?.status === 'pending'
-                            ? 'text-yellow-800 bg-yellow-100 dark:text-yellow-200 dark:bg-yellow-900'
-                            : 'text-red-800 bg-red-100 dark:text-red-200 dark:bg-red-900'
-                        }`}>
-                          {selectedChild?.status === 'approved' 
-                            ? (isRTL ? '✓ مقبول' : '✓ Inscrit')
-                            : selectedChild?.status === 'pending'
-                            ? (isRTL ? '⏳ في الانتظار' : '⏳ En attente de validation')
-                            : (isRTL ? '✗ مرفوض' : '✗ Demande rejetée')
-                          }
-                        </span>
-                      </p>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
+
               </div>
               
               <div className="flex justify-end mt-6">
@@ -1162,7 +1104,7 @@ const ChildrenPage = () => {
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {isRTL ? 'تعديل بيانات الطفل' : 'Modifier les informations de l\'enfant'}
+                  {isRTL ? 'تعديل معلومات الاتصال والطبية' : 'Modifier les contacts et informations médicales'}
                 </h3>
                 <Button
                   variant="outline"
@@ -1176,118 +1118,79 @@ const ChildrenPage = () => {
                 </Button>
               </div>
               
-              <form className="space-y-4" onSubmit={handleSaveChild}>
-                {/* Informations de base */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      {isRTL ? 'الاسم الأول' : 'Prénom'}
-                    </label>
-                    <input
-                      type="text"
-                      value={editFormData.first_name || ''}
-                      onChange={(e) => handleFormChange('first_name', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      {isRTL ? 'اسم العائلة' : 'Nom de famille'}
-                    </label>
-                    <input
-                      type="text"
-                      value={editFormData.last_name || ''}
-                      onChange={(e) => handleFormChange('last_name', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      required
-                    />
+              <form className="space-y-6" onSubmit={handleSaveChild}>
+                {/* Informations non modifiables */}
+                <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                  <h4 className="font-medium text-gray-900 dark:text-white mb-3">
+                    {isRTL ? 'معلومات الطفل (غير قابلة للتعديل)' : 'Informations de l\'enfant (non modifiables)'}
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-600 dark:text-gray-400">{isRTL ? 'الاسم:' : 'Nom:'}</span>
+                      <span className="ml-2 rtl:ml-0 rtl:mr-2 font-medium text-gray-900 dark:text-white">
+                        {selectedChild.first_name} {selectedChild.last_name}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600 dark:text-gray-400">{isRTL ? 'تاريخ الميلاد:' : 'Date de naissance:'}</span>
+                      <span className="ml-2 rtl:ml-0 rtl:mr-2 font-medium text-gray-900 dark:text-white">
+                        {new Date(selectedChild.birth_date).toLocaleDateString()}
+                      </span>
+                    </div>
                   </div>
                 </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      {isRTL ? 'تاريخ الميلاد' : 'Date de naissance'}
-                    </label>
-                    <input
-                      type="date"
-                      value={editFormData.birth_date || ''}
-                      onChange={(e) => handleFormChange('birth_date', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      {isRTL ? 'الجنس' : 'Genre'}
-                    </label>
-                    <select
-                      value={editFormData.gender || 'M'}
-                      onChange={(e) => handleFormChange('gender', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      required
-                    >
-                      <option value="M">{isRTL ? 'ذكر' : 'Garçon'}</option>
-                      <option value="F">{isRTL ? 'أنثى' : 'Fille'}</option>
-                    </select>
-                  </div>
-                </div>
-                
+
+                {/* Informations médicales - Modifiable */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     {isRTL ? 'المعلومات الطبية' : 'Informations médicales'}
                   </label>
                   <textarea
                     value={editFormData.medical_info || ''}
                     onChange={(e) => handleFormChange('medical_info', e.target.value)}
-                    rows={3}
+                    rows={4}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    placeholder={isRTL ? 'أدخل المعلومات الطبية...' : 'Entrez les informations médicales...'}
+                    placeholder={isRTL ? 'أدخل المعلومات الطبية (حساسية، أدوية، ملاحظات خاصة...)' : 'Entrez les informations médicales (allergies, médicaments, notes spéciales...)'}
                   />
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      {isRTL ? 'جهة الاتصال الطارئة' : 'Contact d\'urgence'}
-                    </label>
-                    <input
-                      type="text"
-                      value={editFormData.emergency_contact_name || ''}
-                      onChange={(e) => handleFormChange('emergency_contact_name', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      {isRTL ? 'هاتف الطوارئ' : 'Téléphone d\'urgence'}
-                    </label>
-                    <input
-                      type="tel"
-                      value={editFormData.emergency_contact_phone || ''}
-                      onChange={(e) => handleFormChange('emergency_contact_phone', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      required
-                      dir="ltr"
-                    />
-                  </div>
-                </div>
-
+                {/* Contact d'urgence - Modifiable */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    {isRTL ? 'الحالة' : 'Statut'}
-                  </label>
-                  <select
-                    value={editFormData.status || 'pending'}
-                    onChange={(e) => handleFormChange('status', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  >
-                    <option value="pending">{isRTL ? 'في الانتظار' : 'En attente'}</option>
-                    <option value="approved">{isRTL ? 'مقبول' : 'Inscrit'}</option>
-                    <option value="rejected">{isRTL ? 'مرفوض' : 'Rejeté'}</option>
-                  </select>
+                  <h4 className="font-medium text-gray-900 dark:text-white mb-3">
+                    {isRTL ? 'جهة الاتصال للطوارئ' : 'Contact d\'urgence'}
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {isRTL ? 'الاسم الكامل' : 'Nom complet'}
+                      </label>
+                      <input
+                        type="text"
+                        value={editFormData.emergency_contact_name || ''}
+                        onChange={(e) => handleFormChange('emergency_contact_name', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        placeholder={isRTL ? 'اسم جهة الاتصال للطوارئ' : 'Nom du contact d\'urgence'}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {isRTL ? 'رقم الهاتف' : 'Numéro de téléphone'}
+                      </label>
+                      <input
+                        type="tel"
+                        value={editFormData.emergency_contact_phone || ''}
+                        onChange={(e) => handleFormChange('emergency_contact_phone', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        placeholder={isRTL ? '+33 6 12 34 56 78' : '+33 6 12 34 56 78'}
+                        required
+                        dir="ltr"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                    {isRTL ? 'يمكن أن يكون هذا الشخص هو الوالد أو شخص آخر موثوق' : 'Peut être le parent ou une autre personne de confiance'}
+                  </p>
                 </div>
                 
                 <div className="flex gap-3 mt-6">

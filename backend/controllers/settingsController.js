@@ -9,9 +9,8 @@ const settingsController = {
       let whereClause = isAdmin ? '1=1' : 'is_public = TRUE';
       
       const [settings] = await db.execute(`
-        SELECT setting_key, setting_value, setting_type, description, is_public
-        FROM settings 
-        WHERE ${whereClause}
+        SELECT setting_key, setting_value, 'string' as setting_type, description, 1 as is_public
+        FROM nursery_settings 
         ORDER BY setting_key
       `);
 

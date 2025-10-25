@@ -1,5 +1,4 @@
 import { Routes, Route } from 'react-router-dom'
-import { useLanguage } from './hooks/useLanguage'
 
 // Layouts
 import PublicLayout from './layouts/PublicLayout'
@@ -10,7 +9,7 @@ import HomePage from './pages/public/HomePage'
 import ArticlesPage from './pages/public/ArticlesPage'
 import ArticleDetailPage from './pages/public/ArticleDetailPage'
 import EnrollmentPage from './pages/public/EnrollmentPage'
-import ContactPage from './pages/public/ContactPage'
+import ContactPageDynamic from './pages/public/ContactPageDynamic'
 import VirtualTourPage from './pages/public/VirtualTourPage'
 
 // Pages d'authentification
@@ -18,29 +17,35 @@ import LoginPage from './pages/auth/LoginPage'
 import RegisterPage from './pages/auth/RegisterPage'
 
 // Pages parent
-import ParentSpacePage from './pages/parent/ParentSpacePage'
+import MySpacePage from './pages/parent/MySpacePage'
+import AttendanceParentPage from './pages/parent/AttendanceParentPage'
+import AbsenceRequestPage from './pages/parent/AbsenceRequestPage'
 
 // Pages dashboard
 import DashboardHome from './pages/dashboard/DashboardHome'
-import ProfilePage from './pages/dashboard/ProfilePage'
+import DashboardProfilePage from './pages/dashboard/ProfilePage'
 import ChildrenPage from './pages/dashboard/ChildrenPage'
 import AddChildPage from './pages/dashboard/AddChildPage'
 import EnrollmentsPage from './pages/dashboard/EnrollmentsPage'
 import AttendancePage from './pages/dashboard/AttendancePage'
 import DocumentsPage from './pages/dashboard/DocumentsPage'
-import MySpacePage from './pages/dashboard/MySpacePage'
+import PendingEnrollmentsPage from './pages/dashboard/PendingEnrollmentsPage'
+
+// Pages placeholder pour fonctionnalités non implémentées
+import ParentsPage from './pages/dashboard/ParentsPage'
+import StaffPage from './pages/dashboard/StaffPage'
+import AddUserPage from './pages/dashboard/AddUserPage'
+import GeneralStatsPage from './pages/dashboard/GeneralStatsPage'
+import AttendanceReportPage from './pages/dashboard/AttendanceReportPage'
+import DashboardSettingsPage from './pages/dashboard/DashboardSettingsPage'
 
 // Composants
 import ProtectedRoute from './components/auth/ProtectedRoute'
+import ErrorBoundary from './components/ErrorBoundary'
 
 
 
 function App() {
-  const { language, direction } = useLanguage()
-
-  document.documentElement.lang = language
-  document.documentElement.dir = direction
-
   return (
     <Routes>
       {/* Routes d'authentification */}
@@ -53,15 +58,41 @@ function App() {
         <Route path="articles" element={<ArticlesPage />} />
         <Route path="articles/:id" element={<ArticleDetailPage />} />
         <Route path="inscription" element={<EnrollmentPage />} />
-        <Route path="contact" element={<ContactPage />} />
+        <Route path="contact" element={<ContactPageDynamic />} />
         <Route path="visite-virtuelle" element={<VirtualTourPage />} />
         
-        {/* Espace parent (protégé) */}
+        {/* Mon Espace (protégé - parents + admin/staff avec enfants) */}
         <Route 
           path="mon-espace" 
           element={
+            <ProtectedRoute roles={['parent', 'admin', 'staff']}>
+              <MySpacePage />
+            </ProtectedRoute>
+          } 
+        />
+        
+        {/* Page profil unifiée (tous les utilisateurs connectés) */}
+        <Route 
+          path="profile" 
+          element={
+            <ProtectedRoute roles={['admin', 'staff', 'parent']}>
+              <DashboardProfilePage />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="attendance-parent" 
+          element={
             <ProtectedRoute roles={['parent']}>
-              <ParentSpacePage />
+              <AttendanceParentPage />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="absence-request" 
+          element={
+            <ProtectedRoute roles={['parent']}>
+              <AbsenceRequestPage />
             </ProtectedRoute>
           } 
         />
@@ -77,10 +108,11 @@ function App() {
         }
       >
         <Route index element={<DashboardHome />} />
-        <Route path="profile" element={<ProfilePage />} />
+        <Route path="profile" element={<DashboardProfilePage />} />
         <Route path="children" element={<ChildrenPage />} />
         <Route path="children/add" element={<AddChildPage />} />
         <Route path="enrollments" element={<EnrollmentsPage />} />
+        <Route path="pending-enrollments" element={<PendingEnrollmentsPage />} />
         <Route path="enrollments/today" element={<EnrollmentsPage />} />
         <Route path="enrollments/history" element={<EnrollmentsPage />} />
         <Route path="enrollments/stats" element={<EnrollmentsPage />} />
@@ -91,9 +123,20 @@ function App() {
         <Route path="documents" element={<DocumentsPage />} />
         <Route path="documents/download" element={<DocumentsPage />} />
         <Route path="documents/uploaded" element={<DocumentsPage />} />
-        <Route path="my-space" element={<MySpacePage />} />
-        {/* TODO: Ajouter d'autres routes dashboard */}
+        
+        {/* Pages placeholder pour fonctionnalités non implémentées */}
+        <Route path="parents" element={<ParentsPage />} />
+        <Route path="staff" element={<StaffPage />} />
+        <Route path="add-user" element={<AddUserPage />} />
+        <Route path="general-stats" element={<GeneralStatsPage />} />
+        <Route path="attendance-report" element={<AttendanceReportPage />} />
+        <Route path="settings" element={
+          <ErrorBoundary>
+            <DashboardSettingsPage />
+          </ErrorBoundary>
+        } />
       </Route>
+
 
       {/* Route 404 */}
       <Route

@@ -1,59 +1,273 @@
 const db = require('../config/database');
-const bcrypt = require('bcrypt');
 const nodemailer = require('nodemailer');
 
 const enrollmentsController = {
   // Obtenir toutes les demandes d'inscription
   getAllEnrollments: async (req, res) => {
     try {
-      const { page = 1, limit = 20, status = 'all' } = req.query;
-      const offset = (page - 1) * limit;
-
-      let whereClause = '1=1';
+      console.log('📋 Récupération des inscriptions...');
+      
+      const { page = 1, limit = 100, status = 'all' } = req.query;
+      
+      // Récupérer les inscriptions de base
+      let query = 'SELECT * FROM enrollments';
       let params = [];
 
-      // Filtrage par statut
       if (status !== 'all') {
-        whereClause += ' AND status = ?';
+        query += ' WHERE status = ?';
         params.push(status);
       }
 
-      const query = `
-        SELECT * FROM enrollments 
-        WHERE ${whereClause}
-        ORDER BY created_at DESC
-        LIMIT ? OFFSET ?
-      `;
+      // Ajouter LIMIT directement dans la requête pour éviter les problèmes de paramètres
+      const limitValue = parseInt(limit) || 100;
+      query += ` ORDER BY created_at DESC LIMIT ${limitValue}`;
 
-      const [enrollments] = await db.execute(query, [...params, parseInt(limit), offset]);
+      console.log('🔍 Exécution requête enrollments:', query, params);
+      const [enrollments] = await db.execute(query, params);
+      console.log(`✅ ${enrollments.length} inscriptions récupérées`);
 
-      // Compter le total pour la pagination
-      const countQuery = `SELECT COUNT(*) as total FROM enrollments WHERE ${whereClause}`;
-      const [countResult] = await db.execute(countQuery, params);
-      const total = countResult[0].total;
+      // Enrichir chaque inscription avec les données complètes
+      const enrichedEnrollments = [];
+      
+      for (const enrollment of enrollments) {
+        try {
+          // Récupérer les données du parent
+          const [parentData] = await db.execute(
+            'SELECT first_name, last_name, email, phone FROM users WHERE id = ?',
+            [enrollment.parent_id]
+          );
+          
+          // Récupérer les données de l'enfant
+          const [childData] = await db.execute(
+            'SELECT first_name, last_name, birth_date, gender, medical_info FROM children WHERE id = ?',
+            [enrollment.child_id]
+          );
+          
+          // Récupérer les fichiers associés à l'enfant
+          const [files] = await db.execute(
+            'SELECT id, filename, original_name, file_path, file_size, mime_type FROM uploads WHERE child_id = ?',
+            [enrollment.child_id]
+          );
 
-      // Parser les fichiers JSON
-      const enrollmentsWithFiles = enrollments.map(enrollment => ({
-        ...enrollment,
-        files: enrollment.files ? JSON.parse(enrollment.files) : []
-      }));
+          const parent = parentData[0] || {};
+          const child = childData[0] || {};
+          
+
+          // Créer l'inscription enrichie avec tous les champs
+          const enrichedEnrollment = {
+            // Données de l'inscription
+            id: enrollment.id,
+            parent_id: enrollment.parent_id,
+            child_id: enrollment.child_id,
+            enrollment_date: enrollment.enrollment_date,
+            status: enrollment.status,
+            lunch_assistance: enrollment.lunch_assistance,
+            regulation_accepted: enrollment.regulation_accepted,
+            appointment_date: enrollment.appointment_date,
+            appointment_time: enrollment.appointment_time,
+            admin_notes: enrollment.admin_notes,
+            created_at: enrollment.created_at,
+            updated_at: enrollment.updated_at,
+            
+            // Données du parent
+            parent_first_name: parent.first_name || '',
+            parent_last_name: parent.last_name || '',
+            parent_email: parent.email || '',
+            parent_phone: parent.phone || '',
+            
+            // Données de l'enfant
+            child_first_name: child.first_name || '',
+            child_last_name: child.last_name || '',
+            child_birth_date: child.birth_date || null,
+            child_gender: child.gender || '',
+            medical_info: child.medical_info || '',
+            
+            // Fichiers
+            files: files || []
+          };
+          
+          
+          enrichedEnrollments.push(enrichedEnrollment);
+
+        } catch (enrichError) {
+          console.error('❌ Erreur enrichissement inscription:', enrichError);
+          // Ajouter l'inscription de base en cas d'erreur
+          enrichedEnrollments.push({
+            ...enrollment,
+            files: [],
+            parent_first_name: '',
+            parent_last_name: '',
+            parent_email: '',
+            parent_phone: '',
+            child_first_name: '',
+            child_last_name: '',
+            child_birth_date: null,
+            child_gender: '',
+            medical_info: ''
+          });
+        }
+      }
 
       res.json({
-        enrollments: enrollmentsWithFiles,
+        enrollments: enrichedEnrollments,
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),
-          total,
-          pages: Math.ceil(total / limit)
+          total: enrichedEnrollments.length,
+          pages: Math.ceil(enrichedEnrollments.length / limit)
         }
       });
+
     } catch (error) {
-      console.error('Erreur récupération inscriptions:', error);
-      res.status(500).json({ error: 'Erreur serveur' });
+      console.error('❌ Erreur getAllEnrollments:', error);
+      console.error('Stack:', error.stack);
+      res.status(500).json({ error: 'Erreur lors de la récupération des inscriptions' });
     }
   },
 
-  // Obtenir une demande d'inscription par ID
+  // Approuver une demande d'inscription
+  approveEnrollment: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { appointment_date, admin_comment } = req.body;
+      
+      console.log('🔍 Approbation inscription ID:', id);
+      console.log('📅 Date RDV:', appointment_date);
+      console.log('💬 Commentaire:', admin_comment);
+
+      // Récupérer l'inscription avec les infos parent/enfant
+      const [enrollments] = await db.execute(`
+        SELECT e.*, 
+               u.email as parent_email, u.first_name as parent_first_name, 
+               c.first_name as child_first_name
+        FROM enrollments e
+        JOIN users u ON e.parent_id = u.id
+        JOIN children c ON e.child_id = c.id
+        WHERE e.id = ?
+      `, [id]);
+
+      if (enrollments.length === 0) {
+        return res.status(404).json({ error: 'Inscription non trouvée' });
+      }
+
+      const enrollment = enrollments[0];
+
+      if (enrollment.status !== 'pending') {
+        return res.status(400).json({ error: 'Cette inscription a déjà été traitée' });
+      }
+
+      // Mettre à jour le statut de l'inscription
+      await db.execute(
+        'UPDATE enrollments SET status = ?, appointment_date = ?, admin_notes = ?, updated_at = NOW() WHERE id = ?',
+        ['approved', appointment_date || null, admin_comment || null, id]
+      );
+
+      // Mettre à jour le statut de l'enfant
+      await db.execute(
+        'UPDATE children SET status = ?, updated_at = NOW() WHERE id = ?',
+        ['approved', enrollment.child_id]
+      );
+
+      // Activer le compte parent
+      await db.execute(
+        'UPDATE users SET is_active = 1, updated_at = NOW() WHERE id = ?',
+        [enrollment.parent_id]
+      );
+
+      // Envoyer l'email d'approbation
+      try {
+        console.log('📧 Envoi email d\'approbation à:', enrollment.parent_email);
+        await sendApprovalEmail(
+          enrollment.parent_email,
+          enrollment.parent_first_name,
+          enrollment.child_first_name,
+          appointment_date,
+          admin_comment
+        );
+        console.log('✅ Email d\'approbation envoyé');
+      } catch (emailError) {
+        console.error('❌ Erreur envoi email:', emailError);
+        // Ne pas faire échouer l'approbation si l'email échoue
+      }
+
+      res.json({
+        message: 'Demande approuvée avec succès',
+        enrollmentId: id,
+        childId: enrollment.child_id,
+        parentId: enrollment.parent_id
+      });
+
+    } catch (error) {
+      console.error('❌ Erreur approbation:', error);
+      res.status(500).json({ error: 'Erreur lors de l\'approbation' });
+    }
+  },
+
+  // Rejeter une demande d'inscription
+  rejectEnrollment: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { reason, admin_comment } = req.body;
+
+      console.log('🔍 Rejet inscription ID:', id);
+      console.log('📝 Raison:', reason);
+      console.log('💬 Commentaire:', admin_comment);
+
+      // Récupérer l'inscription avec les infos parent/enfant
+      const [enrollments] = await db.execute(`
+        SELECT e.*, 
+               u.email as parent_email, u.first_name as parent_first_name, 
+               c.first_name as child_first_name
+        FROM enrollments e
+        JOIN users u ON e.parent_id = u.id
+        JOIN children c ON e.child_id = c.id
+        WHERE e.id = ?
+      `, [id]);
+
+      if (enrollments.length === 0) {
+        return res.status(404).json({ error: 'Inscription non trouvée' });
+      }
+
+      const enrollment = enrollments[0];
+
+      if (enrollment.status !== 'pending') {
+        return res.status(400).json({ error: 'Cette inscription a déjà été traitée' });
+      }
+
+      // Mettre à jour le statut
+      await db.execute(
+        'UPDATE enrollments SET status = ?, rejection_reason = ?, admin_notes = ?, updated_at = NOW() WHERE id = ?',
+        ['rejected', reason || null, admin_comment || null, id]
+      );
+
+      // Envoyer l'email de rejet
+      try {
+        console.log('📧 Envoi email de rejet à:', enrollment.parent_email);
+        await sendRejectionEmail(
+          enrollment.parent_email,
+          enrollment.parent_first_name,
+          enrollment.child_first_name,
+          reason,
+          admin_comment
+        );
+        console.log('✅ Email de rejet envoyé');
+      } catch (emailError) {
+        console.error('❌ Erreur envoi email de rejet:', emailError);
+        // Ne pas faire échouer le rejet si l'email échoue
+      }
+
+      res.json({
+        message: 'Demande rejetée avec succès',
+        enrollmentId: id
+      });
+
+    } catch (error) {
+      console.error('❌ Erreur rejet:', error);
+      res.status(500).json({ error: 'Erreur lors du rejet' });
+    }
+  },
+
+  // Obtenir une inscription par ID
   getEnrollmentById: async (req, res) => {
     try {
       const { id } = req.params;
@@ -64,389 +278,57 @@ const enrollmentsController = {
       );
 
       if (enrollments.length === 0) {
-        return res.status(404).json({ error: 'Demande d\'inscription non trouvée' });
+        return res.status(404).json({ error: 'Inscription non trouvée' });
       }
 
-      const enrollment = enrollments[0];
-      enrollment.files = enrollment.files ? JSON.parse(enrollment.files) : [];
-
-      res.json(enrollment);
+      res.json(enrollments[0]);
     } catch (error) {
-      console.error('Erreur récupération inscription:', error);
-      res.status(500).json({ error: 'Erreur serveur' });
-    }
-  },
-
-  // Créer une nouvelle demande d'inscription (depuis le formulaire public)
-  createEnrollment: async (req, res) => {
-    try {
-      const {
-        child_first_name,
-        child_last_name,
-        child_birth_date,
-        child_gender,
-        child_medical_info,
-        emergency_contact_name,
-        emergency_contact_phone,
-        lunch_assistance,
-        preferred_start_date,
-        parent_first_name,
-        parent_last_name,
-        parent_email,
-        parent_phone,
-        parent_password
-      } = req.body;
-
-      // Validation des champs requis
-      if (!child_first_name || !child_last_name || !child_birth_date || !child_gender ||
-          !parent_first_name || !parent_last_name || !parent_email) {
-        return res.status(400).json({ error: 'Champs requis manquants' });
-      }
-
-      // Vérifier si l'email parent existe déjà
-      const [existingParents] = await db.execute(
-        'SELECT id FROM users WHERE email = ?',
-        [parent_email]
-      );
-
-      // Hasher le mot de passe si fourni
-      let hashedPassword = null;
-      if (parent_password) {
-        hashedPassword = await bcrypt.hash(parent_password, 10);
-      }
-
-      // Gérer les fichiers uploadés (si présents)
-      let files = [];
-      if (req.files && req.files.length > 0) {
-        files = req.files.map(file => ({
-          name: file.originalname,
-          path: file.path,
-          size: file.size,
-          type: file.mimetype
-        }));
-      }
-
-      const [result] = await db.execute(`
-        INSERT INTO enrollments (
-          child_first_name, child_last_name, child_birth_date, child_gender,
-          child_medical_info, emergency_contact_name, emergency_contact_phone,
-          lunch_assistance, preferred_start_date, parent_first_name, parent_last_name,
-          parent_email, parent_phone, parent_password, files
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `, [
-        child_first_name, child_last_name, child_birth_date, child_gender,
-        child_medical_info, emergency_contact_name, emergency_contact_phone,
-        lunch_assistance || false, preferred_start_date, parent_first_name, parent_last_name,
-        parent_email, parent_phone, hashedPassword, JSON.stringify(files)
-      ]);
-
-      // Envoyer un email de confirmation
-      await sendConfirmationEmail(parent_email, parent_first_name, child_first_name);
-
-      res.status(201).json({
-        message: 'Demande d\'inscription créée avec succès',
-        enrollmentId: result.insertId
-      });
-    } catch (error) {
-      console.error('Erreur création inscription:', error);
-      res.status(500).json({ error: 'Erreur lors de la création' });
-    }
-  },
-
-  // Approuver une demande d'inscription
-  approveEnrollment: async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { appointment_date, admin_comment } = req.body;
-
-      // Vérifier que la demande existe
-      const [enrollments] = await db.execute(
-        'SELECT * FROM enrollments WHERE id = ?',
-        [id]
-      );
-
-      if (enrollments.length === 0) {
-        return res.status(404).json({ error: 'Demande d\'inscription non trouvée' });
-      }
-
-      const enrollment = enrollments[0];
-
-      // Vérifier si le parent existe déjà
-      const [existingParents] = await db.execute(
-        'SELECT id FROM users WHERE email = ?',
-        [enrollment.parent_email]
-      );
-
-      let parentId = null;
-
-      // Créer le compte parent si il n'existe pas
-      if (existingParents.length === 0 && enrollment.parent_password) {
-        const [parentResult] = await db.execute(`
-          INSERT INTO users (first_name, last_name, email, password, phone, role)
-          VALUES (?, ?, ?, ?, ?, 'parent')
-        `, [
-          enrollment.parent_first_name,
-          enrollment.parent_last_name,
-          enrollment.parent_email,
-          enrollment.parent_password,
-          enrollment.parent_phone
-        ]);
-        parentId = parentResult.insertId;
-      } else if (existingParents.length > 0) {
-        parentId = existingParents[0].id;
-      }
-
-      // Créer l'enfant dans la table children
-      const [childResult] = await db.execute(`
-        INSERT INTO children (
-          first_name, last_name, birth_date, gender, parent_id,
-          medical_info, emergency_contact_name, emergency_contact_phone,
-          lunch_assistance, enrollment_date
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-      `, [
-        enrollment.child_first_name,
-        enrollment.child_last_name,
-        enrollment.child_birth_date,
-        enrollment.child_gender,
-        parentId,
-        enrollment.child_medical_info,
-        enrollment.emergency_contact_name,
-        enrollment.emergency_contact_phone,
-        enrollment.lunch_assistance
-      ]);
-
-      // Mettre à jour le statut de la demande
-      await db.execute(`
-        UPDATE enrollments 
-        SET status = 'approved', appointment_date = ?, admin_comment = ?, updated_at = NOW()
-        WHERE id = ?
-      `, [appointment_date, admin_comment, id]);
-
-      // Envoyer un email d'approbation
-      await sendApprovalEmail(
-        enrollment.parent_email,
-        enrollment.parent_first_name,
-        enrollment.child_first_name,
-        appointment_date
-      );
-
-      res.json({
-        message: 'Demande approuvée avec succès',
-        childId: childResult.insertId,
-        parentId
-      });
-    } catch (error) {
-      console.error('Erreur approbation inscription:', error);
-      res.status(500).json({ error: 'Erreur lors de l\'approbation' });
-    }
-  },
-
-  // Rejeter une demande d'inscription
-  rejectEnrollment: async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { reason } = req.body;
-
-      // Vérifier que la demande existe
-      const [enrollments] = await db.execute(
-        'SELECT * FROM enrollments WHERE id = ?',
-        [id]
-      );
-
-      if (enrollments.length === 0) {
-        return res.status(404).json({ error: 'Demande d\'inscription non trouvée' });
-      }
-
-      const enrollment = enrollments[0];
-
-      // Mettre à jour le statut de la demande
-      await db.execute(`
-        UPDATE enrollments 
-        SET status = 'rejected', admin_comment = ?, updated_at = NOW()
-        WHERE id = ?
-      `, [reason, id]);
-
-      // Envoyer un email de rejet
-      await sendRejectionEmail(
-        enrollment.parent_email,
-        enrollment.parent_first_name,
-        enrollment.child_first_name,
-        reason
-      );
-
-      res.json({ message: 'Demande rejetée avec succès' });
-    } catch (error) {
-      console.error('Erreur rejet inscription:', error);
-      res.status(500).json({ error: 'Erreur lors du rejet' });
+      console.error('❌ Erreur getEnrollmentById:', error);
+      res.status(500).json({ error: 'Erreur lors de la récupération' });
     }
   },
 
   // Obtenir les statistiques des inscriptions
   getEnrollmentStats: async (req, res) => {
     try {
-      const [totalResult] = await db.execute('SELECT COUNT(*) as total FROM enrollments');
-      const [pendingResult] = await db.execute('SELECT COUNT(*) as pending FROM enrollments WHERE status = "pending"');
-      const [approvedResult] = await db.execute('SELECT COUNT(*) as approved FROM enrollments WHERE status = "approved"');
-      const [rejectedResult] = await db.execute('SELECT COUNT(*) as rejected FROM enrollments WHERE status = "rejected"');
+      // Compter par statut
+      const [pending] = await db.execute('SELECT COUNT(*) as count FROM enrollments WHERE status = ?', ['pending']);
+      const [approved] = await db.execute('SELECT COUNT(*) as count FROM enrollments WHERE status = ?', ['approved']);
+      const [rejected] = await db.execute('SELECT COUNT(*) as count FROM enrollments WHERE status = ?', ['rejected']);
+      const [total] = await db.execute('SELECT COUNT(*) as count FROM enrollments');
 
-      const stats = {
-        total: totalResult[0].total,
-        pending: pendingResult[0].pending,
-        approved: approvedResult[0].approved,
-        rejected: rejectedResult[0].rejected
-      };
-
-      res.json(stats);
+      res.json({
+        pending: pending[0].count,
+        approved: approved[0].count,
+        rejected: rejected[0].count,
+        total: total[0].count
+      });
     } catch (error) {
-      console.error('Erreur statistiques inscriptions:', error);
-      res.status(500).json({ error: 'Erreur serveur' });
+      console.error('❌ Erreur getEnrollmentStats:', error);
+      res.status(500).json({ error: 'Erreur lors de la récupération des statistiques' });
     }
   },
 
-  // Approuver une inscription
-  approveEnrollment: async (req, res) => {
+  // Créer une nouvelle inscription (publique)
+  createEnrollment: async (req, res) => {
     try {
-      const { id } = req.params;
-      const { appointment_date, notes } = req.body;
-
-      // Récupérer l'inscription
-      const [enrollments] = await db.execute(
-        'SELECT * FROM enrollments WHERE id = ?',
-        [id]
-      );
-
-      if (enrollments.length === 0) {
-        return res.status(404).json({ error: 'Inscription non trouvée' });
-      }
-
-      const enrollment = enrollments[0];
-
-      // Vérifier si l'inscription est en attente
-      if (enrollment.status !== 'pending') {
-        return res.status(400).json({ error: 'Cette inscription a déjà été traitée' });
-      }
-
-      // Mettre à jour le statut
-      await db.execute(
-        'UPDATE enrollments SET status = ?, appointment_date = ?, notes = ?, updated_at = NOW() WHERE id = ?',
-        ['approved', appointment_date, notes, id]
-      );
-
-      // Créer le compte parent s'il n'existe pas
-      let parentId = null;
-      const [existingParents] = await db.execute(
-        'SELECT id FROM users WHERE email = ?',
-        [enrollment.parent_email]
-      );
-
-      if (existingParents.length === 0 && enrollment.parent_password) {
-        // Créer le compte parent
-        const [parentResult] = await db.execute(`
-          INSERT INTO users (first_name, last_name, email, password, phone, role)
-          VALUES (?, ?, ?, ?, ?, 'parent')
-        `, [
-          enrollment.parent_first_name,
-          enrollment.parent_last_name,
-          enrollment.parent_email,
-          enrollment.parent_password,
-          enrollment.parent_phone
-        ]);
-        parentId = parentResult.insertId;
-      } else {
-        parentId = existingParents[0]?.id;
-      }
-
-      // Créer l'enfant dans la table children
-      if (parentId) {
-        await db.execute(`
-          INSERT INTO children (
-            first_name, last_name, birth_date, gender, parent_id,
-            medical_info, emergency_contact, enrollment_status
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, 'approved')
-        `, [
-          enrollment.child_first_name,
-          enrollment.child_last_name,
-          enrollment.child_birth_date,
-          enrollment.child_gender,
-          parentId,
-          enrollment.child_medical_info,
-          `${enrollment.emergency_contact_name}: ${enrollment.emergency_contact_phone}`
-        ]);
-      }
-
-      // Envoyer email d'approbation
-      await sendApprovalEmail(
-        enrollment.parent_email,
-        enrollment.parent_first_name,
-        enrollment.child_first_name,
-        appointment_date
-      );
-
-      res.json({
-        success: true,
-        message: 'Inscription approuvée avec succès'
-      });
-
+      console.log('📝 Création nouvelle inscription...');
+      
+      // Cette fonction sera implémentée plus tard
+      // Pour l'instant, retournons une erreur temporaire
+      res.status(501).json({ error: 'Fonction en cours d\'implémentation' });
+      
     } catch (error) {
-      console.error('Erreur approbation inscription:', error);
-      res.status(500).json({ error: 'Erreur serveur' });
-    }
-  },
-
-  // Rejeter une inscription
-  rejectEnrollment: async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { reason, notes } = req.body;
-
-      // Récupérer l'inscription
-      const [enrollments] = await db.execute(
-        'SELECT * FROM enrollments WHERE id = ?',
-        [id]
-      );
-
-      if (enrollments.length === 0) {
-        return res.status(404).json({ error: 'Inscription non trouvée' });
-      }
-
-      const enrollment = enrollments[0];
-
-      // Vérifier si l'inscription est en attente
-      if (enrollment.status !== 'pending') {
-        return res.status(400).json({ error: 'Cette inscription a déjà été traitée' });
-      }
-
-      // Mettre à jour le statut
-      await db.execute(
-        'UPDATE enrollments SET status = ?, rejection_reason = ?, notes = ?, updated_at = NOW() WHERE id = ?',
-        ['rejected', reason, notes, id]
-      );
-
-      // Envoyer email de rejet
-      await sendRejectionEmail(
-        enrollment.parent_email,
-        enrollment.parent_first_name,
-        enrollment.child_first_name,
-        reason
-      );
-
-      res.json({
-        success: true,
-        message: 'Inscription rejetée avec succès'
-      });
-
-    } catch (error) {
-      console.error('Erreur rejet inscription:', error);
-      res.status(500).json({ error: 'Erreur serveur' });
+      console.error('❌ Erreur createEnrollment:', error);
+      res.status(500).json({ error: 'Erreur lors de la création' });
     }
   }
 };
 
-// Fonctions utilitaires pour l'envoi d'emails
-async function sendConfirmationEmail(email, parentName, childName) {
+// Fonction pour envoyer l'email d'approbation
+async function sendApprovalEmail(email, parentName, childName, appointmentDate, adminComment) {
   try {
-    // Configuration SMTP (à adapter selon vos paramètres)
-    const transporter = nodemailer.createTransporter({
+    const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: process.env.SMTP_PORT,
       secure: false,
@@ -456,58 +338,85 @@ async function sendConfirmationEmail(email, parentName, childName) {
       }
     });
 
-    const mailOptions = {
-      from: process.env.SMTP_USER,
-      to: email,
-      subject: 'Confirmation de votre demande d\'inscription - Crèche Mima Elghalia',
-      html: `
-        <h2>Confirmation de demande d'inscription</h2>
-        <p>Bonjour ${parentName},</p>
-        <p>Nous avons bien reçu votre demande d'inscription pour <strong>${childName}</strong>.</p>
-        <p>Votre demande est en cours de traitement. Nous vous contacterons prochainement.</p>
-        <p>Cordialement,<br>L'équipe de la Crèche Mima Elghalia</p>
-      `
-    };
+    const appointmentInfo = appointmentDate 
+      ? `<div style="background-color: #e8f5e8; padding: 15px; border-radius: 5px; margin: 20px 0;">
+           <p style="margin: 0; font-weight: bold; color: #2e7d32;">
+             📅 Rendez-vous fixé le : ${new Date(appointmentDate).toLocaleDateString('fr-FR')}
+           </p>
+         </div>`
+      : '';
 
-    await transporter.sendMail(mailOptions);
-  } catch (error) {
-    console.error('Erreur envoi email confirmation:', error);
-  }
-}
-
-async function sendApprovalEmail(email, parentName, childName, appointmentDate) {
-  try {
-    const transporter = nodemailer.createTransporter({
-      host: process.env.SMTP_HOST,
-      port: process.env.SMTP_PORT,
-      secure: false,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASSWORD
-      }
-    });
+    const commentInfo = adminComment
+      ? `<div style="background-color: #f0f8ff; padding: 15px; border-radius: 5px; margin: 20px 0;">
+           <p style="margin: 0; font-style: italic; color: #1976d2;">
+             💬 "${adminComment}"
+           </p>
+         </div>`
+      : '';
 
     const mailOptions = {
-      from: process.env.SMTP_USER,
+      from: process.env.EMAIL_FROM || process.env.SMTP_USER,
       to: email,
       subject: 'Inscription approuvée - Crèche Mima Elghalia',
       html: `
-        <h2>Félicitations ! Votre demande a été approuvée</h2>
-        <p>Bonjour ${parentName},</p>
-        <p>Nous avons le plaisir de vous informer que l'inscription de <strong>${childName}</strong> a été approuvée.</p>
-        ${appointmentDate ? `<p>Rendez-vous fixé le : <strong>${new Date(appointmentDate).toLocaleDateString()}</strong></p>` : ''}
-        <p>Vous pouvez maintenant accéder à votre espace parent avec vos identifiants.</p>
-        <p>Cordialement,<br>L'équipe de la Crèche Mima Elghalia</p>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+          <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <h2 style="color: #4CAF50; text-align: center; margin-bottom: 30px;">🎉 Félicitations ! Votre demande a été approuvée</h2>
+            
+            <p style="font-size: 16px; line-height: 1.6;">Bonjour <strong>${parentName}</strong>,</p>
+            
+            <p style="font-size: 16px; line-height: 1.6;">
+              Nous avons le plaisir de vous informer que l'inscription de <strong>${childName}</strong> 
+              à la Crèche Mima Elghalia a été <span style="color: #4CAF50; font-weight: bold;">approuvée</span> !
+            </p>
+            
+            ${appointmentInfo}
+            ${commentInfo}
+            
+            <div style="background-color: #f0f8ff; padding: 20px; border-radius: 5px; margin: 25px 0;">
+              <h3 style="color: #1976d2; margin-top: 0;">🔐 Accès à votre espace parent</h3>
+              <p style="margin-bottom: 15px;">Votre compte parent est maintenant <strong>activé</strong> ! Vous pouvez accéder à votre espace personnel :</p>
+              
+              <div style="text-align: center; margin: 20px 0;">
+                <a href="http://localhost:5173/login" 
+                   style="background-color: #4CAF50; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
+                  🚀 Accéder à mon espace parent
+                </a>
+              </div>
+              
+              <p style="font-size: 14px; color: #666;">
+                <strong>Vos identifiants de connexion :</strong><br>
+                Email : ${email}<br>
+                Mot de passe : celui que vous avez choisi lors de l'inscription
+              </p>
+            </div>
+            
+            <div style="border-top: 2px solid #4CAF50; padding-top: 20px; margin-top: 30px;">
+              <p style="font-size: 16px; line-height: 1.6;">
+                Nous sommes ravis d'accueillir <strong>${childName}</strong> dans notre crèche !
+              </p>
+              <p style="font-size: 16px; line-height: 1.6;">
+                Si vous avez des questions, n'hésitez pas à nous contacter.
+              </p>
+              <p style="font-size: 16px; line-height: 1.6; margin-bottom: 0;">
+                Cordialement,<br>
+                <strong>L'équipe de la Crèche Mima Elghalia</strong>
+              </p>
+            </div>
+          </div>
+        </div>
       `
     };
 
     await transporter.sendMail(mailOptions);
   } catch (error) {
     console.error('Erreur envoi email approbation:', error);
+    throw error;
   }
 }
 
-async function sendRejectionEmail(email, parentName, childName, reason) {
+// Fonction pour envoyer l'email de rejet
+async function sendRejectionEmail(email, parentName, childName, reason, adminComment) {
   try {
     const transporter = nodemailer.createTransporter({
       host: process.env.SMTP_HOST,
@@ -519,25 +428,124 @@ async function sendRejectionEmail(email, parentName, childName, reason) {
       }
     });
 
+    const reasonInfo = reason 
+      ? `<div style="background-color: #fef2f2; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #ef4444;">
+           <h4 style="margin: 0 0 10px 0; color: #dc2626; font-weight: bold;">Motif du rejet :</h4>
+           <p style="margin: 0; color: #7f1d1d;">${reason}</p>
+         </div>`
+      : '';
+
+    const commentInfo = adminComment
+      ? `<div style="background-color: #f0f8ff; padding: 15px; border-radius: 5px; margin: 20px 0;">
+           <h4 style="margin: 0 0 10px 0; color: #1976d2; font-weight: bold;">Commentaires administratifs :</h4>
+           <p style="margin: 0; color: #1565c0; font-style: italic;">"${adminComment}"</p>
+         </div>`
+      : '';
+
     const mailOptions = {
-      from: process.env.SMTP_USER,
+      from: process.env.EMAIL_FROM || process.env.SMTP_USER,
       to: email,
-      subject: 'Réponse à votre demande d\'inscription - Crèche Mima Elghalia',
+      subject: 'Demande d\'inscription rejetée - Crèche Mima Elghalia',
       html: `
-        <h2>Réponse à votre demande d'inscription</h2>
-        <p>Bonjour ${parentName},</p>
-        <p>Nous vous remercions pour votre demande d'inscription pour <strong>${childName}</strong>.</p>
-        <p>Malheureusement, nous ne pouvons pas donner suite à votre demande pour le moment.</p>
-        ${reason ? `<p>Motif : ${reason}</p>` : ''}
-        <p>N'hésitez pas à nous recontacter ultérieurement.</p>
-        <p>Cordialement,<br>L'équipe de la Crèche Mima Elghalia</p>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+          <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            <h2 style="color: #dc2626; text-align: center; margin-bottom: 30px;">Demande d'inscription non retenue</h2>
+            
+            <p style="font-size: 16px; line-height: 1.6;">Bonjour <strong>${parentName}</strong>,</p>
+            
+            <p style="font-size: 16px; line-height: 1.6;">
+              Nous vous remercions pour votre demande d'inscription de <strong>${childName}</strong> 
+              à la Crèche Mima Elghalia.
+            </p>
+            
+            <p style="font-size: 16px; line-height: 1.6;">
+              Après examen de votre dossier, nous regrettons de vous informer que nous ne pouvons pas 
+              donner suite favorablement à votre demande pour le moment.
+            </p>
+            
+            ${reasonInfo}
+            ${commentInfo}
+            
+            <div style="background-color: #f0f8ff; padding: 20px; border-radius: 5px; margin: 25px 0;">
+              <h3 style="color: #1976d2; margin-top: 0;">💡 Que faire maintenant ?</h3>
+              <ul style="margin: 10px 0; padding-left: 20px; color: #1565c0;">
+                <li>Vous pouvez corriger les éléments mentionnés et soumettre une nouvelle demande</li>
+                <li>N'hésitez pas à nous contacter pour plus d'informations</li>
+                <li>Nous vous encourageons à renouveler votre demande ultérieurement</li>
+              </ul>
+            </div>
+            
+            <div style="border-top: 2px solid #dc2626; padding-top: 20px; margin-top: 30px;">
+              <p style="font-size: 16px; line-height: 1.6;">
+                Nous vous remercions de votre compréhension et restons à votre disposition 
+                pour toute question concernant cette décision.
+              </p>
+              <p style="font-size: 16px; line-height: 1.6; margin-bottom: 0;">
+                Cordialement,<br>
+                <strong>L'équipe de la Crèche Mima Elghalia</strong>
+              </p>
+            </div>
+          </div>
+        </div>
       `
     };
 
     await transporter.sendMail(mailOptions);
   } catch (error) {
     console.error('Erreur envoi email rejet:', error);
+    throw error;
   }
 }
+
+// Ajouter la méthode pour récupérer les inscriptions d'un parent
+enrollmentsController.getEnrollmentsByParent = async (req, res) => {
+  try {
+    const { parentId } = req.params;
+    console.log(`📋 Récupération des inscriptions pour le parent ${parentId}...`);
+    
+    // Vérifier que l'utilisateur connecté peut accéder à ces données
+    console.log('🔐 Vérification permissions:', {
+      userRole: req.user.role,
+      userId: req.user.id,
+      requestedParentId: parentId
+    });
+    
+    if (req.user.role !== 'admin' && req.user.role !== 'staff' && req.user.id != parentId) {
+      console.log('❌ Accès refusé pour l\'utilisateur:', req.user.id, 'demandant parent:', parentId);
+      return res.status(403).json({ error: 'Accès non autorisé' });
+    }
+    
+    console.log('✅ Accès autorisé pour l\'utilisateur:', req.user.id);
+
+    // Récupérer les inscriptions du parent avec les données des enfants
+    const query = `
+      SELECT 
+        e.*,
+        c.first_name as child_first_name,
+        c.last_name as child_last_name,
+        c.birth_date as child_birth_date,
+        c.gender as child_gender
+      FROM enrollments e
+      LEFT JOIN children c ON e.child_id = c.id
+      WHERE e.parent_id = ?
+      ORDER BY e.created_at DESC
+    `;
+
+    const [enrollments] = await db.execute(query, [parentId]);
+    console.log(`✅ ${enrollments.length} inscriptions trouvées pour le parent ${parentId}`);
+
+    res.json({
+      success: true,
+      enrollments: enrollments
+    });
+
+  } catch (error) {
+    console.error('Erreur lors de la récupération des inscriptions du parent:', error);
+    res.status(500).json({ 
+      error: 'Erreur interne du serveur',
+      details: error.message 
+    });
+  }
+};
 
 module.exports = enrollmentsController;

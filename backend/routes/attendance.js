@@ -11,8 +11,14 @@ router.get('/today', authenticateToken, requireStaff, attendanceController.getTo
 // GET /api/attendance/date/:date - Obtenir les présences pour une date donnée (Admin/Staff)
 router.get('/date/:date', authenticateToken, requireStaff, attendanceController.getAttendanceByDate);
 
-// GET /api/attendance/stats - Obtenir les statistiques de présence (Admin/Staff)
-router.get('/stats', authenticateToken, requireStaff, attendanceController.getAttendanceStats);
+// GET /api/attendance/stats - Obtenir les statistiques de présence
+router.get('/stats', authenticateToken, attendanceController.getAttendanceStats);
+
+// GET /api/attendance/report - Obtenir un rapport d'attendance avec filtres
+router.get('/report', authenticateToken, attendanceController.getAttendanceReport);
+
+// Obtenir les présences d'un enfant pour un mois donné
+router.get('/child/:childId/month', authenticateToken, attendanceController.getChildMonthlyAttendance);
 
 // GET /api/attendance/currently-present - Obtenir les enfants actuellement présents (Admin/Staff)
 router.get('/currently-present', authenticateToken, requireStaff, attendanceController.getCurrentlyPresent);

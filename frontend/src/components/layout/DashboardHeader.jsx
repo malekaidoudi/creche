@@ -1,16 +1,25 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, Bell, User, LogOut, Settings, ChevronDown } from 'lucide-react';
+import { Menu, Bell, User, LogOut, Settings, ChevronDown, Home } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
+import { useNotifications } from '../../hooks/useNotifications';
 import ThemeToggle from '../ui/ThemeToggle';
 import LanguageToggle from '../ui/LanguageToggle';
+import SimpleNotificationCenter from '../dashboard/SimpleNotificationCenter';
+import ErrorBoundary from '../ui/ErrorBoundary';
 import API_CONFIG from '../../config/api';
 
 const DashboardHeader = ({ onMenuClick }) => {
   const { user, logout } = useAuth();
   const { isRTL } = useLanguage();
+  
+  // Utiliser les notifications seulement pour admin/staff
+  const notificationsHook = useNotifications();
+  const { unreadCount } = (user?.role === 'admin' || user?.role === 'staff') ? notificationsHook : { unreadCount: 0 };
+  
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
   const userMenuRef = useRef(null);
 
   // Fermer le menu utilisateur quand on clique ailleurs
@@ -81,12 +90,32 @@ const DashboardHeader = ({ onMenuClick }) => {
 
           {/* Actions */}
           <div className="flex items-center space-x-4 rtl:space-x-reverse">
-            {/* Notifications */}
-            <button className="p-2 text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 relative">
-              <Bell className="w-6 h-6" />
-              {/* Badge de notification */}
-              <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
-            </button>
+            {/* Lien retour au site */}
+            <Link
+              to="/"
+              className="flex items-center px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+              title={isRTL ? 'العودة إلى الموقع' : 'Retour au site'}
+            >
+              <Home className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+              <span className="hidden sm:inline">
+                {isRTL ? 'الموقع' : 'Site'}
+              </span>
+            </Link>
+            {/* Notifications - Visible seulement pour admin/staff */}
+            {(user?.role === 'admin' || user?.role === 'staff') && (
+              <button 
+                onClick={() => setNotificationOpen(true)}
+                className="p-2 text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 relative transition-colors"
+              >
+                <Bell className="w-6 h-6" />
+                {/* Badge de notification */}
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+              </button>
+            )}
 
             {/* Toggles */}
             <ThemeToggle />
@@ -135,32 +164,12 @@ const DashboardHeader = ({ onMenuClick }) => {
                   <div className="py-1">
                     {/* Informations utilisateur */}
                     <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                      <div className="flex items-center space-x-3 rtl:space-x-reverse">
-                        <div className="w-10 h-10 rounded-full overflow-hidden bg-primary-100 dark:bg-primary-900 flex items-center justify-center flex-shrink-0">
-                          {user?.profile_image ? (
-                            <img
-                              src={`${API_CONFIG.BASE_URL}${user.profile_image}`}
-                              alt="Photo de profil"
-                              className="w-10 h-10 object-cover"
-                              crossOrigin="anonymous"
-                              onError={(e) => {
-                                console.error('❌ Erreur chargement image dropdown:', e.target.src);
-                                e.target.style.display = 'none';
-                                e.target.nextElementSibling.style.display = 'flex';
-                              }}
-                            />
-                          ) : null}
-                          <div className={`w-10 h-10 flex items-center justify-center ${user?.profile_image ? 'hidden' : ''}`}>
-                            <User className="w-6 h-6 text-primary-600 dark:text-primary-400" />
-                          </div>
+                      <div className="text-center">
+                        <div className="text-sm font-medium text-gray-900 dark:text-white">
+                          {user?.first_name} {user?.last_name}
                         </div>
-                        <div>
-                          <div className="text-sm font-medium text-gray-900 dark:text-white">
-                            {user?.first_name} {user?.last_name}
-                          </div>
-                          <div className="text-sm text-gray-500 dark:text-gray-400">
-                            {user?.email}
-                          </div>
+                        <div className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                          {user?.email}
                         </div>
                       </div>
                     </div>
@@ -200,6 +209,17 @@ const DashboardHeader = ({ onMenuClick }) => {
           </div>
         </div>
       </div>
+      
+      {/* Centre de notifications avec ErrorBoundary */}
+      <ErrorBoundary 
+        fallbackMessage="Erreur lors du chargement des notifications"
+        showRetry={true}
+      >
+        <SimpleNotificationCenter 
+          isOpen={notificationOpen}
+          onClose={() => setNotificationOpen(false)}
+        />
+      </ErrorBoundary>
     </header>
   );
 };

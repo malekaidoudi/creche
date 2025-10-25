@@ -153,6 +153,33 @@ class User {
     return await this.findById(id);
   }
 
+  // Mettre à jour le profil utilisateur (pour les utilisateurs connectés)
+  static async updateProfile(id, profileData) {
+    const { first_name, last_name, phone, profile_image } = profileData;
+    
+    // Vérifier si l'utilisateur existe
+    const existingUser = await this.findById(id);
+    if (!existingUser) {
+      throw new Error('Utilisateur non trouvé');
+    }
+
+    const sql = `
+      UPDATE users 
+      SET first_name = ?, last_name = ?, phone = ?, profile_image = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `;
+    
+    await query(sql, [
+      first_name || existingUser.first_name,
+      last_name || existingUser.last_name,
+      phone || existingUser.phone,
+      profile_image || existingUser.profile_image,
+      id
+    ]);
+
+    return await this.findById(id);
+  }
+
   // Supprimer un utilisateur (soft delete)
   static async delete(id) {
     const sql = 'UPDATE users SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = ?';

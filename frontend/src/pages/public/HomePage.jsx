@@ -44,7 +44,7 @@ const HomePage = () => {
 
               {/* Subtitle */}
               <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 leading-relaxed max-w-2xl">
-                {isRTL ? 'مرحباً بكم في ميما الغالية' : 'Bienvenue chez Mima Elghalia'}
+                {isRTL ? 'مرحباً بكم في ميما الغالية حيث ينمو كل طفل في بيئة محبة ومحفزة.' : 'Bienvenue chez Mima Elghalia où chaque enfant grandit dans un environnement bienveillant et stimulant.'}
               </p>
 
               {/* Features List */}
@@ -123,6 +123,52 @@ const HomePage = () => {
         </div>
       </section>
 
+      {/* Section d'accueil pour utilisateurs connectés */}
+      {isAuthenticated && (
+        <section className="py-16 bg-gradient-to-br from-blue-600 to-purple-600 dark:from-gray-800 dark:to-gray-900">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
+              {isRTL
+                ? `مرحباً بك ${user?.first_name || ''}`
+                : `Bienvenue ${user?.first_name || ''}`
+              }
+            </h2>
+            <p className="text-xl text-blue-100 dark:text-gray-300 mb-8">
+              {isRTL
+                ? 'اكتشف جميع الخدمات المتاحة لك ولطفلك'
+                : 'Découvrez tous les services disponibles pour vous et votre enfant'
+              }
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              {/* Dashboard seulement pour admin et staff */}
+              {(user?.role === 'admin' || user?.role === 'staff') && (
+                <Link
+                  to="/dashboard"
+                  className="bg-white text-blue-600 hover:bg-gray-50 px-8 py-4 rounded-xl font-bold text-lg transition-colors duration-300"
+                >
+                  {isRTL ? 'لوحة التحكم' : 'Accéder au Dashboard'}
+                </Link>
+              )}
+              {/* Mon Espace pour les parents */}
+              {user?.role === 'parent' && (
+                <Link
+                  to="/mon-espace"
+                  className="bg-white text-blue-600 hover:bg-gray-50 px-8 py-4 rounded-xl font-bold text-lg transition-colors duration-300"
+                >
+                  {isRTL ? 'مساحتي' : 'Mon Espace'}
+                </Link>
+              )}
+              <Link
+                to="/contact"
+                className="border-2 border-white text-white hover:bg-white hover:text-blue-600 px-8 py-4 rounded-xl font-bold text-lg transition-colors duration-300"
+              >
+                {isRTL ? 'تواصل معنا' : 'Nous contacter'}
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Features Section */}
       <section className="py-20 bg-gray-50 dark:bg-gray-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -175,37 +221,39 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Call to Action */}
-      <section className="py-20 bg-gradient-to-br from-blue-600 to-purple-600 dark:from-gray-800 dark:to-gray-900">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
-            {isRTL
-              ? 'هل أنت مستعد لبدء رحلة طفلك معنا؟'
-              : 'Prêt à commencer l\'aventure de votre enfant avec nous ?'
-            }
-          </h2>
-          <p className="text-xl text-blue-100 dark:text-gray-300 mb-8">
-            {isRTL
-              ? 'انضموا إلى عائلتنا الكبيرة واكتشفوا الفرق'
-              : 'Rejoignez notre grande famille et découvrez la différence'
-            }
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              to="/inscription"
-              className="bg-white text-blue-600 hover:bg-gray-50 px-8 py-4 rounded-xl font-bold text-lg transition-colors duration-300"
-            >
-              {isRTL ? 'سجل الآن' : 'Inscription gratuite'}
-            </Link>
-            <Link
-              to="/contact"
-              className="border-2 border-white text-white hover:bg-white hover:text-blue-600 px-8 py-4 rounded-xl font-bold text-lg transition-colors duration-300"
-            >
-              {isRTL ? 'تواصل معنا' : 'Nous contacter'}
-            </Link>
+      {/* Call to Action pour non-connectés seulement */}
+      {!isAuthenticated && (
+        <section className="py-20 bg-gradient-to-br from-blue-600 to-purple-600 dark:from-gray-800 dark:to-gray-900">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
+              {isRTL
+                ? 'هل أنت مستعد لبدء رحلة طفلك معنا؟'
+                : 'Prêt à commencer l\'aventure de votre enfant avec nous ?'
+              }
+            </h2>
+            <p className="text-xl text-blue-100 dark:text-gray-300 mb-8">
+              {isRTL
+                ? 'انضموا إلى عائلتنا الكبيرة واكتشفوا الفرق'
+                : 'Rejoignez notre grande famille et découvrez la différence'
+              }
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link
+                to="/inscription"
+                className="bg-white text-blue-600 hover:bg-gray-50 px-8 py-4 rounded-xl font-bold text-lg transition-colors duration-300"
+              >
+                {isRTL ? 'سجل الآن' : 'Inscription gratuite'}
+              </Link>
+              <Link
+                to="/contact"
+                className="border-2 border-white text-white hover:bg-white hover:text-blue-600 px-8 py-4 rounded-xl font-bold text-lg transition-colors duration-300"
+              >
+                {isRTL ? 'تواصل معنا' : 'Nous contacter'}
+              </Link>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
     </div>
   )
 }

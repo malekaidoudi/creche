@@ -2,11 +2,10 @@
 
 ## 📋 Prérequis
 
-- Compte Railway (pour le backend)
 - Compte GitHub (pour le frontend)
 - Node.js 18+ installé localement
 
-## 🔧 Backend - Déploiement sur Railway
+## 🔧 Backend - Déploiement sur serveur
 
 ### 1. Préparation du projet
 
@@ -15,38 +14,40 @@ cd backend
 npm install
 ```
 
-### 2. Variables d'environnement Railway
+### 2. Variables d'environnement
 
-Configurer les variables suivantes dans Railway :
+Configurer les variables suivantes dans un fichier `.env` :
 
 ```env
 NODE_ENV=production
 PORT=3003
-DB_HOST=your_mysql_host
-DB_USER=your_mysql_user
-DB_PASSWORD=your_mysql_password
-DB_NAME=your_database_name
-JWT_SECRET=your_jwt_secret_key
-UPLOAD_PATH=/app/uploads
+DB_HOST=localhost
+DB_USER=creche_user
+DB_PASSWORD=secure_password
+DB_NAME=mima_elghalia_db
+JWT_SECRET=your-super-secret-jwt-key-here
+UPLOAD_PATH=/var/www/uploads
 ```
 
 ### 3. Base de données MySQL
 
-Railway fournit automatiquement une base MySQL. Utiliser les variables :
-- `MYSQLHOST`
-- `MYSQLUSER` 
-- `MYSQLPASSWORD`
-- `MYSQLDATABASE`
-- `MYSQLPORT`
+Créer la base de données et l'utilisateur :
+
+```sql
+CREATE DATABASE mima_elghalia_db;
+CREATE USER 'creche_user'@'localhost' IDENTIFIED BY 'secure_password';
+GRANT ALL PRIVILEGES ON mima_elghalia_db.* TO 'creche_user'@'localhost';
+FLUSH PRIVILEGES;
+```
 
 ### 4. Déploiement
 
-1. Connecter le repository GitHub à Railway
-2. Sélectionner le dossier `backend/`
-3. Railway détectera automatiquement le `package.json`
-4. Le déploiement se fera automatiquement
+1. Cloner le repository sur le serveur
+2. Installer les dépendances : `npm install`
+3. Configurer les variables d'environnement
+4. Démarrer avec PM2 ou équivalent
 
-**URL Backend**: `https://your-app-name.up.railway.app`
+**URL Backend**: `https://your-domain.com/api`
 
 ## 🌐 Frontend - Déploiement sur GitHub Pages
 
@@ -60,7 +61,7 @@ Modifier dans le workflow :
 
 ```yaml
 env:
-  VITE_API_URL: https://your-backend-url.up.railway.app
+  VITE_API_URL: https://your-backend-url.com
 ```
 
 ### 3. Activation GitHub Pages
@@ -85,15 +86,13 @@ const allowedOrigins = [
 
 ## 📊 Monitoring
 
-### Backend (Railway)
-- Logs disponibles dans le dashboard Railway
-- Métriques de performance automatiques
-- Health check sur `/api/health`
+### Backend
+- Logs serveur via PM2 ou système de logs
+- Monitoring des performances et erreurs
 
 ### Frontend (GitHub Pages)
-- Build logs dans Actions
-- Déploiement automatique
-- CDN global de GitHub
+- Actions disponibles dans l'onglet Actions du repository
+- Logs de build visibles dans chaque workflow
 
 ## 🔧 Maintenance
 
