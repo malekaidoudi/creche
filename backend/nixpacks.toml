@@ -1,0 +1,15 @@
+[phases.setup]
+nixPkgs = ['nodejs-18_x', 'npm-9_x']
+
+[phases.install]
+cmds = ['npm ci']
+
+[phases.build]
+cmds = ['echo "Backend build completed - no build step required"']
+
+[start]
+cmd = 'npm start'
+
+[variables]
+NODE_ENV = 'production'
+PORT = '3000'

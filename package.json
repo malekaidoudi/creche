@@ -16,12 +16,9 @@
     "test": "npm run test:backend && npm run test:frontend",
     "test:backend": "cd backend && npm test",
     "test:frontend": "cd frontend && npm test",
-    "deploy": "node deploy.js",
-    "deploy:setup": "node setup-secrets.js",
-    "deploy:backend": "cd backend && git push heroku main",
-    "deploy:frontend": "cd frontend && vercel --prod",
-    "deploy:check": "curl -f https://creche-backend-api.herokuapp.com/api/health && curl -f https://creche-frontend.vercel.app",
-    "install:prerequisites": "node install-prerequisites.js"
+    "deploy": "node deploy-simple.js",
+    "deploy:backend": "cd backend && railway up",
+    "deploy:frontend": "cd frontend && vercel --prod"
   },
   "engines": {
     "node": ">=18.0.0",
