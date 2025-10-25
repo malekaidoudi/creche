@@ -67,6 +67,8 @@ app.use('/api/', rateLimit({
 const allowedOrigins = [
   'https://malekaidoudi.github.io',      // GitHub Pages racine
   'https://malekaidoudi.github.io/creche', // GitHub Pages avec path
+  'https://creche-frontend.vercel.app',   // Vercel production
+  'https://creche.vercel.app',           // Vercel production (nom court)
   'http://localhost:5173',               // Vite dev server
   'http://localhost:5174',               // Vite dev server (port alternatif)
   'http://localhost:5175',               // Vite dev server (port alternatif)
@@ -74,6 +76,9 @@ const allowedOrigins = [
   'http://127.0.0.1:5174',               // Alternative localhost
   'http://127.0.0.1:5175'                // Alternative localhost
 ].filter(Boolean); // Retire les valeurs undefined
+
+// Ajouter support pour tous les domaines Vercel en production
+const vercelPattern = /^https:\/\/.*\.vercel\.app$/;
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -85,8 +90,9 @@ app.use(cors({
       return callback(null, true);
     }
     
-    // Vérifie si l'origin est dans la liste autorisée
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    // Vérifie si l'origin est dans la liste autorisée ou correspond au pattern Vercel
+    if (allowedOrigins.indexOf(origin) !== -1 || vercelPattern.test(origin)) {
+      console.log(`✅ CORS: Origin autorisé: ${origin}`);
       callback(null, true);
     } else {
       console.log(`❌ CORS: Origin non autorisé: ${origin}`);
