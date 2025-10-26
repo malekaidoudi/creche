@@ -1,4 +1,4 @@
-const { query } = require('../config/database');
+const { query } = require('../config/db_postgres');
 const bcrypt = require('bcryptjs');
 
 class User {

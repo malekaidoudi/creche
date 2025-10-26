@@ -7,7 +7,7 @@ const rateLimit = require('express-rate-limit');
 const path = require('path');
 require('dotenv').config();
 
-const db = require('./config/database');
+const db = require('./config/db_postgres');
 
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
@@ -166,32 +166,32 @@ app.get('/', (req, res) => {
 app.get('/api/debug', async (req, res) => {
   try {
     const bcrypt = require('bcryptjs');
-    const { execute } = require('./config/database');
+    const { execute } = require('./config/db_postgres');
     
     // Test de création d'utilisateur direct
     const hashedPassword = await bcrypt.hash('Password123!', 10);
     
-    // Créer table users si elle n'existe pas
+    // Créer table users si elle n'existe pas (PostgreSQL)
     await execute(`
       CREATE TABLE IF NOT EXISTS users (
-        id INT AUTO_INCREMENT PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
         email VARCHAR(255) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
         first_name VARCHAR(100) NOT NULL,
         last_name VARCHAR(100) NOT NULL,
         phone VARCHAR(20),
-        role ENUM('admin', 'staff', 'parent') DEFAULT 'parent',
+        role VARCHAR(20) CHECK (role IN ('admin', 'staff', 'parent')) DEFAULT 'parent',
         profile_image VARCHAR(255),
         is_active BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
     
     // Insérer utilisateur test
     try {
       await execute(
-        'INSERT IGNORE INTO users (first_name, last_name, email, password, role, phone) VALUES (?, ?, ?, ?, ?, ?)',
+        'INSERT INTO users (first_name, last_name, email, password, role, phone) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (email) DO NOTHING',
         ['Admin', 'Test', 'admin@creche.test', hashedPassword, 'admin', '+33123456789']
       );
     } catch (e) {
@@ -199,7 +199,7 @@ app.get('/api/debug', async (req, res) => {
     }
     
     // Vérifier utilisateurs
-    const [users] = await execute('SELECT email, role FROM users');
+    const users = await execute('SELECT email, role FROM users');
     
     res.json({
       status: 'OK',
@@ -209,7 +209,7 @@ app.get('/api/debug', async (req, res) => {
         host: process.env.DB_HOST || 'localhost',
         database: process.env.DB_NAME || 'mima_elghalia_db'
       },
-      users: users
+      users: users.rows
     });
     
   } catch (error) {
@@ -291,25 +291,25 @@ async function initializeDatabase() {
   try {
     console.log('🔄 Vérification de la base de données...');
     
-    // Créer la table holidays si elle n'existe pas
+    // Créer la table holidays si elle n'existe pas (PostgreSQL)
     await db.execute(`
       CREATE TABLE IF NOT EXISTS holidays (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        name VARCHAR(255) NOT NULL COMMENT 'Nom du jour férié ou événement',
-        date DATE NOT NULL COMMENT 'Date du jour férié',
-        is_closed BOOLEAN DEFAULT TRUE COMMENT 'Si la crèche est fermée ce jour',
-        description TEXT COMMENT 'Description optionnelle',
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        date DATE NOT NULL,
+        is_closed BOOLEAN DEFAULT TRUE,
+        description TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        UNIQUE KEY unique_holiday_date (date)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(date)
+      )
     `);
     
     console.log('✅ Table holidays vérifiée/créée');
     
     // Vérifier si la table a des données
-    const [holidays] = await db.execute('SELECT COUNT(*) as count FROM holidays');
-    console.log(`📊 Jours fériés en base: ${holidays[0].count}`);
+    const holidays = await db.execute('SELECT COUNT(*) as count FROM holidays');
+    console.log(`📊 Jours fériés en base: ${holidays.rows[0].count}`);
     
   } catch (error) {
     console.error('❌ Erreur initialisation base de données:', error);
