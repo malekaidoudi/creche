@@ -2,7 +2,7 @@
  * Configuration API pour l'application Crèche
  * 
  * Ce fichier gère automatiquement les différentes URLs d'API :
- * - Développement local : http://localhost:3003
+ * - Développement local : https://creche-backend.onrender.com
  * - Production : URL depuis variable d'environnement
  */
 
@@ -10,8 +10,8 @@
 const API_CONFIG = {
   // URL de base pour les requêtes API
   BASE_URL: process.env.NODE_ENV === 'production' 
-    ? process.env.VITE_API_URL || 'http://localhost:3003'
-    : 'http://localhost:3003',
+    ? process.env.VITE_API_URL || 'https://creche-backend.onrender.com'
+    : 'https://creche-backend.onrender.com',
   
   // Endpoints de l'API
   ENDPOINTS: {

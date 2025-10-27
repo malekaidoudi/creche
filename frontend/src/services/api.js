@@ -4,7 +4,7 @@ import API_CONFIG from '../config/api.js'
 
 // Configuration de base d'Axios avec la nouvelle config centralisée
 //const API_BASE_URL = `${API_CONFIG.BASE_URL}/api`
-const API_BASE_URL = `http://localhost:3003`
+const API_BASE_URL = `https://creche-backend.onrender.com`
 
 const api = axios.create({
   baseURL: API_BASE_URL,

@@ -137,7 +137,7 @@ const EnrollmentsPage = () => {
 
   const handleViewFile = async (fileId) => {
     try {
-      const response = await fetch(`http://localhost:3003/api/uploads/view/${fileId}`, {
+      const response = await fetch(`https://creche-backend.onrender.com/api/uploads/view/${fileId}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -157,7 +157,7 @@ const EnrollmentsPage = () => {
 
   const handleDownloadFile = async (fileId, fileName) => {
     try {
-      const response = await fetch(`http://localhost:3003/api/uploads/download/${fileId}`, {
+      const response = await fetch(`https://creche-backend.onrender.com/api/uploads/download/${fileId}`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }

@@ -79,7 +79,7 @@ const DashboardSettingsPage = () => {
         const token = localStorage.getItem('token');
         console.log('🔑 Token présent:', !!token);
         
-        const response = await fetch('http://localhost:3003/api/nursery-settings', {
+        const response = await fetch('https://creche-backend.onrender.com/api/nursery-settings', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -666,7 +666,7 @@ const DashboardSettingsPage = () => {
       
       console.log('📤 Données à envoyer (API simple):', updateData);
       
-      const response = await fetch('http://localhost:3003/api/nursery-settings/simple-update', {
+      const response = await fetch('https://creche-backend.onrender.com/api/nursery-settings/simple-update', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
