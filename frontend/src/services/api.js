@@ -3,10 +3,10 @@ import toast from 'react-hot-toast'
 import API_CONFIG from '../config/api.js'
 
 // Configuration de base d'Axios avec la nouvelle config centralisée
-// Configuration pour GitHub Pages avec redirections
+// Configuration API dynamique
 const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
   ? 'http://localhost:3000' 
-  : '/api'
+  : 'https://creche-backend.onrender.com'
 
 const api = axios.create({
   baseURL: API_BASE_URL,
