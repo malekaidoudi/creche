@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useTheme } from '../../hooks/useTheme';
+import api from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -278,31 +279,22 @@ const DashboardSettingsPage = () => {
         let activeHolidays = [];
         try {
           console.log('🔄 Chargement des jours fériés depuis la base de données...');
-          const dbResponse = await fetch('/api/holidays', {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          });
+          const dbResponse = await api.get('/api/holidays');
           
-          console.log('📡 Réponse DB holidays:', dbResponse.status, dbResponse.statusText);
+          console.log('📡 Réponse DB holidays:', dbResponse.status);
+          console.log('📊 Données DB reçues:', dbResponse.data);
           
-          if (dbResponse.ok) {
-            const dbData = await dbResponse.json();
-            console.log('📊 Données DB reçues:', dbData);
-            
-            if (dbData.success) {
-              activeHolidays = dbData.holidays;
-              console.log('✅ Jours fériés en base de données:', activeHolidays.length);
-              console.log('📋 Liste des jours fériés DB:', activeHolidays.map(h => ({
-                id: h.id,
-                name: h.name,
-                date: h.date?.split('T')[0],
-                is_closed: h.is_closed
-              })));
-            }
+          if (dbResponse.data.success) {
+            activeHolidays = dbResponse.data.holidays;
+            console.log('✅ Jours fériés en base de données:', activeHolidays.length);
+            console.log('📋 Liste des jours fériés DB:', activeHolidays.map(h => ({
+              id: h.id,
+              name: h.name,
+              date: h.date?.split('T')[0],
+              is_closed: h.is_closed
+            })));
           } else {
-            console.log('❌ Erreur réponse DB:', await dbResponse.text());
+            console.log('❌ Erreur réponse DB:', dbResponse.data);
           }
         } catch (error) {
           console.log('❌ Erreur chargement base de données:', error);
@@ -499,78 +491,50 @@ const DashboardSettingsPage = () => {
       console.log('✅ Vérifications passées, envoi de la requête...');
       
       // Test de l'endpoint API
-      console.log('🌐 URL de base:', window.location.origin);
-      console.log('📍 Endpoint cible:', `${window.location.origin}/api/holidays`);
+      console.log('🌐 URL de base:', 'https://creche-backend.onrender.com');
+      console.log('📍 Endpoint cible:', 'https://creche-backend.onrender.com/api/holidays');
       
       if (isActive) {
         // INSERTION : Ajouter le jour férié dans la base de données
         console.log('➕ Ajout du jour férié:', holiday.name);
-        const response = await fetch('/api/holidays', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            name: holiday.name,
-            date: holiday.date,
-            is_closed: true, // Par défaut, un jour férié ferme la crèche
-            description: `Jour férié de type ${holiday.type}`
-          })
+        const response = await api.post('/api/holidays', {
+          name: holiday.name,
+          date: holiday.date,
+          is_closed: true, // Par défaut, un jour férié ferme la crèche
+          description: `Jour férié de type ${holiday.type}`
         });
 
-        console.log('📡 Réponse POST:', response.status, response.statusText);
-        console.log('📡 Headers de réponse:', Object.fromEntries(response.headers.entries()));
-
-        if (response.ok) {
-          const data = await response.json();
-          console.log('✅ Données reçues:', data);
+        console.log('📡 Réponse POST:', response.status);
+        console.log('✅ Données reçues:', response.data);
+        
+        if (response.data.success) {
+          // Mettre à jour l'état local avec l'ID de la base
+          setHolidays(prev => prev.map(h => 
+            h.external_id === holiday.external_id 
+              ? { ...h, id: response.data.holiday.id, is_active: true }
+              : h
+          ));
           
-          if (data.success) {
-            // Mettre à jour l'état local avec l'ID de la base
-            setHolidays(prev => prev.map(h => 
-              h.external_id === holiday.external_id 
-                ? { ...h, id: data.holiday.id, is_active: true }
-                : h
-            ));
-            
-            toast.success(isRTL ? 'تم تفعيل العطلة - الحضانة ستكون مغلقة' : 'Jour férié activé - La crèche sera fermée');
-          } else {
-            throw new Error(data.error || 'Erreur inconnue lors de l\'ajout');
-          }
+          toast.success(isRTL ? 'تم تفعيل العطلة - الحضانة ستكون مغلقة' : 'Jour férié activé - La crèche sera fermée');
         } else {
-          const errorData = await response.text();
-          console.error('❌ Erreur réponse:', errorData);
-          throw new Error(`Erreur HTTP ${response.status}: ${errorData}`);
+          throw new Error(response.data.error || 'Erreur inconnue lors de l\'ajout');
         }
       } else {
         // SUPPRESSION : Supprimer le jour férié de la base de données
         if (holiday.id) {
           console.log('🗑️ Suppression du jour férié ID:', holiday.id);
-          const response = await fetch(`/api/holidays/${holiday.id}`, {
-            method: 'DELETE',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          });
+          const response = await api.delete(`/api/holidays/${holiday.id}`);
 
-          console.log('📡 Réponse DELETE:', response.status, response.statusText);
+          console.log('📡 Réponse DELETE:', response.status);
 
-          if (response.ok) {
-            // Mettre à jour l'état local
-            setHolidays(prev => prev.map(h => 
-              h.external_id === holiday.external_id 
-                ? { ...h, id: null, is_active: false }
-                : h
-            ));
-            
-            toast.success(isRTL ? 'تم إلغاء تفعيل العطلة - الحضانة ستكون مفتوحة' : 'Jour férié désactivé - La crèche sera ouverte');
-          } else {
-            const errorData = await response.text();
-            console.error('❌ Erreur suppression:', errorData);
-            throw new Error(`Erreur HTTP ${response.status}: ${errorData}`);
-          }
+          // Mettre à jour l'état local
+          setHolidays(prev => prev.map(h => 
+            h.external_id === holiday.external_id 
+              ? { ...h, id: null, is_active: false }
+              : h
+          ));
+          
+          toast.success(isRTL ? 'تم إلغاء تفعيل العطلة - الحضانة ستكون مفتوحة' : 'Jour férié désactivé - La crèche sera ouverte');
         } else {
           console.warn('⚠️ Pas d\'ID pour supprimer le jour férié');
         }
@@ -593,42 +557,20 @@ const DashboardSettingsPage = () => {
       console.log('🧪 Test de l\'API holidays...');
       
       // Test GET
-      const getResponse = await fetch('/api/holidays', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      console.log('📡 Réponse GET:', getResponse.status, getResponse.statusText);
+      const getResponse = await api.get('/api/holidays');
+      console.log('📡 Réponse GET:', getResponse.status);
       
       // Test POST avec données minimales
-      const postResponse = await fetch('/api/holidays', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          name: 'Test Holiday',
-          date: '2025-12-31',
-          is_closed: true,
-          description: 'Test'
-        })
+      const postResponse = await api.post('/api/holidays', {
+        name: 'Test Holiday',
+        date: '2025-12-31',
+        is_closed: true,
+        description: 'Test'
       });
       
-      console.log('📡 Réponse POST:', postResponse.status, postResponse.statusText);
-      
-      if (postResponse.ok) {
-        const data = await postResponse.json();
-        console.log('✅ POST fonctionne:', data);
-        toast.success(isRTL ? 'POST API يعمل' : 'POST API fonctionne');
-      } else {
-        const errorText = await postResponse.text();
-        console.log('❌ Erreur POST:', errorText);
-        toast.error(isRTL ? 'خطأ في POST' : `Erreur POST: ${postResponse.status}`);
-      }
+      console.log('📡 Réponse POST:', postResponse.status);
+      console.log('✅ POST fonctionne:', postResponse.data);
+      toast.success(isRTL ? 'POST API يعمل' : 'POST API fonctionne');
       
     } catch (error) {
       console.error('❌ Erreur test API:', error);
