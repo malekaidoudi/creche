@@ -3,6 +3,116 @@ const { body, validationResult } = require('express-validator');
 const router = express.Router();
 const db = require('../config/db_postgres');
 
+// GET /api/attendance/today - Présences d'aujourd'hui
+router.get('/today', async (req, res) => {
+  try {
+    const { page = 1, limit = 50 } = req.query;
+    const today = new Date().toISOString().split('T')[0];
+    
+    const sql = `
+      SELECT a.id, a.child_id, a.date, a.check_in_time, a.check_out_time, 
+             a.notes, a.created_at, a.updated_at,
+             c.first_name as child_first_name, c.last_name as child_last_name,
+             c.birth_date as child_birth_date, c.gender as child_gender
+      FROM attendance a
+      JOIN children c ON a.child_id = c.id
+      WHERE a.date = $1
+      ORDER BY a.check_in_time DESC
+      LIMIT $2 OFFSET $3
+    `;
+    
+    const offset = (page - 1) * limit;
+    const result = await db.query(sql, [today, limit, offset]);
+    
+    res.json({
+      success: true,
+      attendance: result.rows,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: result.rows.length
+      }
+    });
+  } catch (error) {
+    console.error('Erreur présences aujourd\'hui:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Erreur lors de la récupération des présences d\'aujourd\'hui' 
+    });
+  }
+});
+
+// GET /api/attendance/currently-present - Enfants actuellement présents
+router.get('/currently-present', async (req, res) => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    
+    const sql = `
+      SELECT a.id, a.child_id, a.check_in_time, a.notes,
+             c.first_name as child_first_name, c.last_name as child_last_name,
+             c.birth_date as child_birth_date, c.gender as child_gender
+      FROM attendance a
+      JOIN children c ON a.child_id = c.id
+      WHERE a.date = $1 AND a.check_in_time IS NOT NULL AND a.check_out_time IS NULL
+      ORDER BY a.check_in_time DESC
+    `;
+    
+    const result = await db.query(sql, [today]);
+    
+    res.json({
+      success: true,
+      present: result.rows,
+      count: result.rows.length
+    });
+  } catch (error) {
+    console.error('Erreur enfants présents:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Erreur lors de la récupération des enfants présents' 
+    });
+  }
+});
+
+// GET /api/attendance/stats - Statistiques de présence
+router.get('/stats', async (req, res) => {
+  try {
+    const { date } = req.query;
+    const targetDate = date || new Date().toISOString().split('T')[0];
+    
+    // Statistiques de base
+    const statsQuery = `
+      SELECT 
+        COUNT(*) as total_records,
+        COUNT(CASE WHEN check_in_time IS NOT NULL THEN 1 END) as present_count,
+        COUNT(CASE WHEN check_in_time IS NOT NULL AND check_out_time IS NOT NULL THEN 1 END) as completed_count,
+        COUNT(CASE WHEN check_in_time IS NOT NULL AND check_out_time IS NULL THEN 1 END) as still_present_count
+      FROM attendance 
+      WHERE date = $1
+    `;
+    
+    const statsResult = await db.query(statsQuery, [targetDate]);
+    const stats = statsResult.rows[0];
+    
+    res.json({
+      success: true,
+      stats: {
+        date: targetDate,
+        total: parseInt(stats.total_records),
+        present: parseInt(stats.present_count),
+        completed: parseInt(stats.completed_count),
+        stillPresent: parseInt(stats.still_present_count),
+        absent: 0 // À calculer selon le nombre total d'enfants inscrits
+      }
+    });
+  } catch (error) {
+    console.error('Erreur statistiques présence:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Erreur lors de la récupération des statistiques' 
+    });
+  }
+});
+
 // GET /api/attendance/report - Rapport de présence (route spécifique avant la route générale)
 router.get('/report', async (req, res) => {
   try {

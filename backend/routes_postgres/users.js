@@ -5,6 +5,67 @@ const router = express.Router();
 const db = require('../config/db_postgres');
 const auth = require('../middleware/auth');
 
+// GET /api/user/children-summary - Résumé des enfants de l'utilisateur connecté
+router.get('/children-summary', auth.authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    const sql = `
+      SELECT c.id, c.first_name, c.last_name, c.birth_date, c.gender, 
+             c.photo_url, c.is_active,
+             e.status as enrollment_status,
+             EXTRACT(YEAR FROM AGE(c.birth_date)) as age
+      FROM children c
+      JOIN enrollments e ON c.id = e.child_id
+      WHERE e.parent_id = $1 AND c.is_active = true AND e.status = 'approved'
+      ORDER BY c.first_name, c.last_name
+    `;
+    
+    const result = await db.query(sql, [userId]);
+    
+    res.json({
+      success: true,
+      children: result.rows,
+      count: result.rows.length
+    });
+  } catch (error) {
+    console.error('Erreur résumé enfants utilisateur:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Erreur lors de la récupération du résumé des enfants' 
+    });
+  }
+});
+
+// GET /api/user/has-children - Vérifier si l'utilisateur a des enfants
+router.get('/has-children', auth.authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    const sql = `
+      SELECT COUNT(*) as children_count
+      FROM children c
+      JOIN enrollments e ON c.id = e.child_id
+      WHERE e.parent_id = $1 AND c.is_active = true AND e.status = 'approved'
+    `;
+    
+    const result = await db.query(sql, [userId]);
+    const count = parseInt(result.rows[0].children_count);
+    
+    res.json({
+      success: true,
+      hasChildren: count > 0,
+      count: count
+    });
+  } catch (error) {
+    console.error('Erreur vérification enfants utilisateur:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Erreur lors de la vérification des enfants' 
+    });
+  }
+});
+
 // GET /api/users - Récupérer tous les utilisateurs
 router.get('/', async (req, res) => {
   try {

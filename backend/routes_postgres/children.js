@@ -3,6 +3,190 @@ const { body, validationResult } = require('express-validator');
 const router = express.Router();
 const db = require('../config/db_postgres');
 
+// GET /api/children/available - Enfants disponibles (sans parent)
+router.get('/available', async (req, res) => {
+  try {
+    const sql = `
+      SELECT c.id, c.first_name, c.last_name, c.birth_date, c.gender, 
+             c.medical_info, c.emergency_contact_name, c.emergency_contact_phone, 
+             c.photo_url, c.is_active, c.created_at,
+             EXTRACT(YEAR FROM AGE(c.birth_date)) as age
+      FROM children c
+      LEFT JOIN enrollments e ON c.id = e.child_id
+      WHERE c.is_active = true AND (e.id IS NULL OR e.status != 'approved')
+      ORDER BY c.created_at DESC
+    `;
+    
+    const result = await db.query(sql);
+    
+    res.json({
+      success: true,
+      children: result.rows
+    });
+  } catch (error) {
+    console.error('Erreur enfants disponibles:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Erreur lors de la récupération des enfants disponibles' 
+    });
+  }
+});
+
+// GET /api/children/orphans - Enfants orphelins (sans parent)
+router.get('/orphans', async (req, res) => {
+  try {
+    const sql = `
+      SELECT c.id, c.first_name, c.last_name, c.birth_date, c.gender, 
+             c.medical_info, c.emergency_contact_name, c.emergency_contact_phone, 
+             c.photo_url, c.is_active, c.created_at,
+             EXTRACT(YEAR FROM AGE(c.birth_date)) as age
+      FROM children c
+      LEFT JOIN enrollments e ON c.id = e.child_id
+      WHERE c.is_active = true AND e.id IS NULL
+      ORDER BY c.created_at DESC
+    `;
+    
+    const result = await db.query(sql);
+    
+    res.json({
+      success: true,
+      children: result.rows
+    });
+  } catch (error) {
+    console.error('Erreur enfants orphelins:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Erreur lors de la récupération des enfants orphelins' 
+    });
+  }
+});
+
+// GET /api/children/parent/:parentId - Enfants d'un parent spécifique
+router.get('/parent/:parentId', async (req, res) => {
+  try {
+    const { parentId } = req.params;
+    
+    const sql = `
+      SELECT c.id, c.first_name, c.last_name, c.birth_date, c.gender, 
+             c.medical_info, c.emergency_contact_name, c.emergency_contact_phone, 
+             c.photo_url, c.is_active, c.created_at,
+             e.status as enrollment_status,
+             EXTRACT(YEAR FROM AGE(c.birth_date)) as age
+      FROM children c
+      JOIN enrollments e ON c.id = e.child_id
+      WHERE e.parent_id = $1 AND c.is_active = true
+      ORDER BY c.created_at DESC
+    `;
+    
+    const result = await db.query(sql, [parentId]);
+    
+    res.json({
+      success: true,
+      children: result.rows
+    });
+  } catch (error) {
+    console.error('Erreur enfants du parent:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Erreur lors de la récupération des enfants du parent' 
+    });
+  }
+});
+
+// GET /api/children/stats - Statistiques des enfants
+router.get('/stats', async (req, res) => {
+  try {
+    const statsQuery = `
+      SELECT 
+        COUNT(*) as total_children,
+        COUNT(CASE WHEN is_active = true THEN 1 END) as active_children,
+        COUNT(CASE WHEN gender = 'male' THEN 1 END) as male_count,
+        COUNT(CASE WHEN gender = 'female' THEN 1 END) as female_count,
+        AVG(EXTRACT(YEAR FROM AGE(birth_date))) as average_age
+      FROM children
+    `;
+    
+    const result = await db.query(statsQuery);
+    const stats = result.rows[0];
+    
+    res.json({
+      success: true,
+      stats: {
+        total: parseInt(stats.total_children),
+        active: parseInt(stats.active_children),
+        male: parseInt(stats.male_count),
+        female: parseInt(stats.female_count),
+        averageAge: parseFloat(stats.average_age) || 0
+      }
+    });
+  } catch (error) {
+    console.error('Erreur statistiques enfants:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Erreur lors de la récupération des statistiques' 
+    });
+  }
+});
+
+// PUT /api/children/:id/associate-parent - Associer un enfant à un parent
+router.put('/:id/associate-parent', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { parentId } = req.body;
+    
+    // Créer ou mettre à jour l'inscription
+    const sql = `
+      INSERT INTO enrollments (child_id, parent_id, status, created_at)
+      VALUES ($1, $2, 'approved', NOW())
+      ON CONFLICT (child_id) 
+      DO UPDATE SET parent_id = $2, status = 'approved', updated_at = NOW()
+      RETURNING *
+    `;
+    
+    const result = await db.query(sql, [id, parentId]);
+    
+    res.json({
+      success: true,
+      enrollment: result.rows[0],
+      message: 'Enfant associé au parent avec succès'
+    });
+  } catch (error) {
+    console.error('Erreur association enfant-parent:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Erreur lors de l\'association enfant-parent' 
+    });
+  }
+});
+
+// PUT /api/children/:id/deactivate-parent - Désactiver le compte parent d'un enfant
+router.put('/:id/deactivate-parent', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Désactiver l'inscription
+    const sql = `
+      UPDATE enrollments 
+      SET status = 'rejected', updated_at = NOW()
+      WHERE child_id = $1
+      RETURNING *
+    `;
+    
+    const result = await db.query(sql, [id]);
+    
+    res.json({
+      success: true,
+      message: 'Compte parent désactivé avec succès'
+    });
+  } catch (error) {
+    console.error('Erreur désactivation parent:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Erreur lors de la désactivation du parent' 
+    });
+  }
+});
+
 // GET /api/children/unassociated - Enfants non associés (route spécifique avant la route générale)
 router.get('/unassociated', async (req, res) => {
   try {
