@@ -16,9 +16,7 @@
     "test": "npm run test:backend && npm run test:frontend",
     "test:backend": "cd backend && npm test",
     "test:frontend": "cd frontend && npm test",
-    "deploy": "node deploy-ultra-simple.js",
-    "deploy:backend": "echo '📦 Exécutez: cd backend && railway up'",
-    "deploy:frontend": "echo '🎨 Exécutez: cd frontend && vercel'"
+    "deploy:frontend": "cd frontend && npm run build && npm run deploy"
   },
   "engines": {
     "node": ">=18.0.0",

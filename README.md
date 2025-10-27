@@ -91,7 +91,7 @@ creche-site/
 │   ├── models/        # Modèles de données
 │   ├── config/        # Configuration
 │   └── middleware/    # Middlewares
-└── Dockerfile         # Déploiement Railway
+└── package.json       # Configuration backend
 ```
 
 ## 🛠️ Technologies Utilisées
@@ -119,8 +119,8 @@ creche-site/
 ### Frontend - GitHub Pages
 Le frontend est automatiquement déployé sur GitHub Pages via GitHub Actions.
 
-### Backend - Railway
-Le backend est déployé sur Railway avec le Dockerfile inclus.
+### Backend - Render
+Le backend est déployé sur Render avec PostgreSQL.
 
 ## 📝 Scripts Disponibles
 

@@ -131,3 +131,6 @@ temp/
 
 # PM2
 .pm2/
+
+#windsurf
+.windsurfrules
