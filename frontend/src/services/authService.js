@@ -3,7 +3,7 @@ import api from './api';
 class AuthService {
   // Connexion
   async login(email, password) {
-    const response = await api.post('/auth/login', {
+    const response = await api.post('/api/auth/login', {
       email,
       password
     });
@@ -13,13 +13,13 @@ class AuthService {
 
   // Inscription
   async register(userData) {
-    const response = await api.post('/auth/register', userData);
+    const response = await api.post('/api/auth/register', userData);
     return response.data;
   }
 
   // Vérifier le token
   async verifyToken(token) {
-    const response = await api.get('/auth/me', {
+    const response = await api.get('/api/auth/me', {
       headers: {
         Authorization: `Bearer ${token}`
       }
@@ -32,7 +32,7 @@ class AuthService {
   async changePassword(currentPassword, newPassword) {
     const token = localStorage.getItem('token');
     
-    const response = await api.post('/auth/change-password', {
+    const response = await api.post('/api/auth/change-password', {
       currentPassword,
       newPassword
     }, {

@@ -3,7 +3,8 @@ import toast from 'react-hot-toast'
 import API_CONFIG from '../config/api.js'
 
 // Configuration de base d'Axios avec la nouvelle config centralisée
-const API_BASE_URL = `${API_CONFIG.BASE_URL}/api`
+//const API_BASE_URL = `${API_CONFIG.BASE_URL}/api`
+const API_BASE_URL = `http://localhost:3003`
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -109,14 +110,14 @@ export const uploadMultipleFiles = (files, onProgress = null) => {
 // Fonction pour construire les paramètres de requête
 export const buildQueryParams = (params) => {
   const searchParams = new URLSearchParams()
-  
+
   Object.keys(params).forEach((key) => {
     const value = params[key]
     if (value !== null && value !== undefined && value !== '') {
       searchParams.append(key, value)
     }
   })
-  
+
   return searchParams.toString()
 }
 
@@ -124,7 +125,7 @@ export const buildQueryParams = (params) => {
 export const getPaginatedData = async (endpoint, params = {}) => {
   const queryString = buildQueryParams(params)
   const url = queryString ? `${endpoint}?${queryString}` : endpoint
-  
+
   const response = await api.get(url)
   return response.data
 }
@@ -140,21 +141,21 @@ export const handleValidationErrors = (error) => {
     })
     return errors
   }
-  
+
   return {}
 }
 
 // Fonction pour formater les données avant envoi
 export const formatDataForAPI = (data) => {
   const formattedData = { ...data }
-  
+
   // Supprimer les champs vides ou null
   Object.keys(formattedData).forEach((key) => {
     if (formattedData[key] === '' || formattedData[key] === null) {
       delete formattedData[key]
     }
   })
-  
+
   return formattedData
 }
 
@@ -164,7 +165,7 @@ export const downloadFile = async (url, filename) => {
     const response = await api.get(url, {
       responseType: 'blob',
     })
-    
+
     const blob = new Blob([response.data])
     const downloadUrl = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -191,24 +192,24 @@ apiWithRetry.interceptors.response.use(
   (response) => response,
   async (error) => {
     const { config } = error
-    
+
     if (!config || !config.retry) {
       return Promise.reject(error)
     }
-    
+
     config.retryCount = config.retryCount || 0
-    
+
     if (config.retryCount >= config.retry) {
       return Promise.reject(error)
     }
-    
+
     config.retryCount += 1
-    
+
     // Attendre avant de réessayer
     await new Promise((resolve) => {
       setTimeout(resolve, config.retryDelay || 1000)
     })
-    
+
     return apiWithRetry(config)
   }
 )

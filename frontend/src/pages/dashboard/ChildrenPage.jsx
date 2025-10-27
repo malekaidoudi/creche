@@ -74,11 +74,11 @@ const ChildrenPage = () => {
       const response = await childrenService.getAllChildren(params);
       
       if (response.success) {
-        setChildren(response.data.children || []);
+        setChildren(response.children || []);
         setPagination(prev => ({
           ...prev,
-          total: response.data.total || 0,
-          totalPages: response.data.totalPages || 0
+          total: response.pagination?.total || 0,
+          totalPages: response.pagination?.pages || 0
         }));
       } else {
         toast.error('Erreur lors du chargement des enfants');

@@ -28,59 +28,71 @@ const ContactPageDynamic = () => {
     const [contactData, setContactData] = useState(null)
     const [isLoading, setIsLoading] = useState(true)
 
-    // Données par défaut multilingues
-    const defaultData = {
-        address: isRTL ? '8 شارع بنزرت، مدنين 4100، تونس' : '8 Rue Bizerte, Medenine 4100, Tunisie',
-        phone: '+216 25 95 35 32',
-        email: 'contact@mimaelghalia.tn',
-        title: isRTL ? 'تواصل معنا' : 'Contactez-nous',
-        subtitle: isRTL ? 'نحن هنا للإجابة على جميع أسئلتكم ومساعدتكم في رحلة طفلكم التعليمية' : 'Nous sommes là pour répondre à toutes vos questions et vous accompagner dans le parcours éducatif de votre enfant',
-        hours: isRTL ? 'الإثنين - الجمعة: 07:00-18:00، السبت: 08:00-14:00' : 'Lun - Ven: 07:00-18:00, Sam: 08:00-14:00',
-        // Données de localisation
-        nursery_name: isRTL ? 'حضانة ميما الغالية' : 'Crèche Mima Elghalia',
-        map_title: isRTL ? 'موقعنا على الخريطة' : 'Notre localisation',
-        map_description: isRTL ? 'تجدونا في هذا الموقع بمدنين' : 'Vous nous trouverez à cette adresse à Médenine',
-        google_maps_button: isRTL ? 'فتح في خرائط جوجل' : 'Ouvrir dans Google Maps',
-        latitude: '33.3407',
-        longitude: '10.4899'
-    }
-
     // Charger les données
     useEffect(() => {
         const loadData = async () => {
+            setIsLoading(true)
             try {
-                const lang = isRTL ? 'ar' : 'fr'
-                const response = await api.get(`/nursery-settings/contact?lang=${lang}`)
-                if (response?.data?.success && response.data.contact) {
-                    const contact = response.data.contact
-                    setContactData({
-                        address: contact.address || defaultData.address,
-                        phone: contact.phone || defaultData.phone,
-                        email: contact.email || defaultData.email,
-                        title: contact.contact_page_title || defaultData.title,
-                        subtitle: contact.contact_page_subtitle || defaultData.subtitle,
-                        hours: contact.formatted_hours?.display || defaultData.hours,
-                        // Données de localisation
-                        nursery_name: contact.nursery_name || defaultData.nursery_name,
-                        map_title: contact.map_title || defaultData.map_title,
-                        map_description: contact.map_description || defaultData.map_description,
-                        google_maps_button: contact.google_maps_button || defaultData.google_maps_button,
-                        latitude: contact.latitude || defaultData.latitude,
-                        longitude: contact.longitude || defaultData.longitude
-                    })
+                // Récupérer les données depuis l'API
+                const response = await fetch('/api/contact')
+                
+                if (response.ok) {
+                    const apiData = await response.json()
+                    console.log('📋 Données contact API:', apiData)
+                    
+                    if (apiData.success && apiData.contact) {
+                        const contactData = {
+                            address: isRTL ? apiData.contact.address_ar : apiData.contact.address,
+                            phone: apiData.contact.phone,
+                            email: apiData.contact.email,
+                            title: isRTL ? 'تواصل معنا' : 'Contactez-nous',
+                            subtitle: isRTL ? 'نحن هنا للإجابة على جميع أسئلتكم ومساعدتكم في رحلة طفلكم التعليمية' : 'Nous sommes là pour répondre à toutes vos questions et vous accompagner dans le parcours éducatif de votre enfant',
+                            hours: isRTL ? apiData.contact.hours_ar : apiData.contact.hours,
+                            // Données de localisation
+                            nursery_name: isRTL ? 'حضانة ميما الغالية' : 'Crèche Mima Elghalia',
+                            map_title: isRTL ? 'موقعنا على الخريطة' : 'Notre localisation',
+                            map_description: isRTL ? 'تجدونا في هذا الموقع بمدنين' : 'Vous nous trouverez à cette adresse à Médenine',
+                            google_maps_button: isRTL ? 'فتح في خرائط جوجل' : 'Ouvrir dans Google Maps',
+                            latitude: '33.3407',
+                            longitude: '10.4899'
+                        }
+                        
+                        setContactData(contactData)
+                        console.log('✅ Données contact chargées depuis l\'API')
+                    } else {
+                        throw new Error('Données API invalides')
+                    }
                 } else {
-                    setContactData(defaultData)
+                    throw new Error('Erreur API')
                 }
             } catch (error) {
                 console.error('Erreur chargement contact:', error)
+                // Fallback avec données par défaut
+                const defaultData = {
+                    address: isRTL ? '8 شارع بنزرت، مدنين 4100، تونس' : '8 Rue Bizerte, Medenine 4100, Tunisie',
+                    phone: '+216 25 95 35 32',
+                    email: 'contact@mimaelghalia.tn',
+                    title: isRTL ? 'تواصل معنا' : 'Contactez-nous',
+                    subtitle: isRTL ? 'نحن هنا للإجابة على جميع أسئلتكم ومساعدتكم في رحلة طفلكم التعليمية' : 'Nous sommes là pour répondre à toutes vos questions et vous accompagner dans le parcours éducatif de votre enfant',
+                    hours: isRTL ? 'الإثنين - الجمعة: 07:00-18:00، السبت: 08:00-14:00' : 'Lun - Ven: 07:00-18:00, Sam: 08:00-14:00',
+                    // Données de localisation
+                    nursery_name: isRTL ? 'حضانة ميما الغالية' : 'Crèche Mima Elghalia',
+                    map_title: isRTL ? 'موقعنا على الخريطة' : 'Notre localisation',
+                    map_description: isRTL ? 'تجدونا في هذا الموقع بمدنين' : 'Vous nous trouverez à cette adresse à Médenine',
+                    google_maps_button: isRTL ? 'فتح في خرائط جوجل' : 'Ouvrir dans Google Maps',
+                    latitude: '33.3407',
+                    longitude: '10.4899'
+                }
+                
                 setContactData(defaultData)
+                console.log('⚠️ Utilisation des données par défaut')
             } finally {
                 setIsLoading(false)
             }
         }
 
         loadData()
-    }, [isRTL]) // Recharger quand la langue change
+    }, [isRTL]) // Recharger seulement quand la langue change
 
     const handleSubmit = async (e) => {
         e.preventDefault()

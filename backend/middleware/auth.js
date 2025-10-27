@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const db = require('../config/database');
+const db = require('../config/db_postgres');
 
 // Middleware pour vérifier le token JWT
 const authenticateToken = async (req, res, next) => {

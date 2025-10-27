@@ -62,7 +62,7 @@ Le backend autorise automatiquement :
 - GitHub Pages
 
 ## 👥 Comptes de test
-- **Admin**: malekaidoudi@gmail.com / admin123
+- **Admin**: crechemimaelghalia@gmail.com / admin123
 - **Staff**: staff@creche.com / staff123
 - **Parent**: parent@creche.com / parent123
 

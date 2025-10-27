@@ -31,7 +31,7 @@ export function LanguageProvider({ children }) {
     if (LANGUAGES[languageCode]) {
       try {
         await i18n.changeLanguage(languageCode)
-        setCurrentLanguage(LANGUAGES[languageCode])
+        setCurrentLanguage(languageCode)
         localStorage.setItem('language', languageCode)
         // Mettre à jour le titre de la page si nécessaire
         if (languageCode === 'ar') {
@@ -62,7 +62,8 @@ export function LanguageProvider({ children }) {
 
   // Obtenir les informations de la langue courante
   const getCurrentLanguageInfo = () => {
-    return LANGUAGES[currentLanguage] || LANGUAGES.fr
+    const langCode = typeof currentLanguage === 'string' ? currentLanguage : 'fr'
+    return LANGUAGES[langCode] || LANGUAGES.fr
   }
 
   // Vérifier si c'est une langue RTL
@@ -82,7 +83,8 @@ export function LanguageProvider({ children }) {
 
   // Basculer entre les langues
   const toggleLanguage = () => {
-    const newLanguage = currentLanguage === 'fr' ? 'ar' : 'fr'
+    const currentCode = typeof currentLanguage === 'string' ? currentLanguage : 'fr'
+    const newLanguage = currentCode === 'fr' ? 'ar' : 'fr'
     changeLanguage(newLanguage)
   }
 

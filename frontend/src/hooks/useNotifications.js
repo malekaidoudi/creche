@@ -18,7 +18,7 @@ export const useNotifications = () => {
       setLoading(true);
       console.log('📬 Chargement notifications pour:', user.email);
       
-      const response = await api.get('/notifications');
+      const response = await api.get('/api/notifications');
       
       console.log('📨 Réponse notifications:', response.data);
       

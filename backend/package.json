@@ -20,7 +20,7 @@
   "keywords": [
     "api",
     "express",
-    "mysql",
+    "postgresql",
     "jwt",
     "creche"
   ],

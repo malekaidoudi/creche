@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: creche-backend
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 8080
+      - key: DB_HOST
+        fromDatabase:
+          name: neon-postgres
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: neon-postgres
+          property: port
+      - key: DB_USER
+        fromDatabase:
+          name: neon-postgres
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: neon-postgres
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: neon-postgres
+          property: database
+      - key: DB_SSL
+        value: require
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CLIENT_URL
+        value: https://malekaidoudi.github.io

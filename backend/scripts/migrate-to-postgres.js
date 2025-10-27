@@ -10,13 +10,16 @@ const { Pool } = require('pg');
 const fs = require('fs').promises;
 const path = require('path');
 
+// Charger les variables d'environnement
+require('dotenv').config();
+
 // Configuration
 const MYSQL_CONFIG = {
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 3306,
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'mima_elghalia_db'
+  host: process.env.MYSQL_HOST || 'localhost',
+  port: process.env.MYSQL_PORT || 3306,
+  user: process.env.MYSQL_USER || 'root',
+  password: process.env.MYSQL_PASSWORD || 'root',
+  database: process.env.MYSQL_NAME || 'mima_elghalia_db'
 };
 
 const POSTGRES_CONFIG = {
@@ -62,12 +65,22 @@ class MigrationTool {
   async initialize() {
     console.log('🔧 Initialisation des connexions...');
     
+    console.log('📋 Configuration MySQL:', {
+      host: MYSQL_CONFIG.host,
+      port: MYSQL_CONFIG.port,
+      user: MYSQL_CONFIG.user,
+      database: MYSQL_CONFIG.database,
+      passwordSet: !!MYSQL_CONFIG.password
+    });
+    
     // Connexion MySQL
     try {
       this.mysqlConnection = await mysql.createConnection(MYSQL_CONFIG);
       console.log('✅ Connexion MySQL établie');
     } catch (error) {
       console.error('❌ Erreur connexion MySQL:', error.message);
+      console.error('❌ Code erreur:', error.code);
+      console.error('❌ Configuration utilisée:', MYSQL_CONFIG);
       throw error;
     }
 

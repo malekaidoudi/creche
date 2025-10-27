@@ -1,0 +1,113 @@
+{
+  "startTime": "2025-10-26T08:11:46.682Z",
+  "tables": {
+    "users": {
+      "exportCount": 0,
+      "importCount": 0,
+      "duration": "5ms",
+      "success": true,
+      "validation": {
+        "mysqlCount": 7,
+        "pgCount": 3,
+        "isValid": false
+      }
+    },
+    "children": {
+      "exportCount": 0,
+      "importCount": 0,
+      "duration": "1ms",
+      "success": true,
+      "validation": {
+        "mysqlCount": 8,
+        "pgCount": 0,
+        "isValid": false
+      }
+    },
+    "enrollments": {
+      "exportCount": 0,
+      "importCount": 0,
+      "duration": "0ms",
+      "success": true,
+      "validation": {
+        "mysqlCount": 6,
+        "pgCount": 0,
+        "isValid": false
+      }
+    },
+    "attendance": {
+      "exportCount": 0,
+      "importCount": 0,
+      "duration": "1ms",
+      "success": true,
+      "validation": {
+        "mysqlCount": 9,
+        "pgCount": 0,
+        "isValid": false
+      }
+    },
+    "holidays": {
+      "exportCount": 0,
+      "importCount": 0,
+      "duration": "0ms",
+      "success": true,
+      "validation": {
+        "mysqlCount": 5,
+        "pgCount": 3,
+        "isValid": false
+      }
+    },
+    "nursery_settings": {
+      "exportCount": 0,
+      "importCount": 0,
+      "duration": "1ms",
+      "success": true,
+      "validation": {
+        "mysqlCount": 24,
+        "pgCount": 7,
+        "isValid": false
+      }
+    }
+  },
+  "errors": [
+    {
+      "table": "users",
+      "operation": "export",
+      "error": "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '?' at line 1"
+    },
+    {
+      "table": "children",
+      "operation": "export",
+      "error": "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '?' at line 1"
+    },
+    {
+      "table": "enrollments",
+      "operation": "export",
+      "error": "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '?' at line 1"
+    },
+    {
+      "table": "attendance",
+      "operation": "export",
+      "error": "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '?' at line 1"
+    },
+    {
+      "table": "holidays",
+      "operation": "export",
+      "error": "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '?' at line 1"
+    },
+    {
+      "table": "nursery_settings",
+      "operation": "export",
+      "error": "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '?' at line 1"
+    }
+  ],
+  "summary": {
+    "totalTables": 6,
+    "successfulTables": 6,
+    "totalExported": 0,
+    "totalImported": 0,
+    "successRate": "100.0%",
+    "errorCount": 6
+  },
+  "endTime": "2025-10-26T08:11:47.596Z",
+  "duration": 914
+}

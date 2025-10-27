@@ -13,7 +13,7 @@ const LanguageToggle = ({ className = '' }) => {
     >
       <Globe className="w-4 h-4" />
       <span className="uppercase font-semibold">
-        {currentLanguage}
+        {currentLanguage?.toUpperCase() || 'FR'}
       </span>
     </button>
   )

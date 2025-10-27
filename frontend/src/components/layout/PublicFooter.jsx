@@ -8,28 +8,32 @@ const PublicFooter = () => {
   const { isRTL } = useLanguage();
   const [nurserySettings, setNurserySettings] = useState({});
   const [loading, setLoading] = useState(true);
+  const [isUsingFallback, setIsUsingFallback] = useState(false);
 
   // Charger les paramètres de la crèche
   useEffect(() => {
     const loadNurserySettings = async () => {
       try {
         console.log('🏢 Footer: Chargement des paramètres crèche...');
-        const response = await api.get(`/nursery-settings?lang=${isRTL ? 'ar' : 'fr'}`);
+        const response = await api.get('/api/contact');
         console.log('📋 Footer: Réponse API:', response.data);
         
-        // Gérer le nouveau format de l'API
-        if (response.data && typeof response.data === 'object') {
-          // Format direct: {nursery_name: {value: "...", fr: "...", ar: "..."}, ...}
-          setNurserySettings(response.data);
-        } else if (response.data.success) {
-          // Format avec wrapper: {success: true, settings: {...}}
-          setNurserySettings(response.data.settings);
+        // Adapter au format de l'API contact
+        if (response.data && response.data.success && response.data.contact) {
+          const contactData = response.data.contact;
+          setNurserySettings({
+            nursery_name: { value: 'Crèche Mima Elghalia', fr: 'Crèche Mima Elghalia' },
+            address: { value: contactData.address, fr: contactData.address },
+            phone: { value: contactData.phone, fr: contactData.phone },
+            email: { value: contactData.email, fr: contactData.email },
+            hours_formatted: { value: contactData.hours, fr: contactData.hours } // Utiliser les horaires déjà formatés
+          });
         }
         
         console.log('✅ Footer: Paramètres chargés');
       } catch (error) {
-        console.error('❌ Footer: Erreur chargement paramètres crèche:', error);
-        // En cas d'erreur, utiliser les valeurs par défaut
+        console.warn('⚠️ Footer: API non disponible, utilisation des données de fallback');
+        // En cas d'erreur, utiliser les valeurs par défaut robustes
         setNurserySettings({
           nursery_name: { value: isRTL ? 'حضانة ميما الغالية' : 'Crèche Mima Elghalia' },
           nursery_description: { value: isRTL ? 'بيئة آمنة ومحبة لنمو طفلك وتطوره' : 'Un environnement sûr et bienveillant pour l\'épanouissement de votre enfant' },
@@ -38,7 +42,8 @@ const PublicFooter = () => {
           email: { value: 'contact@mimaelghalia.tn' },
           working_hours_weekdays: { value: '{"start": "07:00", "end": "18:00"}' },
           working_hours_saturday: { value: '{"start": "08:00", "end": "14:00"}' },
-          saturday_open: { value: 'true' }
+          saturday_open: { value: 'true' },
+          hours_formatted: { value: isRTL ? 'الإثنين-الجمعة: 07:00-18:00 | السبت: 08:00-14:00' : 'Lun-Ven: 07:00-18:00 | Sam: 08:00-14:00' }
         });
       } finally {
         setLoading(false);
@@ -194,7 +199,7 @@ const PublicFooter = () => {
               <li className="flex items-center space-x-3 rtl:space-x-reverse">
                 <Clock className="w-4 h-4 text-primary-400 flex-shrink-0" />
                 <span className="text-gray-300 text-sm">
-                  {formatOpeningHours()}
+                  {getSettingValue('hours_formatted', isRTL ? 'الإثنين-الجمعة: 07:00-18:00' : 'Lun-Ven: 07:00-18:00')}
                 </span>
               </li>
             </ul>

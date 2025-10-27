@@ -249,4 +249,4 @@ JOIN children c ON a.child_id = c.id;
 -- - ENGINE=InnoDB → Non nécessaire en PostgreSQL
 -- - CHARSET/COLLATE → UTF-8 par défaut en PostgreSQL
 
-COMMENT ON DATABASE CURRENT_DATABASE() IS 'Base de données PostgreSQL pour la crèche Mima Elghalia - Migration depuis MySQL';
+-- COMMENT ON DATABASE CURRENT_DATABASE() IS 'Base de données PostgreSQL pour la crèche Mima Elghalia - Migration depuis MySQL';

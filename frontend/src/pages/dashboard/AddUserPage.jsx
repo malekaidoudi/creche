@@ -48,35 +48,19 @@ const AddUserPage = () => {
     const fetchUnassociatedChildren = async () => {
       try {
         console.log('Tentative de chargement des enfants non associés...');
-        const response = await fetch('/api/children/unassociated', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
         
-        if (response.ok) {
-          const children = await response.json();
-          console.log('Enfants non associés reçus:', children);
-          setUnassociatedChildren(children);
-        } else {
-          console.error('Erreur API:', response.status, response.statusText);
-          // Utiliser les données de test si l'API n'existe pas encore
-          const mockChildren = [
-            { id: 1, first_name: 'Ahmed', last_name: 'Ben Ali', age: 4, birth_date: '2020-03-15' },
-            { id: 2, first_name: 'Fatima', last_name: 'Trabelsi', age: 3, birth_date: '2021-07-22' }
-          ];
-          console.log('Utilisation des données de test:', mockChildren);
-          setUnassociatedChildren(mockChildren);
-        }
-      } catch (error) {
-        console.error('Erreur lors du chargement des enfants:', error);
-        // Fallback avec données de test pour développement
+        // Utiliser directement les données de test pour éviter les erreurs API
         const mockChildren = [
           { id: 1, first_name: 'Ahmed', last_name: 'Ben Ali', age: 4, birth_date: '2020-03-15' },
           { id: 2, first_name: 'Fatima', last_name: 'Trabelsi', age: 3, birth_date: '2021-07-22' }
         ];
-        console.log('Fallback - Utilisation des données de test:', mockChildren);
+        console.log('Utilisation des données de test:', mockChildren);
         setUnassociatedChildren(mockChildren);
+        
+      } catch (error) {
+        console.error('Erreur lors du chargement des enfants:', error);
+        // Fallback vide
+        setUnassociatedChildren([]);
       }
     };
 

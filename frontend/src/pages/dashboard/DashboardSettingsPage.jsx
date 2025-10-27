@@ -73,13 +73,13 @@ const DashboardSettingsPage = () => {
   // Charger les paramètres depuis la base de données (table nursery_settings)
   useEffect(() => {
     const fetchSettings = async () => {
-      console.log('🔄 Tentative de chargement des paramètres nursery_settings...');
+      console.log('🔄 NOUVELLE FONCTION - Chargement des paramètres...');
       
       try {
         const token = localStorage.getItem('token');
         console.log('🔑 Token présent:', !!token);
         
-        const response = await fetch('/api/nursery-settings', {
+        const response = await fetch('http://localhost:3003/api/nursery-settings', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -89,238 +89,108 @@ const DashboardSettingsPage = () => {
         console.log('📡 Réponse API:', response.status, response.statusText);
         
         if (response.ok) {
-          const settingsData = await response.json();
-          console.log('📋 Données reçues:', settingsData);
-          console.log('🔍 Clés disponibles:', Object.keys(settingsData));
-          console.log('🏷️ Type de données:', typeof settingsData);
-          console.log('📊 Est un array?', Array.isArray(settingsData));
-          console.log('🔑 A success?', 'success' in settingsData);
-          console.log('🏢 A nursery_name?', 'nursery_name' in settingsData);
-          console.log('🕐 working_hours_saturday:', settingsData.working_hours_saturday);
-          console.log('📅 saturday_open:', settingsData.saturday_open);
-          
-          let transformedSettings;
-          
-          // Gérer différents formats de réponse
-          if (settingsData.success && settingsData.settings) {
-            console.log('🎯 Format: Réponse API avec success et settings');
-            // Format de l'API actuelle: {success: true, settings: {...}, language: "fr"}
-            const apiSettings = settingsData.settings;
-            
-            transformedSettings = {
-              nurseryName: apiSettings.nursery_name?.value || apiSettings.nursery_name?.fr || 'Crèche Mima Elghalia',
-              address: apiSettings.address?.value || apiSettings.address?.fr || '8 Rue Bizerte, Medenine 4100, Tunisie',
-              phone: apiSettings.phone?.value || apiSettings.phone?.fr || '+216 25 95 35 32',
-              email: apiSettings.email?.value || apiSettings.email?.fr || 'contact@mimaelghalia.tn',
-              capacity: parseInt(apiSettings.capacity?.value?.replace(/\D/g, '') || apiSettings.capacity?.fr?.replace(/\D/g, '') || '50'),
-              openingTime: apiSettings.working_hours_weekdays?.value ? 
-                JSON.parse(apiSettings.working_hours_weekdays.value).start : 
-                (apiSettings.working_hours_weekdays?.fr ? JSON.parse(apiSettings.working_hours_weekdays.fr).start : '07:00'),
-              closingTime: apiSettings.working_hours_weekdays?.value ? 
-                JSON.parse(apiSettings.working_hours_weekdays.value).end : 
-                (apiSettings.working_hours_weekdays?.fr ? JSON.parse(apiSettings.working_hours_weekdays.fr).end : '18:00'),
-              // Nouveau: Horaires samedi
-              saturdayOpen: apiSettings.saturday_open?.value === 'true' || apiSettings.saturday_open?.fr === 'true' || false,
-              saturdayOpeningTime: apiSettings.working_hours_saturday?.value ? 
-                JSON.parse(apiSettings.working_hours_saturday.value).start : 
-                (apiSettings.working_hours_saturday?.fr ? JSON.parse(apiSettings.working_hours_saturday.fr).start : '08:00'),
-              saturdayClosingTime: apiSettings.working_hours_saturday?.value ? 
-                JSON.parse(apiSettings.working_hours_saturday.value).end : 
-                (apiSettings.working_hours_saturday?.fr ? JSON.parse(apiSettings.working_hours_saturday.fr).end : '14:00'),
-              // Autres paramètres
-              emailNotifications: true,
-              smsNotifications: false,
-              attendanceAlerts: true,
-              enrollmentAlerts: true,
-              sessionTimeout: 30,
-              passwordExpiry: 90,
-              twoFactorAuth: false,
-              autoBackup: true,
-              backupFrequency: 'daily',
-              dataRetention: 365
-            };
-          } else if (typeof settingsData === 'object' && settingsData.nursery_name) {
-            console.log('🏢 Format: Objet direct avec clés settings');
-            // Format réel de l'API: {address: {value: "...", fr: "...", ar: "..."}, ...}
-            
-            transformedSettings = {
-              nurseryName: settingsData.nursery_name?.value || settingsData.nursery_name?.fr || 'Crèche Mima Elghalia',
-              address: settingsData.address?.value || settingsData.address?.fr || '8 Rue Bizerte, Medenine 4100, Tunisie',
-              phone: settingsData.phone?.value || settingsData.phone?.fr || '+216 25 95 35 32',
-              email: settingsData.email?.value || settingsData.email?.fr || 'contact@mimaelghalia.tn',
-              capacity: parseInt(settingsData.capacity?.value?.replace(/\D/g, '') || settingsData.capacity?.fr?.replace(/\D/g, '') || '50'),
-              openingTime: (() => {
-                try {
-                  const weekdaysData = settingsData.working_hours_weekdays?.value || settingsData.working_hours_weekdays?.fr;
-                  if (weekdaysData) {
-                    // Essayer JSON d'abord
-                    try {
-                      const parsed = JSON.parse(weekdaysData);
-                      return parsed.start;
-                    } catch (jsonError) {
-                      // Si pas JSON, essayer format "HH:MM-HH:MM"
-                      if (weekdaysData.includes('-')) {
-                        return weekdaysData.split('-')[0].trim();
-                      }
-                      return weekdaysData;
-                    }
-                  }
-                } catch (e) {
-                  console.warn('Erreur parsing working_hours_weekdays:', e);
-                }
-                return '07:00';
-              })(),
-              closingTime: (() => {
-                try {
-                  const weekdaysData = settingsData.working_hours_weekdays?.value || settingsData.working_hours_weekdays?.fr;
-                  if (weekdaysData) {
-                    // Essayer JSON d'abord
-                    try {
-                      const parsed = JSON.parse(weekdaysData);
-                      return parsed.end;
-                    } catch (jsonError) {
-                      // Si pas JSON, essayer format "HH:MM-HH:MM"
-                      if (weekdaysData.includes('-')) {
-                        return weekdaysData.split('-')[1].trim();
-                      }
-                      return weekdaysData;
-                    }
-                  }
-                } catch (e) {
-                  console.warn('Erreur parsing working_hours_weekdays:', e);
-                }
-                return '18:00';
-              })(),
-              // Nouveau: Horaires samedi
-              saturdayOpen: settingsData.saturday_open?.value === 'true' || settingsData.saturday_open?.fr === 'true' || false,
-              saturdayOpeningTime: (() => {
-                try {
-                  const saturdayData = settingsData.working_hours_saturday?.value || settingsData.working_hours_saturday?.fr;
-                  if (saturdayData) {
-                    // Essayer JSON d'abord
-                    try {
-                      const parsed = JSON.parse(saturdayData);
-                      return parsed.start;
-                    } catch (jsonError) {
-                      // Si pas JSON, essayer format "HH:MM-HH:MM"
-                      if (saturdayData.includes('-')) {
-                        return saturdayData.split('-')[0].trim();
-                      }
-                      return saturdayData;
-                    }
-                  }
-                } catch (e) {
-                  console.warn('Erreur parsing working_hours_saturday:', e);
-                }
-                return '08:00';
-              })(),
-              saturdayClosingTime: (() => {
-                try {
-                  const saturdayData = settingsData.working_hours_saturday?.value || settingsData.working_hours_saturday?.fr;
-                  if (saturdayData) {
-                    // Essayer JSON d'abord
-                    try {
-                      const parsed = JSON.parse(saturdayData);
-                      return parsed.end;
-                    } catch (jsonError) {
-                      // Si pas JSON, essayer format "HH:MM-HH:MM"
-                      if (saturdayData.includes('-')) {
-                        return saturdayData.split('-')[1].trim();
-                      }
-                      return saturdayData;
-                    }
-                  }
-                } catch (e) {
-                  console.warn('Erreur parsing working_hours_saturday:', e);
-                }
-                return '14:00';
-              })(),
-              // Autres paramètres
-              emailNotifications: true,
-              smsNotifications: false,
-              attendanceAlerts: true,
-              enrollmentAlerts: true,
-              sessionTimeout: 30,
-              passwordExpiry: 90,
-              twoFactorAuth: false,
-              autoBackup: true,
-              backupFrequency: 'daily',
-              dataRetention: 365
-            };
-          } else if (Array.isArray(settingsData)) {
-            console.log('📊 Format: Array de settings');
-            // Format array (table nursery_settings)
-            const settingsMap = {};
-            settingsData.forEach(setting => {
-              settingsMap[setting.setting_key] = {
-                fr: setting.value_fr,
-                ar: setting.value_ar
-              };
-            });
-            
-            console.log('🗺️ Settings map créé:', settingsMap);
-            
-            transformedSettings = {
-              nurseryName: settingsMap.nursery_name?.fr || 'Crèche Mima Elghalia',
-              address: settingsMap.address?.fr || '8 Rue Bizerte, Medenine 4100, Tunisie',
-              phone: settingsMap.phone?.fr || '+216 25 95 35 32',
-              email: settingsMap.email?.fr || 'contact@mimaelghalia.tn',
-              capacity: parseInt(settingsMap.capacity?.fr?.replace(/\D/g, '')) || 50,
-              openingTime: settingsMap.working_hours_weekdays?.fr ? 
-                JSON.parse(settingsMap.working_hours_weekdays.fr).start : '07:00',
-              closingTime: settingsMap.working_hours_weekdays?.fr ? 
-                JSON.parse(settingsMap.working_hours_weekdays.fr).end : '18:00',
-              saturdayOpen: settingsMap.saturday_open?.fr === 'true' || false,
-              saturdayOpeningTime: settingsMap.working_hours_saturday?.fr ? 
-                JSON.parse(settingsMap.working_hours_saturday.fr).start : '08:00',
-              saturdayClosingTime: settingsMap.working_hours_saturday?.fr ? 
-                JSON.parse(settingsMap.working_hours_saturday.fr).end : '14:00',
-              // Autres paramètres
-              emailNotifications: true,
-              smsNotifications: false,
-              attendanceAlerts: true,
-              enrollmentAlerts: true,
-              sessionTimeout: 30,
-              passwordExpiry: 90,
-              twoFactorAuth: false,
-              autoBackup: true,
-              backupFrequency: 'daily',
-              dataRetention: 365
-            };
-          } else {
-            throw new Error('Format de données non reconnu');
-          }
-          
-          console.log('✅ Settings transformés:', transformedSettings);
-          console.log('🕐 Heures samedi parsées:', {
-            saturdayOpen: transformedSettings.saturdayOpen,
-            saturdayOpeningTime: transformedSettings.saturdayOpeningTime,
-            saturdayClosingTime: transformedSettings.saturdayClosingTime
+          const data = await response.json();
+          console.log('📋 DONNÉES BRUTES REÇUES:', JSON.stringify(data, null, 2));
+          console.log('🔍 STRUCTURE DATA:', {
+            hasSuccess: 'success' in data,
+            hasSettings: 'settings' in data,
+            dataKeys: Object.keys(data),
+            settingsKeys: data.settings ? Object.keys(data.settings) : 'N/A'
           });
-          setSettings(transformedSettings);
+          
+          // Vérifier la structure des données
+          if (data.success && data.settings) {
+            console.log('✅ Structure détectée: {success, settings}');
+            const rawSettings = data.settings;
+            
+            // Fonction helper pour extraire les valeurs
+            const getValue = (setting, fallback = '') => {
+              if (!setting) return fallback;
+              // Si c'est une chaîne simple, la retourner directement
+              if (typeof setting === 'string') return setting;
+              // Sinon, chercher dans les propriétés
+              return setting.value || setting.fr || setting.ar || fallback;
+            };
+            
+            // Fonction helper pour parser les horaires
+            const parseHours = (hoursString, fallbackStart, fallbackEnd) => {
+              if (!hoursString || typeof hoursString !== 'string') {
+                return { start: fallbackStart, end: fallbackEnd };
+              }
+              
+              if (hoursString.includes('-')) {
+                const parts = hoursString.split('-');
+                return {
+                  start: parts[0]?.trim() || fallbackStart,
+                  end: parts[1]?.trim() || fallbackEnd
+                };
+              }
+              
+              return { start: fallbackStart, end: fallbackEnd };
+            };
+            
+            // Extraire toutes les valeurs avec logs détaillés
+            console.log('🏢 nursery_name:', rawSettings.nursery_name);
+            console.log('📍 address:', rawSettings.address);
+            console.log('📞 phone:', rawSettings.phone);
+            console.log('📧 email:', rawSettings.email);
+            console.log('👥 capacity:', rawSettings.capacity);
+            console.log('🕐 working_hours_weekdays:', rawSettings.working_hours_weekdays);
+            console.log('📅 saturday_open:', rawSettings.saturday_open);
+            console.log('🕐 working_hours_saturday:', rawSettings.working_hours_saturday);
+            
+            // Logs des valeurs extraites
+            console.log('🔍 VALEURS EXTRAITES:');
+            console.log('  - nurseryName:', getValue(rawSettings.nursery_name, 'Crèche Mima Elghalia'));
+            console.log('  - capacity:', getValue(rawSettings.capacity, '50'));
+            console.log('  - saturday_open:', getValue(rawSettings.saturday_open));
+            console.log('  - working_hours_saturday:', getValue(rawSettings.working_hours_saturday));
+            
+            const weekdaysHours = parseHours(getValue(rawSettings.working_hours_weekdays), '07:00', '18:00');
+            const saturdayHours = parseHours(getValue(rawSettings.working_hours_saturday), '08:00', '14:00');
+            
+            const transformedSettings = {
+              nurseryName: getValue(rawSettings.nursery_name, 'Crèche Mima Elghalia'),
+              address: getValue(rawSettings.address, '8 Rue Bizerte, Medenine 4100, Tunisie'),
+              phone: getValue(rawSettings.phone, '+216 25 95 35 32'),
+              email: getValue(rawSettings.email, 'contact@mimaelghalia.tn'),
+              capacity: parseInt(getValue(rawSettings.capacity, '50').replace(/\D/g, '') || '50'),
+              openingTime: weekdaysHours.start,
+              closingTime: weekdaysHours.end,
+              saturdayOpen: getValue(rawSettings.saturday_open) === 'true',
+              saturdayOpeningTime: saturdayHours.start,
+              saturdayClosingTime: saturdayHours.end,
+              // Paramètres par défaut
+              emailNotifications: true,
+              smsNotifications: false,
+              attendanceAlerts: true,
+              enrollmentAlerts: true,
+              sessionTimeout: 30,
+              passwordExpiry: 90,
+              twoFactorAuth: false,
+              autoBackup: true,
+              backupFrequency: 'daily',
+              dataRetention: 365
+            };
+            
+            console.log('🎯 PARAMÈTRES FINAUX:', transformedSettings);
+            setSettings(transformedSettings);
+            setLoading(false);
+            
+          } else {
+            console.error('❌ Structure de données non reconnue:', data);
+            setError('Format de données non reconnu');
+            setLoading(false);
+          }
         } else {
-          const errorText = await response.text();
-          console.error('❌ Erreur API:', response.status, errorText);
-          throw new Error(`Erreur ${response.status}: ${errorText}`);
+          console.error('❌ Erreur HTTP:', response.status, response.statusText);
+          setError(`Erreur ${response.status}: ${response.statusText}`);
+          setLoading(false);
         }
       } catch (error) {
-        console.error('💥 Erreur lors du chargement des paramètres:', error);
-        
-        // Si l'API n'existe pas encore, utiliser les données par défaut de la table
-        console.log('🔄 Utilisation des données par défaut...');
-        setSettings(prev => ({
-          ...prev,
-          nurseryName: 'Crèche Mima Elghalia',
-          address: '8 Rue Bizerte, Medenine 4100, Tunisie',
-          phone: '+216 25 95 35 32',
-          email: 'contact@mimaelghalia.tn',
-          capacity: 50,
-          openingTime: '07:00',
-          closingTime: '18:00',
-          saturdayOpen: false,
-          saturdayOpeningTime: '08:00',
-          saturdayClosingTime: '14:00'
-        }));
+        console.error('❌ Erreur de connexion:', error);
+        setError('Erreur de connexion au serveur');
+        setLoading(false);
       }
     };
 
@@ -466,16 +336,6 @@ const DashboardSettingsPage = () => {
             const nameMatch = dbName === holidayName;
             const dateMatch = dbDate === holidayDate;
             
-            console.log(`🔍 Comparaison "${holiday.name}" vs "${ah.name}":`, {
-              holidayName,
-              holidayDate,
-              dbName,
-              dbDate,
-              exactMatch,
-              nameMatch,
-              dateMatch
-            });
-            
             // Correspondance exacte prioritaire
             if (exactMatch) return true;
             
@@ -483,7 +343,6 @@ const DashboardSettingsPage = () => {
             if (nameMatch) {
               const dateDiff = Math.abs(new Date(dbDate) - new Date(holidayDate));
               const daysDiff = dateDiff / (24 * 60 * 60 * 1000);
-              console.log(`📅 Différence de dates: ${daysDiff} jours`);
               return daysDiff <= 7;
             }
             
@@ -807,7 +666,7 @@ const DashboardSettingsPage = () => {
       
       console.log('📤 Données à envoyer (API simple):', updateData);
       
-      const response = await fetch('/api/nursery-settings/simple-update', {
+      const response = await fetch('http://localhost:3003/api/nursery-settings/simple-update', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -961,6 +820,7 @@ const DashboardSettingsPage = () => {
                   </label>
                   <input
                     type="time"
+                    dir="ltr"
                     value={settings.openingTime}
                     onChange={(e) => handleSettingChange('openingTime', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
@@ -973,6 +833,7 @@ const DashboardSettingsPage = () => {
                   </label>
                   <input
                     type="time"
+                    dir="ltr"
                     value={settings.closingTime}
                     onChange={(e) => handleSettingChange('closingTime', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
@@ -1011,6 +872,7 @@ const DashboardSettingsPage = () => {
                       </label>
                       <input
                         type="time"
+                        dir="ltr"
                         value={settings.saturdayOpeningTime}
                         onChange={(e) => handleSettingChange('saturdayOpeningTime', e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
@@ -1023,6 +885,7 @@ const DashboardSettingsPage = () => {
                       </label>
                       <input
                         type="time"
+                        dir="ltr"
                         value={settings.saturdayClosingTime}
                         onChange={(e) => handleSettingChange('saturdayClosingTime', e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
