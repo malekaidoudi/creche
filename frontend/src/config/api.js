@@ -9,9 +9,9 @@
 // Configuration API pour différents environnements
 const API_CONFIG = {
   // URL de base pour les requêtes API
-  BASE_URL: process.env.NODE_ENV === 'production' 
-    ? process.env.VITE_API_URL || 'https://creche-backend.onrender.com'
-    : 'https://creche-backend.onrender.com',
+  BASE_URL: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+    ? 'http://localhost:3000' 
+    : '',
   
   // Endpoints de l'API
   ENDPOINTS: {

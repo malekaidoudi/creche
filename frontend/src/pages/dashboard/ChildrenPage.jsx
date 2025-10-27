@@ -161,7 +161,7 @@ const ChildrenPage = () => {
       setActionLoading(child.id);
       
       // Appel API pour désactiver le parent
-      const response = await fetch(`https://creche-backend.onrender.com/api/children/${child.id}/deactivate-parent`, {
+      const response = await fetch(`/api/children/${child.id}/deactivate-parent`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,

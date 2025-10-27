@@ -80,7 +80,7 @@ const DashboardSettingsPage = () => {
         const token = localStorage.getItem('token');
         console.log('🔑 Token présent:', !!token);
         
-        const response = await fetch('https://creche-backend.onrender.com/api/nursery-settings', {
+        const response = await fetch('/api/nursery-settings', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -491,8 +491,8 @@ const DashboardSettingsPage = () => {
       console.log('✅ Vérifications passées, envoi de la requête...');
       
       // Test de l'endpoint API
-      console.log('🌐 URL de base:', 'https://creche-backend.onrender.com');
-      console.log('📍 Endpoint cible:', 'https://creche-backend.onrender.com/api/holidays');
+      console.log('🌐 URL de base:', window.location.origin);
+      console.log('📍 Endpoint cible:', `${window.location.origin}/api/holidays`);
       
       if (isActive) {
         // INSERTION : Ajouter le jour férié dans la base de données
@@ -608,7 +608,7 @@ const DashboardSettingsPage = () => {
       
       console.log('📤 Données à envoyer (API simple):', updateData);
       
-      const response = await fetch('https://creche-backend.onrender.com/api/nursery-settings/simple-update', {
+      const response = await fetch('/api/nursery-settings/simple-update', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
