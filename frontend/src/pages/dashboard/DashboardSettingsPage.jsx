@@ -80,18 +80,11 @@ const DashboardSettingsPage = () => {
         const token = localStorage.getItem('token');
         console.log('🔑 Token présent:', !!token);
         
-        const response = await fetch('/api/nursery-settings', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
+        const response = await api.get('/api/nursery-settings');
+        const data = response.data;
         
-        console.log('📡 Réponse API:', response.status, response.statusText);
-        
-        if (response.ok) {
-          const data = await response.json();
-          console.log('📋 DONNÉES BRUTES REÇUES:', JSON.stringify(data, null, 2));
+        console.log('📡 Réponse API:', 200);
+        console.log('📋 DONNÉES BRUTES REÇUES:', JSON.stringify(data, null, 2));
           console.log('🔍 STRUCTURE DATA:', {
             hasSuccess: 'success' in data,
             hasSettings: 'settings' in data,
@@ -490,9 +483,12 @@ const DashboardSettingsPage = () => {
       
       console.log('✅ Vérifications passées, envoi de la requête...');
       
-      // Test de l'endpoint API
-      console.log('🌐 URL de base:', window.location.origin);
-      console.log('📍 Endpoint cible:', `${window.location.origin}/api/holidays`);
+      // Test de l'endpoint API  
+      const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+        ? 'http://localhost:3000' 
+        : 'https://creche-backend.onrender.com';
+      console.log('🌐 URL de base:', API_BASE_URL);
+      console.log('📍 Endpoint cible:', `${API_BASE_URL}/api/holidays`);
       
       if (isActive) {
         // INSERTION : Ajouter le jour férié dans la base de données
@@ -608,14 +604,7 @@ const DashboardSettingsPage = () => {
       
       console.log('📤 Données à envoyer (API simple):', updateData);
       
-      const response = await fetch('/api/nursery-settings/simple-update', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(updateData)
-      });
+      const response = await api.post('/api/nursery-settings/simple-update', updateData);
       
       console.log('📡 Réponse sauvegarde:', response.status, response.statusText);
       
