@@ -5,6 +5,7 @@ import { User, Mail, Phone, Lock, Camera, Save, ArrowLeft, Eye, EyeOff, Shield, 
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useTheme } from '../../hooks/useTheme';
+import api from '../../services/api';
 import { useProfileImage } from '../../hooks/useProfileImage';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -49,19 +50,16 @@ const ProfilePage = () => {
     
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
       const uploadFormData = new FormData();
       uploadFormData.append('image', file);
 
-      const response = await fetch('/api/profile/upload', {
-        method: 'POST',
+      const response = await api.post('/api/profile/upload', uploadFormData, {
         headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: uploadFormData
+          'Content-Type': 'multipart/form-data'
+        }
       });
 
-      const result = await response.json();
+      const result = response.data;
       
       if (result.success) {
         updateUser({ ...user, profile_image: result.imageUrl });
@@ -84,19 +82,10 @@ const ProfilePage = () => {
     setLoading(true);
     
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(formData)
-      });
+      const response = await api.put('/api/profile', formData);
+      const result = response.data;
       
-      const result = await response.json();
-      
-      if (response.ok) {
+      if (result.success) {
         updateUser(result.user);
         toast.success(isRTL ? 'تم التحديث بنجاح' : 'Profil mis à jour');
         setFormData(prev => ({ ...prev, current_password: '', new_password: '', confirm_password: '' }));

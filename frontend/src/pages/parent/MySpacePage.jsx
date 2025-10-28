@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
 import { 
   FileText, 
   AlertCircle, 
@@ -12,6 +11,7 @@ import {
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useTheme } from '../../hooks/useTheme';
+import api from '../../services/api';
 import { useProfileImage } from '../../hooks/useProfileImage';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -35,17 +35,10 @@ const MySpacePage = () => {
   const loadChildren = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      
-      const response = await fetch('/api/user/children-summary', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          setChildren(result.children || []);
-        }
+      const response = await api.get('/api/user/children-summary');
+      const result = response.data;
+      if (result.success) {
+        setChildren(result.children || []);
       }
     } catch (error) {
       console.error('Erreur chargement enfants:', error);

@@ -16,6 +16,7 @@ import {
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useTheme } from '../../hooks/useTheme';
+import api from '../../services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
@@ -45,30 +46,16 @@ const AttendanceReportPage = () => {
     try {
       setLoading(true);
       setError(null);
-      const token = localStorage.getItem('token');
-      
-      if (!token) {
-        throw new Error('Token manquant - veuillez vous reconnecter');
-      }
-      
-      const response = await fetch('/api/attendance/report', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          const data = result.attendances || [];
-          setAttendanceData(data);
-          setFilteredData(data);
-          calculateStats(data);
-          console.log('Données chargées:', data.length, 'enregistrements');
-        } else {
-          throw new Error(result.error || 'Erreur dans la réponse API');
-        }
+      const response = await api.get('/api/attendance/report');
+      const result = response.data;
+      if (result.success) {
+        const data = result.attendances || [];
+        setAttendanceData(data);
+        setFilteredData(data);
+        calculateStats(data);
+        console.log('Données chargées:', data.length, 'enregistrements');
       } else {
-        const errorText = await response.text();
-        throw new Error(`Erreur HTTP ${response.status}: ${errorText}`);
+        throw new Error(result.error || 'Erreur dans la réponse API');
       }
     } catch (error) {
       console.error('Erreur détaillée:', error);
