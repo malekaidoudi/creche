@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, AlertCircle } from 'lucide-react';
 import { useLanguage } from '../hooks/useLanguage';
 import { useTheme } from '../hooks/useTheme';
+import api from '../services/api';
 
 const HolidaysList = ({ userRole = 'parent' }) => {
   const { isRTL } = useLanguage();
@@ -17,22 +18,12 @@ const HolidaysList = ({ userRole = 'parent' }) => {
   const fetchActiveHolidays = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      
-      const response = await fetch('/api/holidays', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          // Trier par date
-          const sortedHolidays = data.holidays.sort((a, b) => new Date(a.date) - new Date(b.date));
-          setHolidays(sortedHolidays);
-        }
+      const response = await api.get('/api/holidays');
+      const data = response.data;
+      if (data.success) {
+        // Trier par date
+        const sortedHolidays = data.holidays.sort((a, b) => new Date(a.date) - new Date(b.date));
+        setHolidays(sortedHolidays);
       }
     } catch (error) {
       console.error('Erreur chargement jours fériés:', error);

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from './useAuth';
+import api from '../services/api';
 
 export const useHasChildren = () => {
   const { user } = useAuth();
@@ -15,18 +16,9 @@ export const useHasChildren = () => {
       }
 
       try {
-        const token = localStorage.getItem('token');
-        const response = await fetch('/api/user/has-children', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          setHasChildren(result.hasChildren);
-          setChildrenCount(result.childrenCount);
-        }
+        const response = await api.get('/api/user/has-children');
+        setHasChildren(response.data.hasChildren);
+        setChildrenCount(response.data.childrenCount);
       } catch (error) {
         console.error('Erreur vérification enfants:', error);
       } finally {
