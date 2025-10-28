@@ -34,36 +34,31 @@ const ContactPageDynamic = () => {
             setIsLoading(true)
             try {
                 // Récupérer les données depuis l'API
-                const response = await fetch('/api/contact')
+                const response = await api.get('/api/contact')
+                const apiData = response.data
+                console.log('📋 Données contact API:', apiData)
                 
-                if (response.ok) {
-                    const apiData = await response.json()
-                    console.log('📋 Données contact API:', apiData)
-                    
-                    if (apiData.success && apiData.contact) {
-                        const contactData = {
-                            address: isRTL ? apiData.contact.address_ar : apiData.contact.address,
-                            phone: apiData.contact.phone,
-                            email: apiData.contact.email,
-                            title: isRTL ? 'تواصل معنا' : 'Contactez-nous',
-                            subtitle: isRTL ? 'نحن هنا للإجابة على جميع أسئلتكم ومساعدتكم في رحلة طفلكم التعليمية' : 'Nous sommes là pour répondre à toutes vos questions et vous accompagner dans le parcours éducatif de votre enfant',
-                            hours: isRTL ? apiData.contact.hours_ar : apiData.contact.hours,
-                            // Données de localisation
-                            nursery_name: isRTL ? 'حضانة ميما الغالية' : 'Crèche Mima Elghalia',
-                            map_title: isRTL ? 'موقعنا على الخريطة' : 'Notre localisation',
-                            map_description: isRTL ? 'تجدونا في هذا الموقع بمدنين' : 'Vous nous trouverez à cette adresse à Médenine',
-                            google_maps_button: isRTL ? 'فتح في خرائط جوجل' : 'Ouvrir dans Google Maps',
-                            latitude: '33.3407',
-                            longitude: '10.4899'
-                        }
-                        
-                        setContactData(contactData)
-                        console.log('✅ Données contact chargées depuis l\'API')
-                    } else {
-                        throw new Error('Données API invalides')
+                if (apiData.success && apiData.contact) {
+                    const contactData = {
+                        address: isRTL ? apiData.contact.address_ar : apiData.contact.address,
+                        phone: apiData.contact.phone,
+                        email: apiData.contact.email,
+                        title: isRTL ? 'تواصل معنا' : 'Contactez-nous',
+                        subtitle: isRTL ? 'نحن هنا للإجابة على جميع أسئلتكم ومساعدتكم في رحلة طفلكم التعليمية' : 'Nous sommes là pour répondre à toutes vos questions et vous accompagner dans le parcours éducatif de votre enfant',
+                        hours: isRTL ? apiData.contact.hours_ar : apiData.contact.hours,
+                        // Données de localisation
+                        nursery_name: isRTL ? 'حضانة ميما الغالية' : 'Crèche Mima Elghalia',
+                        map_title: isRTL ? 'موقعنا على الخريطة' : 'Notre localisation',
+                        map_description: isRTL ? 'تجدونا في هذا الموقع بمدنين' : 'Vous nous trouverez à cette adresse à Médenine',
+                        google_maps_button: isRTL ? 'فتح في خرائط جوجل' : 'Ouvrir dans Google Maps',
+                        latitude: '33.3407',
+                        longitude: '10.4899'
                     }
+                    
+                    setContactData(contactData)
+                    console.log('✅ Données contact chargées depuis l\'API')
                 } else {
-                    throw new Error('Erreur API')
+                    throw new Error('Données API invalides')
                 }
             } catch (error) {
                 console.error('Erreur chargement contact:', error)

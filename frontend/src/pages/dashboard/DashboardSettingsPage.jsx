@@ -85,100 +85,55 @@ const DashboardSettingsPage = () => {
         
         console.log('📡 Réponse API:', 200);
         console.log('📋 DONNÉES BRUTES REÇUES:', JSON.stringify(data, null, 2));
-          console.log('🔍 STRUCTURE DATA:', {
-            hasSuccess: 'success' in data,
-            hasSettings: 'settings' in data,
-            dataKeys: Object.keys(data),
-            settingsKeys: data.settings ? Object.keys(data.settings) : 'N/A'
-          });
+        console.log('🔍 STRUCTURE DATA:', {
+          hasSuccess: 'success' in data,
+          hasSettings: 'settings' in data,
+          dataKeys: Object.keys(data),
+          settingsKeys: data.settings ? Object.keys(data.settings) : 'N/A'
+        });
+        
+        // Vérifier la structure des données
+        if (data.success && data.settings) {
+          console.log('✅ Structure détectée: {success, settings}');
           
-          // Vérifier la structure des données
-          if (data.success && data.settings) {
-            console.log('✅ Structure détectée: {success, settings}');
-            const rawSettings = data.settings;
-            
-            // Fonction helper pour extraire les valeurs
-            const getValue = (setting, fallback = '') => {
-              if (!setting) return fallback;
-              // Si c'est une chaîne simple, la retourner directement
-              if (typeof setting === 'string') return setting;
-              // Sinon, chercher dans les propriétés
-              return setting.value || setting.fr || setting.ar || fallback;
-            };
-            
-            // Fonction helper pour parser les horaires
-            const parseHours = (hoursString, fallbackStart, fallbackEnd) => {
-              if (!hoursString || typeof hoursString !== 'string') {
-                return { start: fallbackStart, end: fallbackEnd };
-              }
-              
-              if (hoursString.includes('-')) {
-                const parts = hoursString.split('-');
-                return {
-                  start: parts[0]?.trim() || fallbackStart,
-                  end: parts[1]?.trim() || fallbackEnd
-                };
-              }
-              
-              return { start: fallbackStart, end: fallbackEnd };
-            };
-            
-            // Extraire toutes les valeurs avec logs détaillés
-            console.log('🏢 nursery_name:', rawSettings.nursery_name);
-            console.log('📍 address:', rawSettings.address);
-            console.log('📞 phone:', rawSettings.phone);
-            console.log('📧 email:', rawSettings.email);
-            console.log('👥 capacity:', rawSettings.capacity);
-            console.log('🕐 working_hours_weekdays:', rawSettings.working_hours_weekdays);
-            console.log('📅 saturday_open:', rawSettings.saturday_open);
-            console.log('🕐 working_hours_saturday:', rawSettings.working_hours_saturday);
-            
-            // Logs des valeurs extraites
-            console.log('🔍 VALEURS EXTRAITES:');
-            console.log('  - nurseryName:', getValue(rawSettings.nursery_name, 'Crèche Mima Elghalia'));
-            console.log('  - capacity:', getValue(rawSettings.capacity, '50'));
-            console.log('  - saturday_open:', getValue(rawSettings.saturday_open));
-            console.log('  - working_hours_saturday:', getValue(rawSettings.working_hours_saturday));
-            
-            const weekdaysHours = parseHours(getValue(rawSettings.working_hours_weekdays), '07:00', '18:00');
-            const saturdayHours = parseHours(getValue(rawSettings.working_hours_saturday), '08:00', '14:00');
-            
-            const transformedSettings = {
-              nurseryName: getValue(rawSettings.nursery_name, 'Crèche Mima Elghalia'),
-              address: getValue(rawSettings.address, '8 Rue Bizerte, Medenine 4100, Tunisie'),
-              phone: getValue(rawSettings.phone, '+216 25 95 35 32'),
-              email: getValue(rawSettings.email, 'contact@mimaelghalia.tn'),
-              capacity: parseInt(getValue(rawSettings.capacity, '50').replace(/\D/g, '') || '50'),
-              openingTime: weekdaysHours.start,
-              closingTime: weekdaysHours.end,
-              saturdayOpen: getValue(rawSettings.saturday_open) === 'true',
-              saturdayOpeningTime: saturdayHours.start,
-              saturdayClosingTime: saturdayHours.end,
-              // Paramètres par défaut
-              emailNotifications: true,
-              smsNotifications: false,
-              attendanceAlerts: true,
-              enrollmentAlerts: true,
-              sessionTimeout: 30,
-              passwordExpiry: 90,
-              twoFactorAuth: false,
-              autoBackup: true,
-              backupFrequency: 'daily',
-              dataRetention: 365
-            };
-            
-            console.log('🎯 PARAMÈTRES FINAUX:', transformedSettings);
-            setSettings(transformedSettings);
-            setLoading(false);
-            
-          } else {
-            console.error('❌ Structure de données non reconnue:', data);
-            setError('Format de données non reconnu');
-            setLoading(false);
-          }
+          // Extraire les valeurs importantes pour debugging
+          const { settings: apiSettings } = data;
+          console.log('🏢 nursery_name:', apiSettings.nursery_name);
+          console.log('📍 address:', apiSettings.address);
+          console.log('📞 phone:', apiSettings.phone);
+          console.log('📧 email:', apiSettings.email);
+          console.log('👥 capacity:', apiSettings.capacity);
+          console.log('🕐 working_hours_weekdays:', apiSettings.working_hours_weekdays);
+          console.log('📅 saturday_open:', apiSettings.saturday_open);
+          console.log('🕐 working_hours_saturday:', apiSettings.working_hours_saturday);
+          
+          console.log('🔍 VALEURS EXTRAITES:');
+          console.log('  - nurseryName:', apiSettings.nursery_name);
+          console.log('  - capacity:', apiSettings.capacity);
+          console.log('  - saturday_open:', apiSettings.saturday_open);
+          console.log('  - working_hours_saturday:', apiSettings.working_hours_saturday);
+          
+          // Transformer les données pour l'état local
+          const transformedSettings = {
+            nurseryName: apiSettings.nursery_name || 'Crèche Mima Elghalia',
+            address: apiSettings.address || '16 Rue Bizerte, Medenine 4100, Tunisie',
+            phone: apiSettings.phone || '+216 25 95 35 32',
+            email: apiSettings.email || 'contact@mimaelghalia.tn',
+            capacity: parseInt(apiSettings.capacity?.toString().replace(/\D/g, '')) || 40,
+            openingTime: apiSettings.working_hours_weekdays?.split('-')[0] || '07:00',
+            closingTime: apiSettings.working_hours_weekdays?.split('-')[1] || '18:00',
+            saturdayOpen: apiSettings.saturday_open === 'true' || apiSettings.saturday_open === true,
+            saturdayOpeningTime: apiSettings.working_hours_saturday?.split('-')[0] || '08:00',
+            saturdayClosingTime: apiSettings.working_hours_saturday?.split('-')[1] || '12:00'
+          };
+          
+          console.log('🎯 PARAMÈTRES FINAUX:', transformedSettings);
+          setSettings(transformedSettings);
+          setLoading(false);
+          
         } else {
-          console.error('❌ Erreur HTTP:', response.status, response.statusText);
-          setError(`Erreur ${response.status}: ${response.statusText}`);
+          console.error('❌ Structure de données non reconnue:', data);
+          setError('Format de données non reconnu');
           setLoading(false);
         }
       } catch (error) {
@@ -605,18 +560,11 @@ const DashboardSettingsPage = () => {
       console.log('📤 Données à envoyer (API simple):', updateData);
       
       const response = await api.post('/api/nursery-settings/simple-update', updateData);
+      const result = response.data;
       
-      console.log('📡 Réponse sauvegarde:', response.status, response.statusText);
-      
-      if (response.ok) {
-        const result = await response.json();
-        console.log('✅ Sauvegarde réussie:', result);
-        toast.success(isRTL ? 'تم حفظ الإعدادات بنجاح' : 'Paramètres sauvegardés avec succès');
-      } else {
-        const errorText = await response.text();
-        console.error('❌ Erreur sauvegarde:', response.status, errorText);
-        throw new Error(`Erreur ${response.status}`);
-      }
+      console.log('📡 Réponse sauvegarde:', 200);
+      console.log('✅ Sauvegarde réussie:', result);
+      toast.success(isRTL ? 'تم حفظ الإعدادات بنجاح' : 'Paramètres sauvegardés avec succès');
     } catch (error) {
       console.error('💥 Erreur lors de la sauvegarde:', error);
       toast.error(isRTL ? 'خطأ في حفظ الإعدادات' : 'Erreur lors de la sauvegarde');
