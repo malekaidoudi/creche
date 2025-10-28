@@ -51,3 +51,5 @@ jobs:
           publish_dir: ./frontend/dist
           publish_branch: gh-pages
           force_orphan: true
+          enable_jekyll: false
+          cname: false
