@@ -5,7 +5,7 @@ const childrenService = {
   getAllChildren: async (params = {}) => {
     try {
       const { page = 1, limit = 20, search = '', status = 'all', age = 'all' } = params
-      const response = await api.get('/children', {
+      const response = await api.get('/api/children', {
         params: { page, limit, search, status, age }
       })
       return response.data
@@ -18,7 +18,7 @@ const childrenService = {
   // Obtenir un enfant par ID
   getChildById: async (id) => {
     try {
-      const response = await api.get(`/children/${id}`)
+      const response = await api.get(`/api/children/${id}`)
       return response.data
     } catch (error) {
       console.error('Erreur lors de la récupération de l\'enfant:', error)
@@ -29,7 +29,7 @@ const childrenService = {
   // Créer un nouvel enfant
   createChild: async (childData) => {
     try {
-      const response = await api.post('/children', childData)
+      const response = await api.post('/api/children', childData)
       return response.data
     } catch (error) {
       console.error('Erreur lors de la création de l\'enfant:', error)
@@ -40,7 +40,7 @@ const childrenService = {
   // Mettre à jour un enfant
   updateChild: async (id, childData) => {
     try {
-      const response = await api.put(`/children/${id}`, childData)
+      const response = await api.put(`/api/children/${id}`, childData)
       return response.data
     } catch (error) {
       console.error('Erreur lors de la mise à jour de l\'enfant:', error)
@@ -51,7 +51,7 @@ const childrenService = {
   // Supprimer un enfant (soft delete)
   deleteChild: async (id) => {
     try {
-      const response = await api.delete(`/children/${id}`)
+      const response = await api.delete(`/api/children/${id}`)
       return response.data
     } catch (error) {
       console.error('Erreur lors de la suppression de l\'enfant:', error)
@@ -62,7 +62,7 @@ const childrenService = {
   // Obtenir les statistiques des enfants
   getChildrenStats: async () => {
     try {
-      const response = await api.get('/children/stats')
+      const response = await api.get('/api/children/stats')
       return response.data
     } catch (error) {
       console.error('Erreur lors de la récupération des statistiques:', error)
@@ -73,7 +73,7 @@ const childrenService = {
   // Obtenir les enfants d'un parent spécifique
   getChildrenByParent: async (parentId) => {
     try {
-      const response = await api.get(`/children/parent/${parentId}`)
+      const response = await api.get(`/api/children/parent/${parentId}`)
       return response.data
     } catch (error) {
       console.error('Erreur lors de la récupération des enfants du parent:', error)
@@ -84,7 +84,7 @@ const childrenService = {
   // Obtenir les enfants disponibles (sans parent)
   getAvailableChildren: async () => {
     try {
-      const response = await api.get('/children/available')
+      const response = await api.get('/api/children/available')
       return response.data
     } catch (error) {
       console.error('Erreur lors de la récupération des enfants disponibles:', error)
@@ -95,7 +95,7 @@ const childrenService = {
   // Obtenir les enfants orphelins (sans parent)
   getOrphanChildren: async () => {
     try {
-      const response = await api.get('/children/orphans')
+      const response = await api.get('/api/children/orphans')
       return response.data
     } catch (error) {
       console.error('Erreur lors de la récupération des enfants orphelins:', error)
@@ -106,7 +106,7 @@ const childrenService = {
   // Associer un enfant à un parent existant
   associateChildToParent: async (childId, parentId) => {
     try {
-      const response = await api.put(`/children/${childId}/associate-parent`, {
+      const response = await api.put(`/api/children/${childId}/associate-parent`, {
         parentId
       })
       return response.data

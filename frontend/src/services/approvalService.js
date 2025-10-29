@@ -4,7 +4,7 @@ const approvalService = {
   // Approuver une demande d'inscription
   approveChild: async (childId) => {
     try {
-      const response = await api.put(`/children/${childId}`, {
+      const response = await api.put(`/api/children/${childId}`, {
         status: 'approved'
       });
       return response.data;
@@ -17,7 +17,7 @@ const approvalService = {
   // Rejeter une demande d'inscription
   rejectChild: async (childId, reason = '') => {
     try {
-      const response = await api.put(`/children/${childId}`, {
+      const response = await api.put(`/api/children/${childId}`, {
         status: 'rejected',
         rejection_reason: reason
       });
@@ -31,7 +31,7 @@ const approvalService = {
   // Remettre en attente
   setPendingChild: async (childId) => {
     try {
-      const response = await api.put(`/children/${childId}`, {
+      const response = await api.put(`/api/children/${childId}`, {
         status: 'pending'
       });
       return response.data;

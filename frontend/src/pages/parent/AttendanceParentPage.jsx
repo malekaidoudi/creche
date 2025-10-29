@@ -67,7 +67,7 @@ const AttendanceParentPage = () => {
       }
 
       // Charger les enfants du parent
-      const childrenResponse = await api.get('/user/children-summary');
+      const childrenResponse = await api.get('/api/user/children-summary');
       const childrenList = childrenResponse.data.children || [];
       setChildren(childrenList);
       

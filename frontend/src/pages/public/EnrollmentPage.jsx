@@ -49,7 +49,7 @@ const EnrollmentPage = () => {
   useEffect(() => {
     const fetchAvailableChildren = async () => {
       try {
-        const response = await api.get('/children/available');
+        const response = await api.get('/api/children/available');
         setAvailableChildren(response.data.children || []);
       } catch (error) {
         console.error('Erreur récupération enfants:', error);

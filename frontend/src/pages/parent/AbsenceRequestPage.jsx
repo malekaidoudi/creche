@@ -51,7 +51,7 @@ const AbsenceRequestPage = () => {
       setLoading(true);
       
       // Charger les enfants du parent (seulement les approuvés)
-      const childrenResponse = await api.get(`/children/parent/${user.id}`);
+      const childrenResponse = await api.get(`/api/children/parent/${user.id}`);
       console.log('👶 Réponse enfants:', childrenResponse.data);
       
       if (childrenResponse.data.success) {
