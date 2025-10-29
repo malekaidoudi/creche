@@ -5,7 +5,7 @@ const attendanceService = {
   getTodayAttendance: async (params = {}) => {
     try {
       const { page = 1, limit = 50 } = params
-      const response = await api.get('/attendance/today', {
+      const response = await api.get('/api/attendance/today', {
         params: { page, limit }
       })
       return response.data
@@ -19,7 +19,7 @@ const attendanceService = {
   getAttendanceByDate: async (date, params = {}) => {
     try {
       const { page = 1, limit = 50 } = params
-      const response = await api.get(`/attendance/date/${date}`, {
+      const response = await api.get(`/api/attendance/date/${date}`, {
         params: { page, limit }
       })
       return response.data
@@ -33,7 +33,7 @@ const attendanceService = {
   getAttendanceStats: async (date = null) => {
     try {
       const params = date ? { date } : {}
-      const response = await api.get('/attendance/stats', { params })
+      const response = await api.get('/api/attendance/stats', { params })
       return response.data
     } catch (error) {
       console.error('Erreur lors de la récupération des statistiques:', error)
@@ -44,7 +44,7 @@ const attendanceService = {
   // Obtenir les enfants actuellement présents
   getCurrentlyPresent: async () => {
     try {
-      const response = await api.get('/attendance/currently-present')
+      const response = await api.get('/api/attendance/currently-present')
       return response.data
     } catch (error) {
       console.error('Erreur lors de la récupération des présents:', error)
@@ -55,7 +55,7 @@ const attendanceService = {
   // Enregistrer l'arrivée d'un enfant (check-in)
   checkIn: async (childId, notes = null) => {
     try {
-      const response = await api.post('/attendance/check-in', {
+      const response = await api.post('/api/attendance/check-in', {
         child_id: childId,
         notes
       })
@@ -69,7 +69,7 @@ const attendanceService = {
   // Enregistrer le départ d'un enfant (check-out)
   checkOut: async (childId, notes = null) => {
     try {
-      const response = await api.post('/attendance/check-out', {
+      const response = await api.post('/api/attendance/check-out', {
         child_id: childId,
         notes
       })
@@ -84,7 +84,7 @@ const attendanceService = {
   getChildAttendanceHistory: async (childId, params = {}) => {
     try {
       const { page = 1, limit = 30 } = params
-      const response = await api.get(`/attendance/child/${childId}`, {
+      const response = await api.get(`/api/attendance/child/${childId}/history`, {
         params: { page, limit }
       })
       return response.data
@@ -97,7 +97,7 @@ const attendanceService = {
   // Obtenir la présence d'aujourd'hui pour un enfant
   getChildTodayAttendance: async (childId) => {
     try {
-      const response = await api.get(`/attendance/child/${childId}/today`)
+      const response = await api.get(`/api/attendance/child/${childId}/today`)
       return response.data
     } catch (error) {
       console.error('Erreur lors de la récupération de la présence du jour:', error)

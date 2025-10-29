@@ -36,7 +36,7 @@ const NotificationCenter = ({ isOpen, onClose }) => {
       setLoading(true);
       console.log('🔄 Chargement notifications NotificationCenter...');
       
-      const response = await api.get('/notifications');
+      const response = await api.get('/api/notifications');
       
       console.log('📨 Réponse NotificationCenter:', response.data);
       

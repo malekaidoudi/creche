@@ -23,7 +23,7 @@ const SimpleNotificationCenter = ({ isOpen, onClose }) => {
   const loadNotifications = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/notifications');
+      const response = await api.get('/api/notifications');
       
       if (response.data && response.data.success) {
         setNotifications(response.data.notifications || []);
