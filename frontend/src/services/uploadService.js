@@ -7,7 +7,7 @@ class UploadService {
       const formData = new FormData()
       formData.append('profile_picture', file)
 
-      const response = await api.post('/upload/profile-picture', formData, {
+      const response = await api.post('/api/upload/profile-picture', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -23,7 +23,7 @@ class UploadService {
   // Supprimer une photo de profil
   async deleteProfilePicture() {
     try {
-      const response = await api.delete('/upload/profile-picture')
+      const response = await api.delete('/api/upload/profile-picture')
       return response.data
     } catch (error) {
       console.error('Erreur suppression photo de profil:', error)
@@ -38,7 +38,7 @@ class UploadService {
       formData.append('file', file)
       formData.append('type', type)
 
-      const response = await api.post('/uploads', formData, {
+      const response = await api.post('/api/uploads', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },

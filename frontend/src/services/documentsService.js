@@ -5,7 +5,7 @@ const documentsService = {
   getAllDocuments: async (params = {}) => {
     try {
       const { page = 1, limit = 20, type = 'all' } = params
-      const response = await api.get('/documents', {
+      const response = await api.get('/api/documents', {
         params: { page, limit, type }
       })
       return response.data
@@ -43,7 +43,7 @@ const documentsService = {
         formData.append('document', file)
       }
       
-      const response = await api.post('/documents', formData, {
+      const response = await api.post('/api/documents', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }

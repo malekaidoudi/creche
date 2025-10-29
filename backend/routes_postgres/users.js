@@ -495,4 +495,185 @@ router.put('/:id/password', [
   }
 });
 
+// GET /api/users/profile - Récupérer le profil de l'utilisateur connecté
+router.get('/profile', auth.authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    const result = await db.query(
+      `SELECT id, email, first_name, last_name, phone, role, profile_image, 
+              is_active, created_at, updated_at
+       FROM users WHERE id = $1`,
+      [userId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'Utilisateur non trouvé' 
+      });
+    }
+    
+    res.json({
+      success: true,
+      user: result.rows[0]
+    });
+    
+  } catch (error) {
+    console.error('Erreur récupération profil:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Erreur lors de la récupération du profil' 
+    });
+  }
+});
+
+// PUT /api/users/profile - Mettre à jour le profil de l'utilisateur connecté
+router.put('/profile', auth.authenticateToken, [
+  body('first_name').optional().notEmpty().withMessage('Prénom requis'),
+  body('last_name').optional().notEmpty().withMessage('Nom requis'),
+  body('email').optional().isEmail().withMessage('Email invalide'),
+  body('phone').optional().isMobilePhone().withMessage('Téléphone invalide')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Données invalides', 
+        details: errors.array() 
+      });
+    }
+    
+    const userId = req.user.id;
+    const { first_name, last_name, email, phone } = req.body;
+    
+    // Construire la requête de mise à jour dynamiquement
+    const updates = [];
+    const params = [];
+    let paramCount = 0;
+    
+    if (first_name !== undefined) {
+      paramCount++;
+      updates.push(`first_name = $${paramCount}`);
+      params.push(first_name);
+    }
+    
+    if (last_name !== undefined) {
+      paramCount++;
+      updates.push(`last_name = $${paramCount}`);
+      params.push(last_name);
+    }
+    
+    if (email !== undefined) {
+      paramCount++;
+      updates.push(`email = $${paramCount}`);
+      params.push(email);
+    }
+    
+    if (phone !== undefined) {
+      paramCount++;
+      updates.push(`phone = $${paramCount}`);
+      params.push(phone);
+    }
+    
+    if (updates.length === 0) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Aucune donnée à mettre à jour' 
+      });
+    }
+    
+    // Ajouter updated_at
+    paramCount++;
+    updates.push(`updated_at = $${paramCount}`);
+    params.push(new Date());
+    
+    // Ajouter l'ID pour la clause WHERE
+    paramCount++;
+    params.push(userId);
+    
+    const sql = `
+      UPDATE users 
+      SET ${updates.join(', ')} 
+      WHERE id = $${paramCount}
+      RETURNING id, email, first_name, last_name, phone, role, profile_image, 
+                is_active, updated_at
+    `;
+    
+    const result = await db.query(sql, params);
+    
+    res.json({
+      success: true,
+      message: 'Profil mis à jour avec succès',
+      user: result.rows[0]
+    });
+    
+  } catch (error) {
+    console.error('Erreur mise à jour profil:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Erreur lors de la mise à jour du profil' 
+    });
+  }
+});
+
+// PUT /api/users/change-password - Changer le mot de passe de l'utilisateur connecté
+router.put('/change-password', auth.authenticateToken, [
+  body('currentPassword').notEmpty().withMessage('Mot de passe actuel requis'),
+  body('newPassword').isLength({ min: 6 }).withMessage('Nouveau mot de passe minimum 6 caractères')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Données invalides', 
+        details: errors.array() 
+      });
+    }
+    
+    const userId = req.user.id;
+    const { currentPassword, newPassword } = req.body;
+    
+    // Vérifier le mot de passe actuel
+    const user = await db.query('SELECT password FROM users WHERE id = $1', [userId]);
+    if (user.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'Utilisateur non trouvé' 
+      });
+    }
+    
+    const isValidPassword = await bcrypt.compare(currentPassword, user.rows[0].password);
+    if (!isValidPassword) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Mot de passe actuel incorrect' 
+      });
+    }
+    
+    // Hasher le nouveau mot de passe
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    
+    // Mettre à jour le mot de passe
+    await db.query(
+      'UPDATE users SET password = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+      [hashedPassword, userId]
+    );
+    
+    res.json({
+      success: true,
+      message: 'Mot de passe mis à jour avec succès'
+    });
+    
+  } catch (error) {
+    console.error('Erreur changement mot de passe:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Erreur lors du changement de mot de passe' 
+    });
+  }
+});
+
 module.exports = router;

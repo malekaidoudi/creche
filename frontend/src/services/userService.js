@@ -4,7 +4,7 @@ const userService = {
   // Obtenir le profil de l'utilisateur connecté
   getProfile: async () => {
     try {
-      const response = await api.get('/users/profile')
+      const response = await api.get('/api/users/profile')
       return response.data
     } catch (error) {
       console.error('Erreur lors de la récupération du profil:', error)
@@ -15,7 +15,7 @@ const userService = {
   // Mettre à jour le profil de l'utilisateur connecté
   updateProfile: async (profileData) => {
     try {
-      const response = await api.put('/users/profile', profileData)
+      const response = await api.put('/api/users/profile', profileData)
       return response.data
     } catch (error) {
       console.error('Erreur lors de la mise à jour du profil:', error)
@@ -26,7 +26,7 @@ const userService = {
   // Changer le mot de passe
   changePassword: async (passwordData) => {
     try {
-      const response = await api.put('/users/change-password', passwordData)
+      const response = await api.put('/api/users/change-password', passwordData)
       return response.data
     } catch (error) {
       console.error('Erreur lors du changement de mot de passe:', error)
@@ -40,7 +40,7 @@ const userService = {
       const formData = new FormData()
       formData.append('profile_image', imageFile)
       
-      const response = await api.post('/users/profile/image', formData, {
+      const response = await api.post('/api/users/profile/image', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -55,7 +55,7 @@ const userService = {
   // Obtenir tous les utilisateurs (admin seulement)
   getAllUsers: async (params = {}) => {
     try {
-      const response = await api.get('/users', { params })
+      const response = await api.get('/api/users', { params })
       return response.data
     } catch (error) {
       console.error('Erreur lors de la récupération des utilisateurs:', error)

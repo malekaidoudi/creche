@@ -72,7 +72,7 @@ export const uploadFile = (file, onProgress = null) => {
   const formData = new FormData()
   formData.append('file', file)
 
-  return api.post('/uploads', formData, {
+  return api.post('/api/uploads', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
@@ -94,7 +94,7 @@ export const uploadMultipleFiles = (files, onProgress = null) => {
     formData.append('files', file)
   })
 
-  return api.post('/uploads/multiple', formData, {
+  return api.post('/api/uploads/multiple', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },

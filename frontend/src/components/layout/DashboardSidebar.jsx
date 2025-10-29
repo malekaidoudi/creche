@@ -170,14 +170,6 @@ const DashboardSidebar = ({ isOpen, onClose }) => {
       path: '/dashboard/settings',
       roles: ['admin']
     },
-    // Profil Parent - Affiché seulement si l'utilisateur a des enfants
-    ...(hasChildren ? [{
-      key: 'parent-profile',
-      title: isRTL ? 'ملفي الشخصي' : 'Mon Profil',
-      icon: User,
-      path: '/parent/profile',
-      roles: ['admin', 'staff', 'parent']
-    }] : [])
   ];
 
   const hasAccess = (roles) => {

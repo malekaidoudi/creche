@@ -86,7 +86,7 @@ const NotificationCenter = ({ isOpen, onClose }) => {
 
   const markAllAsRead = async () => {
     try {
-      const response = await api.put('/notifications/read-all');
+      const response = await api.put('/api/notifications/read-all');
       
       if (response.data.success) {
         setNotifications(prev => 

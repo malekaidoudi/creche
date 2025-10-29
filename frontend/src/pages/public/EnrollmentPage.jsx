@@ -199,7 +199,7 @@ const EnrollmentPage = () => {
           formData.append('certificat_medical', documents.certificat_medical)
         }
 
-        const response = await api.post('/public/enrollments', formData, {
+        const response = await api.post('/api/public/enrollments', formData, {
           headers: {
             'Content-Type': 'multipart/form-data'
           }

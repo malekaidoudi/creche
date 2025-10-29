@@ -4,7 +4,7 @@ const settingsService = {
   // Obtenir tous les paramètres
   getAllSettings: async () => {
     try {
-      const response = await api.get('/settings')
+      const response = await api.get('/api/settings')
       return response.data
     } catch (error) {
       console.error('Erreur lors de la récupération des paramètres:', error)
@@ -48,7 +48,7 @@ const settingsService = {
   // Mettre à jour plusieurs paramètres
   updateMultipleSettings: async (settings) => {
     try {
-      const response = await api.put('/settings', { settings })
+      const response = await api.put('/api/settings', { settings })
       return response.data
     } catch (error) {
       console.error('Erreur lors de la mise à jour multiple:', error)
