@@ -138,6 +138,14 @@ try {
   }
   
   try {
+    const profileRoutes = require('./routes_postgres/profile');
+    app.use('/api/profile', profileRoutes);
+    console.log('✅ Route profile chargée');
+  } catch (error) {
+    console.log('⚠️ Route profile non disponible:', error.message);
+  }
+  
+  try {
     const uploadsRoutes = require('./routes_postgres/uploads');
     app.use('/uploads', uploadsRoutes);
     console.log('✅ Route uploads chargée');

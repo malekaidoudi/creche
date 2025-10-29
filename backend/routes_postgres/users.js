@@ -66,6 +66,37 @@ router.get('/has-children', auth.authenticateToken, async (req, res) => {
   }
 });
 
+// GET /api/user/children-summary - Récupérer le résumé des enfants de l'utilisateur
+router.get('/children-summary', auth.authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    const sql = `
+      SELECT c.id, c.first_name, c.last_name, c.birth_date, c.gender, 
+             c.medical_info, c.photo_url, c.created_at,
+             e.status as enrollment_status, e.enrollment_date,
+             EXTRACT(YEAR FROM AGE(c.birth_date)) as age
+      FROM children c
+      JOIN enrollments e ON c.id = e.child_id
+      WHERE e.parent_id = $1 AND c.is_active = true
+      ORDER BY c.first_name, c.last_name
+    `;
+    
+    const result = await db.query(sql, [userId]);
+    
+    res.json({
+      success: true,
+      children: result.rows
+    });
+  } catch (error) {
+    console.error('Erreur récupération enfants utilisateur:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Erreur lors de la récupération des enfants' 
+    });
+  }
+});
+
 // GET /api/users - Récupérer tous les utilisateurs
 router.get('/', async (req, res) => {
   try {

@@ -23,7 +23,7 @@ import AbsenceRequestPage from './pages/parent/AbsenceRequestPage'
 
 // Pages dashboard
 import DashboardHome from './pages/dashboard/DashboardHome'
-import DashboardProfilePage from './pages/dashboard/ProfilePage'
+import UnifiedProfilePage from './pages/UnifiedProfilePage'
 import ChildrenPage from './pages/dashboard/ChildrenPage'
 import AddChildPage from './pages/dashboard/AddChildPage'
 import EnrollmentsPage from './pages/dashboard/EnrollmentsPage'
@@ -76,7 +76,7 @@ function App() {
           path="profile" 
           element={
             <ProtectedRoute roles={['admin', 'staff', 'parent']}>
-              <DashboardProfilePage />
+              <UnifiedProfilePage />
             </ProtectedRoute>
           } 
         />
@@ -108,7 +108,7 @@ function App() {
         }
       >
         <Route index element={<DashboardHome />} />
-        <Route path="profile" element={<DashboardProfilePage />} />
+        <Route path="profile" element={<UnifiedProfilePage />} />
         <Route path="children" element={<ChildrenPage />} />
         <Route path="children/add" element={<AddChildPage />} />
         <Route path="enrollments" element={<EnrollmentsPage />} />
