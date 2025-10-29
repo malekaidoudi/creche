@@ -17,15 +17,15 @@ const authenticateToken = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     // Récupérer l'utilisateur depuis la base de données
-    const [users] = await db.execute('SELECT * FROM users WHERE id = ? AND is_active = 1', [decoded.userId]);
+    const result = await db.query('SELECT * FROM users WHERE id = $1 AND is_active = true', [decoded.userId]);
     
-    if (users.length === 0) {
+    if (result.rows.length === 0) {
       return res.status(401).json({ 
         error: 'Utilisateur non trouvé ou compte désactivé' 
       });
     }
 
-    const user = users[0];
+    const user = result.rows[0];
 
     // Ajouter l'utilisateur à la requête
     req.user = user;
@@ -125,12 +125,12 @@ const requireChildAccess = async (req, res, next) => {
     if (req.user.role === 'parent') {
       const sql = `
         SELECT COUNT(*) as count FROM enrollments 
-        WHERE parent_id = ? AND child_id = ? AND status = 'approved'
+        WHERE parent_id = $1 AND child_id = $2 AND status = 'approved'
       `;
       
-      const [result] = await db.execute(sql, [req.user.id, childId]);
+      const result = await db.query(sql, [req.user.id, childId]);
       
-      if (result[0].count === 0) {
+      if (parseInt(result.rows[0].count) === 0) {
         return res.status(403).json({ 
           error: 'Accès refusé - Vous n\'avez pas accès à cet enfant' 
         });
@@ -158,9 +158,9 @@ const optionalAuth = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const [users] = await db.execute('SELECT * FROM users WHERE id = ? AND is_active = 1', [decoded.userId]);
+    const result = await db.query('SELECT * FROM users WHERE id = $1 AND is_active = true', [decoded.userId]);
     
-    req.user = users.length > 0 ? users[0] : null;
+    req.user = result.rows.length > 0 ? result.rows[0] : null;
     next();
   } catch (error) {
     // En cas d'erreur, continuer sans utilisateur
