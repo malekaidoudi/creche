@@ -11,6 +11,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
 const { Pool } = require('pg');
+const { initializeDatabase } = require('./init_database');
 
 const app = express();
 const PORT = process.env.PORT || 3003; // Port dynamique pour Render
@@ -95,7 +96,7 @@ try {
   
   const usersRoutes = require('./routes_postgres/users');
   app.use('/api/users', usersRoutes);
-  // app.use('/api/user', usersRoutes); // TEMPORAIREMENT DÉSACTIVÉ - cause erreur 500
+  app.use('/api/user', usersRoutes); // Réactivé - base de données maintenant initialisée
   console.log('✅ Route users chargée');
   
   const childrenRoutes = require('./routes_postgres/children');
@@ -431,23 +432,7 @@ app.get('/api/nursery-settings/footer', async (req, res) => {
   }
 });
 
-// Routes de correction pour éviter les erreurs 500
-app.get('/api/user/has-children', (req, res) => {
-  res.json({
-    success: true,
-    hasChildren: false,
-    count: 0,
-    message: 'Route fonctionnelle - serveur principal'
-  });
-});
-
-app.get('/api/children/unassociated', (req, res) => {
-  res.json({
-    success: true,
-    children: [],
-    message: 'Route fonctionnelle - serveur principal'
-  });
-});
+// Routes de correction supprimées - maintenant gérées par les vraies routes
 
 
 // Gestion des erreurs
@@ -469,11 +454,20 @@ app.use('*', (req, res) => {
   });
 });
 
-// Démarrage du serveur
-app.listen(PORT, () => {
+// Démarrage du serveur avec initialisation de la base de données
+app.listen(PORT, async () => {
   console.log(`🚀 Serveur PostgreSQL démarré sur le port ${PORT}`);
   console.log(`📍 URL: http://localhost:${PORT}`);
   console.log(`🏥 Health check: http://localhost:${PORT}/api/health`);
+  
+  // Initialiser la base de données
+  try {
+    await initializeDatabase();
+    console.log('✅ Base de données initialisée avec succès');
+  } catch (error) {
+    console.error('❌ Erreur lors de l\'initialisation de la base de données:', error);
+  }
+  
   console.log(`📊 Routes principales disponibles:`);
   console.log(`   - GET  /api/health`);
   console.log(`   - POST /api/auth/login`);
