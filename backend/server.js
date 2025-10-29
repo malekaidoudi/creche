@@ -95,7 +95,7 @@ try {
   
   const usersRoutes = require('./routes_postgres/users');
   app.use('/api/users', usersRoutes);
-  app.use('/api/user', usersRoutes); // Ajout pour /api/user/has-children
+  // app.use('/api/user', usersRoutes); // TEMPORAIREMENT DÉSACTIVÉ - cause erreur 500
   console.log('✅ Route users chargée');
   
   const childrenRoutes = require('./routes_postgres/children');
