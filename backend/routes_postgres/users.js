@@ -533,11 +533,14 @@ router.put('/profile', auth.authenticateToken, [
   body('first_name').optional().notEmpty().withMessage('Prénom requis'),
   body('last_name').optional().notEmpty().withMessage('Nom requis'),
   body('email').optional().isEmail().withMessage('Email invalide'),
-  body('phone').optional().isLength({ min: 8, max: 15 }).withMessage('Téléphone doit contenir entre 8 et 15 chiffres')
+  body('phone').optional().isLength({ min: 0, max: 20 }).withMessage('Téléphone trop long')
 ], async (req, res) => {
   try {
+    console.log('📝 Données reçues pour mise à jour profil:', req.body);
+    
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('❌ Erreurs de validation profil:', errors.array());
       return res.status(400).json({ 
         success: false,
         error: 'Données invalides', 
