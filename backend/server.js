@@ -10,6 +10,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
+const path = require('path');
 const { Pool } = require('pg');
 const { initializeDatabase } = require('./init_database');
 
@@ -54,6 +55,10 @@ app.use(compression());
 // Middlewares
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Servir les fichiers statiques (images uploadées)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+console.log('📁 Dossier uploads configuré:', path.join(__dirname, 'uploads'));
 
 // CORS configuration pour production
 const allowedOrigins = [

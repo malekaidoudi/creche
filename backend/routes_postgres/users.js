@@ -533,7 +533,7 @@ router.put('/profile', auth.authenticateToken, [
   body('first_name').optional().notEmpty().withMessage('Prénom requis'),
   body('last_name').optional().notEmpty().withMessage('Nom requis'),
   body('email').optional().isEmail().withMessage('Email invalide'),
-  body('phone').optional().isMobilePhone().withMessage('Téléphone invalide')
+  body('phone').optional().isLength({ min: 8, max: 15 }).withMessage('Téléphone doit contenir entre 8 et 15 chiffres')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);

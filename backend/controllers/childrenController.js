@@ -85,16 +85,18 @@ const childrenController = {
 
       const whereClause = whereConditions.join(' AND ');
 
-      // Requête pour récupérer les enfants
+      // Requête pour récupérer les enfants avec parents via enrollments
       const query = `
         SELECT 
           c.*,
           p.first_name as parent_first_name,
           p.last_name as parent_last_name,
           p.email as parent_email,
-          p.phone as parent_phone
+          p.phone as parent_phone,
+          e.status as enrollment_status
         FROM children c
-        LEFT JOIN users p ON c.parent_id = p.id
+        LEFT JOIN enrollments e ON c.id = e.child_id
+        LEFT JOIN users p ON e.parent_id = p.id
         WHERE ${whereClause}
         ORDER BY c.created_at DESC
         LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}
@@ -131,9 +133,11 @@ const childrenController = {
         SELECT c.*, 
                CONCAT(u.first_name, ' ', u.last_name) as parent_name,
                u.email as parent_email,
-               TIMESTAMPDIFF(YEAR, c.birth_date, CURDATE()) as age
+               TIMESTAMPDIFF(YEAR, c.birth_date, CURDATE()) as age,
+               e.status as enrollment_status
         FROM children c
-        LEFT JOIN users u ON c.parent_id = u.id
+        LEFT JOIN enrollments e ON c.id = e.child_id
+        LEFT JOIN users u ON e.parent_id = u.id
         WHERE c.id = ?
         ORDER BY c.first_name, c.last_name
       `, [id]);
@@ -445,15 +449,15 @@ const childrenController = {
     }
   },
 
-  // Associer un enfant à un parent existant
+  // Associer un enfant à un parent existant via enrollment
   associateChildToParent: async (req, res) => {
     try {
       const { childId } = req.params;
       const { parentId } = req.body;
 
-      // Vérifier que l'enfant existe et n'a pas déjà de parent
+      // Vérifier que l'enfant existe et n'a pas déjà d'enrollment actif
       const [children] = await db.execute(
-        'SELECT id, parent_id FROM children WHERE id = ?',
+        'SELECT id FROM children WHERE id = ?',
         [childId]
       );
 
@@ -461,7 +465,13 @@ const childrenController = {
         return res.status(404).json({ error: 'Enfant non trouvé' });
       }
 
-      if (children[0].parent_id) {
+      // Vérifier s'il y a déjà un enrollment actif
+      const [existingEnrollment] = await db.execute(
+        'SELECT id FROM enrollments WHERE child_id = ? AND status = "approved"',
+        [childId]
+      );
+
+      if (existingEnrollment.length > 0) {
         return res.status(400).json({ error: 'Cet enfant est déjà associé à un parent' });
       }
 
@@ -475,22 +485,24 @@ const childrenController = {
         return res.status(404).json({ error: 'Parent non trouvé' });
       }
 
-      // Associer l'enfant au parent
+      // Créer un enrollment approuvé
       await db.execute(
-        'UPDATE children SET parent_id = ?, updated_at = NOW() WHERE id = ?',
-        [parentId, childId]
+        'INSERT INTO enrollments (child_id, parent_id, status, enrollment_date, created_at) VALUES (?, ?, "approved", NOW(), NOW())',
+        [childId, parentId]
       );
 
-      // Récupérer l'enfant mis à jour
+      // Récupérer l'enfant mis à jour avec son parent
       const [updatedChild] = await db.execute(`
         SELECT 
           c.*,
           p.first_name as parent_first_name,
           p.last_name as parent_last_name,
           p.email as parent_email,
-          p.phone as parent_phone
+          p.phone as parent_phone,
+          e.status as enrollment_status
         FROM children c
-        LEFT JOIN users p ON c.parent_id = p.id
+        LEFT JOIN enrollments e ON c.id = e.child_id
+        LEFT JOIN users p ON e.parent_id = p.id
         WHERE c.id = ?
       `, [childId]);
 

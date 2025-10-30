@@ -2,9 +2,10 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const router = express.Router();
 const db = require('../config/db_postgres');
+const auth = require('../middleware/auth');
 
 // GET /api/attendance/today - Présences d'aujourd'hui
-router.get('/today', async (req, res) => {
+router.get('/today', auth.authenticateToken, async (req, res) => {
   try {
     const { page = 1, limit = 50 } = req.query;
     const today = new Date().toISOString().split('T')[0];
@@ -74,7 +75,7 @@ router.get('/currently-present', async (req, res) => {
 });
 
 // GET /api/attendance/stats - Statistiques de présence
-router.get('/stats', async (req, res) => {
+router.get('/stats', auth.authenticateToken, async (req, res) => {
   try {
     const { date } = req.query;
     const targetDate = date || new Date().toISOString().split('T')[0];
