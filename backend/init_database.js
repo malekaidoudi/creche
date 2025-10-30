@@ -219,19 +219,22 @@ async function insertTestData() {
       );
     }
 
-    // Insérer des inscriptions de test
+    // Insérer des inscriptions de test pour TOUS les enfants
     const parentUser = await db.query('SELECT id FROM users WHERE role = $1 LIMIT 1', ['parent']);
-    const childrenIds = await db.query('SELECT id FROM children LIMIT 2');
+    const allChildrenIds = await db.query('SELECT id FROM children');
     
-    if (parentUser.rows.length > 0 && childrenIds.rows.length > 0) {
+    if (parentUser.rows.length > 0 && allChildrenIds.rows.length > 0) {
       const parentId = parentUser.rows[0].id;
       
-      for (const child of childrenIds.rows) {
+      console.log(`📝 Création de ${allChildrenIds.rows.length} enrollments pour le parent ${parentId}`);
+      
+      for (const child of allChildrenIds.rows) {
         await db.query(
           `INSERT INTO enrollments (parent_id, child_id, status, lunch_assistance, regulation_accepted) 
            VALUES ($1, $2, $3, $4, $5)`,
           [parentId, child.id, 'approved', true, true]
         );
+        console.log(`✅ Enrollment créé: enfant ${child.id} → parent ${parentId}`);
       }
     }
 
@@ -239,7 +242,7 @@ async function insertTestData() {
     const today = new Date().toISOString().split('T')[0];
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     
-    for (const child of childrenIds.rows) {
+    for (const child of allChildrenIds.rows) {
       await db.query(
         `INSERT INTO attendance (child_id, date, check_in_time, check_out_time, status) 
          VALUES ($1, $2, $3, $4, $5)`,
