@@ -530,17 +530,24 @@ router.get('/profile', auth.authenticateToken, async (req, res) => {
 
 // PUT /api/users/profile - Mettre à jour le profil de l'utilisateur connecté
 router.put('/profile', auth.authenticateToken, [
-  body('first_name').optional().notEmpty().withMessage('Prénom requis'),
-  body('last_name').optional().notEmpty().withMessage('Nom requis'),
+  body('first_name').optional().isString().withMessage('Prénom invalide'),
+  body('last_name').optional().isString().withMessage('Nom invalide'),
   body('email').optional().isEmail().withMessage('Email invalide'),
-  body('phone').optional().isLength({ min: 0, max: 20 }).withMessage('Téléphone trop long')
+  body('phone').optional().isString().withMessage('Téléphone invalide')
 ], async (req, res) => {
   try {
     console.log('📝 Données reçues pour mise à jour profil:', req.body);
+    console.log('🔍 Type de chaque champ:', {
+      first_name: typeof req.body.first_name,
+      last_name: typeof req.body.last_name,
+      email: typeof req.body.email,
+      phone: typeof req.body.phone
+    });
     
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       console.log('❌ Erreurs de validation profil:', errors.array());
+      console.log('❌ Détail des erreurs:', JSON.stringify(errors.array(), null, 2));
       return res.status(400).json({ 
         success: false,
         error: 'Données invalides', 
