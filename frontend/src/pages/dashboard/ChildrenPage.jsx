@@ -72,11 +72,9 @@ const ChildrenPage = () => {
       };
       
       const response = await childrenService.getAllChildren(params);
-      console.log('📋 ChildrenPage - Réponse API:', response);
       
       if (response.success) {
         const childrenData = response.data.children || [];
-        console.log('✅ ChildrenPage - Enfants chargés:', childrenData.length, childrenData);
         setChildren(childrenData);
         setPagination(prev => ({
           ...prev,

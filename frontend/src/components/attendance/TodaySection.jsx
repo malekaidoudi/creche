@@ -205,8 +205,6 @@ const TodaySection = ({
                 return !isPresentNow;
               }) || [];
               
-              console.log('🎯 TodaySection - Enfants filtrés pour Enregistrement rapide:', filteredChildren.length);
-              
               return filteredChildren.map((child) => {
               // Trouver l'enregistrement d'attendance pour cet enfant aujourd'hui
               const todayRecord = attendanceData?.find(record => record.child_id === child.id);
