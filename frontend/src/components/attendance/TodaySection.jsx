@@ -14,7 +14,7 @@ import { useLanguage } from '../../hooks/useLanguage';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
 import { Button } from '../ui/Button';
 import LoadingSpinner from '../ui/LoadingSpinner';
-import { formatTime } from '../../utils/dateUtils';
+import { formatTime, calculateDuration } from '../../utils/dateUtils';
 
 const TodaySection = ({ 
   currentlyPresent, 
@@ -198,7 +198,11 @@ const TodaySection = ({
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {allChildren?.map((child) => {
+            {allChildren?.filter(child => {
+              // Exclure les enfants actuellement présents (déjà affichés dans la section du haut)
+              const isPresentNow = currentlyPresent?.some(present => present.id === child.id || present.child_id === child.id);
+              return !isPresentNow;
+            }).map((child) => {
               // Trouver l'enregistrement d'attendance pour cet enfant aujourd'hui
               const todayRecord = attendanceData?.find(record => record.child_id === child.id);
               const isPresent = todayRecord?.check_in_time && !todayRecord?.check_out_time;
@@ -257,14 +261,39 @@ const TodaySection = ({
                     )}
                     
                     {todayRecord?.check_out_time && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-600 dark:text-gray-300">
-                          {isRTL ? 'غادر:' : 'Départ:'}
-                        </span>
-                        <span className="font-medium">
-                          {formatTime(todayRecord.check_out_time, isRTL)}
-                        </span>
-                      </div>
+                      <>
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-600 dark:text-gray-300">
+                            {isRTL ? 'غادر:' : 'Départ:'}
+                          </span>
+                          <span className="font-medium">
+                            {formatTime(todayRecord.check_out_time, isRTL)}
+                          </span>
+                        </div>
+                        
+                        {/* Afficher la durée si check-in et check-out sont présents */}
+                        {todayRecord.check_in_time && (
+                          <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
+                            <span className="text-gray-600 dark:text-gray-300 flex items-center">
+                              <Clock className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
+                              {isRTL ? 'المدة:' : 'Durée:'}
+                            </span>
+                            <span className="font-semibold text-primary-600 dark:text-primary-400">
+                              {(() => {
+                                const duration = calculateDuration(todayRecord.check_in_time, todayRecord.check_out_time);
+                                if (duration) {
+                                  const hours = Math.floor(duration);
+                                  const minutes = Math.round((duration - hours) * 60);
+                                  return hours > 0 
+                                    ? `${hours}h${minutes > 0 ? ` ${minutes}min` : ''}`
+                                    : `${minutes}min`;
+                                }
+                                return '-';
+                              })()}
+                            </span>
+                          </div>
+                        )}
+                      </>
                     )}
                     
                     <div className="flex space-x-2 rtl:space-x-reverse mt-3">

@@ -14,30 +14,19 @@ export const formatTime = (timeString, isRTL = false) => {
   }
   
   try {
-    let date;
-    
-    // Si c'est déjà au format complet (YYYY-MM-DD HH:mm:ss)
-    if (timeString.includes(' ')) {
-      date = new Date(timeString);
-    }
-    // Si c'est juste l'heure (HH:mm:ss)
-    else if (timeString.includes(':')) {
-      const today = new Date().toISOString().split('T')[0];
-      date = new Date(`${today}T${timeString}`);
-    }
-    // Sinon, essayer de parser directement
-    else {
-      date = new Date(timeString);
-    }
+    // Parser directement avec new Date (gère ISO 8601, timestamps, etc.)
+    const date = new Date(timeString);
     
     // Vérifier si la date est valide
     if (isNaN(date.getTime())) {
       return '-';
     }
     
+    // Formater en heure locale
     return date.toLocaleTimeString(isRTL ? 'ar-TN' : 'fr-FR', {
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      timeZone: 'Africa/Tunis' // Fuseau horaire de la Tunisie
     });
   } catch (error) {
     console.error('Erreur formatTime:', error, 'pour:', timeString);

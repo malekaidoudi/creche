@@ -596,7 +596,7 @@ const ChildrenPage = () => {
           // Valeur par défaut pour attendance_today si pas présente
           const attendanceToday = child.attendance_today || { status: 'absent', check_in: null, check_out: null };
           const attendanceStatus = getAttendanceStatus(attendanceToday);
-          const enrollmentStatus = getEnrollmentStatus(child.status);
+          const enrollmentStatus = getEnrollmentStatus(child.enrollment_status || 'approved');
           
           return (
             <motion.div

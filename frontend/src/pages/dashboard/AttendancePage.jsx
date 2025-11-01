@@ -91,36 +91,27 @@ const AttendancePage = () => {
     }
   };
 
-  // Charger tous les enfants inscrits
-  const loadAllChildren = async () => {
-    try {
-      const response = await childrenService.getAllChildren({ 
-        status: 'approved', 
-        limit: 100 // Charger tous les enfants approuvés
-      });
-      
-      if (response.success) {
-        setAllChildren(response.data.children || []);
-      }
-    } catch (error) {
-      console.error('Erreur chargement enfants:', error);
-    }
-  };
-
   // Charger les données d'aujourd'hui
   const loadTodayData = async () => {
-    // Charger tous les enfants d'abord
-    await loadAllChildren();
-    
-    const [attendanceResponse, currentPresentResponse, statsResponse] = await Promise.all([
-      attendanceService.getTodayAttendance(),
-      attendanceService.getCurrentlyPresent(),
-      attendanceService.getAttendanceStats()
-    ]);
-    
-    setAttendanceData(attendanceResponse.attendance || []);
-    setCurrentlyPresent(currentPresentResponse.children || []);
-    setStats(statsResponse);
+    try {
+      // Charger TOUT en parallèle
+      const [childrenResponse, attendanceResponse, currentPresentResponse, statsResponse] = await Promise.all([
+        childrenService.getAllChildren({ status: 'approved', limit: 100 }),
+        attendanceService.getTodayAttendance(),
+        attendanceService.getCurrentlyPresent(),
+        attendanceService.getAttendanceStats()
+      ]);
+      
+      // Mettre à jour TOUS les states en même temps
+      const children = childrenResponse.success ? (childrenResponse.data.children || []) : [];
+      
+      setAllChildren(children);
+      setAttendanceData(attendanceResponse.attendance || []);
+      setCurrentlyPresent(currentPresentResponse.children || []);
+      setStats(statsResponse);
+    } catch (error) {
+      console.error('❌ AttendancePage - Erreur loadTodayData:', error);
+    }
   };
 
   // Charger l'historique
@@ -136,7 +127,7 @@ const AttendancePage = () => {
       attendanceService.getAttendanceStats()
     ]);
     
-    setAttendanceData(attendanceResponse.attendances || []);
+    setAttendanceData(attendanceResponse.attendance || attendanceResponse.attendances || []);
     setStats(statsResponse);
   };
 
@@ -192,6 +183,7 @@ const AttendancePage = () => {
           <TodaySection
             currentlyPresent={currentlyPresent}
             attendanceData={attendanceData}
+            allChildren={allChildren}
             stats={stats}
             onCheckIn={handleCheckIn}
             onCheckOut={handleCheckOut}
@@ -218,6 +210,7 @@ const AttendancePage = () => {
           />
         );
       default:
+        console.log('🎯 AttendancePage - Rendu TodaySection avec allChildren:', allChildren.length);
         return (
           <TodaySection
             currentlyPresent={currentlyPresent}

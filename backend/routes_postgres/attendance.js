@@ -49,9 +49,9 @@ router.get('/currently-present', async (req, res) => {
     const today = new Date().toISOString().split('T')[0];
     
     const sql = `
-      SELECT a.id, a.child_id, a.check_in_time, a.notes,
-             c.first_name as child_first_name, c.last_name as child_last_name,
-             c.birth_date as child_birth_date, c.gender as child_gender
+      SELECT a.id as attendance_id, a.child_id, a.check_in_time, a.notes,
+             c.id, c.first_name, c.last_name,
+             c.birth_date, c.gender
       FROM attendance a
       JOIN children c ON a.child_id = c.id
       WHERE a.date = $1 AND a.check_in_time IS NOT NULL AND a.check_out_time IS NULL
@@ -62,7 +62,7 @@ router.get('/currently-present', async (req, res) => {
     
     res.json({
       success: true,
-      present: result.rows,
+      children: result.rows,
       count: result.rows.length
     });
   } catch (error) {
@@ -110,6 +110,45 @@ router.get('/stats', auth.authenticateToken, async (req, res) => {
     res.status(500).json({ 
       success: false,
       error: 'Erreur lors de la récupération des statistiques' 
+    });
+  }
+});
+
+// GET /api/attendance/date/:date - Présences pour une date spécifique
+router.get('/date/:date', auth.authenticateToken, async (req, res) => {
+  try {
+    const { date } = req.params;
+    const { page = 1, limit = 100 } = req.query;
+    
+    const sql = `
+      SELECT a.id, a.child_id, a.date, a.check_in_time, a.check_out_time, 
+             a.notes, a.created_at, a.updated_at,
+             c.first_name as child_first_name, c.last_name as child_last_name,
+             c.birth_date as child_birth_date, c.gender as child_gender
+      FROM attendance a
+      JOIN children c ON a.child_id = c.id
+      WHERE a.date = $1
+      ORDER BY a.check_in_time DESC
+      LIMIT $2 OFFSET $3
+    `;
+    
+    const offset = (page - 1) * limit;
+    const result = await db.query(sql, [date, limit, offset]);
+    
+    res.json({
+      success: true,
+      attendances: result.rows,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: result.rows.length
+      }
+    });
+  } catch (error) {
+    console.error('Erreur présences par date:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Erreur lors de la récupération des présences' 
     });
   }
 });
@@ -776,6 +815,83 @@ router.get('/stats/overview', async (req, res) => {
       success: false,
       error: 'Erreur lors de la récupération des statistiques' 
     });
+  }
+});
+
+// POST /api/attendance/check-in - Enregistrer une arrivée
+router.post('/check-in', auth.authenticateToken, async (req, res) => {
+  try {
+    const { child_id, notes } = req.body;
+    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    
+    // Vérifier si l'enfant existe
+    const childCheck = await db.query('SELECT id FROM children WHERE id = $1 AND is_active = true', [child_id]);
+    if (childCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Enfant non trouvé' });
+    }
+    
+    // Vérifier s'il y a déjà un check-in aujourd'hui
+    const existing = await db.query(
+      'SELECT id, check_in_time FROM attendance WHERE child_id = $1 AND date = $2',
+      [child_id, today]
+    );
+    
+    if (existing.rows.length > 0 && existing.rows[0].check_in_time) {
+      return res.status(400).json({ success: false, error: 'L\'enfant est déjà arrivé aujourd\'hui' });
+    }
+    
+    // Créer ou mettre à jour l'enregistrement
+    if (existing.rows.length > 0) {
+      await db.query(
+        'UPDATE attendance SET check_in_time = $1, notes = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
+        [now, notes, existing.rows[0].id]
+      );
+    } else {
+      await db.query(
+        'INSERT INTO attendance (child_id, date, check_in_time, notes) VALUES ($1, $2, $3, $4)',
+        [child_id, today, now, notes]
+      );
+    }
+    
+    res.json({ success: true, message: 'Arrivée enregistrée avec succès' });
+  } catch (error) {
+    console.error('Erreur check-in:', error);
+    res.status(500).json({ success: false, error: 'Erreur lors de l\'enregistrement de l\'arrivée' });
+  }
+});
+
+// POST /api/attendance/check-out - Enregistrer un départ
+router.post('/check-out', auth.authenticateToken, async (req, res) => {
+  try {
+    const { child_id, notes } = req.body;
+    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    
+    // Vérifier s'il y a un check-in aujourd'hui
+    const existing = await db.query(
+      'SELECT id, check_in_time, check_out_time FROM attendance WHERE child_id = $1 AND date = $2',
+      [child_id, today]
+    );
+    
+    if (existing.rows.length === 0 || !existing.rows[0].check_in_time) {
+      return res.status(400).json({ success: false, error: 'L\'enfant n\'est pas encore arrivé aujourd\'hui' });
+    }
+    
+    if (existing.rows[0].check_out_time) {
+      return res.status(400).json({ success: false, error: 'Le départ a déjà été enregistré' });
+    }
+    
+    // Mettre à jour avec le check-out
+    await db.query(
+      'UPDATE attendance SET check_out_time = $1, notes = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
+      [now, notes, existing.rows[0].id]
+    );
+    
+    res.json({ success: true, message: 'Départ enregistré avec succès' });
+  } catch (error) {
+    console.error('Erreur check-out:', error);
+    res.status(500).json({ success: false, error: 'Erreur lors de l\'enregistrement du départ' });
   }
 });
 

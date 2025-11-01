@@ -103,8 +103,8 @@ const HistorySection = ({
   // Fonction pour voir les détails d'un enregistrement
   const handleViewDetails = (record) => {
     const details = {
-      enfant: `${record.child?.first_name} ${record.child?.last_name}`,
-      age: calculateAge(record.child?.birth_date),
+      enfant: `${record.child_first_name || record.child?.first_name} ${record.child_last_name || record.child?.last_name}`,
+      age: calculateAge(record.child_birth_date || record.child?.birth_date),
       date: formatDate(record.date || selectedDate, isRTL),
       arrivee: formatTime(record.check_in_time, isRTL),
       depart: formatTime(record.check_out_time, isRTL),
@@ -143,8 +143,8 @@ const HistorySection = ({
       const duration = calculateDuration(record.check_in_time, record.check_out_time);
 
       return [
-        `${record.child?.first_name} ${record.child?.last_name}`,
-        calculateAge(record.child?.birth_date),
+        `${record.child_first_name || record.child?.first_name} ${record.child_last_name || record.child?.last_name}`,
+        calculateAge(record.child_birth_date || record.child?.birth_date),
         formatDate(record.date || selectedDate, isRTL),
         formatTime(record.check_in_time, isRTL),
         formatTime(record.check_out_time, isRTL),
@@ -171,8 +171,10 @@ const HistorySection = ({
 
   // Logique de filtrage
   const filteredAttendance = attendanceData?.filter(record => {
-    const matchesSearch = record.child?.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         record.child?.last_name?.toLowerCase().includes(searchTerm.toLowerCase());
+    const firstName = record.child_first_name || record.child?.first_name || '';
+    const lastName = record.child_last_name || record.child?.last_name || '';
+    const matchesSearch = firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         lastName.toLowerCase().includes(searchTerm.toLowerCase());
     
     let matchesStatus = true;
     if (filterStatus !== 'all') {
@@ -328,13 +330,13 @@ const HistorySection = ({
                             </div>
                             <div className="ml-3 rtl:ml-0 rtl:mr-3">
                               <div className="text-sm font-medium text-gray-900 dark:text-white">
-                                {record.child?.first_name} {record.child?.last_name}
+                                {record.child_first_name || record.child?.first_name} {record.child_last_name || record.child?.last_name}
                               </div>
                             </div>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                          {calculateAge(record.child?.birth_date)}
+                          {calculateAge(record.child_birth_date || record.child?.birth_date)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                           {formatTime(record.check_in_time, isRTL)}
