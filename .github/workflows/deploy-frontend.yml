@@ -49,7 +49,8 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./frontend/dist
-          publish_branch: gh-pages
-          force_orphan: true
+          publish_branch: main
+          destination_dir: docs
+          force_orphan: false
           enable_jekyll: false
           cname: false
