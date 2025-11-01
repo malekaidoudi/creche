@@ -112,9 +112,11 @@ const AttendancePage = () => {
     const [attendanceResponse, currentPresentResponse, statsResponse] = await Promise.all([
       attendanceService.getTodayAttendance(),
       attendanceService.getCurrentlyPresent(),
-      attendanceService.getAttendanceStats(),
-      loadAllChildren() // Charger aussi tous les enfants
+      attendanceService.getAttendanceStats()
     ]);
+    
+    // Charger tous les enfants séparément
+    await loadAllChildren();
     
     setAttendanceData(attendanceResponse.attendance || []);
     setCurrentlyPresent(currentPresentResponse.children || []);

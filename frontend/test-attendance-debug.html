@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Debug Attendance Today - Enregistrement Rapide</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 1000px; margin: 0 auto; }
+        .result { margin: 10px 0; padding: 15px; border-radius: 8px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 12px; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+        .step { margin: 20px 0; padding: 15px; border-left: 4px solid #007bff; background: #f8f9fa; }
+        h2 { color: #007bff; margin-top: 30px; }
+        .child-card { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 15px; margin: 10px 0; }
+        .status-present { background: #d4edda; border-color: #c3e6cb; }
+        .status-absent { background: #f8d7da; border-color: #f5c6cb; }
+        .status-completed { background: #cce7ff; border-color: #b3d9ff; }
+    </style>
+</head>
+<body>
+    <h1>🔧 DEBUG ATTENDANCE TODAY - ENREGISTREMENT RAPIDE</h1>
+    
+    <div class="info">
+        <strong>Objectif :</strong> Diagnostiquer pourquoi la section "Enregistrement rapide" ne fonctionne pas dans /dashboard/attendance/today
+    </div>
+
+    <div class="step">
+        <h3>🔍 Plan de diagnostic :</h3>
+        <ol>
+            <li>Tester la connexion au backend</li>
+            <li>S'authentifier avec compte admin</li>
+            <li>Charger tous les enfants (allChildren)</li>
+            <li>Charger les données d'attendance d'aujourd'hui</li>
+            <li>Simuler la logique de TodaySection</li>
+            <li>Afficher le résultat attendu</li>
+        </ol>
+    </div>
+
+    <button onclick="runAttendanceDebug()">🚀 Lancer le diagnostic complet</button>
+    <button onclick="clearResults()">🧹 Effacer les résultats</button>
+    
+    <div id="results"></div>
+    
+    <script>
+        const results = document.getElementById('results');
+        
+        function addResult(message, type = 'info', data = null) {
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = message;
+            if (data) {
+                const pre = document.createElement('pre');
+                pre.textContent = JSON.stringify(data, null, 2);
+                div.appendChild(pre);
+            }
+            results.appendChild(div);
+            div.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        function clearResults() {
+            results.innerHTML = '';
+        }
+        
+        async function runAttendanceDebug() {
+            clearResults();
+            
+            try {
+                addResult('<h2>🔐 ÉTAPE 1: Connexion Backend</h2>', 'info');
+                
+                const apiUrl = 'http://localhost:3003';
+                addResult(`🔌 <strong>URL API:</strong> ${apiUrl}`, 'info');
+                
+                // Test santé
+                const healthResponse = await fetch(`${apiUrl}/api/health`);
+                if (!healthResponse.ok) {
+                    addResult('❌ <strong>Backend inaccessible</strong>', 'error');
+                    return;
+                }
+                const healthData = await healthResponse.json();
+                addResult('✅ <strong>Backend accessible</strong>', 'success', healthData);
+                
+                // Authentification
+                addResult('<h2>🔐 ÉTAPE 2: Authentification</h2>', 'info');
+                const loginResponse = await fetch(`${apiUrl}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'crechemimaelghalia@gmail.com',
+                        password: 'admin123'
+                    })
+                });
+                
+                const loginData = await loginResponse.json();
+                if (!loginResponse.ok || !loginData.token) {
+                    addResult('❌ <strong>Échec authentification</strong>', 'error', loginData);
+                    return;
+                }
+                addResult('✅ <strong>Authentification réussie</strong>', 'success');
+                
+                const token = loginData.token;
+                
+                // Test API Children (allChildren)
+                addResult('<h2>👶 ÉTAPE 3: Chargement Tous les Enfants (allChildren)</h2>', 'info');
+                const childrenResponse = await fetch(`${apiUrl}/api/children?status=approved&limit=100`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const childrenData = await childrenResponse.json();
+                if (!childrenResponse.ok) {
+                    addResult('❌ <strong>Erreur API children</strong>', 'error', childrenData);
+                    return;
+                }
+                
+                const allChildren = childrenData.data?.children || [];
+                addResult(`✅ <strong>Enfants chargés:</strong> ${allChildren.length} enfants`, 'success');
+                
+                if (allChildren.length === 0) {
+                    addResult('⚠️ <strong>PROBLÈME:</strong> Aucun enfant trouvé dans la base de données', 'warning');
+                    return;
+                }
+                
+                // Test API Attendance Today
+                addResult('<h2>📅 ÉTAPE 4: Chargement Attendance Aujourd\'hui</h2>', 'info');
+                const attendanceResponse = await fetch(`${apiUrl}/api/attendance/today`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const attendanceData = await attendanceResponse.json();
+                if (!attendanceResponse.ok) {
+                    addResult('❌ <strong>Erreur API attendance</strong>', 'error', attendanceData);
+                    return;
+                }
+                
+                const todayAttendance = attendanceData.attendance || [];
+                addResult(`✅ <strong>Attendance aujourd'hui:</strong> ${todayAttendance.length} enregistrements`, 'success');
+                
+                // Simulation logique TodaySection
+                addResult('<h2>🔧 ÉTAPE 5: Simulation Logique TodaySection</h2>', 'info');
+                
+                const childrenWithStatus = allChildren.map(child => {
+                    // Trouver l'enregistrement d'attendance pour cet enfant aujourd'hui
+                    const todayRecord = todayAttendance.find(record => record.child_id === child.id);
+                    const isPresent = todayRecord?.check_in_time && !todayRecord?.check_out_time;
+                    const isCompleted = todayRecord?.check_in_time && todayRecord?.check_out_time;
+                    const isAbsent = !todayRecord?.check_in_time;
+                    
+                    return {
+                        ...child,
+                        todayRecord,
+                        isPresent,
+                        isCompleted,
+                        isAbsent,
+                        status: isPresent ? 'Présent' : isCompleted ? 'Terminé' : 'Absent',
+                        statusColor: isPresent ? 'green' : isCompleted ? 'blue' : 'gray'
+                    };
+                });
+                
+                addResult(`🎯 <strong>Enfants avec statuts calculés:</strong> ${childrenWithStatus.length}`, 'success');
+                
+                // Affichage des enfants
+                addResult('<h2>👨‍👩‍👧‍👦 ÉTAPE 6: Résultat Final - Enregistrement Rapide</h2>', 'info');
+                
+                if (childrenWithStatus.length > 0) {
+                    let childrenHtml = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin-top: 20px;">';
+                    
+                    childrenWithStatus.forEach((child, index) => {
+                        const statusClass = child.isPresent ? 'status-present' : 
+                                          child.isCompleted ? 'status-completed' : 'status-absent';
+                        
+                        childrenHtml += `
+                            <div class="child-card ${statusClass}">
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                                    <div>
+                                        <h4 style="margin: 0; color: #333;">${child.first_name} ${child.last_name}</h4>
+                                        <p style="margin: 5px 0; color: #666; font-size: 14px;">ID: ${child.id}</p>
+                                    </div>
+                                    <div style="padding: 5px 10px; border-radius: 15px; font-size: 12px; font-weight: bold; 
+                                               background: ${child.statusColor === 'green' ? '#28a745' : 
+                                                          child.statusColor === 'blue' ? '#007bff' : '#6c757d'}; 
+                                               color: white;">
+                                        ${child.status}
+                                    </div>
+                                </div>
+                                
+                                ${child.todayRecord ? `
+                                    <div style="font-size: 13px; color: #555;">
+                                        ${child.todayRecord.check_in_time ? 
+                                          `<div>🕐 Arrivée: ${new Date(child.todayRecord.check_in_time).toLocaleTimeString()}</div>` : ''}
+                                        ${child.todayRecord.check_out_time ? 
+                                          `<div>🕕 Départ: ${new Date(child.todayRecord.check_out_time).toLocaleTimeString()}</div>` : ''}
+                                    </div>
+                                ` : '<div style="font-size: 13px; color: #888;">Aucun enregistrement aujourd\'hui</div>'}
+                                
+                                <div style="margin-top: 10px;">
+                                    ${child.isAbsent ? 
+                                      '<button style="background: #28a745; padding: 8px 15px; font-size: 12px;">📥 Arrivée</button>' : ''}
+                                    ${child.isPresent ? 
+                                      '<button style="background: #dc3545; padding: 8px 15px; font-size: 12px;">📤 Départ</button>' : ''}
+                                    ${child.isCompleted ? 
+                                      '<span style="color: #007bff; font-size: 12px;">✅ Journée terminée</span>' : ''}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    childrenHtml += '</div>';
+                    
+                    const resultDiv = document.createElement('div');
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `
+                        <strong>🎉 SECTION "ENREGISTREMENT RAPIDE" SIMULÉE</strong><br>
+                        <strong>Total:</strong> ${childrenWithStatus.length} enfants<br>
+                        <strong>Présents:</strong> ${childrenWithStatus.filter(c => c.isPresent).length}<br>
+                        <strong>Terminés:</strong> ${childrenWithStatus.filter(c => c.isCompleted).length}<br>
+                        <strong>Absents:</strong> ${childrenWithStatus.filter(c => c.isAbsent).length}<br><br>
+                        ${childrenHtml}
+                    `;
+                    results.appendChild(resultDiv);
+                    
+                    addResult('<h2>✅ DIAGNOSTIC TERMINÉ</h2>', 'success');
+                    addResult(`
+                        <strong>RÉSULTAT:</strong> La logique fonctionne correctement !<br><br>
+                        <strong>Si la section reste vide dans l'application :</strong><br>
+                        1. Vérifier que le serveur backend est démarré (✅ OK)<br>
+                        2. Vérifier que l'utilisateur est connecté avec un compte admin<br>
+                        3. Ouvrir la console du navigateur (F12) pour voir les erreurs<br>
+                        4. Vérifier que les corrections dans AttendancePage.jsx et TodaySection.jsx sont bien appliquées<br>
+                        5. Recharger la page /dashboard/attendance/today
+                    `, 'info');
+                    
+                } else {
+                    addResult('⚠️ <strong>PROBLÈME:</strong> Aucun enfant à afficher', 'warning');
+                }
+                
+            } catch (error) {
+                addResult(`❌ <strong>Erreur générale:</strong> ${error.message}`, 'error');
+                console.error('Erreur complète:', error);
+            }
+        }
+        
+        // Message initial
+        document.addEventListener('DOMContentLoaded', () => {
+            addResult('🔧 <strong>Page de diagnostic chargée</strong><br>Cliquez sur "Lancer le diagnostic complet" pour tester la logique d\'enregistrement rapide.', 'info');
+        });
+    </script>
+</body>
+</html>
