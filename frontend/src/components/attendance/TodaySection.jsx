@@ -198,11 +198,16 @@ const TodaySection = ({
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {allChildren?.filter(child => {
-              // Exclure les enfants actuellement présents (déjà affichés dans la section du haut)
-              const isPresentNow = currentlyPresent?.some(present => present.id === child.id || present.child_id === child.id);
-              return !isPresentNow;
-            }).map((child) => {
+            {(() => {
+              const filteredChildren = allChildren?.filter(child => {
+                // Exclure les enfants actuellement présents (déjà affichés dans la section du haut)
+                const isPresentNow = currentlyPresent?.some(present => present.id === child.id || present.child_id === child.id);
+                return !isPresentNow;
+              }) || [];
+              
+              console.log('🎯 TodaySection - Enfants filtrés pour Enregistrement rapide:', filteredChildren.length);
+              
+              return filteredChildren.map((child) => {
               // Trouver l'enregistrement d'attendance pour cet enfant aujourd'hui
               const todayRecord = attendanceData?.find(record => record.child_id === child.id);
               const isPresent = todayRecord?.check_in_time && !todayRecord?.check_out_time;
@@ -337,7 +342,8 @@ const TodaySection = ({
                   </div>
                 </div>
               );
-            })}
+            });
+            })()}
           </div>
         </CardContent>
       </Card>

@@ -104,6 +104,12 @@ const AttendancePage = () => {
       
       // Mettre à jour TOUS les states en même temps
       const children = childrenResponse.success ? (childrenResponse.data.children || []) : [];
+      console.log('🎯 AttendancePage - loadTodayData:', {
+        childrenResponse,
+        children: children.length,
+        attendance: attendanceResponse.attendance?.length || 0,
+        currentlyPresent: currentPresentResponse.children?.length || 0
+      });
       
       setAllChildren(children);
       setAttendanceData(attendanceResponse.attendance || []);
@@ -116,8 +122,14 @@ const AttendancePage = () => {
 
   // Charger l'historique
   const loadHistoryData = async () => {
-    const attendanceResponse = await attendanceService.getAttendanceByDate(selectedDate);
-    setAttendanceData(attendanceResponse.attendances || []);
+    try {
+      console.log('📅 AttendancePage - Chargement historique pour:', selectedDate);
+      const attendanceResponse = await attendanceService.getAttendanceByDate(selectedDate);
+      console.log('📅 AttendancePage - Réponse historique:', attendanceResponse);
+      setAttendanceData(attendanceResponse.attendances || []);
+    } catch (error) {
+      console.error('❌ AttendancePage - Erreur loadHistoryData:', error);
+    }
   };
 
   // Charger les statistiques

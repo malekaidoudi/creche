@@ -225,7 +225,7 @@ router.get('/', async (req, res) => {
         COUNT(cd.id) as documents_count
       FROM children c
       LEFT JOIN users u ON c.parent_id = u.id
-      LEFT JOIN enrollments e ON c.id = e.child_id AND e.new_status = 'approved'
+      LEFT JOIN enrollments e ON c.id = e.child_id
       LEFT JOIN children_documents cd ON c.id = cd.child_id
       WHERE 1=1
     `;

@@ -72,15 +72,19 @@ const ChildrenPage = () => {
       };
       
       const response = await childrenService.getAllChildren(params);
+      console.log('📋 ChildrenPage - Réponse API:', response);
       
       if (response.success) {
-        setChildren(response.data.children || []);
+        const childrenData = response.data.children || [];
+        console.log('✅ ChildrenPage - Enfants chargés:', childrenData.length, childrenData);
+        setChildren(childrenData);
         setPagination(prev => ({
           ...prev,
           total: response.data.pagination?.total || 0,
           totalPages: response.data.pagination?.pages || 0
         }));
       } else {
+        console.error('❌ ChildrenPage - Erreur:', response);
         toast.error('Erreur lors du chargement des enfants');
       }
     } catch (error) {
