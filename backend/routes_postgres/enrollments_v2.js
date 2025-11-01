@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
-const enrollmentsController = require('../controllers/enrollmentsController');
+const enrollmentsController = require('../controllers/enrollmentsController_v2');
 const auth = require('../middleware/auth');
 
 // =====================================================
@@ -285,7 +285,70 @@ router.delete('/:id',
 // ROUTES DOCUMENTS
 // =====================================================
 
-// Routes documents temporairement désactivées - à implémenter plus tard
-// TODO: Implémenter uploadDocuments et downloadDocuments
+/**
+ * POST /api/enrollments/:id/documents
+ * Upload de documents pour un dossier
+ */
+router.post('/:id/documents',
+  enrollmentsController.uploadDocuments
+);
+
+/**
+ * GET /api/enrollments/:id/documents/:docId/download
+ * Télécharger un document (staff/admin ou propriétaire)
+ */
+router.get('/:id/documents/:docId/download',
+  auth.authenticateToken,
+  async (req, res) => {
+    try {
+      const { id, docId } = req.params;
+      
+      // Vérifier les permissions
+      const canAccess = req.user.role === 'admin' || req.user.role === 'staff';
+      
+      if (!canAccess) {
+        // Vérifier si c'est le propriétaire du dossier
+        const ownerCheck = await db.query(`
+          SELECT 1 FROM enrollments e
+          JOIN users u ON e.parent_id = u.id
+          WHERE e.id = $1 AND u.id = $2
+        `, [id, req.user.id]);
+        
+        if (ownerCheck.rows.length === 0) {
+          return res.status(403).json({
+            success: false,
+            error: 'Accès refusé'
+          });
+        }
+      }
+      
+      // Récupérer le document
+      const doc = await db.query(`
+        SELECT file_path, original_filename, mime_type
+        FROM enrollment_documents
+        WHERE id = $1 AND enrollment_id = $2
+      `, [docId, id]);
+      
+      if (doc.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: 'Document non trouvé'
+        });
+      }
+      
+      const document = doc.rows[0];
+      
+      res.setHeader('Content-Type', document.mime_type);
+      res.setHeader('Content-Disposition', `attachment; filename="${document.original_filename}"`);
+      res.sendFile(path.resolve(document.file_path));
+      
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: 'Erreur lors du téléchargement'
+      });
+    }
+  }
+);
 
 module.exports = router;

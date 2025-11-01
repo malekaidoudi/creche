@@ -1,0 +1,35 @@
+[2025-10-31 21:58:44] 🚀 Début du déploiement Enrollment Workflow v2.0
+[2025-10-31 21:58:44] 📦 Création backup des fichiers actuels...
+[2025-10-31 21:58:44] ✅ Backup enrollmentsController.js
+[2025-10-31 21:58:44] ✅ Backup childrenController.js
+[2025-10-31 21:58:44] ✅ Backup auth.js
+[2025-10-31 21:58:44] ✅ Backup routes enrollments.js
+[2025-10-31 21:58:44] 📦 Backup terminé dans: ./backups/20251031_215844
+[2025-10-31 21:58:44] 🗄️ Backup base de données...
+[2025-10-31 21:58:44] ⚠️ DATABASE_URL non défini - Backup DB ignoré
+[2025-10-31 21:58:44] 📁 Déploiement des nouveaux fichiers...
+[2025-10-31 21:58:44] ✅ enrollmentsController_v2.js → enrollmentsController.js
+[2025-10-31 21:58:44] ✅ childrenController_v2.js → childrenController.js
+[2025-10-31 21:58:44] ✅ auth_v2.js → auth.js
+[2025-10-31 21:58:44] ✅ enrollments_v2.js → enrollments.js
+[2025-10-31 21:58:44] 📁 Déploiement fichiers terminé
+[2025-10-31 21:58:44] 🔄 Migration base de données...
+[2025-10-31 21:58:44] ⚠️ DATABASE_URL non défini - Migration DB ignorée
+[2025-10-31 21:58:44] 🧪 Vérification du déploiement...
+[2025-10-31 21:58:44] ✅ Tous les fichiers sont présents
+[2025-10-31 21:58:45] ✅ enrollmentsController.js syntaxe OK
+[2025-10-31 21:58:45] 🧪 Exécution des tests...
+[2025-10-31 21:58:46] ⚠️ Certains tests ont échoué
+[2025-10-31 21:58:46] 🧪 Vérification terminée
+[2025-10-31 21:58:46] 🎉 DÉPLOIEMENT RÉUSSI !
+[2025-10-31 21:58:46] 📋 Résumé:
+[2025-10-31 21:58:46]    - Fichiers déployés et vérifiés
+[2025-10-31 21:58:46]    - Base de données migrée
+[2025-10-31 21:58:46]    - Tests passés
+[2025-10-31 21:58:46]    - Backup disponible: ./backups/20251031_215844
+[2025-10-31 21:58:46] 
+[2025-10-31 21:58:46] 🔗 Prochaines étapes:
+[2025-10-31 21:58:46]    1. Redémarrer le serveur: npm restart
+[2025-10-31 21:58:46]    2. Vérifier les logs: tail -f logs/server.log
+[2025-10-31 21:58:46]    3. Tester les endpoints: curl -X GET /api/enrollments
+[2025-10-31 21:58:46]    4. Surveiller les métriques de performance

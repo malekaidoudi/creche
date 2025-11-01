@@ -55,7 +55,8 @@ app.use(compression());
 // CORS configuration pour production (AVANT tout le reste)
 const allowedOrigins = [
   'http://localhost:5173',
-  'http://localhost:3000', 
+  'http://localhost:3000',
+  'http://192.168.1.60:5173',
   'https://malekaidoudi.github.io',
   process.env.CLIENT_URL
 ].filter(Boolean);
@@ -104,6 +105,7 @@ try {
   app.use('/api/user', usersRoutes); // Réactivé - base de données maintenant initialisée
   console.log('✅ Route users chargée');
   
+  // Routes children - UTILISATION DU FICHIER ROUTES SEULEMENT
   const childrenRoutes = require('./routes_postgres/children');
   app.use('/api/children', childrenRoutes);
   console.log('✅ Route children chargée');

@@ -5,9 +5,7 @@ const childrenController = {
   // GET /api/children - Liste des enfants actifs avec parents
   getAllChildren: async (req, res) => {
     try {
-      console.log('🔍 GET /api/children - Début de la requête');
       const { page = 1, limit = 20, search = '', status = 'active' } = req.query;
-      console.log('📊 Paramètres reçus:', { page, limit, search, status });
       const offset = (page - 1) * limit;
       
       let whereConditions = [];
@@ -15,9 +13,9 @@ const childrenController = {
       let paramCount = 0;
       
       // Filtrer par statut
-      if (status === 'active' || status === 'approved') {
+      if (status === 'active') {
         whereConditions.push('c.is_active = true');
-      } else if (status === 'archived' || status === 'inactive') {
+      } else if (status === 'archived') {
         whereConditions.push('c.is_active = false');
       }
       
@@ -36,12 +34,12 @@ const childrenController = {
       
       const whereClause = whereConditions.length > 0 ? 'WHERE ' + whereConditions.join(' AND ') : '';
       
-      // NOUVELLE REQUÊTE: Utilise la relation directe parent_id dans children
+      // NOUVELLE REQUÊTE: Utilise enrollments approuvés pour liaison parent-enfant
       const query = `
         SELECT 
           c.*,
           EXTRACT(YEAR FROM AGE(c.birth_date)) as age,
-          u.id as parent_user_id,
+          u.id as parent_id,
           u.first_name as parent_first_name,
           u.last_name as parent_last_name,
           u.email as parent_email,
@@ -50,8 +48,8 @@ const childrenController = {
           e.new_status as enrollment_status,
           COUNT(cd.id) as documents_count
         FROM children c
-        LEFT JOIN users u ON c.parent_id = u.id
         LEFT JOIN enrollments e ON c.id = e.child_id AND e.new_status = 'approved'
+        LEFT JOIN users u ON e.parent_id = u.id
         LEFT JOIN children_documents cd ON c.id = cd.child_id
         ${whereClause}
         GROUP BY c.id, u.id, e.enrollment_date, e.new_status
@@ -61,18 +59,14 @@ const childrenController = {
       
       params.push(parseInt(limit), parseInt(offset));
       
-      console.log('🔍 Requête SQL:', query);
-      console.log('📝 Paramètres:', params);
-      
       const result = await db.query(query, params);
-      console.log('✅ Résultat requête:', result.rows.length, 'enfants trouvés');
       
       // Compter le total
       const countQuery = `
         SELECT COUNT(DISTINCT c.id) as total
         FROM children c
-        LEFT JOIN users u ON c.parent_id = u.id
         LEFT JOIN enrollments e ON c.id = e.child_id AND e.new_status = 'approved'
+        LEFT JOIN users u ON e.parent_id = u.id
         ${whereClause}
       `;
       

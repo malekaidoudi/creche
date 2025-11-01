@@ -439,8 +439,10 @@ const DashboardSettingsPage = () => {
       console.log('✅ Vérifications passées, envoi de la requête...');
       
       // Test de l'endpoint API  
-      const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-        ? 'http://localhost:3000' 
+      const API_BASE_URL = window.location.hostname === 'localhost' || 
+                          window.location.hostname === '127.0.0.1' || 
+                          window.location.hostname === '192.168.1.60'
+        ? 'http://localhost:3003' 
         : 'https://creche-backend.onrender.com';
       console.log('🌐 URL de base:', API_BASE_URL);
       console.log('📍 Endpoint cible:', `${API_BASE_URL}/api/holidays`);

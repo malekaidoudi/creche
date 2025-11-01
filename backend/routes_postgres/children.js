@@ -204,32 +204,48 @@ router.get('/unassociated', async (req, res) => {
   }
 });
 
-// GET /api/children - Récupérer tous les enfants
+// GET /api/children - Récupérer tous les enfants avec leurs parents
 router.get('/', async (req, res) => {
   try {
-    const { active, search, gender, age_min, age_max, page = 1, limit = 50 } = req.query;
+    const { status = 'active', search, gender, age_min, age_max, page = 1, limit = 50 } = req.query;
     
     let sql = `
-      SELECT id, first_name, last_name, birth_date, gender, medical_info, 
-             emergency_contact_name, emergency_contact_phone, photo_url, 
-             is_active, created_at, updated_at,
-             EXTRACT(YEAR FROM AGE(birth_date)) as age
-      FROM children 
+      SELECT 
+        c.id, c.first_name, c.last_name, c.birth_date, c.gender, c.medical_info, 
+        c.emergency_contact_name, c.emergency_contact_phone, c.photo_url, 
+        c.is_active, c.created_at, c.updated_at, c.parent_id,
+        EXTRACT(YEAR FROM AGE(c.birth_date)) as age,
+        u.id as parent_user_id,
+        u.first_name as parent_first_name,
+        u.last_name as parent_last_name,
+        u.email as parent_email,
+        u.phone as parent_phone,
+        e.enrollment_date,
+        e.new_status as enrollment_status,
+        COUNT(cd.id) as documents_count
+      FROM children c
+      LEFT JOIN users u ON c.parent_id = u.id
+      LEFT JOIN enrollments e ON c.id = e.child_id AND e.new_status = 'approved'
+      LEFT JOIN children_documents cd ON c.id = cd.child_id
       WHERE 1=1
     `;
     const params = [];
     let paramCount = 0;
     
     // Filtres
-    if (active !== undefined) {
+    if (status === 'active' || status === 'approved') {
       paramCount++;
-      sql += ` AND is_active = $${paramCount}`;
-      params.push(active === 'true');
+      sql += ` AND c.is_active = $${paramCount}`;
+      params.push(true);
+    } else if (status === 'archived' || status === 'inactive') {
+      paramCount++;
+      sql += ` AND c.is_active = $${paramCount}`;
+      params.push(false);
     }
     
     if (search) {
       paramCount++;
-      sql += ` AND (first_name ILIKE $${paramCount} OR last_name ILIKE $${paramCount})`;
+      sql += ` AND (c.first_name ILIKE $${paramCount} OR c.last_name ILIKE $${paramCount} OR u.first_name ILIKE $${paramCount} OR u.last_name ILIKE $${paramCount})`;
       params.push(`%${search}%`);
     }
     
@@ -251,8 +267,9 @@ router.get('/', async (req, res) => {
       params.push(parseInt(age_max));
     }
     
-    // Pagination
-    sql += ` ORDER BY first_name, last_name`;
+    // GROUP BY et ORDER BY
+    sql += ` GROUP BY c.id, u.id, e.enrollment_date, e.new_status`;
+    sql += ` ORDER BY c.created_at DESC`;
     const offset = (page - 1) * limit;
     paramCount++;
     sql += ` LIMIT $${paramCount}`;
@@ -264,14 +281,18 @@ router.get('/', async (req, res) => {
     const result = await db.query(sql, params);
     
     // Compter le total
-    let countSql = 'SELECT COUNT(*) as total FROM children WHERE 1=1';
+    let countSql = 'SELECT COUNT(DISTINCT c.id) as total FROM children c LEFT JOIN users u ON c.parent_id = u.id WHERE 1=1';
     const countParams = [];
     let countParamCount = 0;
     
-    if (active !== undefined) {
+    if (status === 'active' || status === 'approved') {
       countParamCount++;
-      countSql += ` AND is_active = $${countParamCount}`;
-      countParams.push(active === 'true');
+      countSql += ` AND c.is_active = $${countParamCount}`;
+      countParams.push(true);
+    } else if (status === 'archived' || status === 'inactive') {
+      countParamCount++;
+      countSql += ` AND c.is_active = $${countParamCount}`;
+      countParams.push(false);
     }
     
     if (search) {
@@ -302,12 +323,14 @@ router.get('/', async (req, res) => {
     
     res.json({
       success: true,
-      children: result.rows,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total: parseInt(countResult.rows[0].total),
-        pages: Math.ceil(countResult.rows[0].total / limit)
+      data: {
+        children: result.rows,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: parseInt(countResult.rows[0].total),
+          pages: Math.ceil(countResult.rows[0].total / limit)
+        }
       }
     });
     

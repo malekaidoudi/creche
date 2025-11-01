@@ -15,12 +15,20 @@ const PublicFooter = () => {
     const loadNurserySettings = async () => {
       try {
         console.log('🏢 Footer: Chargement des paramètres crèche...');
-        const response = await api.get('/api/contact');
-        console.log('📋 Footer: Réponse API:', response.data);
+        // Utiliser directement l'URL locale pour éviter les problèmes de cache
+        const apiUrl = window.location.hostname === 'localhost' || 
+                      window.location.hostname === '127.0.0.1' || 
+                      window.location.hostname === '192.168.1.60'
+          ? 'http://localhost:3003' 
+          : 'https://creche-backend.onrender.com';
+        
+        const response = await fetch(`${apiUrl}/api/contact`);
+        const data = await response.json();
+        console.log('📋 Footer: Réponse API:', data);
         
         // Adapter au format de l'API contact
-        if (response.data && response.data.success && response.data.contact) {
-          const contactData = response.data.contact;
+        if (data && data.success && data.contact) {
+          const contactData = data.contact;
           setNurserySettings({
             nursery_name: { value: 'Crèche Mima Elghalia', fr: 'Crèche Mima Elghalia' },
             address: { value: contactData.address, fr: contactData.address },

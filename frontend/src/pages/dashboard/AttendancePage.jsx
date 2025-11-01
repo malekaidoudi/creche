@@ -13,6 +13,7 @@ import { Button } from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import toast from 'react-hot-toast';
 import attendanceService from '../../services/attendanceService';
+import childrenService from '../../services/childrenService';
 import TodaySection from '../../components/attendance/TodaySection';
 import HistorySection from '../../components/attendance/HistorySection';
 import StatsSection from '../../components/attendance/StatsSection';
@@ -36,6 +37,7 @@ const AttendancePage = () => {
   const [attendanceData, setAttendanceData] = useState([]);
   const [stats, setStats] = useState(null);
   const [currentlyPresent, setCurrentlyPresent] = useState([]);
+  const [allChildren, setAllChildren] = useState([]); // Liste complète des enfants
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -89,15 +91,32 @@ const AttendancePage = () => {
     }
   };
 
+  // Charger tous les enfants inscrits
+  const loadAllChildren = async () => {
+    try {
+      const response = await childrenService.getAllChildren({ 
+        status: 'approved', 
+        limit: 100 // Charger tous les enfants approuvés
+      });
+      
+      if (response.success) {
+        setAllChildren(response.data.children || []);
+      }
+    } catch (error) {
+      console.error('Erreur chargement enfants:', error);
+    }
+  };
+
   // Charger les données d'aujourd'hui
   const loadTodayData = async () => {
     const [attendanceResponse, currentPresentResponse, statsResponse] = await Promise.all([
       attendanceService.getTodayAttendance(),
       attendanceService.getCurrentlyPresent(),
-      attendanceService.getAttendanceStats()
+      attendanceService.getAttendanceStats(),
+      loadAllChildren() // Charger aussi tous les enfants
     ]);
     
-    setAttendanceData(attendanceResponse.attendances || []);
+    setAttendanceData(attendanceResponse.attendance || []);
     setCurrentlyPresent(currentPresentResponse.children || []);
     setStats(statsResponse);
   };
@@ -201,6 +220,7 @@ const AttendancePage = () => {
           <TodaySection
             currentlyPresent={currentlyPresent}
             attendanceData={attendanceData}
+            allChildren={allChildren}
             stats={stats}
             onCheckIn={handleCheckIn}
             onCheckOut={handleCheckOut}

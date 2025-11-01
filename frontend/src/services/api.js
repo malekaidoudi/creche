@@ -3,13 +3,8 @@ import toast from 'react-hot-toast'
 import API_CONFIG from '../config/api.js'
 
 // Configuration de base d'Axios avec la nouvelle config centralisée
-// Configuration API dynamique
-const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-  ? 'http://localhost:3000' 
-  : 'https://creche-backend.onrender.com'
-
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: API_CONFIG.BASE_URL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -185,7 +180,7 @@ export const downloadFile = async (url, filename) => {
 
 // Configuration pour les requêtes avec retry
 export const apiWithRetry = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: API_CONFIG.BASE_URL,
   timeout: 10000,
 })
 

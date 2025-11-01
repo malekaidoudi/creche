@@ -19,6 +19,7 @@ import { formatTime } from '../../utils/dateUtils';
 const TodaySection = ({ 
   currentlyPresent, 
   attendanceData, 
+  allChildren,
   stats, 
   onCheckIn, 
   onCheckOut, 
@@ -197,13 +198,16 @@ const TodaySection = ({
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {attendanceData?.map((record) => {
-              const isPresent = record.check_in_time && !record.check_out_time;
-              const isCompleted = record.check_in_time && record.check_out_time;
+            {allChildren?.map((child) => {
+              // Trouver l'enregistrement d'attendance pour cet enfant aujourd'hui
+              const todayRecord = attendanceData?.find(record => record.child_id === child.id);
+              const isPresent = todayRecord?.check_in_time && !todayRecord?.check_out_time;
+              const isCompleted = todayRecord?.check_in_time && todayRecord?.check_out_time;
+              const isAbsent = !todayRecord?.check_in_time;
               
               return (
                 <div
-                  key={record.child_id}
+                  key={child.id}
                   className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700"
                 >
                   <div className="flex items-center justify-between mb-3">
@@ -221,10 +225,10 @@ const TodaySection = ({
                       </div>
                       <div>
                         <h3 className="font-semibold text-gray-900 dark:text-white">
-                          {record.child?.first_name} {record.child?.last_name}
+                          {child.first_name} {child.last_name}
                         </h3>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                          {calculateAge(record.child?.birth_date)}
+                          {calculateAge(child.birth_date)}
                         </p>
                       </div>
                     </div>
@@ -241,37 +245,37 @@ const TodaySection = ({
                   </div>
                   
                   <div className="space-y-2 text-sm">
-                    {record.check_in_time && (
+                    {todayRecord?.check_in_time && (
                       <div className="flex items-center justify-between">
                         <span className="text-gray-600 dark:text-gray-300">
                           {isRTL ? 'وصل:' : 'Arrivée:'}
                         </span>
                         <span className="font-medium">
-                          {formatTime(record.check_in_time, isRTL)}
+                          {formatTime(todayRecord.check_in_time, isRTL)}
                         </span>
                       </div>
                     )}
                     
-                    {record.check_out_time && (
+                    {todayRecord?.check_out_time && (
                       <div className="flex items-center justify-between">
                         <span className="text-gray-600 dark:text-gray-300">
                           {isRTL ? 'غادر:' : 'Départ:'}
                         </span>
                         <span className="font-medium">
-                          {formatTime(record.check_out_time, isRTL)}
+                          {formatTime(todayRecord.check_out_time, isRTL)}
                         </span>
                       </div>
                     )}
                     
                     <div className="flex space-x-2 rtl:space-x-reverse mt-3">
-                      {!record.check_in_time && (
+                      {isAbsent && (
                         <Button
-                          onClick={() => onCheckIn(record.child_id)}
-                          disabled={actionLoading === record.child_id}
+                          onClick={() => onCheckIn(child.id)}
+                          disabled={actionLoading === child.id}
                           size="sm"
                           className="flex-1"
                         >
-                          {actionLoading === record.child_id ? (
+                          {actionLoading === child.id ? (
                             <LoadingSpinner size="sm" />
                           ) : (
                             <>
@@ -284,13 +288,13 @@ const TodaySection = ({
                       
                       {isPresent && (
                         <Button
-                          onClick={() => onCheckOut(record.child_id)}
-                          disabled={actionLoading === record.child_id}
+                          onClick={() => onCheckOut(child.id)}
+                          disabled={actionLoading === child.id}
                           size="sm"
                           variant="outline"
                           className="flex-1"
                         >
-                          {actionLoading === record.child_id ? (
+                          {actionLoading === child.id ? (
                             <LoadingSpinner size="sm" />
                           ) : (
                             <>

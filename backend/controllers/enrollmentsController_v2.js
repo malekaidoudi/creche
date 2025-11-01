@@ -16,7 +16,10 @@ const enrollmentsController = {
   
   // POST /api/enrollments - Création dossier visiteur
   createEnrollment: async (req, res) => {
+    const client = await db.connect();
     try {
+      await client.query('BEGIN');
+      
       const {
         applicant_first_name, applicant_last_name, applicant_email, applicant_phone,
         child_first_name, child_last_name, child_birth_date, child_gender
@@ -28,7 +31,7 @@ const enrollmentsController = {
       }
       
       // Créer enrollment
-      const result = await db.query(`
+      const result = await client.query(`
         INSERT INTO enrollments (
           applicant_first_name, applicant_last_name, applicant_email, applicant_phone,
           child_first_name, child_last_name, child_birth_date, child_gender,
@@ -38,6 +41,8 @@ const enrollmentsController = {
       `, [applicant_first_name, applicant_last_name, applicant_email, applicant_phone,
           child_first_name, child_last_name, child_birth_date, child_gender]);
       
+      await client.query('COMMIT');
+      
       res.status(201).json({
         success: true,
         enrollment: result.rows[0],
@@ -45,29 +50,85 @@ const enrollmentsController = {
       });
       
     } catch (error) {
+      await client.query('ROLLBACK');
       res.status(500).json({ success: false, error: error.message });
+    } finally {
+      client.release();
     }
   },
   
-  // POST /api/enrollments/:id/approve - Approbation (version simplifiée)
+  // POST /api/enrollments/:id/approve - Approbation (TRANSACTION ATOMIQUE)
   approveEnrollment: async (req, res) => {
+    const client = await db.connect();
     try {
+      await client.query('BEGIN');
+      
       const { id } = req.params;
       
-      // Pour l'instant, juste marquer comme approuvé
-      await db.query(`
+      // 1. Récupérer enrollment
+      const enrollment = await client.query(
+        'SELECT * FROM enrollments WHERE id = $1 FOR UPDATE', [id]
+      );
+      
+      if (!enrollment.rows[0]) {
+        return res.status(404).json({ success: false, error: 'Dossier non trouvé' });
+      }
+      
+      const e = enrollment.rows[0];
+      
+      // 2. Créer/trouver parent
+      let parent = await client.query('SELECT * FROM users WHERE email = $1', [e.applicant_email]);
+      
+      if (parent.rows.length === 0) {
+        const parentResult = await client.query(`
+          INSERT INTO users (email, first_name, last_name, role, is_active, created_at)
+          VALUES ($1, $2, $3, 'parent', true, NOW()) RETURNING id
+        `, [e.applicant_email, e.applicant_first_name, e.applicant_last_name]);
+        parent = parentResult;
+      }
+      
+      const parentId = parent.rows[0].id;
+      
+      // 3. Créer enfant
+      const childResult = await client.query(`
+        INSERT INTO children (first_name, last_name, birth_date, gender, medical_info, 
+                             emergency_contact_name, emergency_contact_phone, is_active, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, true, NOW()) RETURNING id
+      `, [e.child_first_name, e.child_last_name, e.child_birth_date, e.child_gender,
+          e.child_medical_info, e.emergency_contact_name, e.emergency_contact_phone]);
+      
+      const childId = childResult.rows[0].id;
+      
+      // 4. Transférer documents
+      await client.query(`
+        INSERT INTO children_documents (child_id, filename, original_filename, file_path, 
+                                       mime_type, document_type, uploaded_at)
+        SELECT $1, filename, original_filename, file_path, mime_type, document_type, uploaded_at
+        FROM enrollment_documents WHERE enrollment_id = $2
+      `, [childId, id]);
+      
+      // 5. Marquer enrollment approuvé
+      await client.query(`
         UPDATE enrollments 
-        SET new_status = 'approved', approved_by = $1, approved_at = NOW()
-        WHERE id = $2
-      `, [req.user.id, id]);
+        SET new_status = 'approved', parent_id = $1, child_id = $2, 
+            approved_by = $3, approved_at = NOW(), updated_at = NOW()
+        WHERE id = $4
+      `, [parentId, childId, req.user.id, id]);
+      
+      await client.query('COMMIT');
       
       res.json({
         success: true,
-        message: 'Dossier approuvé avec succès'
+        message: 'Dossier approuvé avec succès',
+        parent_id: parentId,
+        child_id: childId
       });
       
     } catch (error) {
+      await client.query('ROLLBACK');
       res.status(500).json({ success: false, error: error.message });
+    } finally {
+      client.release();
     }
   },
   
