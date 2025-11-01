@@ -104,6 +104,7 @@ const AttendancePage = () => {
       
       // Mettre à jour TOUS les states en même temps
       const children = childrenResponse.success ? (childrenResponse.data.children || []) : [];
+      console.log('🎯 AttendancePage - Enfants chargés:', children.length);
       
       setAllChildren(children);
       setAttendanceData(attendanceResponse.attendance || []);
