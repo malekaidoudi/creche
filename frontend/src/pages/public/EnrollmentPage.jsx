@@ -158,29 +158,17 @@ const EnrollmentPage = () => {
         // Cas 1: Nouvelle inscription complète
         const formData = new FormData()
         
-        // Données de l'enfant
+        // Données de l'enfant (noms conformes au backend)
         formData.append('child_first_name', data.child_first_name)
         formData.append('child_last_name', data.child_last_name)
-        formData.append('birth_date', data.birth_date)
-        formData.append('gender', data.gender)
-        formData.append('medical_info', data.medical_info || '')
-        // Contact d'urgence : utiliser le parent si pas de contact différent
-        const emergencyName = hasDifferentEmergencyContact && data.emergency_contact_name 
-          ? data.emergency_contact_name 
-          : `${data.parent_first_name} ${data.parent_last_name}`;
-        const emergencyPhone = hasDifferentEmergencyContact && data.emergency_contact_phone 
-          ? data.emergency_contact_phone 
-          : data.parent_phone;
-          
-        formData.append('emergency_contact_name', emergencyName)
-        formData.append('emergency_contact_phone', emergencyPhone)
+        formData.append('child_birth_date', data.birth_date)
+        formData.append('child_gender', data.gender)
         
-        // Données du parent
-        formData.append('parent_first_name', data.parent_first_name)
-        formData.append('parent_last_name', data.parent_last_name)
-        formData.append('parent_email', data.parent_email)
-        formData.append('parent_password', data.parent_password)
-        formData.append('parent_phone', data.parent_phone)
+        // Données du parent/applicant (noms conformes au backend)
+        formData.append('applicant_first_name', data.parent_first_name)
+        formData.append('applicant_last_name', data.parent_last_name)
+        formData.append('applicant_email', data.parent_email)
+        formData.append('applicant_phone', data.parent_phone)
         
         // Options
         formData.append('enrollment_date', data.enrollment_date)
