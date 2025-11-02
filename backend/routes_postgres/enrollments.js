@@ -52,6 +52,8 @@ router.post('/:id/documents', upload.fields([
   { name: 'acte_naissance', maxCount: 1 },
   { name: 'certificat_medical', maxCount: 1 }
 ]), async (req, res) => {
+  const db = require('../config/db_postgres');
+  
   try {
     const { id } = req.params;
     const files = req.files;
@@ -59,8 +61,40 @@ router.post('/:id/documents', upload.fields([
     console.log('📎 Upload documents pour enrollment:', id);
     console.log('📁 Fichiers reçus:', Object.keys(files || {}));
     
-    // TODO: Sauvegarder les chemins des fichiers dans la base de données
-    // Pour l'instant, on retourne juste un succès
+    // Sauvegarder les chemins des fichiers dans la base de données
+    const documentUpdates = [];
+    const params = [id];
+    let paramIndex = 2;
+    
+    if (files.carnet_medical) {
+      documentUpdates.push(`carnet_medical_path = $${paramIndex}`);
+      params.push(files.carnet_medical[0].path);
+      paramIndex++;
+    }
+    
+    if (files.acte_naissance) {
+      documentUpdates.push(`acte_naissance_path = $${paramIndex}`);
+      params.push(files.acte_naissance[0].path);
+      paramIndex++;
+    }
+    
+    if (files.certificat_medical) {
+      documentUpdates.push(`certificat_medical_path = $${paramIndex}`);
+      params.push(files.certificat_medical[0].path);
+      paramIndex++;
+    }
+    
+    if (documentUpdates.length > 0) {
+      const updateQuery = `
+        UPDATE enrollments 
+        SET ${documentUpdates.join(', ')}, documents_uploaded = true
+        WHERE id = $1
+        RETURNING id
+      `;
+      
+      await db.query(updateQuery, params);
+      console.log('✅ Documents sauvegardés en base de données');
+    }
     
     res.json({
       success: true,
@@ -202,28 +236,39 @@ router.get('/:id',
 
 /**
  * POST /api/enrollments/:id/approve
- * Approuver un dossier (admin seulement) - TRANSACTION ATOMIQUE
+ * Approuver un dossier avec date RDV (admin/staff)
  */
 router.post('/:id/approve',
   auth.authenticateToken,
-  auth.requireRole('admin'),
+  auth.requireRole('admin', 'staff'),
   [
-    body('decision_notes').optional().isString(),
-    body('send_invitation').isBoolean().optional()
+    body('appointment_date').notEmpty().withMessage('Date de rendez-vous requise')
   ],
+  (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Données invalides',
+        details: errors.array()
+      });
+    }
+    next();
+  },
   enrollmentsController.approveEnrollment
 );
 
 /**
- * POST /api/enrollments/:id/reject
- * Rejeter un dossier (staff/admin)
+ * PUT /api/enrollments/:id/reject
+ * Rejeter un dossier avec 4 types (admin/staff)
  */
-router.post('/:id/reject',
+router.put('/:id/reject',
   auth.authenticateToken,
-  auth.requireRole('staff', 'admin'),
+  auth.requireRole('admin', 'staff'),
   [
-    body('reason').notEmpty().withMessage('Raison du rejet requise'),
-    body('type').isIn(['incomplete', 'delete']).withMessage('Type de rejet invalide')
+    body('rejection_type').isIn(['age_depasse', 'maladie_contagieuse', 'dossier_manquant', 'autre']).withMessage('Type de rejet invalide'),
+    body('custom_reason').optional().isString(),
+    body('appointment_date').optional().isISO8601()
   ],
   (req, res, next) => {
     const errors = validationResult(req);
@@ -237,6 +282,28 @@ router.post('/:id/reject',
     next();
   },
   enrollmentsController.rejectEnrollment
+);
+
+/**
+ * POST /api/enrollments/:id/choose-appointment
+ * Parent choisit un RDV pour apporter documents (public avec token)
+ */
+router.post('/:id/choose-appointment',
+  [
+    body('appointment_date').notEmpty().withMessage('Date de rendez-vous requise')
+  ],
+  (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Données invalides',
+        details: errors.array()
+      });
+    }
+    next();
+  },
+  enrollmentsController.chooseAppointment
 );
 
 /**

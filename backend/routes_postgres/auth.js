@@ -173,4 +173,132 @@ router.post('/logout', (req, res) => {
   res.json({ message: 'Déconnexion réussie' });
 });
 
+// POST /api/auth/create-password - Création mot de passe après approbation
+router.post('/create-password', [
+  body('token').notEmpty().withMessage('Token requis'),
+  body('email').isEmail().withMessage('Email invalide'),
+  body('password').isLength({ min: 6 }).withMessage('Mot de passe minimum 6 caractères')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Données invalides', 
+        details: errors.array() 
+      });
+    }
+
+    const { token, email, password } = req.body;
+
+    // Vérifier le token et récupérer l'enrollment
+    const enrollmentResult = await db.query(`
+      SELECT id, applicant_email, applicant_first_name, applicant_last_name, 
+             applicant_phone, child_first_name, child_last_name, 
+             password_token, password_token_expires
+      FROM enrollments 
+      WHERE password_token = $1 AND applicant_email = $2
+    `, [token, email]);
+
+    if (enrollmentResult.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'Token invalide ou expiré' 
+      });
+    }
+
+    const enrollment = enrollmentResult.rows[0];
+
+    // Vérifier si le token n'est pas expiré
+    if (new Date() > new Date(enrollment.password_token_expires)) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Token expiré. Veuillez contacter la crèche.' 
+      });
+    }
+
+    // Hasher le mot de passe
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Créer le compte parent
+    const userResult = await db.query(`
+      INSERT INTO users (
+        email, password, first_name, last_name, phone, role, is_active, created_at
+      ) VALUES ($1, $2, $3, $4, $5, 'parent', true, NOW())
+      RETURNING id, email, first_name, last_name, role
+    `, [
+      email,
+      hashedPassword,
+      enrollment.applicant_first_name,
+      enrollment.applicant_last_name,
+      enrollment.applicant_phone
+    ]);
+
+    const user = userResult.rows[0];
+
+    // Créer l'enfant et l'associer au parent
+    const childResult = await db.query(`
+      INSERT INTO children (
+        first_name, last_name, birth_date, gender, created_at
+      ) VALUES ($1, $2, $3, 'M', NOW())
+      RETURNING id
+    `, [
+      enrollment.child_first_name,
+      enrollment.child_last_name,
+      new Date() // TODO: Récupérer la vraie date de naissance depuis enrollment
+    ]);
+
+    const childId = childResult.rows[0].id;
+
+    // Associer l'enfant au parent
+    await db.query(`
+      INSERT INTO user_children (user_id, child_id, relationship, created_at)
+      VALUES ($1, $2, 'parent', NOW())
+    `, [user.id, childId]);
+
+    // Invalider le token
+    await db.query(`
+      UPDATE enrollments 
+      SET password_token = NULL, password_token_expires = NULL
+      WHERE id = $1
+    `, [enrollment.id]);
+
+    // Générer un JWT pour connexion automatique
+    const jwtToken = jwt.sign(
+      { userId: user.id, email: user.email, role: user.role },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+
+    res.json({
+      success: true,
+      message: 'Compte créé avec succès',
+      token: jwtToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        role: user.role
+      }
+    });
+
+  } catch (error) {
+    console.error('Erreur création mot de passe:', error);
+    
+    // Gérer l'erreur de duplication d'email
+    if (error.code === '23505') {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Un compte existe déjà avec cet email' 
+      });
+    }
+    
+    res.status(500).json({ 
+      success: false,
+      error: 'Erreur lors de la création du compte' 
+    });
+  }
+});
+
 module.exports = router;

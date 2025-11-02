@@ -134,20 +134,18 @@ const EnrollmentPage = () => {
       setLoading(true)
 
       if (isExistingChild) {
-        // Cas 2: Créer compte parent et lier enfant existant
-        const parentData = {
+        // Note: Le compte parent sera créé après approbation du dossier
+        // via le lien de création de mot de passe envoyé par email
+
+        const response = await api.post('/auth/register-parent-existing-child', {
+          child_id: data.selected_child_id,
           first_name: data.parent_first_name,
           last_name: data.parent_last_name,
           email: data.parent_email,
-          password: data.parent_password,
           phone: data.parent_phone,
-          role: 'parent',
-          child_id: data.selected_child_id
-        }
-
-        const response = await api.post('/auth/register-parent-existing-child', parentData)
+        })
         
-        toast.success(isRTL ? 'تم إنشاء الحساب بنجاح!' : 'Compte créé avec succès!')
+        toast.success(isRTL ? 'تم إنشاء الطلب بنجاح!' : 'Demande créée avec succès!')
         
         // Rediriger vers la page de connexion
         setTimeout(() => {
@@ -658,28 +656,6 @@ const EnrollmentPage = () => {
                     />
                     {errors.parent_email && (
                       <p className="text-red-500 text-sm mt-1">{errors.parent_email.message}</p>
-                    )}
-                  </div>
-
-                  {/* Mot de passe */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      {isRTL ? 'كلمة المرور' : 'Mot de passe'} *
-                    </label>
-                    <input
-                      type="password"
-                      className={`w-full px-4 py-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent ${errors.parent_password ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
-                      placeholder={isRTL ? 'كلمة المرور (6 أحرف على الأقل)' : 'Mot de passe (minimum 6 caractères)'}
-                      {...register('parent_password', {
-                        required: isRTL ? 'كلمة المرور مطلوبة' : 'Le mot de passe est requis',
-                        minLength: {
-                          value: 6,
-                          message: isRTL ? 'كلمة المرور يجب أن تحتوي على 6 أحرف على الأقل' : 'Le mot de passe doit contenir au moins 6 caractères'
-                        }
-                      })}
-                    />
-                    {errors.parent_password && (
-                      <p className="text-red-500 text-sm mt-1">{errors.parent_password.message}</p>
                     )}
                   </div>
 
