@@ -807,7 +807,7 @@ const EnrollmentPage = () => {
                       </div>
                       <button
                         type="button"
-                        onClick={() => window.open('/documents/reglement-interieur.pdf', '_blank')}
+                        onClick={() => window.open('/creche/reg-interne-mimaelghalia.pdf', '_blank')}
                         className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
                       >
                         <Download className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />

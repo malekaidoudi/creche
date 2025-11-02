@@ -37,6 +37,8 @@ const PendingEnrollmentsPage = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [selectedEnrollment, setSelectedEnrollment] = useState(null);
   const [showDocumentsModal, setShowDocumentsModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectData, setRejectData] = useState({ rejection_type: 'autre', custom_reason: '' });
   const [usingDemoData, setUsingDemoData] = useState(false);
   const [highlightId, setHighlightId] = useState(null);
 
@@ -123,25 +125,34 @@ const PendingEnrollmentsPage = () => {
     }
   };
 
-  const handleReject = async (enrollment) => {
-    const reason = prompt(isRTL ? 'سبب الرفض:' : 'Raison du rejet:');
-    if (!reason) return;
+  const handleReject = (enrollment) => {
+    setSelectedEnrollment(enrollment);
+    setRejectData({ rejection_type: 'autre', custom_reason: '' });
+    setShowRejectModal(true);
+  };
+
+  const confirmReject = async () => {
+    if (!rejectData.rejection_type) {
+      toast.error(isRTL ? 'يرجى اختيار نوع الرفض' : 'Veuillez sélectionner un type de rejet');
+      return;
+    }
 
     try {
       setActionLoading(true);
       
       if (!usingDemoData) {
         // Utiliser l'API réelle
-        await enrollmentsService.rejectEnrollment(enrollment.id, {
-          reason,
-          admin_comment: `Rejeté par ${user?.first_name} ${user?.last_name}`
+        await enrollmentsService.rejectEnrollment(selectedEnrollment.id, {
+          rejection_type: rejectData.rejection_type,
+          custom_reason: rejectData.custom_reason || undefined
         });
       } else {
         // Simulation pour les données de démonstration
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
       
-      setEnrollments(prev => prev.filter(e => e.id !== enrollment.id));
+      setEnrollments(prev => prev.filter(e => e.id !== selectedEnrollment.id));
+      setShowRejectModal(false);
       toast.success(isRTL ? 'تم رفض الطلب' : 'Demande rejetée');
     } catch (error) {
       console.error('Erreur rejet:', error);
@@ -151,9 +162,19 @@ const PendingEnrollmentsPage = () => {
     }
   };
 
-  const handleViewDocuments = (enrollment) => {
-    setSelectedEnrollment(enrollment);
-    setShowDocumentsModal(true);
+  const handleViewDocuments = async (enrollment) => {
+    try {
+      // Charger les documents depuis l'API
+      const response = await enrollmentsService.getEnrollmentById(enrollment.id);
+      setSelectedEnrollment({
+        ...enrollment,
+        files: response.documents || []
+      });
+      setShowDocumentsModal(true);
+    } catch (error) {
+      console.error('Erreur chargement documents:', error);
+      toast.error(isRTL ? 'خطأ في تحميل الوثائق' : 'Erreur lors du chargement des documents');
+    }
   };
 
   const handleDownloadDocument = (document) => {
@@ -357,10 +378,10 @@ const PendingEnrollmentsPage = () => {
                         size="sm"
                         variant="outline"
                         onClick={() => handleViewDocuments(enrollment)}
-                        disabled={!enrollment.files || enrollment.files.length === 0}
+                        disabled={!enrollment.documents_count || enrollment.documents_count === 0}
                       >
                         <Eye className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
-                        {isRTL ? 'الوثائق' : 'Documents'}
+                        {isRTL ? 'الوثائق' : 'Documents'} ({enrollment.documents_count || 0})
                       </Button>
                       
                       {(isAdmin() || isStaff()) && (
@@ -483,6 +504,67 @@ const PendingEnrollmentsPage = () => {
                   {isRTL ? 'إغلاق' : 'Fermer'}
                 </Button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de rejet */}
+      {showRejectModal && selectedEnrollment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              {isRTL ? 'رفض الطلب' : 'Rejeter la demande'}
+            </h3>
+            
+            <div className="space-y-4">
+              {/* Type de rejet */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  {isRTL ? 'نوع الرفض' : 'Type de rejet'}
+                </label>
+                <select
+                  value={rejectData.rejection_type}
+                  onChange={(e) => setRejectData({...rejectData, rejection_type: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                >
+                  <option value="age_depasse">{isRTL ? 'تجاوز السن المطلوب' : 'Âge dépassé'}</option>
+                  <option value="maladie_contagieuse">{isRTL ? 'مرض معدي' : 'Maladie contagieuse'}</option>
+                  <option value="dossier_manquant">{isRTL ? 'ملف غير مكتمل' : 'Dossier incomplet'}</option>
+                  <option value="autre">{isRTL ? 'أخرى' : 'Autre'}</option>
+                </select>
+              </div>
+
+              {/* Raison personnalisée */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  {isRTL ? 'السبب (اختياري)' : 'Raison (optionnel)'}
+                </label>
+                <textarea
+                  value={rejectData.custom_reason}
+                  onChange={(e) => setRejectData({...rejectData, custom_reason: e.target.value})}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder={isRTL ? 'أضف تفاصيل إضافية...' : 'Ajoutez des détails supplémentaires...'}
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 rtl:space-x-reverse mt-6">
+              <Button
+                variant="outline"
+                onClick={() => setShowRejectModal(false)}
+                disabled={actionLoading}
+              >
+                {isRTL ? 'إلغاء' : 'Annuler'}
+              </Button>
+              <Button
+                onClick={confirmReject}
+                disabled={actionLoading}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {actionLoading ? (isRTL ? 'جاري الرفض...' : 'Rejet en cours...') : (isRTL ? 'تأكيد الرفض' : 'Confirmer le rejet')}
+              </Button>
             </div>
           </div>
         </div>
