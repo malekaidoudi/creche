@@ -32,7 +32,7 @@ const API_CONFIG = {
     
     // Inscriptions
     ENROLLMENTS: '/api/enrollments',
-    PUBLIC_ENROLLMENTS: '/api/public/enrollments',
+    PUBLIC_ENROLLMENTS: '/api/enrollments',
     
     // Présences
     ATTENDANCE: '/api/attendance',

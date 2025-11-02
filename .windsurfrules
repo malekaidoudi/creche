@@ -69,6 +69,10 @@ global_rules:
   - "Optimise les Dockerfiles pour des builds légers et rapides."
   - "Inclut des recommandations sur la scalabilité horizontale (load balancer, pool de workers)."
 
+  # Script pour déployer le frontend dans le dossier /docs pour GitHub Pages
+  - "npm run build:github"
+  - "cp -r dist/* ../docs/"
+  -  "N'oubliez pas de commiter et pusher les changements :"
   # ✨ FINAL GUIDELINES
   - "Fournis toujours du code prêt pour la production, propre et commenté."
   - "Explique chaque amélioration proposée dans un style concis et technique."
