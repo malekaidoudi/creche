@@ -168,9 +168,11 @@ router.get('/:id',
       });
       
     } catch (error) {
+      console.error('❌ Erreur GET /api/enrollments/:id:', error);
       res.status(500).json({
         success: false,
-        error: 'Erreur lors de la récupération du dossier'
+        error: 'Erreur lors de la récupération du dossier',
+        details: error.message
       });
     }
   }
