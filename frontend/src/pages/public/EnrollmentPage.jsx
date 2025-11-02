@@ -156,42 +156,25 @@ const EnrollmentPage = () => {
 
       } else {
         // Cas 1: Nouvelle inscription complète
-        const formData = new FormData()
+        console.log('📝 Données du formulaire:', data);
         
-        // Données de l'enfant (noms conformes au backend)
-        formData.append('child_first_name', data.child_first_name)
-        formData.append('child_last_name', data.child_last_name)
-        formData.append('child_birth_date', data.birth_date)
-        formData.append('child_gender', data.gender)
+        const enrollmentData = {
+          // Données de l'enfant (noms conformes au backend)
+          child_first_name: data.child_first_name,
+          child_last_name: data.child_last_name,
+          child_birth_date: data.birth_date,
+          child_gender: data.gender,
+          
+          // Données du parent/applicant (noms conformes au backend)
+          applicant_first_name: data.parent_first_name,
+          applicant_last_name: data.parent_last_name,
+          applicant_email: data.parent_email,
+          applicant_phone: data.parent_phone
+        };
         
-        // Données du parent/applicant (noms conformes au backend)
-        formData.append('applicant_first_name', data.parent_first_name)
-        formData.append('applicant_last_name', data.parent_last_name)
-        formData.append('applicant_email', data.parent_email)
-        formData.append('applicant_phone', data.parent_phone)
-        
-        // Options
-        formData.append('enrollment_date', data.enrollment_date)
-        formData.append('lunch_assistance', data.lunch_assistance || false)
-        formData.append('regulation_accepted', data.regulation_accepted || false)
-        formData.append('notes', data.notes || '')
+        console.log('📤 Envoi au backend:', enrollmentData);
 
-        // Documents
-        if (documents.carnet_medical) {
-          formData.append('carnet_medical', documents.carnet_medical)
-        }
-        if (documents.acte_naissance) {
-          formData.append('acte_naissance', documents.acte_naissance)
-        }
-        if (documents.certificat_medical) {
-          formData.append('certificat_medical', documents.certificat_medical)
-        }
-
-        const response = await api.post('/api/enrollments', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
-        })
+        const response = await api.post('/api/enrollments', enrollmentData)
 
         toast.success(isRTL ? 'تم التسجيل بنجاح!' : 'Inscription réussie !')
         
