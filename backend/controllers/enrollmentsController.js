@@ -1,11 +1,19 @@
 const db = require('../config/db_postgres');
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 const emailService = require('../services/emailService');
+
+// Créer le dossier uploads si nécessaire
+const uploadsDir = path.join(__dirname, '../uploads/enrollments');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+  console.log('✅ Dossier uploads/enrollments créé');
+}
 
 // Configuration upload
 const upload = multer({
-  dest: 'uploads/enrollments/',
+  dest: uploadsDir,
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowed = ['image/jpeg', 'image/png', 'application/pdf'];
@@ -327,7 +335,11 @@ const enrollmentsController = {
       const { id } = req.params;
       const files = req.files;
       
+      console.log('📎 Upload documents - Enrollment ID:', id);
+      console.log('📁 Fichiers reçus:', files ? Object.keys(files) : 'aucun');
+      
       if (!files || Object.keys(files).length === 0) {
+        console.log('❌ Aucun fichier fourni');
         return res.status(400).json({ 
           success: false, 
           error: 'Aucun fichier fourni' 
@@ -335,17 +347,21 @@ const enrollmentsController = {
       }
       
       // Vérifier que l'enrollment existe
+      console.log('🔍 Vérification enrollment ID:', id);
       const enrollmentCheck = await db.query(
         'SELECT id FROM enrollments WHERE id = $1',
         [id]
       );
       
       if (enrollmentCheck.rows.length === 0) {
+        console.log('❌ Enrollment non trouvé:', id);
         return res.status(404).json({ 
           success: false, 
           error: 'Dossier non trouvé' 
         });
       }
+      
+      console.log('✅ Enrollment trouvé, sauvegarde des documents...');
       
       // Sauvegarder les documents
       const savedDocuments = [];
@@ -353,24 +369,40 @@ const enrollmentsController = {
       for (const [fieldName, fileArray] of Object.entries(files)) {
         const file = Array.isArray(fileArray) ? fileArray[0] : fileArray;
         
-        const result = await db.query(`
-          INSERT INTO enrollment_documents (
-            enrollment_id, document_type, filename, original_filename, 
-            file_path, file_size, mime_type, uploaded_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-          RETURNING id, document_type, original_filename
-        `, [
-          id,
-          fieldName,
-          file.filename,
-          file.originalname,
-          file.path,
-          file.size,
-          file.mimetype
-        ]);
+        console.log(`📄 Sauvegarde document: ${fieldName}`, {
+          filename: file.filename,
+          originalname: file.originalname,
+          path: file.path,
+          size: file.size,
+          mimetype: file.mimetype
+        });
         
-        savedDocuments.push(result.rows[0]);
+        try {
+          const result = await db.query(`
+            INSERT INTO enrollment_documents (
+              enrollment_id, document_type, filename, original_filename, 
+              file_path, file_size, mime_type, uploaded_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+            RETURNING id, document_type, original_filename
+          `, [
+            id,
+            fieldName,
+            file.filename,
+            file.originalname,
+            file.path,
+            file.size,
+            file.mimetype
+          ]);
+          
+          console.log('✅ Document sauvegardé en DB:', result.rows[0]);
+          savedDocuments.push(result.rows[0]);
+        } catch (dbError) {
+          console.error('❌ Erreur DB pour document:', fieldName, dbError.message);
+          throw dbError;
+        }
       }
+      
+      console.log('✅ Tous les documents sauvegardés:', savedDocuments.length);
       
       res.json({
         success: true,
@@ -379,10 +411,12 @@ const enrollmentsController = {
       });
       
     } catch (error) {
-      console.error('Erreur upload documents:', error);
+      console.error('❌ Erreur upload documents:', error.message);
+      console.error('Stack:', error.stack);
       res.status(500).json({ 
         success: false, 
-        error: 'Erreur lors de l\'upload des documents' 
+        error: 'Erreur lors de l\'upload des documents',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
   }
