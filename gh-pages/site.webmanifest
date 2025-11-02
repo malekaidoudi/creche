@@ -1,0 +1,16 @@
+{
+  "name": "Mima Elghalia - Crèche",
+  "short_name": "Mima Elghalia",
+  "description": "Système de gestion de crèche Mima Elghalia",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3b82f6",
+  "icons": [
+    {
+      "src": "/images/logo_creche.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg"
+    }
+  ]
+}

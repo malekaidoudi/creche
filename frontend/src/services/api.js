@@ -5,7 +5,7 @@ import API_CONFIG from '../config/api.js'
 // Configuration de base d'Axios avec la nouvelle config centralisée
 const api = axios.create({
   baseURL: API_CONFIG.BASE_URL,
-  timeout: 10000,
+  timeout: 30000, // 30s pour Render free tier (cold start)
   headers: {
     'Content-Type': 'application/json',
   },

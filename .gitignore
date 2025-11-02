@@ -55,6 +55,9 @@ jspm_packages/
 # dotenv environment variables file
 .env.test
 
+#documentation
+*.md
+
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache
@@ -99,8 +102,9 @@ build/
 .vscode-test
 
 # Uploads
-#uploads/
-#backend/uploads/
+uploads/
+backend/uploads/
+backend/migrations/
 
 # OS generated files
 .DS_Store
