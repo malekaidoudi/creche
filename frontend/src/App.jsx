@@ -11,6 +11,8 @@ import ArticleDetailPage from './pages/public/ArticleDetailPage'
 import EnrollmentPage from './pages/public/EnrollmentPage'
 import ContactPageDynamic from './pages/public/ContactPageDynamic'
 import VirtualTourPage from './pages/public/VirtualTourPage'
+import CreatePasswordPage from './pages/public/CreatePasswordPage'
+import UploadDocumentsPage from './pages/public/UploadDocumentsPage'
 
 // Pages d'authentification
 import LoginPage from './pages/auth/LoginPage'
@@ -51,6 +53,10 @@ function App() {
       {/* Routes d'authentification */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      
+      {/* Routes workflow inscription */}
+      <Route path="/create-password" element={<CreatePasswordPage />} />
+      <Route path="/upload-documents" element={<UploadDocumentsPage />} />
 
       {/* Routes publiques */}
       <Route path="/" element={<PublicLayout />}>
