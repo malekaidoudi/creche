@@ -18,6 +18,17 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
+    
+    // 🔍 LOG DEBUG - Voir exactement ce qui est envoyé
+    console.log('🌐 API Request:', {
+      method: config.method?.toUpperCase(),
+      url: config.url,
+      baseURL: config.baseURL,
+      fullURL: `${config.baseURL}${config.url}`,
+      headers: config.headers,
+      data: config.data
+    });
+    
     return config
   },
   (error) => {
@@ -28,9 +39,25 @@ api.interceptors.request.use(
 // Intercepteur de réponse pour gérer les erreurs globalement
 api.interceptors.response.use(
   (response) => {
+    console.log('✅ API Response:', {
+      status: response.status,
+      data: response.data
+    });
     return response
   },
   (error) => {
+    // 🔍 LOG DEBUG - Voir les détails de l'erreur
+    console.error('❌ API Error:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      config: {
+        method: error.config?.method,
+        url: error.config?.url,
+        data: error.config?.data
+      }
+    });
+    
     // Gestion des erreurs d'authentification
     if (error.response?.status === 401) {
       localStorage.removeItem('token')
