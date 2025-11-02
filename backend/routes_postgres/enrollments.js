@@ -47,72 +47,14 @@ router.post('/', [
  * Upload des documents pour un dossier d'inscription
  * Aucune authentification requise (utilise l'ID du dossier)
  */
-router.post('/:id/documents', upload.fields([
-  { name: 'carnet_medical', maxCount: 1 },
-  { name: 'acte_naissance', maxCount: 1 },
-  { name: 'certificat_medical', maxCount: 1 }
-]), async (req, res) => {
-  const db = require('../config/db_postgres');
-  
-  try {
-    const { id } = req.params;
-    const files = req.files;
-    
-    console.log('📎 Upload documents pour enrollment:', id);
-    console.log('📁 Fichiers reçus:', Object.keys(files || {}));
-    
-    // Sauvegarder les chemins des fichiers dans la base de données
-    const documentUpdates = [];
-    const params = [id];
-    let paramIndex = 2;
-    
-    if (files.carnet_medical) {
-      documentUpdates.push(`carnet_medical_path = $${paramIndex}`);
-      params.push(files.carnet_medical[0].path);
-      paramIndex++;
-    }
-    
-    if (files.acte_naissance) {
-      documentUpdates.push(`acte_naissance_path = $${paramIndex}`);
-      params.push(files.acte_naissance[0].path);
-      paramIndex++;
-    }
-    
-    if (files.certificat_medical) {
-      documentUpdates.push(`certificat_medical_path = $${paramIndex}`);
-      params.push(files.certificat_medical[0].path);
-      paramIndex++;
-    }
-    
-    if (documentUpdates.length > 0) {
-      const updateQuery = `
-        UPDATE enrollments 
-        SET ${documentUpdates.join(', ')}, documents_uploaded = true
-        WHERE id = $1
-        RETURNING id
-      `;
-      
-      await db.query(updateQuery, params);
-      console.log('✅ Documents sauvegardés en base de données');
-    }
-    
-    res.json({
-      success: true,
-      message: 'Documents uploadés avec succès',
-      files: {
-        carnet_medical: files.carnet_medical?.[0]?.filename,
-        acte_naissance: files.acte_naissance?.[0]?.filename,
-        certificat_medical: files.certificat_medical?.[0]?.filename
-      }
-    });
-  } catch (error) {
-    console.error('❌ Erreur upload documents:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Erreur lors de l\'upload des documents'
-    });
-  }
-});
+router.post('/:id/documents', 
+  upload.fields([
+    { name: 'carnet_medical', maxCount: 1 },
+    { name: 'acte_naissance', maxCount: 1 },
+    { name: 'certificat_medical', maxCount: 1 }
+  ]),
+  enrollmentsController.uploadDocuments
+);
 
 /**
  * GET /api/enrollments/:id/status

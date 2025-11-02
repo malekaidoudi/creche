@@ -319,6 +319,72 @@ const enrollmentsController = {
       console.error('Erreur choix RDV:', error);
       res.status(500).json({ success: false, error: error.message });
     }
+  },
+  
+  // POST /api/enrollments/:id/documents - Upload documents
+  uploadDocuments: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const files = req.files;
+      
+      if (!files || Object.keys(files).length === 0) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Aucun fichier fourni' 
+        });
+      }
+      
+      // Vérifier que l'enrollment existe
+      const enrollmentCheck = await db.query(
+        'SELECT id FROM enrollments WHERE id = $1',
+        [id]
+      );
+      
+      if (enrollmentCheck.rows.length === 0) {
+        return res.status(404).json({ 
+          success: false, 
+          error: 'Dossier non trouvé' 
+        });
+      }
+      
+      // Sauvegarder les documents
+      const savedDocuments = [];
+      
+      for (const [fieldName, fileArray] of Object.entries(files)) {
+        const file = Array.isArray(fileArray) ? fileArray[0] : fileArray;
+        
+        const result = await db.query(`
+          INSERT INTO enrollment_documents (
+            enrollment_id, document_type, filename, original_filename, 
+            file_path, file_size, mime_type, uploaded_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+          RETURNING id, document_type, original_filename
+        `, [
+          id,
+          fieldName,
+          file.filename,
+          file.originalname,
+          file.path,
+          file.size,
+          file.mimetype
+        ]);
+        
+        savedDocuments.push(result.rows[0]);
+      }
+      
+      res.json({
+        success: true,
+        message: 'Documents téléchargés avec succès',
+        documents: savedDocuments
+      });
+      
+    } catch (error) {
+      console.error('Erreur upload documents:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Erreur lors de l\'upload des documents' 
+      });
+    }
   }
 };
 
