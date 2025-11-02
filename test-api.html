@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test API Configuration</title>
+</head>
+<body>
+    <h1>Test API Configuration</h1>
+    <button onclick="testAPI()">Test API Backend</button>
+    <div id="result"></div>
+
+    <script>
+        async function testAPI() {
+            const resultDiv = document.getElementById('result');
+            
+            // Configuration API comme dans notre code
+            const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+                ? 'http://localhost:3000' 
+                : 'https://creche-backend.onrender.com';
+            
+            resultDiv.innerHTML = '<p>Configuration API: ' + API_BASE_URL + '</p>';
+            
+            try {
+                const response = await fetch(API_BASE_URL + '/api/health');
+                const data = await response.json();
+                resultDiv.innerHTML += '<p>✅ Backend accessible: ' + JSON.stringify(data, null, 2) + '</p>';
+                
+                // Test holidays
+                const holidaysResponse = await fetch(API_BASE_URL + '/api/holidays');
+                const holidaysData = await holidaysResponse.json();
+                resultDiv.innerHTML += '<p>✅ Holidays API: ' + JSON.stringify(holidaysData, null, 2) + '</p>';
+                
+            } catch (error) {
+                resultDiv.innerHTML += '<p>❌ Erreur: ' + error.message + '</p>';
+            }
+        }
+    </script>
+</body>
+</html>
