@@ -175,6 +175,38 @@ const EnrollmentPage = () => {
         console.log('📤 Envoi au backend:', enrollmentData);
 
         const response = await api.post('/api/enrollments', enrollmentData)
+        
+        console.log('✅ Inscription créée:', response.data);
+        
+        // Upload des documents si présents
+        if (documents.carnet_medical || documents.acte_naissance || documents.certificat_medical) {
+          const enrollmentId = response.data.enrollment.id;
+          const formData = new FormData();
+          
+          if (documents.carnet_medical) {
+            formData.append('carnet_medical', documents.carnet_medical);
+          }
+          if (documents.acte_naissance) {
+            formData.append('acte_naissance', documents.acte_naissance);
+          }
+          if (documents.certificat_medical) {
+            formData.append('certificat_medical', documents.certificat_medical);
+          }
+          
+          console.log('📎 Upload des documents pour enrollment:', enrollmentId);
+          
+          try {
+            const uploadResponse = await api.post(`/api/enrollments/${enrollmentId}/documents`, formData, {
+              headers: {
+                'Content-Type': 'multipart/form-data'
+              }
+            });
+            console.log('✅ Documents uploadés:', uploadResponse.data);
+          } catch (uploadError) {
+            console.error('❌ Erreur upload documents:', uploadError);
+            toast.error(isRTL ? 'خطأ في تحميل الوثائق' : 'Erreur lors de l\'upload des documents');
+          }
+        }
 
         toast.success(isRTL ? 'تم التسجيل بنجاح!' : 'Inscription réussie !')
         
