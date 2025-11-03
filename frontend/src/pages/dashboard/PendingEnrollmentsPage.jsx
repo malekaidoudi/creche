@@ -177,24 +177,59 @@ const PendingEnrollmentsPage = () => {
     }
   };
 
-  const handleDownloadDocument = (document) => {
-    // Simulation du téléchargement
-    const documentName = document.original_name || document.filename;
-    toast.success(
-      isRTL 
-        ? `تم تحميل ${documentName}` 
-        : `Téléchargement de ${documentName} démarré`
-    );
+  const handleDownloadDocument = async (document) => {
+    try {
+      const documentUrl = `${import.meta.env.VITE_API_URL || 'https://creche-backend.onrender.com'}/uploads/enrollments/${document.filename}`;
+      
+      // Télécharger le fichier
+      const response = await fetch(documentUrl);
+      if (!response.ok) throw new Error('Fichier non trouvé');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = document.original_filename || document.filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast.success(
+        isRTL 
+          ? `تم تحميل ${document.original_filename || document.filename}` 
+          : `Téléchargement de ${document.original_filename || document.filename} réussi`
+      );
+    } catch (error) {
+      console.error('Erreur téléchargement:', error);
+      toast.error(
+        isRTL 
+          ? 'فشل التحميل' 
+          : 'Erreur lors du téléchargement'
+      );
+    }
   };
 
   const handleViewDocument = (document) => {
-    // Simulation de l'ouverture du document
-    const documentName = document.original_name || document.filename;
-    toast.success(
-      isRTL 
-        ? `فتح ${documentName}` 
-        : `Ouverture de ${documentName}`
-    );
+    try {
+      const documentUrl = `${import.meta.env.VITE_API_URL || 'https://creche-backend.onrender.com'}/uploads/enrollments/${document.filename}`;
+      
+      // Ouvrir dans un nouvel onglet
+      window.open(documentUrl, '_blank');
+      
+      toast.success(
+        isRTL 
+          ? `فتح ${document.original_filename || document.filename}` 
+          : `Ouverture de ${document.original_filename || document.filename}`
+      );
+    } catch (error) {
+      console.error('Erreur visualisation:', error);
+      toast.error(
+        isRTL 
+          ? 'فشل فتح الملف' 
+          : 'Erreur lors de l\'ouverture'
+      );
+    }
   };
 
   const getDocumentTypeFromFilename = (filename) => {
