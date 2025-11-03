@@ -1,0 +1,171 @@
+# 🎯 ACTIONS IMMÉDIATES À EFFECTUER
+
+## ⚠️ PROBLÈMES ACTUELS
+
+### 1️⃣ **Colonnes de rejet manquantes** (PRIORITÉ 1)
+### 2️⃣ **Emails non envoyés** (PRIORITÉ 2)
+### 3️⃣ **Documents visualisation/téléchargement** (✅ DÉPLOYÉ)
+
+---
+
+## 🔧 ACTION 1 : AJOUTER LES COLONNES DE REJET
+
+### **Problème**
+```
+Error: column "rejected_by" of relation "enrollments" does not exist
+```
+
+### **Solution : Exécuter le script SQL**
+
+1. **Aller sur Neon** : https://console.neon.tech
+2. **Sélectionner** : `mima_elghalia_db`
+3. **Onglet** : SQL Editor
+4. **Copier-coller ce script** :
+
+```sql
+-- Ajouter les colonnes de rejet manquantes
+ALTER TABLE enrollments
+  ADD COLUMN IF NOT EXISTS rejected_by INTEGER REFERENCES users(id),
+  ADD COLUMN IF NOT EXISTS rejected_at TIMESTAMP,
+  ADD COLUMN IF NOT EXISTS rejection_type VARCHAR(50),
+  ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
+
+-- Vérifier que les colonnes ont été ajoutées
+SELECT column_name, data_type 
+FROM information_schema.columns 
+WHERE table_name = 'enrollments' 
+  AND column_name IN ('rejected_by', 'rejected_at', 'rejection_type', 'rejection_reason')
+ORDER BY column_name;
+```
+
+5. **Cliquer** : Run
+6. **Résultat attendu** :
+```
+column_name        | data_type
+-------------------|-----------
+rejected_by        | integer
+rejected_at        | timestamp
+rejection_reason   | text
+rejection_type     | character varying
+```
+
+---
+
+## 📧 ACTION 2 : CORRIGER LE MOT DE PASSE EMAIL
+
+### **Problème**
+Emails non envoyés malgré configuration SMTP
+
+### **Cause probable**
+Mot de passe avec espaces : `qeyp kwpf yhhe voax`
+
+### **Solution : Corriger sur Render**
+
+1. **Aller sur** : https://dashboard.render.com
+2. **Sélectionner** : `creche-backend`
+3. **Onglet** : Environment
+4. **Trouver** : `SMTP_PASSWORD`
+5. **Modifier** :
+   - ❌ **Avant** : `qeyp kwpf yhhe voax`
+   - ✅ **Après** : `qeypkwpfyhhevoax`
+6. **Cliquer** : Save Changes
+7. **Attendre** : Render redémarre (1-2 min)
+
+### **Vérifier après correction**
+1. Render → Logs
+2. Chercher au démarrage :
+   ```
+   ✅ Configuration email OK - Prêt à envoyer des emails
+   ```
+3. Créer une inscription de test
+4. Chercher dans les logs :
+   ```
+   ✅ Email envoyé: <message-id>
+   ```
+
+---
+
+## ✅ ACTION 3 : TESTER LES DOCUMENTS (DÉJÀ DÉPLOYÉ)
+
+### **Fonctionnalités implémentées**
+
+#### **Visualiser un document**
+- Cliquer sur "Voir" → Ouvre dans un nouvel onglet
+- URL : `https://creche-backend.onrender.com/uploads/enrollments/{filename}`
+
+#### **Télécharger un document**
+- Cliquer sur "Télécharger" → Télécharge le fichier
+- Nom du fichier : Nom original conservé
+
+### **Test**
+1. Se connecter en admin
+2. Aller sur `/dashboard/pending-enrollments`
+3. Cliquer sur "Documents (X)"
+4. Essayer "Voir" et "Télécharger"
+
+---
+
+## 📊 RÉSUMÉ DES ACTIONS
+
+| Action | Priorité | Status | Temps |
+|--------|----------|--------|-------|
+| Ajouter colonnes rejet | 🔴 P1 | ⏳ À faire | 2 min |
+| Corriger SMTP password | 🟡 P2 | ⏳ À faire | 2 min |
+| Tester documents | 🟢 P3 | ✅ Déployé | - |
+
+---
+
+## 🎯 ORDRE D'EXÉCUTION
+
+### **Étape 1 : Colonnes rejet** (2 min)
+1. Ouvrir Neon SQL Editor
+2. Copier-coller le script SQL
+3. Exécuter
+4. Vérifier les 4 colonnes
+
+### **Étape 2 : SMTP password** (2 min)
+1. Ouvrir Render Environment
+2. Modifier SMTP_PASSWORD
+3. Sauvegarder
+4. Attendre redémarrage
+
+### **Étape 3 : Tester** (5 min)
+1. Rejeter une inscription → Devrait fonctionner ✅
+2. Approuver une inscription → Email envoyé ✅
+3. Visualiser documents → Ouvre dans onglet ✅
+4. Télécharger documents → Télécharge fichier ✅
+
+---
+
+## 🆘 SI PROBLÈME PERSISTE
+
+### **Après Action 1 (Colonnes)**
+Si l'erreur persiste après ajout des colonnes :
+```bash
+# Vérifier dans Neon SQL Editor
+SELECT column_name FROM information_schema.columns 
+WHERE table_name = 'enrollments' 
+ORDER BY column_name;
+```
+
+### **Après Action 2 (Email)**
+Si les emails ne sont toujours pas envoyés :
+1. Vérifier les logs Render
+2. Chercher : `❌ Erreur configuration email`
+3. Partager l'erreur exacte
+
+---
+
+## 🎉 RÉSULTAT FINAL ATTENDU
+
+Après ces 2 actions (4 minutes) :
+
+✅ **Rejeter inscription** → Fonctionne
+✅ **Approuver inscription** → Email envoyé
+✅ **Visualiser documents** → Ouvre dans onglet
+✅ **Télécharger documents** → Télécharge fichier
+✅ **Système 100% fonctionnel !**
+
+---
+
+**Commencez par l'Action 1 (colonnes rejet) - C'est le plus urgent !** 🚀

@@ -566,6 +566,7 @@ const PendingEnrollmentsPage = () => {
                   <option value="age_depasse">{isRTL ? 'تجاوز السن المطلوب' : 'Âge dépassé'}</option>
                   <option value="maladie_contagieuse">{isRTL ? 'مرض معدي' : 'Maladie contagieuse'}</option>
                   <option value="dossier_manquant">{isRTL ? 'ملف غير مكتمل' : 'Dossier incomplet'}</option>
+                  <option value="places_completes">{isRTL ? 'الأماكن ممتلئة' : 'Places complètes'}</option>
                   <option value="autre">{isRTL ? 'أخرى' : 'Autre'}</option>
                 </select>
               </div>

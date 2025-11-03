@@ -169,7 +169,7 @@ const enrollmentsController = {
       const { rejection_type, custom_reason, appointment_date } = req.body;
       
       // Valider le type de rejet
-      const validTypes = ['age_depasse', 'maladie_contagieuse', 'dossier_manquant', 'autre'];
+      const validTypes = ['age_depasse', 'maladie_contagieuse', 'dossier_manquant', 'places_completes', 'autre'];
       if (!validTypes.includes(rejection_type)) {
         return res.status(400).json({ 
           success: false, 

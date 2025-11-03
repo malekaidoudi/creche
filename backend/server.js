@@ -155,10 +155,19 @@ try {
   } catch (error) {
     console.log('⚠️ Route uploads non disponible:', error.message);
   }
+  
+  try {
+    const testEmailRoutes = require('./routes_postgres/test-email');
+    app.use('/api/test-email', testEmailRoutes);
+    console.log('✅ Route test-email chargée');
+  } catch (error) {
+    console.log('⚠️ Route test-email non disponible:', error.message);
+  }
 
   // Route pour servir les fichiers statiques uploads
-  app.use('/uploads', express.static('uploads'));
-  console.log('✅ Route fichiers statiques uploads configurée');
+  const uploadsPath = path.join(__dirname, 'uploads');
+  app.use('/uploads', express.static(uploadsPath));
+  console.log('✅ Route fichiers statiques uploads configurée:', uploadsPath);
 
   console.log('✅ Routes PostgreSQL principales chargées avec succès');
 
