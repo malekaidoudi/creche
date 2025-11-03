@@ -177,20 +177,23 @@ const enrollmentsController = {
         });
       }
       
+      // Déterminer le statut selon le type de rejet
+      const status = rejection_type === 'dossier_manquant' ? 'rejected_incomplete' : 'rejected_deleted';
+      
       // Mettre à jour le dossier
       const result = await db.query(`
         UPDATE enrollments 
-        SET new_status = 'rejected', 
-            rejection_type = $1,
-            rejection_reason = $2,
-            appointment_date = $3,
-            rejected_by = $4,
+        SET new_status = $1, 
+            rejection_type = $2,
+            rejection_reason = $3,
+            appointment_date = $4,
+            rejected_by = $5,
             rejected_at = NOW(),
-            processed_by = $4,
+            processed_by = $5,
             processed_at = NOW()
-        WHERE id = $5
+        WHERE id = $6
         RETURNING *
-      `, [rejection_type, custom_reason, appointment_date, req.user.id, id]);
+      `, [status, rejection_type, custom_reason, appointment_date, req.user.id, id]);
       
       const enrollment = result.rows[0];
       

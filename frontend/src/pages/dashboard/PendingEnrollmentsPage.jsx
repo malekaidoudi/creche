@@ -378,10 +378,10 @@ const PendingEnrollmentsPage = () => {
                         size="sm"
                         variant="outline"
                         onClick={() => handleViewDocuments(enrollment)}
-                        disabled={!enrollment.documents_count || enrollment.documents_count === 0}
+                        disabled={!enrollment.documents_count || parseInt(enrollment.documents_count) === 0}
                       >
                         <Eye className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
-                        {isRTL ? 'الوثائق' : 'Documents'} ({enrollment.documents_count || 0})
+                        {isRTL ? 'الوثائق' : 'Documents'} ({parseInt(enrollment.documents_count) || 0})
                       </Button>
                       
                       {(isAdmin() || isStaff()) && (

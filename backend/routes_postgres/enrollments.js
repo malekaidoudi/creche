@@ -4,6 +4,7 @@ const { body, validationResult } = require('express-validator');
 const enrollmentsController = require('../controllers/enrollmentsController');
 const auth = require('../middleware/auth');
 const upload = require('../middleware/upload');
+const db = require('../config/database');
 
 // =====================================================
 // ROUTES PUBLIQUES (VISITEURS)

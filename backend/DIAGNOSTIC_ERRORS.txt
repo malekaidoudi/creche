@@ -1,0 +1,105 @@
+# 🔍 DIAGNOSTIC DES ERREURS
+
+## ❌ PROBLÈMES ACTUELS
+
+### 1. Erreur 500 - Visualisation des documents
+**Erreur**: GET /api/enrollments/29 → 500 Internal Server Error
+**Message**: "Erreur lors de la récupération du dossier"
+
+**CAUSES POSSIBLES:**
+- Table `enrollment_documents` n'existe pas
+- Erreur de syntaxe SQL PostgreSQL
+- Problème de connexion à la base de données
+
+**DIAGNOSTIC À FAIRE:**
+1. Vérifier les logs Render:
+   - Dashboard Render → creche-backend → Logs
+   - Chercher: "❌ Erreur GET /api/enrollments/:id"
+   
+2. Vérifier que la table existe:
+   ```sql
+   SELECT table_name 
+   FROM information_schema.tables 
+   WHERE table_name = 'enrollment_documents';
+   ```
+
+3. Tester l'endpoint directement:
+   ```bash
+   curl https://creche-backend.onrender.com/api/enrollments/29 \
+     -H "Authorization: Bearer YOUR_TOKEN"
+   ```
+
+### 2. Emails non envoyés
+**Problème**: Inscriptions créées mais emails non reçus
+
+**VARIABLES CONFIGURÉES SUR RENDER:**
+- SMTP_HOST = smtp.gmail.com
+- SMTP_PORT = 587
+- SMTP_USER = crechemimaelghalia@gmail.com
+- SMTP_PASSWORD = qeyp kwpf yhhe voax
+- EMAIL_FROM = "Crèche Mima Elghalia <crechemimaelghalia@gmail.com>"
+
+**DIAGNOSTIC À FAIRE:**
+1. Vérifier les logs Render au démarrage:
+   - Chercher: "✅ Configuration email OK" ou "❌ Erreur configuration email"
+   
+2. Vérifier les logs lors de l'inscription:
+   - Chercher: "✅ Email envoyé:" ou "❌ Erreur envoi email:"
+
+3. Vérifier le mot de passe app Gmail:
+   - Le mot de passe doit être SANS ESPACES
+   - Format actuel: "qeyp kwpf yhhe voax" (avec espaces)
+   - Format correct: "qeypkwpfyhhevoax" (sans espaces)
+
+**SOLUTION PROBABLE:**
+Supprimer les espaces du mot de passe SMTP sur Render:
+```
+SMTP_PASSWORD = qeypkwpfyhhevoax
+```
+
+---
+
+## 🔧 CORRECTIONS DÉJÀ APPLIQUÉES
+
+✅ Table enrollment_documents créée dans Neon
+✅ Timeout API augmenté à 30s
+✅ Bouton Documents avec compteur
+✅ Modal rejet complet avec 4 types
+✅ API approve/reject corrigées
+✅ Règlement intérieur téléchargeable
+✅ Logs ajoutés pour diagnostiquer les erreurs
+
+---
+
+## 📋 PROCHAINES ÉTAPES
+
+1. **VÉRIFIER LES LOGS RENDER** (PRIORITÉ 1)
+   - Aller sur: https://dashboard.render.com
+   - Sélectionner: creche-backend
+   - Onglet: Logs
+   - Chercher les erreurs récentes
+
+2. **CORRIGER LE MOT DE PASSE EMAIL** (PRIORITÉ 2)
+   - Supprimer les espaces: qeypkwpfyhhevoax
+   - Sauvegarder sur Render
+   - Attendre le redémarrage
+
+3. **TESTER À NOUVEAU** (PRIORITÉ 3)
+   - Créer une inscription
+   - Vérifier l'email
+   - Visualiser les documents
+   - Approuver/Rejeter
+
+---
+
+## 🆘 SI LE PROBLÈME PERSISTE
+
+**Partager avec moi:**
+1. Les logs Render (copier-coller les 50 dernières lignes)
+2. Le résultat de la requête SQL de vérification de table
+3. Les messages d'erreur exacts dans la console navigateur
+
+**Je pourrai alors:**
+- Identifier la cause exacte
+- Proposer une solution ciblée
+- Corriger le code si nécessaire
