@@ -8,6 +8,7 @@ const db = require('../config/database');
 
 // =====================================================
 // ROUTES PUBLIQUES (VISITEURS)
+// Version: 2025-11-03 - Fix 404 route not found
 // =====================================================
 
 /**
