@@ -119,13 +119,9 @@ try {
   console.log('✅ Route notifications chargée');
   
   // Ajout des routes manquantes
-  try {
-    const enrollmentsRoutes = require('./routes_postgres/enrollments');
-    app.use('/api/enrollments', enrollmentsRoutes);
-    console.log('✅ Route enrollments chargée');
-  } catch (error) {
-    console.log('⚠️ Route enrollments non disponible:', error.message);
-  }
+  const enrollmentsRoutes = require('./routes_postgres/enrollments');
+  app.use('/api/enrollments', enrollmentsRoutes);
+  console.log('✅ Route enrollments chargée');
   
   try {
     const attendanceRoutes = require('./routes_postgres/attendance');
