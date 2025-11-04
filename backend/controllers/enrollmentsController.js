@@ -2,7 +2,8 @@ const db = require('../config/db_postgres');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const emailService = require('../services/emailService');
+// Utiliser Resend au lieu de SMTP (Render bloque SMTP)
+const emailService = require('../services/emailServiceResend');
 
 // Créer le dossier uploads si nécessaire
 const uploadsDir = path.join(__dirname, '../uploads/enrollments');

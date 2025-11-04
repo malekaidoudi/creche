@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const emailService = require('../services/emailService');
+// Utiliser Resend au lieu de SMTP
+const emailService = require('../services/emailServiceResend');
 
 /**
  * POST /api/test-email
