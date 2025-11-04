@@ -109,7 +109,7 @@ Utilisez l'email par défaut de Resend :
 ```bash
 curl -X POST https://creche-backend.onrender.com/api/test-email \
   -H 'Content-Type: application/json' \
-  -d '{"to":"votre@email.com"}'
+  -d '{"to":"crechemimaelghalia@gmail.com"}'
 ```
 
 ### **Résultat attendu**

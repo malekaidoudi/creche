@@ -179,6 +179,15 @@ const emailService = {
       console.error('❌ Erreur envoi email:', error);
       return { success: false, error: error.message };
     }
+  },
+
+  // Alias pour compatibilité avec l'ancien code
+  sendApprovalEmail: async (enrollmentData) => {
+    return emailService.sendEnrollmentApproval(enrollmentData);
+  },
+
+  sendRejectionEmail: async (enrollmentData, rejectionType) => {
+    return emailService.sendEnrollmentRejection(enrollmentData);
   }
 };
 
