@@ -35,7 +35,7 @@ const emailService = {
   sendEnrollmentConfirmation: async (enrollmentData) => {
     try {
       const { applicant_email, applicant_first_name, child_first_name, id } = enrollmentData;
-      
+
       const mailOptions = {
         from: process.env.EMAIL_FROM || process.env.SMTP_USER,
         to: applicant_email,
@@ -77,11 +77,11 @@ const emailService = {
           </div>
         `
       };
-      
+
       const info = await transporter.sendMail(mailOptions);
       console.log('✅ Email envoyé:', info.messageId);
       return { success: true, messageId: info.messageId };
-      
+
     } catch (error) {
       console.error('❌ Erreur envoi email:', error);
       return { success: false, error: error.message };
@@ -94,14 +94,14 @@ const emailService = {
   sendApprovalEmail: async (enrollmentData) => {
     try {
       const { applicant_email, applicant_first_name, child_first_name, appointment_date, enrollment_id } = enrollmentData;
-      
+
       // Générer un token sécurisé pour la création de mot de passe
       const crypto = require('crypto');
       const token = crypto.randomBytes(32).toString('hex');
-      
+
       // URL de création de mot de passe (à implémenter côté frontend)
       const createPasswordUrl = `${process.env.FRONTEND_URL || 'https://malekaidoudi.github.io/creche'}/create-password?token=${token}&email=${encodeURIComponent(applicant_email)}`;
-      
+
       // Formater la date de RDV
       const rdvDate = new Date(appointment_date).toLocaleDateString('fr-FR', {
         weekday: 'long',
@@ -111,7 +111,7 @@ const emailService = {
         hour: '2-digit',
         minute: '2-digit'
       });
-      
+
       const mailOptions = {
         from: process.env.EMAIL_FROM || process.env.SMTP_USER,
         to: applicant_email,
@@ -160,11 +160,11 @@ const emailService = {
           </div>
         `
       };
-      
+
       const info = await transporter.sendMail(mailOptions);
       console.log('✅ Email approbation envoyé:', info.messageId);
       return { success: true, messageId: info.messageId };
-      
+
     } catch (error) {
       console.error('❌ Erreur envoi email approbation:', error);
       return { success: false, error: error.message };
@@ -178,34 +178,34 @@ const emailService = {
   sendRejectionEmail: async (enrollmentData, rejectionType, customReason, appointmentDate = null) => {
     try {
       const { applicant_email, applicant_first_name, child_first_name, enrollment_id } = enrollmentData;
-      
+
       // Définir le message selon le type de rejet
       let reasonTitle = '';
       let reasonMessage = '';
       let additionalInfo = '';
-      
-      switch(rejectionType) {
+
+      switch (rejectionType) {
         case 'age_depasse':
           reasonTitle = '📅 Âge de l\'enfant dépassé';
           reasonMessage = 'Malheureusement, l\'âge de votre enfant dépasse la limite d\'admission de notre crèche.';
           additionalInfo = '<p>Notre crèche accueille les enfants de 3 mois à 3 ans. Nous vous invitons à consulter d\'autres structures adaptées à l\'âge de votre enfant.</p>';
           break;
-          
+
         case 'maladie_contagieuse':
           reasonTitle = '🩺 Maladie contagieuse';
           reasonMessage = 'Pour la sécurité de tous les enfants, nous ne pouvons pas accepter les enfants atteints de maladies contagieuses.';
           additionalInfo = '<p>Nous vous invitons à consulter votre pédiatre et à soumettre une nouvelle demande une fois que votre enfant sera rétabli.</p>';
           break;
-          
+
         case 'dossier_manquant':
           reasonTitle = '📋 Dossier incomplet';
           reasonMessage = 'Votre dossier d\'inscription est incomplet. Certains documents obligatoires sont manquants.';
-          
+
           // Générer un token pour l'upload des documents
           const crypto = require('crypto');
           const uploadToken = crypto.randomBytes(32).toString('hex');
           const uploadUrl = `${process.env.FRONTEND_URL || 'https://malekaidoudi.github.io/creche'}/upload-documents?token=${uploadToken}&enrollment=${enrollment_id}`;
-          
+
           // Si une date de RDV est fournie
           if (appointmentDate) {
             const rdvDate = new Date(appointmentDate).toLocaleDateString('fr-FR', {
@@ -216,7 +216,7 @@ const emailService = {
               hour: '2-digit',
               minute: '2-digit'
             });
-            
+
             additionalInfo = `
               <div style="background-color: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
                 <p style="margin: 0; color: #92400e;"><strong>📅 Rendez-vous fixé :</strong></p>
@@ -256,7 +256,7 @@ const emailService = {
             `;
           }
           break;
-          
+
         case 'autre':
         default:
           reasonTitle = '📝 Autre raison';
@@ -264,7 +264,7 @@ const emailService = {
           additionalInfo = '<p>Pour plus d\'informations, n\'hésitez pas à nous contacter directement.</p>';
           break;
       }
-      
+
       const mailOptions = {
         from: process.env.EMAIL_FROM || process.env.SMTP_USER,
         to: applicant_email,
@@ -295,11 +295,11 @@ const emailService = {
           </div>
         `
       };
-      
+
       const info = await transporter.sendMail(mailOptions);
       console.log('✅ Email rejet envoyé:', info.messageId);
       return { success: true, messageId: info.messageId };
-      
+
     } catch (error) {
       console.error('❌ Erreur envoi email rejet:', error);
       return { success: false, error: error.message };
