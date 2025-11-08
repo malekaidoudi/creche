@@ -33,7 +33,7 @@ const PublicHeader = () => {
   const navigation = [
     { name: t('nav.home'), href: '/' },
     // { name: t('nav.articles'), href: '/articles' }, // Masqué temporairement
-    // Afficher Dashboard si connecté (sauf parents), sinon Inscription
+    // Afficher Dashboard/Mon Espace si connecté, pas d'Inscription dans le menu
     ...(isAuthenticated ? [
       // Dashboard seulement pour admin et staff
       ...(user?.role === 'admin' || user?.role === 'staff' ? [
@@ -41,7 +41,7 @@ const PublicHeader = () => {
       ] : []),
       ...(hasMySpaceAccess ? [{ name: isRTL ? 'مساحتي' : 'Mon Espace', href: '/mon-espace' }] : [])
     ] : [
-      { name: t('nav.enrollment'), href: '/inscription' }
+      // Pas d'Inscription dans le menu pour les visiteurs
     ]),
     { name: t('nav.contact'), href: '/contact' }
   ]
