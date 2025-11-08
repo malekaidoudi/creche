@@ -66,9 +66,20 @@ app.use(cors({
     // Autoriser les requêtes sans origin (comme Postman, curl, etc.)
     if (!origin) return callback(null, true);
     
+    // Autoriser toutes les origines Render (*.onrender.com)
+    if (origin && origin.includes('.onrender.com')) {
+      return callback(null, true);
+    }
+    
+    // Autoriser GitHub Pages
+    if (origin && origin.includes('github.io')) {
+      return callback(null, true);
+    }
+    
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
+      console.log('❌ CORS bloqué pour:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
