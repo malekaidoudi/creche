@@ -163,13 +163,7 @@ const DashboardSidebar = ({ isOpen, onClose }) => {
         }
       ]
     },
-    {
-      key: 'settings',
-      title: isRTL ? 'الإعدادات' : 'Paramètres',
-      icon: Settings,
-      path: '/dashboard/settings',
-      roles: ['admin']
-    },
+    // Paramètres supprimé de la sidebar (accessible via menu utilisateur)
   ];
 
   const hasAccess = (roles) => {

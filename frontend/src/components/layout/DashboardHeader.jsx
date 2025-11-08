@@ -4,15 +4,16 @@ import { Menu, Bell, User, LogOut, Settings, ChevronDown, Home } from 'lucide-re
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useNotifications } from '../../hooks/useNotifications';
+import { useProfileImage } from '../../hooks/useProfileImage';
 import ThemeToggle from '../ui/ThemeToggle';
 import LanguageToggle from '../ui/LanguageToggle';
 import SimpleNotificationCenter from '../dashboard/SimpleNotificationCenter';
 import ErrorBoundary from '../ui/ErrorBoundary';
-import API_CONFIG from '../../config/api';
 
 const DashboardHeader = ({ onMenuClick }) => {
   const { user, logout } = useAuth();
   const { isRTL } = useLanguage();
+  const { getImageUrl, hasImage } = useProfileImage();
   
   // Utiliser les notifications seulement pour admin/staff
   const notificationsHook = useNotifications();
@@ -128,9 +129,9 @@ const DashboardHeader = ({ onMenuClick }) => {
                 className="flex items-center space-x-3 rtl:space-x-reverse p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >
                 <div className="w-8 h-8 rounded-full overflow-hidden bg-primary-100 dark:bg-primary-900 flex items-center justify-center flex-shrink-0">
-                  {user?.profile_image ? (
+                  {hasImage() ? (
                     <img
-                      src={`${API_CONFIG.BASE_URL}${user.profile_image}`}
+                      src={getImageUrl()}
                       alt="Photo de profil"
                       className="w-8 h-8 object-cover"
                       crossOrigin="anonymous"
@@ -141,7 +142,7 @@ const DashboardHeader = ({ onMenuClick }) => {
                       }}
                     />
                   ) : null}
-                  <div className={`w-8 h-8 flex items-center justify-center ${user?.profile_image ? 'hidden' : ''}`}>
+                  <div className={`w-8 h-8 flex items-center justify-center ${hasImage() ? 'hidden' : ''}`}>
                     <User className="w-5 h-5 text-primary-600 dark:text-primary-400" />
                   </div>
                 </div>
@@ -164,7 +165,7 @@ const DashboardHeader = ({ onMenuClick }) => {
                   <div className="py-1">
                     {/* Informations utilisateur */}
                     <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                      <div className="text-center">
+                      <div className="text-left rtl:text-right">
                         <div className="text-sm font-medium text-gray-900 dark:text-white">
                           {user?.first_name} {user?.last_name}
                         </div>
@@ -176,7 +177,7 @@ const DashboardHeader = ({ onMenuClick }) => {
 
                     {/* Menu items */}
                     <Link
-                      to="/dashboard/profile"
+                      to="/profile"
                       onClick={() => setUserMenuOpen(false)}
                       className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                     >
@@ -184,14 +185,17 @@ const DashboardHeader = ({ onMenuClick }) => {
                       {isRTL ? 'الملف الشخصي' : 'Profil'}
                     </Link>
 
-                    <Link
-                      to="/dashboard/settings"
-                      onClick={() => setUserMenuOpen(false)}
-                      className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      <Settings className="w-4 h-4 mr-3 rtl:mr-0 rtl:ml-3" />
-                      {isRTL ? 'الإعدادات' : 'Paramètres'}
-                    </Link>
+                    {/* Paramètres - Visible seulement pour admin */}
+                    {user?.role === 'admin' && (
+                      <Link
+                        to="/dashboard/settings"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      >
+                        <Settings className="w-4 h-4 mr-3 rtl:mr-0 rtl:ml-3" />
+                        {isRTL ? 'الإعدادات' : 'Paramètres'}
+                      </Link>
+                    )}
 
                     <div className="border-t border-gray-200 dark:border-gray-700">
                       <button

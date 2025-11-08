@@ -37,6 +37,7 @@ const LoginFormHero = () => {
       } else if (userRole === 'parent') {
         navigate('/mon-espace', { replace: true })
       } else {
+        // Visiteur ou autre rôle → Accueil
         navigate('/', { replace: true })
       }
       
