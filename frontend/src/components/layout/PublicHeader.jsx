@@ -43,7 +43,10 @@ const PublicHeader = () => {
     ] : [
       // Pas d'Inscription dans le menu pour les visiteurs
     ]),
-    { name: t('nav.contact'), href: '/contact' }
+    // Contact seulement pour visiteurs et parents (pas admin/staff)
+    ...(!isAuthenticated || user?.role === 'parent' ? [
+      { name: t('nav.contact'), href: '/contact' }
+    ] : [])
   ]
 
   const isActive = (href) => {
@@ -155,20 +158,7 @@ const PublicHeader = () => {
                   </div>
                 )}
               </div>
-            ) : (
-              <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                <Button variant="outline" asChild>
-                  <Link to="/login">
-                    {isRTL ? 'تسجيل الدخول' : 'Connexion'}
-                  </Link>
-                </Button>
-                <Button asChild>
-                  <Link to="/inscription">
-                    {isRTL ? 'سجل الآن' : 'S\'inscrire'}
-                  </Link>
-                </Button>
-              </div>
-            )}
+            ) : null}
           </div>
 
           {/* Menu mobile button */}
@@ -282,20 +272,7 @@ const PublicHeader = () => {
                     {isRTL ? 'تسجيل الخروج' : 'Déconnexion'}
                   </button>
                 </div>
-              ) : (
-                <div className="px-3 space-y-2">
-                  <Button variant="outline" asChild className="w-full">
-                    <Link to="/login" onClick={() => setIsMenuOpen(false)}>
-                      {isRTL ? 'تسجيل الدخول' : 'Connexion'}
-                    </Link>
-                  </Button>
-                  <Button asChild className="w-full">
-                    <Link to="/inscription" onClick={() => setIsMenuOpen(false)}>
-                      {isRTL ? 'سجل الآن' : 'S\'inscrire'}
-                    </Link>
-                  </Button>
-                </div>
-              )}
+              ) : null}
             </div>
           </div>
         </div>

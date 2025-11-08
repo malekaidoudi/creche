@@ -18,9 +18,11 @@ const HomePage = () => {
             <div className="space-y-8 text-center lg:text-left">
               {/* Badge */}
               <div className="inline-flex items-center px-6 py-3 bg-white/90 dark:bg-gray-800/90 backdrop-blur-md rounded-full shadow-xl">
-                <div className="w-8 h-8 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-full flex items-center justify-center mr-3">
-                  <Star className="w-4 h-4 text-white" />
-                </div>
+                <img 
+                  src="/images/logo.jpg" 
+                  alt="Mima Elghalia Logo" 
+                  className="w-8 h-8 rounded-full object-cover mr-3 rtl:mr-0 rtl:ml-3"
+                />
                 <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
                   {isRTL ? 'الحضانة الأولى في المنطقة' : 'Crèche #1 dans la région'}
                 </span>

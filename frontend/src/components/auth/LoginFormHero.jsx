@@ -149,7 +149,7 @@ const LoginFormHero = () => {
         className="w-full bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-2 border-gray-300 dark:border-gray-600 py-3 px-6 rounded-xl font-semibold text-lg shadow-md hover:shadow-lg transform hover:scale-[1.02] transition-all duration-300 flex items-center justify-center"
       >
         <UserPlus className={`w-5 h-5 ${isRTL ? 'ml-2' : 'mr-2'}`} />
-        {isRTL ? 'إنشاء حساب جديد' : 'Créer un compte'}
+        {isRTL ? 'انضم إلينا' : 'Rejoignez-nous'}
       </Link>
 
       {/* Footer */}

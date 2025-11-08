@@ -15,7 +15,6 @@ import CreatePasswordPage from './pages/public/CreatePasswordPage'
 import UploadDocumentsPage from './pages/public/UploadDocumentsPage'
 
 // Pages d'authentification
-import LoginPage from './pages/auth/LoginPage'
 import RegisterPage from './pages/auth/RegisterPage'
 
 // Pages parent
@@ -51,7 +50,6 @@ function App() {
   return (
     <Routes>
       {/* Routes d'authentification */}
-      <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       
       {/* Routes workflow inscription */}

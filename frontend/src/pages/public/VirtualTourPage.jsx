@@ -383,9 +383,9 @@ const VirtualTourPage = () => {
                     {isRTL ? 'احجز موعد زيارة' : 'Réserver une visite'}
                   </a>
                 </Button>
-                <Button asChild size="lg" variant="outline" className="border-white text-white hover:bg-white hover:text-primary-600">
+                <Button asChild size="lg" className="bg-white text-primary-600 hover:bg-white/90 border-2 border-white font-bold">
                   <a href="/inscription">
-                    {isRTL ? 'سجل الآن' : 'S\'inscrire maintenant'}
+                    {isRTL ? 'انضم إلينا' : 'Rejoignez-nous'}
                   </a>
                 </Button>
               </div>
