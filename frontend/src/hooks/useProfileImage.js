@@ -17,8 +17,17 @@ export const useProfileImage = () => {
       return null;
     }
     
+    const imageUrl = user.profile_image || user.photo_url;
+    
+    // Si l'URL est déjà complète (Cloudinary), la retourner directement
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      const timestamp = customImageKey || imageKey;
+      return `${imageUrl}?t=${timestamp}`;
+    }
+    
+    // Sinon, ajouter le BASE_URL (pour compatibilité avec anciennes images locales)
     const timestamp = customImageKey || imageKey;
-    return `${API_CONFIG.BASE_URL}${user.profile_image || user.photo_url}?t=${timestamp}`;
+    return `${API_CONFIG.BASE_URL}${imageUrl}?t=${timestamp}`;
   };
 
   // Fonction pour vérifier si l'utilisateur a une image

@@ -7,6 +7,7 @@ const fs = require('fs');
 const router = express.Router();
 const db = require('../config/db_postgres');
 const auth = require('../middleware/auth');
+const cloudinaryService = require('../services/cloudinaryService');
 
 // Configuration Multer pour l'upload d'images
 const storage = multer.diskStorage({
@@ -237,16 +238,45 @@ router.post('/upload', auth.authenticateToken, upload.single('image'), async (re
     }
     
     const userId = req.user.id;
-    const imageUrl = `/uploads/profiles/${req.file.filename}`;
+    
+    // Récupérer l'ancienne image pour la supprimer de Cloudinary
+    const userResult = await db.query('SELECT profile_image, cloudinary_public_id FROM users WHERE id = $1', [userId]);
+    const oldCloudinaryId = userResult.rows[0]?.cloudinary_public_id;
+    
+    // Upload vers Cloudinary
+    const cloudinaryResult = await cloudinaryService.uploadFile(
+      req.file.path,
+      'profiles',
+      `profile_${userId}_${Date.now()}`
+    );
+    
+    // Supprimer le fichier temporaire local
+    if (fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    
+    if (!cloudinaryResult.success) {
+      return res.status(500).json({ 
+        success: false,
+        error: 'Erreur lors de l\'upload sur Cloudinary' 
+      });
+    }
+    
+    // Supprimer l'ancienne image de Cloudinary si elle existe
+    if (oldCloudinaryId) {
+      await cloudinaryService.deleteFile(oldCloudinaryId);
+    }
     
     // Mettre à jour l'URL de l'image dans la base de données
     const result = await db.query(
       `UPDATE users 
-       SET profile_image = $1, updated_at = CURRENT_TIMESTAMP 
-       WHERE id = $2 
+       SET profile_image = $1, 
+           cloudinary_public_id = $2,
+           updated_at = CURRENT_TIMESTAMP 
+       WHERE id = $3 
        RETURNING id, email, first_name, last_name, phone, role, profile_image, 
                  is_active, created_at, updated_at`,
-      [imageUrl, userId]
+      [cloudinaryResult.url, cloudinaryResult.publicId, userId]
     );
     
     if (result.rows.length === 0) {
@@ -259,12 +289,18 @@ router.post('/upload', auth.authenticateToken, upload.single('image'), async (re
     res.json({
       success: true,
       message: 'Photo de profil mise à jour avec succès',
-      imageUrl: imageUrl,
+      imageUrl: cloudinaryResult.url,
       user: result.rows[0]
     });
     
   } catch (error) {
     console.error('Erreur upload image profil:', error);
+    
+    // Nettoyer le fichier temporaire en cas d'erreur
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    
     res.status(500).json({ 
       success: false,
       error: 'Erreur lors de l\'upload de l\'image' 
@@ -277,19 +313,21 @@ router.delete('/image', auth.authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
     
-    // Récupérer l'ancienne image pour la supprimer du disque
-    const userResult = await db.query('SELECT profile_image FROM users WHERE id = $1', [userId]);
-    if (userResult.rows.length > 0 && userResult.rows[0].profile_image) {
-      const oldImagePath = path.join(__dirname, '../', userResult.rows[0].profile_image);
-      if (fs.existsSync(oldImagePath)) {
-        fs.unlinkSync(oldImagePath);
-      }
+    // Récupérer l'ID Cloudinary de l'image
+    const userResult = await db.query('SELECT cloudinary_public_id FROM users WHERE id = $1', [userId]);
+    const cloudinaryId = userResult.rows[0]?.cloudinary_public_id;
+    
+    // Supprimer de Cloudinary si l'ID existe
+    if (cloudinaryId) {
+      await cloudinaryService.deleteFile(cloudinaryId);
     }
     
     // Supprimer l'URL de l'image de la base de données
     const result = await db.query(
       `UPDATE users 
-       SET profile_image = NULL, updated_at = CURRENT_TIMESTAMP 
+       SET profile_image = NULL, 
+           cloudinary_public_id = NULL,
+           updated_at = CURRENT_TIMESTAMP 
        WHERE id = $1 
        RETURNING id, email, first_name, last_name, phone, role, profile_image, 
                  is_active, created_at, updated_at`,
