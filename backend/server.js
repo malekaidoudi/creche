@@ -189,6 +189,14 @@ try {
   } catch (error) {
     console.log('⚠️ Route test-email non disponible:', error.message);
   }
+  
+  try {
+    const logsRoutes = require('./routes_postgres/logs');
+    app.use('/api/logs', logsRoutes);
+    console.log('✅ Route logs chargée');
+  } catch (error) {
+    console.log('⚠️ Route logs non disponible:', error.message);
+  }
 
   // Route pour servir les fichiers statiques uploads
   const uploadsPath = path.join(__dirname, 'uploads');
