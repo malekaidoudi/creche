@@ -41,7 +41,7 @@ const upload = multer({
 // GET /api/profile - Récupérer le profil de l'utilisateur connecté
 router.get('/', auth.authenticateToken, async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.userId || req.user.id;
     
     const result = await db.query(
       `SELECT id, email, first_name, last_name, phone, role, profile_image, 
@@ -100,7 +100,7 @@ router.put('/', [
       has_password_change: !!req.body.new_password
     });
     
-    const userId = req.user.id;
+    const userId = req.user.userId || req.user.id;
     const { 
       first_name, 
       last_name, 
@@ -249,7 +249,8 @@ router.post('/upload', upload.single('image'), auth.authenticateToken, async (re
       });
     }
     
-    const userId = req.user?.id;
+    // Le token JWT contient userId (pas id)
+    const userId = req.user?.userId || req.user?.id;
     
     if (!userId) {
       console.error('❌ userId est undefined! req.user:', req.user);
@@ -355,7 +356,7 @@ router.post('/upload', upload.single('image'), auth.authenticateToken, async (re
 // DELETE /api/profile/image - Supprimer la photo de profil
 router.delete('/image', auth.authenticateToken, async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.userId || req.user.id;
     
     // Récupérer l'ID Cloudinary de l'image
     const userResult = await db.query('SELECT cloudinary_public_id FROM users WHERE id = $1', [userId]);
