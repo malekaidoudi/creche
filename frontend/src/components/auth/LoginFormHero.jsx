@@ -2,8 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { useLanguage } from '../../hooks/useLanguage'
-import { Mail, Lock, Eye, EyeOff, LogIn, UserPlus } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { Mail, Lock, Eye, EyeOff, LogIn, UserPlus, AlertCircle } from 'lucide-react'
 
 const LoginFormHero = () => {
   const { login } = useAuth()
@@ -16,100 +15,49 @@ const LoginFormHero = () => {
   })
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    e.stopPropagation()
+    setError('') // Réinitialiser l'erreur
     setLoading(true)
 
     try {
-      console.log('🔐 Tentative de connexion...')
+      // Connexion
       const response = await login(formData.email, formData.password)
-      console.log('✅ Réponse login:', response)
       
-      // Vérifier que le token est bien sauvegardé
-      const token = localStorage.getItem('token')
-      console.log('🔑 Token sauvegardé:', token ? 'Oui' : 'Non')
+      // Succès - arrêter le loading
+      setLoading(false)
       
-      // Message de succès élégant
-      const userName = response?.user?.first_name || ''
-      const successMessage = isRTL 
-        ? `✅ مرحباً ${userName}! تم تسجيل الدخول بنجاح` 
-        : `✅ Bienvenue ${userName} ! Connexion réussie`
-      
-      toast.success(successMessage, {
-        duration: 3000,
-        style: {
-          background: '#D1FAE5',
-          color: '#065F46',
-          border: '1px solid #6EE7B7',
-          padding: '16px',
-          borderRadius: '12px',
-          fontSize: '14px',
-          fontWeight: '500'
-        },
-        iconTheme: {
-          primary: '#10B981',
-          secondary: '#D1FAE5'
-        }
-      })
-      
-      // Redirection selon le rôle avec délai
+      // Redirection selon le rôle
       const userRole = response?.user?.role
-      console.log('👤 Rôle utilisateur:', userRole)
       
-      setTimeout(() => {
-        if (userRole === 'admin' || userRole === 'staff') {
-          console.log('➡️ Redirection vers /dashboard')
-          navigate('/dashboard', { replace: true })
-        } else if (userRole === 'parent') {
-          console.log('➡️ Redirection vers /mon-espace')
-          navigate('/mon-espace', { replace: true })
-        } else {
-          console.log('➡️ Redirection vers /')
-          navigate('/', { replace: true })
-        }
-      }, 500)
-    } catch (error) {
-      console.error('❌ Erreur de connexion:', error)
-      
-      // Message élégant selon le type d'erreur
-      let errorMessage = ''
-      
-      if (error.response?.status === 401) {
-        errorMessage = isRTL 
-          ? '❌ البريد الإلكتروني أو كلمة المرور غير صحيحة. يرجى المحاولة مرة أخرى.' 
-          : '❌ Email ou mot de passe incorrect. Veuillez réessayer.'
-      } else if (error.response?.status === 500) {
-        errorMessage = isRTL
-          ? '⚠️ خطأ في الخادم. يرجى المحاولة لاحقاً.'
-          : '⚠️ Erreur serveur. Veuillez réessayer plus tard.'
-      } else if (error.code === 'ERR_NETWORK') {
-        errorMessage = isRTL
-          ? '🔌 لا يوجد اتصال بالخادم. تحقق من اتصالك بالإنترنت.'
-          : '🔌 Impossible de se connecter au serveur. Vérifiez votre connexion.'
+      if (userRole === 'admin' || userRole === 'staff') {
+        navigate('/dashboard', { replace: true })
+      } else if (userRole === 'parent') {
+        navigate('/mon-espace', { replace: true })
       } else {
-        errorMessage = error.response?.data?.error || 
-          (isRTL ? '❌ خطأ في تسجيل الدخول' : '❌ Erreur de connexion')
+        navigate('/', { replace: true })
       }
       
-      toast.error(errorMessage, {
-        duration: 4000,
-        style: {
-          background: '#FEE2E2',
-          color: '#991B1B',
-          border: '1px solid #FCA5A5',
-          padding: '16px',
-          borderRadius: '12px',
-          fontSize: '14px',
-          fontWeight: '500'
-        },
-        iconTheme: {
-          primary: '#DC2626',
-          secondary: '#FEE2E2'
-        }
-      })
+    } catch (err) {
+      // Arrêter le loading
       setLoading(false)
+      
+      // Définir le message d'erreur
+      let errorMessage = ''
+      
+      if (err.response?.status === 401) {
+        errorMessage = isRTL ? 'بريد إلكتروني أو كلمة مرور خاطئة' : 'Email ou mot de passe incorrect'
+      } else if (err.response?.status === 500) {
+        errorMessage = isRTL ? 'خطأ في الخادم' : 'Erreur serveur'
+      } else if (err.code === 'ERR_NETWORK') {
+        errorMessage = isRTL ? 'لا يوجد اتصال بالخادم' : 'Impossible de se connecter au serveur'
+      } else {
+        errorMessage = err.response?.data?.error || (isRTL ? 'خطأ في تسجيل الدخول' : 'Erreur de connexion')
+      }
+      
+      setError(errorMessage)
     }
   }
 
@@ -189,6 +137,14 @@ const LoginFormHero = () => {
             </button>
           </div>
         </div>
+
+        {/* Message d'erreur */}
+        {error && (
+          <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 px-4 py-3 rounded-xl flex items-center">
+            <AlertCircle className="w-5 h-5 mr-3 rtl:mr-0 rtl:ml-3 flex-shrink-0" />
+            <span className="text-sm font-semibold">{error}</span>
+          </div>
+        )}
 
         {/* Submit Button */}
         <button

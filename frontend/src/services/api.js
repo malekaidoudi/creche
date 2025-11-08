@@ -60,9 +60,15 @@ api.interceptors.response.use(
     
     // Gestion des erreurs d'authentification
     if (error.response?.status === 401) {
-      localStorage.removeItem('token')
-      window.location.href = '/'
-      toast.error('Session expirée, veuillez vous reconnecter')
+      // Ne pas intercepter les erreurs de login
+      const isLoginRequest = error.config?.url?.includes('/auth/login')
+      
+      if (!isLoginRequest) {
+        localStorage.removeItem('token')
+        window.location.href = '/'
+        toast.error('Session expirée, veuillez vous reconnecter')
+      }
+      
       return Promise.reject(error)
     }
 
