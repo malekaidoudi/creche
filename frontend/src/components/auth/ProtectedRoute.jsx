@@ -2,7 +2,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import LoadingSpinner from '../ui/LoadingSpinner';
 
-const ProtectedRoute = ({ children, roles = [], redirectTo = '/login' }) => {
+const ProtectedRoute = ({ children, roles = [], redirectTo = '/' }) => {
   const { isAuthenticated, user, loading } = useAuth();
   const location = useLocation();
 
@@ -15,7 +15,7 @@ const ProtectedRoute = ({ children, roles = [], redirectTo = '/login' }) => {
     );
   }
 
-  // Rediriger vers la page de connexion si non authentifié
+  // Rediriger vers la page d'accueil si non authentifié
   if (!isAuthenticated) {
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }

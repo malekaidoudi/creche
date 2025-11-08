@@ -19,20 +19,96 @@ const LoginFormHero = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    e.stopPropagation()
     setLoading(true)
 
     try {
-      await login(formData.email, formData.password)
-      toast.success(isRTL ? 'تم تسجيل الدخول بنجاح' : 'Connexion réussie')
+      console.log('🔐 Tentative de connexion...')
+      const response = await login(formData.email, formData.password)
+      console.log('✅ Réponse login:', response)
       
-      // Redirection automatique gérée par AuthContext
+      // Vérifier que le token est bien sauvegardé
+      const token = localStorage.getItem('token')
+      console.log('🔑 Token sauvegardé:', token ? 'Oui' : 'Non')
+      
+      // Message de succès élégant
+      const userName = response?.user?.first_name || ''
+      const successMessage = isRTL 
+        ? `✅ مرحباً ${userName}! تم تسجيل الدخول بنجاح` 
+        : `✅ Bienvenue ${userName} ! Connexion réussie`
+      
+      toast.success(successMessage, {
+        duration: 3000,
+        style: {
+          background: '#D1FAE5',
+          color: '#065F46',
+          border: '1px solid #6EE7B7',
+          padding: '16px',
+          borderRadius: '12px',
+          fontSize: '14px',
+          fontWeight: '500'
+        },
+        iconTheme: {
+          primary: '#10B981',
+          secondary: '#D1FAE5'
+        }
+      })
+      
+      // Redirection selon le rôle avec délai
+      const userRole = response?.user?.role
+      console.log('👤 Rôle utilisateur:', userRole)
+      
+      setTimeout(() => {
+        if (userRole === 'admin' || userRole === 'staff') {
+          console.log('➡️ Redirection vers /dashboard')
+          navigate('/dashboard', { replace: true })
+        } else if (userRole === 'parent') {
+          console.log('➡️ Redirection vers /mon-espace')
+          navigate('/mon-espace', { replace: true })
+        } else {
+          console.log('➡️ Redirection vers /')
+          navigate('/', { replace: true })
+        }
+      }, 500)
     } catch (error) {
-      console.error('Erreur de connexion:', error)
-      toast.error(
-        error.response?.data?.error || 
-        (isRTL ? 'خطأ في تسجيل الدخول' : 'Erreur de connexion')
-      )
-    } finally {
+      console.error('❌ Erreur de connexion:', error)
+      
+      // Message élégant selon le type d'erreur
+      let errorMessage = ''
+      
+      if (error.response?.status === 401) {
+        errorMessage = isRTL 
+          ? '❌ البريد الإلكتروني أو كلمة المرور غير صحيحة. يرجى المحاولة مرة أخرى.' 
+          : '❌ Email ou mot de passe incorrect. Veuillez réessayer.'
+      } else if (error.response?.status === 500) {
+        errorMessage = isRTL
+          ? '⚠️ خطأ في الخادم. يرجى المحاولة لاحقاً.'
+          : '⚠️ Erreur serveur. Veuillez réessayer plus tard.'
+      } else if (error.code === 'ERR_NETWORK') {
+        errorMessage = isRTL
+          ? '🔌 لا يوجد اتصال بالخادم. تحقق من اتصالك بالإنترنت.'
+          : '🔌 Impossible de se connecter au serveur. Vérifiez votre connexion.'
+      } else {
+        errorMessage = error.response?.data?.error || 
+          (isRTL ? '❌ خطأ في تسجيل الدخول' : '❌ Erreur de connexion')
+      }
+      
+      toast.error(errorMessage, {
+        duration: 4000,
+        style: {
+          background: '#FEE2E2',
+          color: '#991B1B',
+          border: '1px solid #FCA5A5',
+          padding: '16px',
+          borderRadius: '12px',
+          fontSize: '14px',
+          fontWeight: '500'
+        },
+        iconTheme: {
+          primary: '#DC2626',
+          secondary: '#FEE2E2'
+        }
+      })
       setLoading(false)
     }
   }

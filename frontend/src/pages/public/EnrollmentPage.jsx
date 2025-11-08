@@ -147,9 +147,9 @@ const EnrollmentPage = () => {
         
         toast.success(isRTL ? 'تم إنشاء الطلب بنجاح!' : 'Demande créée avec succès!')
         
-        // Rediriger vers la page de connexion
+        // Rediriger vers la page d'accueil
         setTimeout(() => {
-          navigate('/login')
+          navigate('/')
         }, 2000)
 
       } else {
@@ -208,9 +208,9 @@ const EnrollmentPage = () => {
 
         toast.success(isRTL ? 'تم التسجيل بنجاح!' : 'Inscription réussie !')
         
-        // Rediriger vers la page de connexion
+        // Rediriger vers la page d'accueil
         setTimeout(() => {
-          navigate('/login')
+          navigate('/')
         }, 2000)
       }
 
