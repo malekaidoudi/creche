@@ -71,6 +71,9 @@ const UnifiedProfilePage = () => {
       setLoading(true);
       const uploadFormData = new FormData();
       uploadFormData.append('image', file);
+      
+      console.log('📤 Upload - Fichier:', file);
+      console.log('📤 Upload - FormData entries:', Array.from(uploadFormData.entries()));
 
       // Ne pas spécifier Content-Type pour multipart/form-data
       // Le navigateur le définira automatiquement avec le boundary
@@ -135,7 +138,25 @@ const UnifiedProfilePage = () => {
     
     setLoading(true);
     try {
-      const response = await api.put('/api/profile', formData);
+      // Préparer les données à envoyer (seulement les champs non vides)
+      const dataToSend = {};
+      
+      if (editMode) {
+        if (formData.first_name) dataToSend.first_name = formData.first_name;
+        if (formData.last_name) dataToSend.last_name = formData.last_name;
+        if (formData.email) dataToSend.email = formData.email;
+        if (formData.phone) dataToSend.phone = formData.phone;
+      }
+      
+      if (showPasswordSection) {
+        if (formData.current_password) dataToSend.current_password = formData.current_password;
+        if (formData.new_password) dataToSend.new_password = formData.new_password;
+        if (formData.confirm_password) dataToSend.confirm_password = formData.confirm_password;
+      }
+      
+      console.log('📝 Données envoyées:', dataToSend);
+      
+      const response = await api.put('/api/profile', dataToSend);
       if (response.data.success) {
         // Mettre à jour l'utilisateur dans le contexte
         updateUser(response.data.user);

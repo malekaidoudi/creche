@@ -19,6 +19,11 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`
     }
     
+    // Si c'est un FormData, supprimer le Content-Type pour laisser le navigateur le gérer
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
+    }
+    
     // 🔍 LOG DEBUG - Voir exactement ce qui est envoyé
     console.log('🌐 API Request:', {
       method: config.method?.toUpperCase(),
@@ -26,7 +31,7 @@ api.interceptors.request.use(
       baseURL: config.baseURL,
       fullURL: `${config.baseURL}${config.url}`,
       headers: config.headers,
-      data: config.data
+      data: config.data instanceof FormData ? 'FormData' : config.data
     });
     
     return config
