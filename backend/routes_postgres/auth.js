@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { body, validationResult } = require('express-validator');
 const db = require('../config/db_postgres');
+const { createLog } = require('./logs');
 
 const router = express.Router();
 
@@ -58,6 +59,13 @@ router.post('/login', [
       },
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN }
+    );
+
+    // Créer un log de connexion
+    await createLog(
+      user.id, 
+      'login', 
+      `${user.first_name} ${user.last_name} s'est connecté au système`
     );
 
     // Retourner les données utilisateur (sans le mot de passe)

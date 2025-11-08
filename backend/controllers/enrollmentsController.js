@@ -6,6 +6,7 @@ const fs = require('fs');
 const emailService = require('../services/emailServiceResend');
 // Utiliser Cloudinary pour stockage cloud (Render = système éphémère)
 const cloudinaryService = require('../services/cloudinaryService');
+const { createLog } = require('../routes_postgres/logs');
 
 // Créer le dossier uploads si nécessaire
 const uploadsDir = path.join(__dirname, '../uploads/enrollments');
@@ -106,6 +107,13 @@ const enrollmentsController = {
       
       const enrollment = result.rows[0];
       
+      // Créer un log d'approbation
+      await createLog(
+        req.user.id,
+        'approve_enrollment',
+        `Inscription approuvée pour ${enrollment.child_first_name} ${enrollment.child_last_name || ''}`
+      );
+      
       // Envoyer l'email d'approbation avec RDV et lien création MDP
       emailService.sendApprovalEmail({
         applicant_email: enrollment.applicant_email,
@@ -199,6 +207,13 @@ const enrollmentsController = {
       `, [status, rejection_type, custom_reason, appointment_date, req.user.id, id]);
       
       const enrollment = result.rows[0];
+      
+      // Créer un log de rejet
+      await createLog(
+        req.user.id,
+        'reject_enrollment',
+        `Inscription rejetée pour ${enrollment.child_first_name} ${enrollment.child_last_name || ''} (${rejection_type})`
+      );
       
       // Envoyer l'email de rejet selon le type
       emailService.sendRejectionEmail(
