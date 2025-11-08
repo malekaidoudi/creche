@@ -74,22 +74,31 @@ router.get('/', auth.authenticateToken, async (req, res) => {
 // PUT /api/profile - Mettre à jour le profil de l'utilisateur connecté
 router.put('/', [
   auth.authenticateToken,
-  body('first_name').optional().notEmpty().withMessage('Prénom requis'),
-  body('last_name').optional().notEmpty().withMessage('Nom requis'),
-  body('email').optional().isEmail().withMessage('Email invalide'),
-  body('phone').optional().isMobilePhone().withMessage('Numéro de téléphone invalide'),
-  body('current_password').optional().isLength({ min: 1 }).withMessage('Mot de passe actuel requis pour changer le mot de passe'),
+  body('first_name').optional().trim().notEmpty().withMessage('Prénom requis'),
+  body('last_name').optional().trim().notEmpty().withMessage('Nom requis'),
+  body('email').optional().trim().isEmail().withMessage('Email invalide'),
+  body('phone').optional().trim(),
+  body('current_password').optional(),
   body('new_password').optional().isLength({ min: 6 }).withMessage('Le nouveau mot de passe doit contenir au moins 6 caractères')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('❌ Erreurs de validation:', errors.array());
       return res.status(400).json({ 
         success: false,
         error: 'Données invalides', 
         details: errors.array() 
       });
     }
+    
+    console.log('✅ Validation OK, données reçues:', {
+      first_name: req.body.first_name,
+      last_name: req.body.last_name,
+      email: req.body.email,
+      phone: req.body.phone,
+      has_password_change: !!req.body.new_password
+    });
     
     const userId = req.user.id;
     const { 
@@ -240,8 +249,14 @@ router.post('/upload', auth.authenticateToken, upload.single('image'), async (re
     const userId = req.user.id;
     
     // Récupérer l'ancienne image pour la supprimer de Cloudinary
-    const userResult = await db.query('SELECT profile_image, cloudinary_public_id FROM users WHERE id = $1', [userId]);
-    const oldCloudinaryId = userResult.rows[0]?.cloudinary_public_id;
+    let oldCloudinaryId = null;
+    try {
+      const userResult = await db.query('SELECT profile_image, cloudinary_public_id FROM users WHERE id = $1', [userId]);
+      oldCloudinaryId = userResult.rows[0]?.cloudinary_public_id;
+    } catch (err) {
+      // Si la colonne cloudinary_public_id n'existe pas, continuer sans erreur
+      console.log('⚠️ Colonne cloudinary_public_id non trouvée, migration nécessaire');
+    }
     
     // Upload vers Cloudinary
     const cloudinaryResult = await cloudinaryService.uploadFile(
@@ -268,16 +283,32 @@ router.post('/upload', auth.authenticateToken, upload.single('image'), async (re
     }
     
     // Mettre à jour l'URL de l'image dans la base de données
-    const result = await db.query(
-      `UPDATE users 
-       SET profile_image = $1, 
-           cloudinary_public_id = $2,
-           updated_at = CURRENT_TIMESTAMP 
-       WHERE id = $3 
-       RETURNING id, email, first_name, last_name, phone, role, profile_image, 
-                 is_active, created_at, updated_at`,
-      [cloudinaryResult.url, cloudinaryResult.publicId, userId]
-    );
+    // Essayer d'abord avec cloudinary_public_id, sinon sans
+    let result;
+    try {
+      result = await db.query(
+        `UPDATE users 
+         SET profile_image = $1, 
+             cloudinary_public_id = $2,
+             updated_at = CURRENT_TIMESTAMP 
+         WHERE id = $3 
+         RETURNING id, email, first_name, last_name, phone, role, profile_image, 
+                   is_active, created_at, updated_at`,
+        [cloudinaryResult.url, cloudinaryResult.publicId, userId]
+      );
+    } catch (err) {
+      // Si la colonne n'existe pas, mettre à jour sans cloudinary_public_id
+      console.log('⚠️ Mise à jour sans cloudinary_public_id');
+      result = await db.query(
+        `UPDATE users 
+         SET profile_image = $1,
+             updated_at = CURRENT_TIMESTAMP 
+         WHERE id = $2 
+         RETURNING id, email, first_name, last_name, phone, role, profile_image, 
+                   is_active, created_at, updated_at`,
+        [cloudinaryResult.url, userId]
+      );
+    }
     
     if (result.rows.length === 0) {
       return res.status(404).json({ 
