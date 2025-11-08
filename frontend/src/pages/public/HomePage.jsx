@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom'
 import { useLanguage } from '../../hooks/useLanguage'
 import { useAuth } from '../../hooks/useAuth'
-import { Heart, Shield, GraduationCap, Star, ArrowRight } from 'lucide-react'
+import { Heart, Shield, GraduationCap, Star, ArrowRight, Camera } from 'lucide-react'
+import LoginFormHero from '../../components/auth/LoginFormHero'
 
 const HomePage = () => {
   const { isRTL } = useLanguage()
@@ -17,9 +18,11 @@ const HomePage = () => {
             <div className="space-y-8 text-center lg:text-left">
               {/* Badge */}
               <div className="inline-flex items-center px-6 py-3 bg-white/90 dark:bg-gray-800/90 backdrop-blur-md rounded-full shadow-xl">
-                <div className="w-8 h-8 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-full flex items-center justify-center mr-3">
-                  <Star className="w-4 h-4 text-white" />
-                </div>
+                <img 
+                  src="/images/logo.jpg" 
+                  alt="Mima Elghalia Logo" 
+                  className="w-8 h-8 rounded-full object-cover mr-3 rtl:mr-0 rtl:ml-3"
+                />
                 <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
                   {isRTL ? 'الحضانة الأولى في المنطقة' : 'Crèche #1 dans la région'}
                 </span>
@@ -64,22 +67,14 @@ const HomePage = () => {
               {/* CTA Buttons */}
               <div className="flex flex-col sm:flex-row gap-6 justify-center lg:justify-start">
                 {!isAuthenticated ? (
-                  <>
-                    <Link
-                      to="/inscription"
-                      className="group relative bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white px-10 py-5 rounded-2xl font-bold text-lg shadow-2xl hover:shadow-3xl transform hover:scale-105 transition-all duration-500 inline-flex items-center justify-center"
-                    >
-                      <span className="relative z-10">{isRTL ? 'سجل الآن' : 'Inscription gratuite'}</span>
-                      <ArrowRight className={`relative z-10 w-6 h-6 ${isRTL ? 'mr-3 rotate-180' : 'ml-3'} group-hover:translate-x-2 transition-transform duration-300`} />
-                    </Link>
-
-                    <Link
-                      to="/login"
-                      className="group bg-white/90 backdrop-blur-md text-gray-700 px-10 py-5 rounded-2xl font-bold text-lg shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-500 inline-flex items-center justify-center border border-white/50"
-                    >
-                      {isRTL ? 'تسجيل الدخول' : 'Se connecter'}
-                    </Link>
-                  </>
+                  <Link
+                    to="/visite-virtuelle"
+                    className="group relative bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white px-10 py-5 rounded-2xl font-bold text-lg shadow-2xl hover:shadow-3xl transform hover:scale-105 transition-all duration-500 inline-flex items-center justify-center"
+                  >
+                    <Camera className={`relative z-10 w-6 h-6 ${isRTL ? 'ml-3' : 'mr-3'}`} />
+                    <span className="relative z-10">{isRTL ? 'جولة افتراضية' : 'Visite virtuelle'}</span>
+                    <ArrowRight className={`relative z-10 w-6 h-6 ${isRTL ? 'mr-3 rotate-180' : 'ml-3'} group-hover:translate-x-2 transition-transform duration-300`} />
+                  </Link>
                 ) : (
                   <div className="bg-white/90 backdrop-blur-md px-8 py-4 rounded-2xl shadow-xl">
                     <p className="text-gray-700 font-semibold">
@@ -101,23 +96,31 @@ const HomePage = () => {
               </div>
             </div>
 
-            {/* Visual */}
+            {/* Visual / Login Form */}
             <div className="relative">
-              <div className="aspect-square bg-gradient-to-br from-blue-200 via-purple-200 to-pink-200 dark:from-blue-800 dark:via-purple-800 dark:to-pink-800 rounded-3xl p-8 shadow-2xl">
-                <div className="w-full h-full bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-xl flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="w-32 h-32 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Heart className="w-16 h-16 text-white" />
+              {!isAuthenticated ? (
+                // Formulaire de connexion pour visiteurs
+                <div className="aspect-square bg-gradient-to-br from-blue-200 via-purple-200 to-pink-200 dark:from-blue-800 dark:via-purple-800 dark:to-pink-800 rounded-3xl p-8 shadow-2xl">
+                  <LoginFormHero />
+                </div>
+              ) : (
+                // Rectangle pour utilisateurs connectés
+                <div className="aspect-square bg-gradient-to-br from-blue-200 via-purple-200 to-pink-200 dark:from-blue-800 dark:via-purple-800 dark:to-pink-800 rounded-3xl p-8 shadow-2xl">
+                  <div className="w-full h-full bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-xl flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="w-32 h-32 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Heart className="w-16 h-16 text-white" />
+                      </div>
+                      <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">
+                        {isRTL ? 'ميما الغالية' : 'Mima Elghalia'}
+                      </h3>
+                      <p className="text-gray-600 dark:text-gray-300">
+                        {isRTL ? 'حضانة متميزة' : 'Crèche d\'excellence'}
+                      </p>
                     </div>
-                    <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">
-                      {isRTL ? 'ميما الغالية' : 'Mima Elghalia'}
-                    </h3>
-                    <p className="text-gray-600 dark:text-gray-300">
-                      {isRTL ? 'حضانة متميزة' : 'Crèche d\'excellence'}
-                    </p>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>

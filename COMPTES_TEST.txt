@@ -1,0 +1,48 @@
+═══════════════════════════════════════════════════════════════
+   🏫 CRÈCHE MIMA ELGHALIA - COMPTES DE TEST
+═══════════════════════════════════════════════════════════════
+
+📅 Date de création : 8 Novembre 2025
+🔐 Mot de passe par défaut : password
+
+───────────────────────────────────────────────────────────────
+👨‍💼 COMPTE ADMINISTRATEUR
+───────────────────────────────────────────────────────────────
+Email       : crechemimaelghalia@gmail.com
+Mot de passe: password
+Rôle        : Admin
+Accès       : Dashboard complet, gestion utilisateurs, paramètres
+
+───────────────────────────────────────────────────────────────
+👩‍🏫 COMPTE STAFF (Personnel)
+───────────────────────────────────────────────────────────────
+Email       : staff@creche.com
+Mot de passe: password
+Rôle        : Staff
+Accès       : Dashboard, gestion enfants, présences
+
+───────────────────────────────────────────────────────────────
+👨‍👩‍👧 COMPTE PARENT
+───────────────────────────────────────────────────────────────
+Email       : parent@creche.com
+Mot de passe: password
+Rôle        : Parent
+Accès       : Mon Espace, suivi enfant, présences
+
+═══════════════════════════════════════════════════════════════
+📌 NOTES IMPORTANTES
+═══════════════════════════════════════════════════════════════
+
+✅ Tous les comptes sont actifs et fonctionnels
+✅ Les mots de passe sont hashés avec bcrypt
+✅ Connexion via le formulaire de la page d'accueil
+
+🔧 Pour réinitialiser les mots de passe :
+   cd backend && node create_test_users.js
+
+🌐 URLs :
+   - Frontend : http://localhost:5173
+   - Backend  : http://localhost:3003
+   - API      : http://localhost:3003/api
+
+═══════════════════════════════════════════════════════════════

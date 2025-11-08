@@ -125,7 +125,6 @@ const PublicFooter = () => {
     { name: isRTL ? 'الرئيسية' : 'Accueil', href: '/' },
     { name: isRTL ? 'التسجيل' : 'Inscription', href: '/inscription' },
     { name: isRTL ? 'اتصل بنا' : 'Contact', href: '/contact' },
-    { name: isRTL ? 'تسجيل الدخول' : 'Connexion', href: '/login' },
     { name: isRTL ? 'جولة افتراضية' : 'Visite virtuelle', href: '/visite-virtuelle' },
   ];
 

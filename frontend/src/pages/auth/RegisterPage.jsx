@@ -271,7 +271,7 @@ const RegisterPage = () => {
               <p className="text-sm text-gray-600 dark:text-gray-300">
                 {isRTL ? 'لديك حساب بالفعل؟' : 'Vous avez déjà un compte ?'}{' '}
                 <Link
-                  to="/login"
+                  to="/"
                   className="text-primary-600 dark:text-primary-400 hover:text-primary-500 font-medium"
                 >
                   {isRTL ? 'تسجيل الدخول' : 'Se connecter'}
