@@ -72,9 +72,9 @@ const UnifiedProfilePage = () => {
       const uploadFormData = new FormData();
       uploadFormData.append('image', file);
 
-      const response = await api.post('/api/profile/upload', uploadFormData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      // Ne pas spécifier Content-Type pour multipart/form-data
+      // Le navigateur le définira automatiquement avec le boundary
+      const response = await api.post('/api/profile/upload', uploadFormData);
 
       if (response.data.success) {
         // Mettre à jour l'utilisateur avec la nouvelle image
