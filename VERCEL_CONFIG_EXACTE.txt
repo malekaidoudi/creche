@@ -20,8 +20,12 @@ Node.js Version: 20.x
 
 **⚠️ IMPORTANT** :
 - Root Directory = `frontend` (PAS vide)
-- Output Directory = `dist` (PAS `frontend/dist`)
+- Output Directory = `dist` (relatif au Root Directory)
 - Build Command = `npm run build` (PAS `cd frontend && ...`)
+
+**EXPLICATION** :
+Quand Root Directory = `frontend`, Vercel se place dans ce dossier.
+Donc Output Directory = `dist` signifie `frontend/dist` pour Vercel.
 
 ---
 
