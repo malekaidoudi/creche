@@ -14,7 +14,7 @@ import './i18n/config.js'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <BrowserRouter basename={import.meta.env.DEV ? '/' : '/creche'}>
+    <BrowserRouter basename="/">
       <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200">
         <AuthProvider>
           <LanguageProvider>
