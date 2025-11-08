@@ -247,6 +247,16 @@ const EnrollmentPage = () => {
     } else {
       setStep(prev => Math.min(prev + 1, 5))
     }
+
+    // Auto-scroll vers le haut et focus sur premier champ
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      // Focus sur le premier input de l'étape
+      const firstInput = document.querySelector('input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled])')
+      if (firstInput) {
+        firstInput.focus()
+      }
+    }, 100)
   }
 
   const prevStep = () => {
@@ -256,6 +266,16 @@ const EnrollmentPage = () => {
     } else {
       setStep(prev => Math.max(prev - 1, 1))
     }
+
+    // Auto-scroll vers le haut et focus sur premier champ
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      // Focus sur le premier input de l'étape
+      const firstInput = document.querySelector('input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled])')
+      if (firstInput) {
+        firstInput.focus()
+      }
+    }, 100)
   }
 
   return (
