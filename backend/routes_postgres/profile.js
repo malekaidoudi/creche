@@ -237,8 +237,11 @@ router.put('/', [
 });
 
 // POST /api/profile/upload - Upload d'une photo de profil
-router.post('/upload', auth.authenticateToken, upload.single('image'), async (req, res) => {
+router.post('/upload', upload.single('image'), auth.authenticateToken, async (req, res) => {
   try {
+    console.log('📸 Upload - req.user:', req.user);
+    console.log('📸 Upload - req.file:', req.file ? 'Présent' : 'Absent');
+    
     if (!req.file) {
       return res.status(400).json({ 
         success: false,
@@ -246,7 +249,17 @@ router.post('/upload', auth.authenticateToken, upload.single('image'), async (re
       });
     }
     
-    const userId = req.user.id;
+    const userId = req.user?.id;
+    
+    if (!userId) {
+      console.error('❌ userId est undefined! req.user:', req.user);
+      return res.status(401).json({ 
+        success: false,
+        error: 'Utilisateur non authentifié' 
+      });
+    }
+    
+    console.log('✅ userId:', userId);
     
     // Récupérer l'ancienne image pour la supprimer de Cloudinary
     let oldCloudinaryId = null;

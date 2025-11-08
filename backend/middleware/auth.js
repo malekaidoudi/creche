@@ -26,6 +26,7 @@ const auth = {
         });
       }
 
+      console.log('🔐 Token décodé - user:', user);
       req.user = user;
       next();
     });
