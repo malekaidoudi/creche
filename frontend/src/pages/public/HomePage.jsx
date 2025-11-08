@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useLanguage } from '../../hooks/useLanguage'
 import { useAuth } from '../../hooks/useAuth'
-import { Heart, Shield, GraduationCap, Star, ArrowRight } from 'lucide-react'
+import { Heart, Shield, GraduationCap, Star, ArrowRight, Camera } from 'lucide-react'
 import LoginFormHero from '../../components/auth/LoginFormHero'
 
 const HomePage = () => {
@@ -66,10 +66,11 @@ const HomePage = () => {
               <div className="flex flex-col sm:flex-row gap-6 justify-center lg:justify-start">
                 {!isAuthenticated ? (
                   <Link
-                    to="/inscription"
+                    to="/visite-virtuelle"
                     className="group relative bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white px-10 py-5 rounded-2xl font-bold text-lg shadow-2xl hover:shadow-3xl transform hover:scale-105 transition-all duration-500 inline-flex items-center justify-center"
                   >
-                    <span className="relative z-10">{isRTL ? 'سجل الآن' : 'Inscription gratuite'}</span>
+                    <Camera className={`relative z-10 w-6 h-6 ${isRTL ? 'ml-3' : 'mr-3'}`} />
+                    <span className="relative z-10">{isRTL ? 'جولة افتراضية' : 'Visite virtuelle'}</span>
                     <ArrowRight className={`relative z-10 w-6 h-6 ${isRTL ? 'mr-3 rotate-180' : 'ml-3'} group-hover:translate-x-2 transition-transform duration-300`} />
                   </Link>
                 ) : (
