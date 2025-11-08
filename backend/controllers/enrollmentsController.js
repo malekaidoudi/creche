@@ -2,8 +2,9 @@ const db = require('../config/db_postgres');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-// Utiliser Resend au lieu de SMTP (Render bloque SMTP)
-const emailService = require('../services/emailServiceResend');
+const crypto = require('crypto');
+// Nouveau service d'e-mails avec Resend et templates
+const emailService = require('../emails/emailService');
 // Utiliser Cloudinary pour stockage cloud (Render = système éphémère)
 const cloudinaryService = require('../services/cloudinaryService');
 const { createLog } = require('../routes_postgres/logs');
@@ -53,13 +54,33 @@ const enrollmentsController = {
       
       const enrollment = result.rows[0];
       
+      // Créer un log d'activité pour la nouvelle inscription
+      try {
+        await createLog(
+          null, // Pas d'utilisateur connecté (inscription publique)
+          'new_enrollment',
+          `Nouvelle inscription : ${child_first_name} ${child_last_name || ''} (parent: ${applicant_first_name} ${applicant_last_name})`,
+          { enrollment_id: enrollment.id, applicant_email }
+        );
+      } catch (logError) {
+        console.error('⚠️ Erreur création log activité:', logError);
+      }
+      
       // Envoyer email de confirmation (async, ne pas bloquer la réponse)
-      emailService.sendEnrollmentConfirmation({
+      emailService.sendRegistrationConfirmation({
         id: enrollment.id,
         applicant_email,
         applicant_first_name,
         child_first_name
-      }).catch(err => console.error('Erreur envoi email:', err));
+      }).then(result => {
+        if (result.success) {
+          console.log(`✅ E-mail de confirmation envoyé à ${applicant_email}`);
+        } else {
+          console.error(`❌ Échec envoi e-mail à ${applicant_email}:`, result.error);
+        }
+      }).catch(err => {
+        console.error('❌ Erreur envoi email confirmation:', err);
+      });
       
       res.status(201).json({
         success: true,
@@ -86,7 +107,6 @@ const enrollmentsController = {
       }
       
       // Générer un token pour la création du mot de passe
-      const crypto = require('crypto');
       const passwordToken = crypto.randomBytes(32).toString('hex');
       const tokenExpires = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48h
       
@@ -114,14 +134,32 @@ const enrollmentsController = {
         `Inscription approuvée pour ${enrollment.child_first_name} ${enrollment.child_last_name || ''}`
       );
       
+      // Générer le lien de création de mot de passe
+      const frontendUrl = process.env.FRONTEND_URL || 'https://malekaidoudi.github.io/creche';
+      const passwordLink = `${frontendUrl}/create-password?token=${passwordToken}&email=${encodeURIComponent(enrollment.applicant_email)}`;
+      
+      // Formater la date de rendez-vous en français
+      const appointmentDateFormatted = new Date(appointment_date).toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      
       // Envoyer l'email d'approbation avec RDV et lien création MDP
-      emailService.sendApprovalEmail({
-        applicant_email: enrollment.applicant_email,
-        applicant_first_name: enrollment.applicant_first_name,
-        child_first_name: enrollment.child_first_name,
-        appointment_date: appointment_date,
-        enrollment_id: id
-      }).catch(err => console.error('Erreur envoi email approbation:', err));
+      emailService.sendAcceptedEmail(
+        enrollment,
+        appointmentDateFormatted,
+        passwordLink
+      ).then(result => {
+        if (result.success) {
+          console.log(`✅ E-mail d'approbation envoyé à ${enrollment.applicant_email}`);
+        } else {
+          console.error(`❌ Échec envoi e-mail à ${enrollment.applicant_email}:`, result.error);
+        }
+      }).catch(err => console.error('❌ Erreur envoi email approbation:', err));
       
       res.json({
         success: true,
@@ -215,18 +253,33 @@ const enrollmentsController = {
         `Inscription rejetée pour ${enrollment.child_first_name} ${enrollment.child_last_name || ''} (${rejection_type})`
       );
       
-      // Envoyer l'email de rejet selon le type
-      emailService.sendRejectionEmail(
-        {
-          applicant_email: enrollment.applicant_email,
-          applicant_first_name: enrollment.applicant_first_name,
-          child_first_name: enrollment.child_first_name,
-          enrollment_id: id
-        },
-        rejection_type,
-        custom_reason,
-        appointment_date
-      ).catch(err => console.error('Erreur envoi email rejet:', err));
+      // Envoyer l'email selon le type de rejet
+      if (rejection_type === 'dossier_manquant') {
+        // Générer un token pour l'upload des documents
+        const uploadToken = crypto.randomBytes(32).toString('hex');
+        const frontendUrl = process.env.FRONTEND_URL || 'https://malekaidoudi.github.io/creche';
+        const uploadLink = `${frontendUrl}/upload-documents?token=${uploadToken}&enrollment=${id}`;
+        
+        // Liste des documents manquants (à personnaliser selon les besoins)
+        const missingDocs = custom_reason ? custom_reason.split(',').map(d => d.trim()) : [
+          'Carnet de santé de l\'enfant',
+          'Acte de naissance',
+          'Certificat médical récent'
+        ];
+        
+        emailService.sendMissingDocsEmail(
+          enrollment,
+          missingDocs,
+          appointment_date,
+          uploadLink
+        ).catch(err => console.error('❌ Erreur envoi email documents manquants:', err));
+      } else {
+        // Rejet définitif
+        emailService.sendRejectionEmail(
+          enrollment,
+          custom_reason || 'Votre demande ne peut pas être acceptée pour le moment.'
+        ).catch(err => console.error('❌ Erreur envoi email rejet:', err));
+      }
       
       res.json({
         success: true,

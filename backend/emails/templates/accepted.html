@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dossier accepté</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td align="center" style="padding: 40px 0;">
+        <table role="presentation" style="width: 600px; max-width: 100%; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">
+                🎉 Félicitations !
+              </h1>
+              <p style="margin: 10px 0 0; color: #ffffff; font-size: 18px;">
+                Votre dossier a été accepté
+              </p>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px 30px;">
+              <p style="margin: 0 0 20px; color: #374151; font-size: 16px; line-height: 1.6;">
+                Bonjour <strong>{{applicant_first_name}}</strong>,
+              </p>
+
+              <p style="margin: 0 0 30px; color: #374151; font-size: 16px; line-height: 1.6;">
+                Nous avons le plaisir de vous informer que l'inscription de <strong>{{child_first_name}}</strong> a été <strong style="color: #10b981;">approuvée</strong> ! 🎊
+              </p>
+
+              <!-- Success Box -->
+              <table role="presentation" style="width: 100%; background-color: #d1fae5; border-left: 4px solid #10b981; border-radius: 8px; margin-bottom: 30px;">
+                <tr>
+                  <td style="padding: 20px; text-align: center;">
+                    <p style="margin: 0; color: #065f46; font-size: 18px; font-weight: 700;">
+                      ✅ DOSSIER APPROUVÉ
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Appointment Box -->
+              <table role="presentation" style="width: 100%; background-color: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 8px; margin-bottom: 30px;">
+                <tr>
+                  <td style="padding: 20px;">
+                    <p style="margin: 0 0 10px; color: #92400e; font-size: 16px; font-weight: 600;">
+                      📅 Rendez-vous à la crèche
+                    </p>
+                    <p style="margin: 0; color: #92400e; font-size: 20px; font-weight: 700;">
+                      {{appointment_date}}
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin: 0 0 15px; color: #374151; font-size: 16px; font-weight: 600;">
+                📋 Documents à apporter le jour du rendez-vous :
+              </p>
+
+              <ul style="margin: 0 0 30px; padding-left: 20px; color: #374151; font-size: 15px; line-height: 1.8;">
+                <li>Carnet de santé de l'enfant</li>
+                <li>Acte de naissance (original + copie)</li>
+                <li>Certificat médical récent (moins de 3 mois)</li>
+                <li>2 photos d'identité de l'enfant</li>
+                <li>Pièce d'identité du parent (CIN)</li>
+                <li>Justificatif de domicile</li>
+              </ul>
+
+              <!-- CTA Box -->
+              <table role="presentation" style="width: 100%; background-color: #e0e7ff; border-radius: 8px; margin-bottom: 30px;">
+                <tr>
+                  <td style="padding: 30px; text-align: center;">
+                    <p style="margin: 0 0 15px; color: #3730a3; font-size: 18px; font-weight: 600;">
+                      🔐 Créez votre compte parent
+                    </p>
+                    <p style="margin: 0 0 20px; color: #4338ca; font-size: 15px; line-height: 1.6;">
+                      Pour accéder à votre espace parent et suivre la scolarité de {{child_first_name}}, créez votre mot de passe dès maintenant :
+                    </p>
+                    <a href="{{password_link}}" style="display: inline-block; background-color: #4f46e5; color: #ffffff; padding: 14px 40px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                      Créer mon mot de passe
+                    </a>
+                    <p style="margin: 15px 0 0; color: #6366f1; font-size: 13px;">
+                      ⏰ Ce lien est valide pendant 48 heures
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Info Box -->
+              <table role="presentation" style="width: 100%; background-color: #dbeafe; border-left: 4px solid #3b82f6; border-radius: 8px; margin-bottom: 20px;">
+                <tr>
+                  <td style="padding: 20px;">
+                    <p style="margin: 0; color: #1e40af; font-size: 14px; line-height: 1.6;">
+                      ℹ️ <strong>Important :</strong> Votre compte sera activé après validation sur place lors du rendez-vous.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin: 0; color: #374151; font-size: 16px; line-height: 1.6;">
+                Nous sommes ravis d'accueillir <strong>{{child_first_name}}</strong> dans notre crèche ! 🌟
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f9fafb; padding: 30px; text-align: center; border-radius: 0 0 12px 12px; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0 0 10px; color: #1f2937; font-size: 16px; font-weight: 600;">
+                Crèche Mima Elghalia
+              </p>
+              <p style="margin: 0 0 5px; color: #6b7280; font-size: 14px;">
+                📧 inscription@mima-elghalia.com
+              </p>
+              <p style="margin: 0; color: #6b7280; font-size: 14px;">
+                📞 +216 XX XXX XXX
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

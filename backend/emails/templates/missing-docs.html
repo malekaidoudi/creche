@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Documents manquants</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td align="center" style="padding: 40px 0;">
+        <table role="presentation" style="width: 600px; max-width: 100%; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">
+                📋 Dossier incomplet
+              </h1>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px 30px;">
+              <p style="margin: 0 0 20px; color: #374151; font-size: 16px; line-height: 1.6;">
+                Bonjour <strong>{{applicant_first_name}}</strong>,
+              </p>
+
+              <p style="margin: 0 0 30px; color: #374151; font-size: 16px; line-height: 1.6;">
+                Nous avons examiné votre dossier d'inscription pour <strong>{{child_first_name}}</strong>. Malheureusement, certains documents obligatoires sont manquants.
+              </p>
+
+              <!-- Warning Box -->
+              <table role="presentation" style="width: 100%; background-color: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 8px; margin-bottom: 30px;">
+                <tr>
+                  <td style="padding: 20px;">
+                    <p style="margin: 0 0 15px; color: #92400e; font-size: 16px; font-weight: 600;">
+                      ⚠️ Documents manquants :
+                    </p>
+                    <ul style="margin: 0; padding-left: 20px; color: #92400e; font-size: 15px; line-height: 1.8;">
+                      {{#each missing_documents}}
+                      <li>{{this}}</li>
+                      {{/each}}
+                    </ul>
+                  </td>
+                </tr>
+              </table>
+
+              {{#if appointment_date}}
+              <!-- Appointment Box -->
+              <table role="presentation" style="width: 100%; background-color: #dbeafe; border-left: 4px solid #3b82f6; border-radius: 8px; margin-bottom: 30px;">
+                <tr>
+                  <td style="padding: 20px;">
+                    <p style="margin: 0 0 10px; color: #1e40af; font-size: 16px; font-weight: 600;">
+                      📅 Rendez-vous fixé
+                    </p>
+                    <p style="margin: 0; color: #1e40af; font-size: 20px; font-weight: 700;">
+                      {{appointment_date}}
+                    </p>
+                  </td>
+                </tr>
+              </table>
+              {{/if}}
+
+              <p style="margin: 0 0 20px; color: #374151; font-size: 16px; font-weight: 600;">
+                Vous avez deux options pour compléter votre dossier :
+              </p>
+
+              <!-- Option 1 -->
+              <table role="presentation" style="width: 100%; background-color: #e0e7ff; border-radius: 8px; margin-bottom: 20px;">
+                <tr>
+                  <td style="padding: 25px;">
+                    <p style="margin: 0 0 15px; color: #3730a3; font-size: 18px; font-weight: 600;">
+                      1️⃣ Télécharger les documents en ligne
+                    </p>
+                    <p style="margin: 0 0 20px; color: #4338ca; font-size: 15px; line-height: 1.6;">
+                      Gagnez du temps en téléchargeant vos documents dès maintenant via notre plateforme sécurisée :
+                    </p>
+                    <div style="text-align: center;">
+                      <a href="{{upload_link}}" style="display: inline-block; background-color: #4f46e5; color: #ffffff; padding: 14px 40px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                        Télécharger mes documents
+                      </a>
+                    </div>
+                    <p style="margin: 15px 0 0; color: #6366f1; font-size: 13px; text-align: center;">
+                      ⏰ Lien valide pendant 7 jours
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Option 2 -->
+              {{#if appointment_date}}
+              <table role="presentation" style="width: 100%; background-color: #f3f4f6; border-radius: 8px; margin-bottom: 30px;">
+                <tr>
+                  <td style="padding: 25px;">
+                    <p style="margin: 0 0 10px; color: #1f2937; font-size: 18px; font-weight: 600;">
+                      2️⃣ Apporter les documents lors du rendez-vous
+                    </p>
+                    <p style="margin: 0; color: #4b5563; font-size: 15px; line-height: 1.6;">
+                      Vous pouvez également apporter les documents manquants le jour de votre rendez-vous.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+              {{else}}
+              <table role="presentation" style="width: 100%; background-color: #f3f4f6; border-radius: 8px; margin-bottom: 30px;">
+                <tr>
+                  <td style="padding: 25px;">
+                    <p style="margin: 0 0 10px; color: #1f2937; font-size: 18px; font-weight: 600;">
+                      2️⃣ Prendre rendez-vous
+                    </p>
+                    <p style="margin: 0; color: #4b5563; font-size: 15px; line-height: 1.6;">
+                      Contactez-nous pour fixer un rendez-vous et apporter les documents manquants.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+              {{/if}}
+
+              <!-- Info Box -->
+              <table role="presentation" style="width: 100%; background-color: #dbeafe; border-left: 4px solid #3b82f6; border-radius: 8px; margin-bottom: 20px;">
+                <tr>
+                  <td style="padding: 20px;">
+                    <p style="margin: 0; color: #1e40af; font-size: 14px; line-height: 1.6;">
+                      ℹ️ <strong>Note :</strong> Si vous choisissez de télécharger les documents en ligne, votre dossier sera traité comme une nouvelle demande et examiné dans les 48 heures.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin: 0; color: #374151; font-size: 15px; line-height: 1.6;">
+                Pour toute question, n'hésitez pas à nous contacter.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f9fafb; padding: 30px; text-align: center; border-radius: 0 0 12px 12px; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0 0 10px; color: #1f2937; font-size: 16px; font-weight: 600;">
+                Crèche Mima Elghalia
+              </p>
+              <p style="margin: 0 0 5px; color: #6b7280; font-size: 14px;">
+                📧 inscription@mima-elghalia.com
+              </p>
+              <p style="margin: 0; color: #6b7280; font-size: 14px;">
+                📞 +216 XX XXX XXX
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

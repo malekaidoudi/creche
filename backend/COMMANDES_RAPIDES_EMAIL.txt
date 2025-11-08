@@ -1,0 +1,329 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║                    📋 COMMANDES RAPIDES - SYSTÈME E-MAILS                   ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+
+🚀 DÉMARRAGE INITIAL
+═══════════════════════════════════════════════════════════════════════════════
+
+# 1. Exécuter les migrations
+cd backend
+node scripts/migrate-email-logs.js
+node scripts/migrate-contact-messages.js
+
+# 2. Tester le système
+node scripts/test-email-system.js votre-email@example.com
+
+
+🗄️ REQUÊTES BASE DE DONNÉES UTILES
+═══════════════════════════════════════════════════════════════════════════════
+
+# Voir les derniers e-mails envoyés
+SELECT * FROM email_logs ORDER BY created_at DESC LIMIT 10;
+
+# Voir les e-mails échoués
+SELECT * FROM email_logs WHERE status = 'failed' ORDER BY created_at DESC;
+
+# Statistiques par type d'e-mail
+SELECT 
+  email_type, 
+  COUNT(*) as total,
+  SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as sent,
+  SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed
+FROM email_logs
+GROUP BY email_type;
+
+# E-mails envoyés aujourd'hui
+SELECT * FROM email_logs 
+WHERE DATE(created_at) = CURRENT_DATE
+ORDER BY created_at DESC;
+
+# Taux de succès des 7 derniers jours
+SELECT 
+  ROUND(
+    100.0 * SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) / COUNT(*),
+    2
+  ) as success_rate
+FROM email_logs
+WHERE created_at > NOW() - INTERVAL '7 days';
+
+# Messages de contact non lus
+SELECT * FROM contact_messages 
+WHERE status = 'new' 
+ORDER BY created_at DESC;
+
+# Tous les messages de contact
+SELECT * FROM contact_messages 
+ORDER BY created_at DESC 
+LIMIT 20;
+
+
+🧪 TESTS ET DEBUGGING
+═══════════════════════════════════════════════════════════════════════════════
+
+# Test complet du système
+node scripts/test-email-system.js test@example.com
+
+# Test avec votre e-mail
+node scripts/test-email-system.js votre-email@example.com
+
+# Vérifier les logs après test
+psql $DATABASE_URL -c "SELECT * FROM email_logs ORDER BY created_at DESC LIMIT 5;"
+
+
+📧 EXEMPLES D'UTILISATION DANS LE CODE
+═══════════════════════════════════════════════════════════════════════════════
+
+// Importer le service
+const emailService = require('./emails/emailService');
+
+// 1. Confirmation d'inscription
+await emailService.sendRegistrationConfirmation({
+  id: 123,
+  applicant_email: 'parent@example.com',
+  applicant_first_name: 'Ahmed',
+  child_first_name: 'Sara'
+});
+
+// 2. Dossier accepté
+await emailService.sendAcceptedEmail(
+  {
+    applicant_email: 'parent@example.com',
+    applicant_first_name: 'Ahmed',
+    child_first_name: 'Sara'
+  },
+  '2025-01-15T10:00:00',
+  'https://site.com/create-password?token=abc123'
+);
+
+// 3. Documents manquants
+await emailService.sendMissingDocsEmail(
+  {
+    applicant_email: 'parent@example.com',
+    applicant_first_name: 'Ahmed',
+    child_first_name: 'Sara'
+  },
+  ['Carnet de santé', 'Acte de naissance'],
+  '2025-01-15T10:00:00',
+  'https://site.com/upload-documents?token=abc123'
+);
+
+// 4. Dossier rejeté
+await emailService.sendRejectionEmail(
+  {
+    applicant_email: 'parent@example.com',
+    applicant_first_name: 'Ahmed',
+    child_first_name: 'Sara'
+  },
+  'Places complètes pour cette tranche d\'âge'
+);
+
+// 5. Message de contact
+await emailService.sendContactMessage({
+  name: 'Ahmed Ben Ali',
+  email: 'ahmed@example.com',
+  phone: '+216 XX XXX XXX',
+  subject: 'Question',
+  message: 'Bonjour, je voudrais savoir...'
+});
+
+
+🔧 CONFIGURATION .ENV
+═══════════════════════════════════════════════════════════════════════════════
+
+# Variables à ajouter dans .env
+RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+EMAIL_FROM=Crèche Mima Elghalia <noreply@mima-elghalia.com>
+CONTACT_EMAIL=crechemimaelghalia@gmail.com
+FRONTEND_URL=https://malekaidoudi.github.io/creche
+
+
+🌐 LIENS UTILES
+═══════════════════════════════════════════════════════════════════════════════
+
+# Dashboard Resend
+https://resend.com/emails
+
+# API Keys Resend
+https://resend.com/api-keys
+
+# Domaines Resend
+https://resend.com/domains
+
+# Documentation Resend
+https://resend.com/docs
+
+# API Reference
+https://resend.com/docs/api-reference
+
+
+📊 MONITORING EN PRODUCTION
+═══════════════════════════════════════════════════════════════════════════════
+
+# Vérifier les e-mails des dernières 24h
+SELECT 
+  email_type,
+  status,
+  COUNT(*) as count
+FROM email_logs
+WHERE created_at > NOW() - INTERVAL '24 hours'
+GROUP BY email_type, status
+ORDER BY email_type, status;
+
+# Vérifier les erreurs récentes
+SELECT 
+  email_type,
+  recipient_email,
+  error_message,
+  created_at
+FROM email_logs
+WHERE status = 'failed'
+  AND created_at > NOW() - INTERVAL '7 days'
+ORDER BY created_at DESC;
+
+# Statistiques hebdomadaires
+SELECT 
+  DATE(created_at) as date,
+  COUNT(*) as total,
+  SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as sent,
+  SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed
+FROM email_logs
+WHERE created_at > NOW() - INTERVAL '7 days'
+GROUP BY DATE(created_at)
+ORDER BY date DESC;
+
+
+🔍 DEBUGGING
+═══════════════════════════════════════════════════════════════════════════════
+
+# Vérifier qu'un e-mail a été envoyé
+SELECT * FROM email_logs 
+WHERE recipient_email = 'test@example.com' 
+ORDER BY created_at DESC 
+LIMIT 1;
+
+# Voir les détails d'un e-mail spécifique
+SELECT 
+  email_type,
+  recipient_email,
+  subject,
+  status,
+  resend_id,
+  error_message,
+  metadata,
+  created_at
+FROM email_logs
+WHERE id = 123;
+
+# Vérifier les e-mails d'un type spécifique
+SELECT * FROM email_logs 
+WHERE email_type = 'registration_confirmation'
+ORDER BY created_at DESC 
+LIMIT 10;
+
+
+🧹 MAINTENANCE
+═══════════════════════════════════════════════════════════════════════════════
+
+# Nettoyer les logs de plus de 90 jours
+DELETE FROM email_logs 
+WHERE created_at < NOW() - INTERVAL '90 days';
+
+# Compter les e-mails par mois
+SELECT 
+  DATE_TRUNC('month', created_at) as month,
+  COUNT(*) as total
+FROM email_logs
+GROUP BY DATE_TRUNC('month', created_at)
+ORDER BY month DESC;
+
+# Marquer les messages de contact comme lus
+UPDATE contact_messages 
+SET status = 'read' 
+WHERE id = 123;
+
+# Marquer un message comme répondu
+UPDATE contact_messages 
+SET 
+  status = 'responded',
+  responded_at = NOW(),
+  responded_by = 1
+WHERE id = 123;
+
+
+🚨 DÉPANNAGE RAPIDE
+═══════════════════════════════════════════════════════════════════════════════
+
+# Problème: E-mails non reçus
+# Solution 1: Vérifier les logs
+SELECT * FROM email_logs WHERE status = 'failed' ORDER BY created_at DESC LIMIT 5;
+
+# Solution 2: Vérifier la clé API
+echo $RESEND_API_KEY
+
+# Solution 3: Tester manuellement
+node scripts/test-email-system.js votre-email@example.com
+
+# Problème: Erreur "Domain not verified"
+# Solution: Vérifier sur https://resend.com/domains
+
+# Problème: Variables non remplacées
+# Solution: Vérifier les noms de variables dans le code et le template
+
+
+📝 CURL POUR TESTS API
+═══════════════════════════════════════════════════════════════════════════════
+
+# Test formulaire de contact
+curl -X POST http://localhost:3000/api/contacts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Test User",
+    "email": "test@example.com",
+    "phone": "+216 XX XXX XXX",
+    "subject": "Test",
+    "message": "Ceci est un test"
+  }'
+
+# Récupérer les messages de contact (nécessite authentification)
+curl -X GET http://localhost:3000/api/contacts \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+
+📚 DOCUMENTATION
+═══════════════════════════════════════════════════════════════════════════════
+
+# Documentation complète
+cat backend/docs/EMAIL_SYSTEM.md
+
+# Guide rapide
+cat backend/docs/QUICK_START_EMAIL.md
+
+# Configuration exemple
+cat backend/.env.email.example
+
+# Résumé implémentation
+cat backend/IMPLEMENTATION_EMAIL_COMPLETE.txt
+
+
+🎯 CHECKLIST RAPIDE
+═══════════════════════════════════════════════════════════════════════════════
+
+☐ RESEND_API_KEY configurée dans .env
+☐ Migrations exécutées (email_logs + contact_messages)
+☐ Tests exécutés avec succès
+☐ E-mails de test reçus
+☐ Logs vérifiés en base de données
+☐ Dashboard Resend consulté
+☐ Domaine vérifié (pour production)
+☐ Variables d'environnement sur Render (pour production)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+
+💡 ASTUCE: Gardez ce fichier à portée de main pour un accès rapide aux 
+          commandes les plus utilisées !
+
+═══════════════════════════════════════════════════════════════════════════════

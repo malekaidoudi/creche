@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Confirmation d'inscription</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td align="center" style="padding: 40px 0;">
+        <table role="presentation" style="width: 600px; max-width: 100%; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">
+                🎉 Demande d'inscription reçue
+              </h1>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px 30px;">
+              <p style="margin: 0 0 20px; color: #374151; font-size: 16px; line-height: 1.6;">
+                Bonjour <strong>{{applicant_first_name}}</strong>,
+              </p>
+
+              <p style="margin: 0 0 30px; color: #374151; font-size: 16px; line-height: 1.6;">
+                Nous avons bien reçu votre demande d'inscription pour <strong>{{child_first_name}}</strong> à la Crèche Mima Elghalia.
+              </p>
+
+              <!-- Info Box -->
+              <table role="presentation" style="width: 100%; background-color: #f9fafb; border-left: 4px solid #667eea; border-radius: 8px; margin-bottom: 30px;">
+                <tr>
+                  <td style="padding: 20px;">
+                    <p style="margin: 0 0 10px; color: #1f2937; font-size: 15px;">
+                      <strong>📋 Numéro de dossier :</strong> <span style="color: #667eea; font-weight: 600;">#{{enrollment_id}}</span>
+                    </p>
+                    <p style="margin: 0; color: #1f2937; font-size: 15px;">
+                      <strong>📊 Statut :</strong> <span style="color: #f59e0b; font-weight: 600;">En attente de traitement</span>
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Timeline Box -->
+              <table role="presentation" style="width: 100%; background-color: #dbeafe; border-left: 4px solid #3b82f6; border-radius: 8px; margin-bottom: 30px;">
+                <tr>
+                  <td style="padding: 20px;">
+                    <p style="margin: 0; color: #1e40af; font-size: 15px; line-height: 1.6;">
+                      ⏰ <strong>Délai de traitement :</strong> Votre dossier sera examiné dans les <strong>48 heures</strong> (jours ouvrables).
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin: 0 0 20px; color: #374151; font-size: 16px; line-height: 1.6;">
+                <strong>📌 Prochaines étapes :</strong>
+              </p>
+
+              <ul style="margin: 0 0 30px; padding-left: 20px; color: #374151; font-size: 15px; line-height: 1.8;">
+                <li>Examen de votre dossier par notre équipe pédagogique</li>
+                <li>Vérification des documents fournis</li>
+                <li>Notification par e-mail de la décision</li>
+                <li>En cas d'approbation, création de votre espace parent</li>
+              </ul>
+
+              <p style="margin: 0 0 10px; color: #374151; font-size: 15px; line-height: 1.6;">
+                Si vous avez des questions, n'hésitez pas à nous contacter.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f9fafb; padding: 30px; text-align: center; border-radius: 0 0 12px 12px; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0 0 10px; color: #1f2937; font-size: 16px; font-weight: 600;">
+                Crèche Mima Elghalia
+              </p>
+              <p style="margin: 0 0 5px; color: #6b7280; font-size: 14px;">
+                📧 inscription@mima-elghalia.com
+              </p>
+              <p style="margin: 0; color: #6b7280; font-size: 14px;">
+                📞 +216 XX XXX XXX
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

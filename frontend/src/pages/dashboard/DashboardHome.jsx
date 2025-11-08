@@ -19,6 +19,7 @@ import { useLanguage } from '../../hooks/useLanguage';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import HolidaysList from '../../components/HolidaysList';
+import TodayAppointments from '../../components/dashboard/TodayAppointments';
 import api from '../../services/api';
 
 const DashboardHome = () => {
@@ -377,12 +378,24 @@ const DashboardHome = () => {
         </div>
       </div>
 
+      {/* Rendez-vous du jour (staff/admin uniquement) */}
+      {(isStaff() || isAdmin()) && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.8 }}
+          className="mb-8"
+        >
+          <TodayAppointments />
+        </motion.div>
+      )}
+
       {/* Jours fériés sur toute la largeur */}
       {user && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.8 }}
+          transition={{ duration: 0.6, delay: 1.0 }}
         >
           <HolidaysList userRole={user?.role} />
         </motion.div>

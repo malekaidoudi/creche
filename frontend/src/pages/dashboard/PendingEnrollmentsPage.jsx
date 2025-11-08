@@ -7,6 +7,7 @@ import { Button } from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { toast } from 'react-hot-toast';
 import enrollmentsService from '../../services/enrollmentsService';
+import ApproveEnrollmentModal from '../../components/modals/ApproveEnrollmentModal';
 import { 
   Clock, 
   CheckCircle, 
@@ -38,6 +39,7 @@ const PendingEnrollmentsPage = () => {
   const [selectedEnrollment, setSelectedEnrollment] = useState(null);
   const [showDocumentsModal, setShowDocumentsModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showApproveModal, setShowApproveModal] = useState(false);
   const [rejectData, setRejectData] = useState({ rejection_type: 'autre', custom_reason: '' });
   const [usingDemoData, setUsingDemoData] = useState(false);
   const [highlightId, setHighlightId] = useState(null);
@@ -100,26 +102,35 @@ const PendingEnrollmentsPage = () => {
     }
   };
 
-  const handleApprove = async (enrollment) => {
+  const handleApproveClick = (enrollment) => {
+    setSelectedEnrollment(enrollment);
+    setShowApproveModal(true);
+  };
+
+  const handleApprove = async (enrollmentId, appointmentDate) => {
     try {
       setActionLoading(true);
       
       if (!usingDemoData) {
-        // Utiliser l'API réelle
-        await enrollmentsService.approveEnrollment(enrollment.id, {
-          appointment_date: new Date().toISOString().split('T')[0],
-          admin_comment: `Approuvé par ${user?.first_name} ${user?.last_name}`
+        // Utiliser l'API réelle avec la date de rendez-vous
+        await enrollmentsService.approveEnrollment(enrollmentId, {
+          appointment_date: appointmentDate
         });
       } else {
         // Simulation pour les données de démonstration
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
       
-      setEnrollments(prev => prev.filter(e => e.id !== enrollment.id));
-      toast.success(isRTL ? 'تم قبول الطلب' : 'Demande approuvée');
+      setEnrollments(prev => prev.filter(e => e.id !== enrollmentId));
+      toast.success(isRTL ? 'تم قبول الطلب' : 'Dossier approuvé avec succès');
+      setShowApproveModal(false);
+      
+      // Rafraîchir la liste
+      await fetchPendingEnrollments();
     } catch (error) {
       console.error('Erreur approbation:', error);
       toast.error(isRTL ? 'خطأ في الموافقة' : 'Erreur lors de l\'approbation');
+      throw error; // Le modal affichera l'erreur
     } finally {
       setActionLoading(false);
     }
@@ -427,7 +438,7 @@ const PendingEnrollmentsPage = () => {
                         <>
                           <Button
                             size="sm"
-                            onClick={() => handleApprove(enrollment)}
+                            onClick={() => handleApproveClick(enrollment)}
                             disabled={actionLoading}
                             className="bg-green-600 hover:bg-green-700"
                           >
@@ -609,6 +620,14 @@ const PendingEnrollmentsPage = () => {
           </div>
         </div>
       )}
+
+      {/* Modal d'approbation avec date picker */}
+      <ApproveEnrollmentModal
+        isOpen={showApproveModal}
+        onClose={() => setShowApproveModal(false)}
+        enrollment={selectedEnrollment}
+        onApprove={handleApprove}
+      />
     </div>
   );
 };

@@ -1,0 +1,217 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║              🔧 FIX ERREUR RESEND: Invalid `from` field                     ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+❌ ERREUR RENCONTRÉE SUR RENDER
+═══════════════════════════════════════════════════════════════════════════════
+
+Erreur Resend: {
+  statusCode: 422,
+  name: 'validation_error',
+  message: 'Invalid `from` field. The email address needs to follow the 
+           `email@example.com` or `Name <email@example.com>` format.'
+}
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🔍 CAUSE DU PROBLÈME
+═══════════════════════════════════════════════════════════════════════════════
+
+Sur Render, quand vous configurez une variable d'environnement avec des 
+guillemets, ils sont INCLUS dans la valeur de la variable.
+
+❌ CONFIGURATION INCORRECTE:
+EMAIL_FROM="Crèche Mima Elghalia <noreply@mima-elghalia.com>"
+
+Valeur reçue par Node.js:
+→ "Crèche Mima Elghalia <noreply@mima-elghalia.com>"
+   ↑                                                  ↑
+   Les guillemets sont DANS la valeur !
+
+Resend reçoit donc:
+from: '"Crèche Mima Elghalia <noreply@mima-elghalia.com>"'
+      ↑ Format invalide à cause des guillemets                ↑
+
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ SOLUTION 1: SUPPRIMER LES GUILLEMETS SUR RENDER (RECOMMANDÉ)
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Aller sur https://dashboard.render.com
+2. Sélectionner votre service backend
+3. Aller dans l'onglet "Environment"
+4. Trouver la variable EMAIL_FROM
+5. Cliquer sur "Edit"
+6. Modifier la valeur:
+
+   AVANT:
+   "Crèche Mima Elghalia <noreply@mima-elghalia.com>"
+
+   APRÈS:
+   Crèche Mima Elghalia <noreply@mima-elghalia.com>
+
+7. Cliquer sur "Save Changes"
+8. Render redémarrera automatiquement le service
+
+✅ Résultat:
+Node.js reçoit: Crèche Mima Elghalia <noreply@mima-elghalia.com>
+Resend accepte: ✅ Format valide !
+
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ SOLUTION 2: UTILISER SEULEMENT L'E-MAIL
+═══════════════════════════════════════════════════════════════════════════════
+
+Si le problème persiste, simplifier la configuration:
+
+Sur Render:
+EMAIL_FROM=noreply@mima-elghalia.com
+
+Le nom sera ajouté automatiquement dans le code:
+from: `Crèche Mima Elghalia <${process.env.EMAIL_FROM}>`
+
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ SOLUTION 3: MODIFIER LE CODE POUR GÉRER LES GUILLEMETS
+═══════════════════════════════════════════════════════════════════════════════
+
+Ajouter dans emailService.js:
+
+// Nettoyer EMAIL_FROM des guillemets éventuels
+const cleanEmailFrom = (email) => {
+  if (!email) return 'noreply@mima-elghalia.com';
+  return email.replace(/^["']|["']$/g, '').trim();
+};
+
+// Utiliser dans sendEmail():
+const emailData = {
+  from: cleanEmailFrom(process.env.EMAIL_FROM) || `Crèche Mima Elghalia <${config.from}>`,
+  to: recipient,
+  subject: variables.subject || config.subject,
+  html: htmlContent
+};
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🧪 VÉRIFICATION
+═══════════════════════════════════════════════════════════════════════════════
+
+Après avoir appliqué la solution, vérifier:
+
+1. Logs Render:
+   Chercher: "📧 Envoi email"
+   Vérifier que from: ne contient pas de guillemets
+
+2. Tester l'envoi:
+   - Faire une nouvelle inscription
+   - Vérifier les logs
+   - Vérifier réception e-mail
+
+3. Vérifier email_logs:
+   SELECT * FROM email_logs 
+   WHERE status = 'failed' 
+   ORDER BY created_at DESC 
+   LIMIT 5;
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📋 CONFIGURATION COMPLÈTE RENDER
+═══════════════════════════════════════════════════════════════════════════════
+
+Variables d'environnement à configurer (SANS guillemets):
+
+RESEND_API_KEY=re_bPRHJpGi_KNCPXi2dj1uvYKTUiYUn4gag
+EMAIL_FROM=Crèche Mima Elghalia <noreply@mima-elghalia.com>
+CONTACT_EMAIL=crechemimaelghalia@gmail.com
+FRONTEND_URL=https://malekaidoudi.github.io/creche
+
+⚠️ IMPORTANT:
+   - PAS de guillemets autour des valeurs
+   - PAS d'espaces avant/après le =
+   - Format exact: VARIABLE=valeur
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🔍 FORMATS VALIDES POUR EMAIL_FROM
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ Format 1 (avec nom):
+EMAIL_FROM=Crèche Mima Elghalia <noreply@mima-elghalia.com>
+
+✅ Format 2 (e-mail seul):
+EMAIL_FROM=noreply@mima-elghalia.com
+
+❌ Format INVALIDE (avec guillemets):
+EMAIL_FROM="Crèche Mima Elghalia <noreply@mima-elghalia.com>"
+
+❌ Format INVALIDE (guillemets simples):
+EMAIL_FROM='Crèche Mima Elghalia <noreply@mima-elghalia.com>'
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🎯 CHECKLIST DE VÉRIFICATION
+═══════════════════════════════════════════════════════════════════════════════
+
+☐ Variable EMAIL_FROM modifiée sur Render (sans guillemets)
+☐ Service redémarré automatiquement
+☐ Logs vérifiés (pas d'erreur Resend)
+☐ Test d'inscription effectué
+☐ E-mail reçu avec succès
+☐ Entrée dans email_logs avec status='sent'
+
+═══════════════════════════════════════════════════════════════════════════════
+
+💡 ASTUCE POUR DÉBUGGER
+═══════════════════════════════════════════════════════════════════════════════
+
+Ajouter temporairement dans emailService.js:
+
+console.log('🔍 DEBUG EMAIL_FROM:', {
+  raw: process.env.EMAIL_FROM,
+  length: process.env.EMAIL_FROM?.length,
+  firstChar: process.env.EMAIL_FROM?.[0],
+  lastChar: process.env.EMAIL_FROM?.[process.env.EMAIL_FROM.length - 1]
+});
+
+Si vous voyez:
+firstChar: '"'  ou  lastChar: '"'
+→ Les guillemets sont dans la valeur !
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📞 SUPPORT RESEND
+═══════════════════════════════════════════════════════════════════════════════
+
+Si le problème persiste après avoir supprimé les guillemets:
+
+1. Vérifier le domaine sur Resend:
+   https://resend.com/domains
+   → Le domaine mima-elghalia.com doit être vérifié
+
+2. Vérifier les adresses autorisées:
+   → noreply@mima-elghalia.com doit être configurée
+
+3. Tester avec l'adresse par défaut:
+   EMAIL_FROM=onboarding@resend.dev
+   (pour vérifier que le problème vient bien du domaine)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ RÉSULTAT ATTENDU
+═══════════════════════════════════════════════════════════════════════════════
+
+Après correction, les logs Render devraient afficher:
+
+📧 Envoi email REGISTRATION_CONFIRMATION vers parent@example.com...
+✅ Email envoyé avec succès (ID: abc123xyz)
+
+Et l'e-mail sera reçu avec:
+De: Crèche Mima Elghalia <noreply@mima-elghalia.com>
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🎉 PROBLÈME RÉSOLU !
+
+═══════════════════════════════════════════════════════════════════════════════

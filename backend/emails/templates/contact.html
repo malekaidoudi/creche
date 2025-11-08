@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nouveau message de contact</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td align="center" style="padding: 40px 0;">
+        <table role="presentation" style="width: 600px; max-width: 100%; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">
+                📧 Nouveau message de contact
+              </h1>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px 30px;">
+              <p style="margin: 0 0 30px; color: #374151; font-size: 16px; line-height: 1.6;">
+                Vous avez reçu un nouveau message via le formulaire de contact du site web.
+              </p>
+
+              <!-- Sender Info -->
+              <table role="presentation" style="width: 100%; background-color: #f9fafb; border-radius: 8px; margin-bottom: 30px;">
+                <tr>
+                  <td style="padding: 20px;">
+                    <p style="margin: 0 0 10px; color: #1f2937; font-size: 15px;">
+                      <strong>👤 Nom :</strong> {{sender_name}}
+                    </p>
+                    <p style="margin: 0 0 10px; color: #1f2937; font-size: 15px;">
+                      <strong>📧 Email :</strong> <a href="mailto:{{sender_email}}" style="color: #3b82f6; text-decoration: none;">{{sender_email}}</a>
+                    </p>
+                    {{#if sender_phone}}
+                    <p style="margin: 0; color: #1f2937; font-size: 15px;">
+                      <strong>📞 Téléphone :</strong> {{sender_phone}}
+                    </p>
+                    {{/if}}
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Subject -->
+              {{#if subject}}
+              <table role="presentation" style="width: 100%; background-color: #dbeafe; border-left: 4px solid #3b82f6; border-radius: 8px; margin-bottom: 20px;">
+                <tr>
+                  <td style="padding: 20px;">
+                    <p style="margin: 0; color: #1e40af; font-size: 15px;">
+                      <strong>📌 Sujet :</strong> {{subject}}
+                    </p>
+                  </td>
+                </tr>
+              </table>
+              {{/if}}
+
+              <!-- Message -->
+              <table role="presentation" style="width: 100%; background-color: #f3f4f6; border-radius: 8px; margin-bottom: 30px;">
+                <tr>
+                  <td style="padding: 20px;">
+                    <p style="margin: 0 0 10px; color: #1f2937; font-size: 15px; font-weight: 600;">
+                      💬 Message :
+                    </p>
+                    <p style="margin: 0; color: #4b5563; font-size: 15px; line-height: 1.8; white-space: pre-wrap;">{{message}}</p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- CTA -->
+              <div style="text-align: center; margin-bottom: 20px;">
+                <a href="mailto:{{sender_email}}" style="display: inline-block; background-color: #3b82f6; color: #ffffff; padding: 14px 40px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                  Répondre par email
+                </a>
+              </div>
+
+              <!-- Timestamp -->
+              <p style="margin: 0; color: #6b7280; font-size: 13px; text-align: center;">
+                📅 Reçu le {{timestamp}}
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f9fafb; padding: 30px; text-align: center; border-radius: 0 0 12px 12px; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0 0 5px; color: #6b7280; font-size: 14px;">
+                Ce message a été envoyé via le formulaire de contact du site
+              </p>
+              <p style="margin: 0; color: #6b7280; font-size: 14px;">
+                Crèche Mima Elghalia
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

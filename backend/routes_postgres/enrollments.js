@@ -5,6 +5,8 @@ const enrollmentsController = require('../controllers/enrollmentsController');
 const auth = require('../middleware/auth');
 const upload = require('../middleware/upload');
 const db = require('../config/db_postgres');
+const path = require('path');
+const fs = require('fs');
 
 // =====================================================
 // ROUTES PUBLIQUES (VISITEURS)
@@ -111,6 +113,65 @@ router.get('/:id/status', async (req, res) => {
 // =====================================================
 // ROUTES PROTÉGÉES (STAFF/ADMIN)
 // =====================================================
+
+/**
+ * GET /api/enrollments/appointments/today
+ * Rendez-vous du jour (staff/admin)
+ */
+router.get('/appointments/today',
+  auth.authenticateToken,
+  auth.requireRole('staff', 'admin'),
+  async (req, res) => {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      
+      const result = await db.query(`
+        SELECT 
+          e.id,
+          e.child_first_name,
+          e.child_last_name,
+          e.applicant_first_name,
+          e.applicant_last_name,
+          e.applicant_phone,
+          e.applicant_email,
+          e.appointment_date,
+          e.new_status,
+          TO_CHAR(e.appointment_date, 'HH24:MI') as appointment_time
+        FROM enrollments e
+        WHERE e.appointment_date >= $1
+          AND e.appointment_date < $2
+          AND e.new_status IN ('approved', 'rejected_incomplete')
+        ORDER BY e.appointment_date ASC
+      `, [today, tomorrow]);
+      
+      res.json({
+        success: true,
+        count: result.rows.length,
+        date: today.toLocaleDateString('fr-FR'),
+        appointments: result.rows.map(apt => ({
+          id: apt.id,
+          child_name: `${apt.child_first_name} ${apt.child_last_name || ''}`.trim(),
+          parent_name: `${apt.applicant_first_name} ${apt.applicant_last_name || ''}`.trim(),
+          parent_phone: apt.applicant_phone,
+          parent_email: apt.applicant_email,
+          appointment_date: apt.appointment_date,
+          appointment_time: apt.appointment_time,
+          status: apt.new_status
+        }))
+      });
+      
+    } catch (error) {
+      console.error('❌ Erreur récupération RDV du jour:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Erreur lors de la récupération des rendez-vous'
+      });
+    }
+  }
+);
 
 /**
  * GET /api/enrollments
@@ -337,7 +398,135 @@ router.delete('/:id',
 // ROUTES DOCUMENTS
 // =====================================================
 
-// Routes documents temporairement désactivées - à implémenter plus tard
-// TODO: Implémenter uploadDocuments et downloadDocuments
+/**
+ * GET /api/enrollments/:id/documents/:docId
+ * Récupérer les informations d'un document spécifique (staff/admin)
+ * Retourne l'URL Cloudinary pour visualisation/téléchargement direct
+ */
+router.get('/:id/documents/:docId',
+  auth.authenticateToken,
+  auth.requireRole('staff', 'admin'),
+  async (req, res) => {
+    try {
+      const { id, docId } = req.params;
+      
+      // Récupérer le document
+      const result = await db.query(`
+        SELECT 
+          id, 
+          document_type, 
+          original_filename, 
+          file_path, 
+          mime_type, 
+          cloudinary_url,
+          cloudinary_public_id,
+          file_size,
+          uploaded_at,
+          is_verified
+        FROM enrollment_documents
+        WHERE id = $1 AND enrollment_id = $2
+      `, [docId, id]);
+      
+      if (result.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: 'Document non trouvé'
+        });
+      }
+      
+      const doc = result.rows[0];
+      
+      // Retourner les informations du document avec URL Cloudinary
+      res.json({
+        success: true,
+        document: {
+          id: doc.id,
+          type: doc.document_type,
+          filename: doc.original_filename,
+          url: doc.cloudinary_url || null,
+          publicId: doc.cloudinary_public_id || null,
+          size: doc.file_size,
+          mime_type: doc.mime_type,
+          uploaded_at: doc.uploaded_at,
+          is_verified: doc.is_verified,
+          // URL pour visualisation directe (Cloudinary gère l'affichage)
+          view_url: doc.cloudinary_url,
+          // URL pour téléchargement forcé
+          download_url: doc.cloudinary_url ? `${doc.cloudinary_url.split('/upload/')[0]}/upload/fl_attachment/${doc.cloudinary_url.split('/upload/')[1]}` : null
+        }
+      });
+      
+    } catch (error) {
+      console.error('❌ Erreur récupération document:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Erreur lors de la récupération du document'
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/enrollments/:id/documents
+ * Liste des documents d'un dossier (staff/admin)
+ * Retourne les URLs Cloudinary pour chaque document
+ */
+router.get('/:id/documents',
+  auth.authenticateToken,
+  auth.requireRole('staff', 'admin'),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const result = await db.query(`
+        SELECT 
+          id, 
+          document_type, 
+          original_filename, 
+          file_size, 
+          mime_type,
+          cloudinary_url,
+          cloudinary_public_id,
+          is_verified,
+          uploaded_at
+        FROM enrollment_documents
+        WHERE enrollment_id = $1
+        ORDER BY uploaded_at DESC
+      `, [id]);
+      
+      res.json({
+        success: true,
+        count: result.rows.length,
+        documents: result.rows.map(doc => ({
+          id: doc.id,
+          type: doc.document_type,
+          filename: doc.original_filename,
+          size: doc.file_size,
+          mime_type: doc.mime_type,
+          is_verified: doc.is_verified,
+          uploaded_at: doc.uploaded_at,
+          // URLs Cloudinary
+          cloudinary_url: doc.cloudinary_url,
+          cloudinary_public_id: doc.cloudinary_public_id,
+          // URL pour visualisation directe (ouvre dans le navigateur)
+          view_url: doc.cloudinary_url,
+          // URL pour téléchargement forcé (force le download)
+          download_url: doc.cloudinary_url ? 
+            `${doc.cloudinary_url.split('/upload/')[0]}/upload/fl_attachment/${doc.cloudinary_url.split('/upload/')[1]}` : 
+            null,
+          // URL API pour récupérer les détails
+          api_url: `/api/enrollments/${id}/documents/${doc.id}`
+        }))
+      });
+      
+    } catch (error) {
+      console.error('❌ Erreur récupération documents:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Erreur lors de la récupération des documents'
+      });
+    }
+  }
+);
 
 module.exports = router;
