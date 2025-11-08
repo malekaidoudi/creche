@@ -16,7 +16,7 @@ const UnifiedProfilePage = () => {
   const { user, updateUser } = useAuth();
   const { isRTL } = useLanguage();
   const { isDark } = useTheme();
-  const { getImageUrl, hasImage } = useProfileImage();
+  const { getImageUrl, hasImage, refreshImage } = useProfileImage();
   const navigate = useNavigate();
   
   const [loading, setLoading] = useState(false);
@@ -55,6 +55,18 @@ const UnifiedProfilePage = () => {
     const file = e.target.files[0];
     if (!file) return;
     
+    // Validation de la taille du fichier (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error(isRTL ? 'الملف كبير جداً (5 ميجا كحد أقصى)' : 'Fichier trop volumineux (5MB max)');
+      return;
+    }
+    
+    // Validation du type de fichier
+    if (!file.type.startsWith('image/')) {
+      toast.error(isRTL ? 'يجب أن يكون الملف صورة' : 'Le fichier doit être une image');
+      return;
+    }
+    
     try {
       setLoading(true);
       const uploadFormData = new FormData();
@@ -65,11 +77,17 @@ const UnifiedProfilePage = () => {
       });
 
       if (response.data.success) {
-        updateUser({ ...user, profile_image: response.data.imageUrl });
-        toast.success(isRTL ? 'تم تحديث الصورة' : 'Photo mise à jour');
+        // Mettre à jour l'utilisateur avec la nouvelle image
+        updateUser(response.data.user);
+        // Forcer le rechargement de l'image
+        refreshImage();
+        toast.success(isRTL ? 'تم تحديث الصورة بنجاح' : 'Photo mise à jour avec succès');
       }
     } catch (error) {
-      toast.error('Erreur lors de l\'upload');
+      console.error('Erreur upload:', error);
+      const errorMessage = error.response?.data?.error || 
+        (isRTL ? 'خطأ في تحميل الصورة' : 'Erreur lors de l\'upload');
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -79,23 +97,69 @@ const UnifiedProfilePage = () => {
     e.preventDefault();
     if (!editMode && !showPasswordSection) return;
     
-    if (showPasswordSection && formData.new_password !== formData.confirm_password) {
-      toast.error(isRTL ? 'كلمات المرور غير متطابقة' : 'Les mots de passe ne correspondent pas');
-      return;
+    // Validation des mots de passe
+    if (showPasswordSection) {
+      if (!formData.current_password) {
+        toast.error(isRTL ? 'كلمة المرور الحالية مطلوبة' : 'Mot de passe actuel requis');
+        return;
+      }
+      
+      if (!formData.new_password) {
+        toast.error(isRTL ? 'كلمة المرور الجديدة مطلوبة' : 'Nouveau mot de passe requis');
+        return;
+      }
+      
+      if (formData.new_password.length < 6) {
+        toast.error(isRTL ? 'كلمة المرور يجب أن تحتوي على 6 أحرف على الأقل' : 'Le mot de passe doit contenir au moins 6 caractères');
+        return;
+      }
+      
+      if (formData.new_password !== formData.confirm_password) {
+        toast.error(isRTL ? 'كلمات المرور غير متطابقة' : 'Les mots de passe ne correspondent pas');
+        return;
+      }
+    }
+    
+    // Validation des champs obligatoires
+    if (editMode) {
+      if (!formData.first_name || !formData.last_name) {
+        toast.error(isRTL ? 'الاسم الأول والأخير مطلوبان' : 'Prénom et nom requis');
+        return;
+      }
+      
+      if (!formData.email) {
+        toast.error(isRTL ? 'البريد الإلكتروني مطلوب' : 'Email requis');
+        return;
+      }
     }
     
     setLoading(true);
     try {
       const response = await api.put('/api/profile', formData);
       if (response.data.success) {
+        // Mettre à jour l'utilisateur dans le contexte
         updateUser(response.data.user);
-        toast.success(isRTL ? 'تم التحديث بنجاح' : 'Profil mis à jour');
-        setFormData(prev => ({ ...prev, current_password: '', new_password: '', confirm_password: '' }));
+        
+        // Réinitialiser les champs de mot de passe
+        setFormData(prev => ({ 
+          ...prev, 
+          current_password: '', 
+          new_password: '', 
+          confirm_password: '' 
+        }));
+        
+        // Désactiver les modes d'édition
         setEditMode(false);
         setShowPasswordSection(false);
+        
+        // Message de succès
+        toast.success(isRTL ? 'تم تحديث الملف الشخصي بنجاح' : 'Profil mis à jour avec succès');
       }
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Erreur');
+      console.error('Erreur mise à jour profil:', error);
+      const errorMessage = error.response?.data?.error || 
+        (isRTL ? 'خطأ في تحديث الملف الشخصي' : 'Erreur lors de la mise à jour du profil');
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

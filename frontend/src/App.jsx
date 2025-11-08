@@ -112,7 +112,6 @@ function App() {
         }
       >
         <Route index element={<DashboardHome />} />
-        <Route path="profile" element={<UnifiedProfilePage />} />
         <Route path="children" element={<ChildrenPage />} />
         <Route path="children/add" element={<AddChildPage />} />
         <Route path="enrollments" element={<EnrollmentsPage />} />
