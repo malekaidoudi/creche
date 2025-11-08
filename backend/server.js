@@ -57,7 +57,8 @@ const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
   'http://192.168.1.60:5173',
-  'https://malekaidoudi.github.io',
+  'https://www.mima-elghalia.com',
+  'https://mima-elghalia.com',
   process.env.CLIENT_URL
 ].filter(Boolean);
 
@@ -71,8 +72,13 @@ app.use(cors({
       return callback(null, true);
     }
     
-    // Autoriser GitHub Pages
-    if (origin && origin.includes('github.io')) {
+    // Autoriser Vercel (*.vercel.app)
+    if (origin && origin.includes('.vercel.app')) {
+      return callback(null, true);
+    }
+    
+    // Autoriser le domaine personnalisé
+    if (origin && origin.includes('mima-elghalia.com')) {
       return callback(null, true);
     }
     
