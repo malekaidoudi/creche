@@ -4,6 +4,8 @@ const path = require('path');
 const fs = require('fs');
 // Utiliser Resend au lieu de SMTP (Render bloque SMTP)
 const emailService = require('../services/emailServiceResend');
+// Utiliser Cloudinary pour stockage cloud (Render = système éphémère)
+const cloudinaryService = require('../services/cloudinaryService');
 
 // Créer le dossier uploads si nécessaire
 const uploadsDir = path.join(__dirname, '../uploads/enrollments');
@@ -382,20 +384,53 @@ const enrollmentsController = {
         });
         
         try {
+          // Upload vers Cloudinary si configuré
+          let cloudinaryUrl = null;
+          let cloudinaryPublicId = null;
+          
+          if (cloudinaryService.isConfigured()) {
+            console.log('☁️  Upload vers Cloudinary:', file.originalname);
+            const uploadResult = await cloudinaryService.uploadFile(
+              file.path,
+              'enrollments',
+              `enrollment_${id}_${fieldName}_${Date.now()}`
+            );
+            
+            if (uploadResult.success) {
+              cloudinaryUrl = uploadResult.url;
+              cloudinaryPublicId = uploadResult.publicId;
+              console.log('✅ Fichier sur Cloudinary:', cloudinaryUrl);
+              
+              // Supprimer le fichier local après upload Cloudinary
+              try {
+                fs.unlinkSync(file.path);
+                console.log('🗑️  Fichier local supprimé:', file.path);
+              } catch (unlinkError) {
+                console.warn('⚠️  Impossible de supprimer fichier local:', unlinkError.message);
+              }
+            } else {
+              console.warn('⚠️  Échec upload Cloudinary, utilisation stockage local');
+            }
+          } else {
+            console.warn('⚠️  Cloudinary non configuré, stockage local utilisé');
+          }
+          
           const result = await db.query(`
             INSERT INTO enrollment_documents (
               enrollment_id, document_type, filename, original_filename, 
-              file_path, file_size, mime_type, uploaded_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-            RETURNING id, document_type, original_filename
+              file_path, file_size, mime_type, cloudinary_url, cloudinary_public_id, uploaded_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+            RETURNING id, document_type, original_filename, cloudinary_url
           `, [
             id,
             fieldName,
             file.filename,
             file.originalname,
-            file.path,
+            cloudinaryUrl || file.path,
             file.size,
-            file.mimetype
+            file.mimetype,
+            cloudinaryUrl,
+            cloudinaryPublicId
           ]);
           
           console.log('✅ Document sauvegardé en DB:', result.rows[0]);
