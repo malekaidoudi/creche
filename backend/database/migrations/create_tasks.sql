@@ -23,15 +23,15 @@ CREATE TABLE IF NOT EXISTS tasks (
   -- Métadonnées
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  completed_at TIMESTAMP,
-  
-  -- Index pour améliorer les performances
-  INDEX idx_task_date (task_date),
-  INDEX idx_task_status (status),
-  INDEX idx_task_type (task_type),
-  INDEX idx_enrollment_id (enrollment_id),
-  INDEX idx_created_by (created_by)
+  completed_at TIMESTAMP
 );
+
+-- Index pour améliorer les performances
+CREATE INDEX IF NOT EXISTS idx_task_date ON tasks(task_date);
+CREATE INDEX IF NOT EXISTS idx_task_status ON tasks(status);
+CREATE INDEX IF NOT EXISTS idx_task_type ON tasks(task_type);
+CREATE INDEX IF NOT EXISTS idx_enrollment_id ON tasks(enrollment_id);
+CREATE INDEX IF NOT EXISTS idx_created_by ON tasks(created_by);
 
 -- Trigger pour mettre à jour updated_at
 CREATE OR REPLACE FUNCTION update_tasks_updated_at()
