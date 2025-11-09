@@ -18,21 +18,42 @@ const StaffMessagesWidget = () => {
     try {
       setLoading(true);
       
-      // Charger les événements de type memo/task créés par le staff pour l'admin
+      // Charger tous les événements récents
       const response = await api.get('/api/events', {
         params: {
-          assigned_to: 1, // Admin ID
-          status: 'pending',
-          limit: 5
+          limit: 50
         }
       });
 
       if (response.data.success) {
-        // Filtrer pour ne garder que les messages du staff (memo/task)
-        const staffMessages = (response.data.events || []).filter(
-          event => (event.type === 'memo' || event.type === 'task') && event.created_by !== 1
-        );
-        setMessages(staffMessages);
+        // Filtrer pour ne garder que les messages du staff
+        const staffMessages = (response.data.events || []).filter(event => {
+          // Doit être un mémo ou une tâche
+          if (event.type !== 'memo' && event.type !== 'task') return false;
+          
+          // Doit avoir le flag from_staff dans metadata
+          let isFromStaff = false;
+          if (event.metadata && typeof event.metadata === 'object') {
+            isFromStaff = event.metadata.from_staff === true;
+          } else if (event.metadata && typeof event.metadata === 'string') {
+            try {
+              const meta = JSON.parse(event.metadata);
+              isFromStaff = meta.from_staff === true;
+            } catch (e) {}
+          }
+          
+          if (!isFromStaff) return false;
+          
+          // Exclure les complétés et annulés
+          if (event.status === 'completed' || event.status === 'cancelled') return false;
+          
+          return true;
+        });
+        
+        // Trier par date de création (plus récent en premier)
+        staffMessages.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        
+        setMessages(staffMessages.slice(0, 5)); // Limiter à 5
       }
     } catch (error) {
       console.error('Erreur chargement messages staff:', error);
@@ -148,7 +169,23 @@ const StaffMessagesWidget = () => {
                       <div className="flex items-center gap-2 mt-1">
                         <User className="w-3 h-3 text-gray-400" />
                         <span className="text-xs text-gray-600 dark:text-gray-400">
-                          {message.created_by_name || 'Staff'}
+                          {(() => {
+                            // Essayer d'abord metadata.sender_name
+                            if (message.metadata) {
+                              let senderName = null;
+                              if (typeof message.metadata === 'object' && message.metadata.sender_name) {
+                                senderName = message.metadata.sender_name;
+                              } else if (typeof message.metadata === 'string') {
+                                try {
+                                  const meta = JSON.parse(message.metadata);
+                                  senderName = meta.sender_name;
+                                } catch (e) {}
+                              }
+                              if (senderName) return senderName;
+                            }
+                            // Sinon utiliser created_by_name
+                            return message.created_by_name || 'Staff';
+                          })()}
                         </span>
                       </div>
                     </div>
