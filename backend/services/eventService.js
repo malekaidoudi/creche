@@ -355,7 +355,8 @@ async function updateEventStatus(eventId, status, userId) {
     // Mettre à jour le statut
     const result = await client.query(`
       UPDATE events
-      SET status = $1, completed_at = CASE WHEN $1 = 'completed' THEN NOW() ELSE completed_at END
+      SET status = $1::varchar, 
+          completed_at = CASE WHEN $1::varchar = 'completed' THEN NOW() ELSE completed_at END
       WHERE id = $2 AND deleted_at IS NULL
       RETURNING *
     `, [status, eventId]);
