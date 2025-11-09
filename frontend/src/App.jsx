@@ -25,6 +25,12 @@ import AbsenceRequestPage from './pages/parent/AbsenceRequestPage'
 // Pages staff
 import AbsenceManagementPage from './pages/staff/AbsenceManagementPage'
 
+// Pages événements
+import EventsCalendar from './pages/events/EventsCalendar'
+import EventsList from './pages/events/EventsList'
+import EventDetails from './pages/events/EventDetails'
+import EventForm from './pages/events/EventForm'
+
 // Pages dashboard
 import DashboardHome from './pages/dashboard/DashboardHome'
 import UnifiedProfilePage from './pages/UnifiedProfilePage'
@@ -130,6 +136,13 @@ function App() {
         <Route path="documents/download" element={<DocumentsPage />} />
         <Route path="documents/uploaded" element={<DocumentsPage />} />
         <Route path="absence-management" element={<AbsenceManagementPage />} />
+        
+        {/* Routes événements */}
+        <Route path="events/calendar" element={<EventsCalendar />} />
+        <Route path="events/list" element={<EventsList />} />
+        <Route path="events/new" element={<EventForm />} />
+        <Route path="events/:id" element={<EventDetails />} />
+        <Route path="events/:id/edit" element={<EventForm />} />
         
         {/* Pages placeholder pour fonctionnalités non implémentées */}
         <Route path="parents" element={<ParentsPage />} />
