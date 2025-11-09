@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import api from '../../services/api';
-import { useLanguage } from '../../contexts/LanguageContext';
+import { useLanguage } from '../../hooks/useLanguage';
 
 const TodayTasks = () => {
   const { isRTL } = useLanguage();
@@ -41,7 +41,7 @@ const TodayTasks = () => {
 
   const fetchTasks = async () => {
     try {
-      const response = await api.get('/tasks/today');
+      const response = await api.get('/api/tasks/today');
       if (response.data.success) {
         setTasks(response.data.tasks);
       }
@@ -63,7 +63,7 @@ const TodayTasks = () => {
     try {
       const today = new Date().toISOString().split('T')[0];
       
-      const response = await api.post('/tasks', {
+      const response = await api.post('/api/tasks', {
         title: newTask.title,
         description: newTask.description,
         task_date: today,
@@ -89,7 +89,7 @@ const TodayTasks = () => {
     const newStatus = task.status === 'completed' ? 'pending' : 'completed';
     
     try {
-      const response = await api.patch(`/tasks/${task.id}/status`, {
+      const response = await api.patch(`/api/tasks/${task.id}/status`, {
         status: newStatus
       });
 
@@ -109,7 +109,7 @@ const TodayTasks = () => {
     }
 
     try {
-      const response = await api.delete(`/tasks/${taskId}`);
+      const response = await api.delete(`/api/tasks/${taskId}`);
       if (response.data.success) {
         toast.success(isRTL ? 'تم الحذف' : 'Tâche supprimée');
         fetchTasks();
