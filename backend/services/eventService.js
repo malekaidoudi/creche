@@ -693,8 +693,13 @@ async function createEventUpdateNotification(event, recipientId, updaterId, upda
  */
 async function createEventNotification(event, recipientId, creatorId) {
   try {
+    console.log(`🔔 createEventNotification appelée: event=${event.title}, recipient=${recipientId}, creator=${creatorId}`);
+    
     const creator = await getUserById(creatorId);
-    if (!creator) return;
+    if (!creator) {
+      console.log(`⚠️ Créateur ${creatorId} non trouvé`);
+      return;
+    }
 
     // Déterminer le type de notification selon le type d'événement
     const notificationTypes = {
