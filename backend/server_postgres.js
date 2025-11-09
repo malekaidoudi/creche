@@ -144,6 +144,10 @@ app.use('/api/fix-user-role', fixUserRoleRoutes);
 app.use('/api/user', userChildrenRoutes);
 app.use('/api/absences', absencesRoutes);
 
+// Routes des tâches
+const tasksRoutes = require('./routes_postgres/tasks');
+app.use('/api/tasks', tasksRoutes);
+
 // Route par défaut
 app.get('/', (req, res) => {
   res.json({

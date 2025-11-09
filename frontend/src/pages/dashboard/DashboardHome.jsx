@@ -19,7 +19,7 @@ import { useLanguage } from '../../hooks/useLanguage';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import HolidaysList from '../../components/HolidaysList';
-import TodayAppointments from '../../components/dashboard/TodayAppointments';
+import TodayTasks from '../../components/dashboard/TodayTasks';
 import api from '../../services/api';
 
 const DashboardHome = () => {
@@ -276,6 +276,18 @@ const DashboardHome = () => {
         </div>
       </div>
 
+      {/* Tâches d'aujourd'hui (staff/admin uniquement) */}
+      {(isStaff() || isAdmin()) && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          className="mb-8"
+        >
+          <TodayTasks />
+        </motion.div>
+      )}
+
       {/* Actions rapides et Activités récentes sur la même ligne */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         
@@ -377,18 +389,6 @@ const DashboardHome = () => {
           </motion.div>
         </div>
       </div>
-
-      {/* Rendez-vous du jour (staff/admin uniquement) */}
-      {(isStaff() || isAdmin()) && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.8 }}
-          className="mb-8"
-        >
-          <TodayAppointments />
-        </motion.div>
-      )}
 
       {/* Jours fériés sur toute la largeur */}
       {user && (
