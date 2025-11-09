@@ -7,6 +7,7 @@ const rateLimit = require('express-rate-limit');
 const path = require('path');
 require('dotenv').config();
 
+// Version: 2.1.0 - Ajout système tâches quotidiennes (09/01/2025)
 // Configuration PostgreSQL Neon
 const db = require('./config/db_postgres');
 
