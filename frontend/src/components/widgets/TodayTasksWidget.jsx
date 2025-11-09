@@ -19,21 +19,41 @@ const TodayTasksWidget = () => {
       setLoading(true);
       const today = new Date().toISOString().split('T')[0];
       
-      // Charger les tâches ET les mémos du jour
+      // Charger les tâches ET les mémos (tous les statuts sauf completed)
       const response = await api.get('/api/events', {
         params: {
-          start_date: today,
-          end_date: today,
-          limit: 20
+          limit: 50
         }
       });
 
       if (response.data.success) {
-        // Filtrer pour ne garder que les tâches et mémos
-        const filtered = (response.data.events || []).filter(
-          event => event.type === 'task' || event.type === 'memo'
-        );
-        setTasks(filtered);
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        
+        // Filtrer pour ne garder que les tâches et mémos actifs
+        const filtered = (response.data.events || []).filter(event => {
+          // Seulement tâches et mémos
+          if (event.type !== 'task' && event.type !== 'memo') return false;
+          
+          // Exclure les complétés et annulés
+          if (event.status === 'completed' || event.status === 'cancelled') return false;
+          
+          // Inclure si c'est aujourd'hui OU si c'est en retard (pending/in_progress)
+          const eventDate = new Date(event.start_date);
+          eventDate.setHours(0, 0, 0, 0);
+          
+          return eventDate <= now;
+        });
+        
+        // Trier par priorité puis date
+        filtered.sort((a, b) => {
+          const priorityOrder = { high: 0, medium: 1, low: 2 };
+          const priorityDiff = (priorityOrder[a.priority] || 1) - (priorityOrder[b.priority] || 1);
+          if (priorityDiff !== 0) return priorityDiff;
+          return new Date(a.start_date) - new Date(b.start_date);
+        });
+        
+        setTasks(filtered.slice(0, 10)); // Limiter à 10
       }
     } catch (error) {
       console.error('Erreur chargement tâches du jour:', error);
@@ -173,7 +193,7 @@ const TodayTasksWidget = () => {
             
             {tasks.length > 0 && (
               <Link
-                to="/dashboard/events?type=task"
+                to="/dashboard/events/list"
                 className="block text-center text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 font-medium mt-4 py-2"
               >
                 Voir toutes les tâches →
