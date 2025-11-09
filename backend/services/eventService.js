@@ -76,6 +76,11 @@ async function createEvent(eventData, userId) {
     
     await client.query('COMMIT');
     
+    // Créer une notification pour la personne assignée
+    if (eventData.assigned_to && eventData.assigned_to !== userId) {
+      await createEventNotification(event, eventData.assigned_to, userId);
+    }
+    
     // Envoyer email d'assignation si assigné à quelqu'un d'autre
     if (eventData.assigned_to && eventData.assigned_to !== userId && eventData.type === 'task') {
       const assignedUser = await getUserById(eventData.assigned_to);
@@ -308,6 +313,11 @@ async function updateEvent(eventId, updates, userId) {
     }
     
     await client.query('COMMIT');
+    
+    // Si l'assignation a changé, créer une notification
+    if (updates.assigned_to && updates.assigned_to !== current.assigned_to && updates.assigned_to !== userId) {
+      await createEventUpdateNotification(event, updates.assigned_to, userId, 'assigned');
+    }
     
     return { success: true, event };
     
@@ -558,6 +568,106 @@ async function getUserById(userId) {
   } catch (error) {
     console.error('❌ Erreur getUserById:', error);
     return null;
+  }
+}
+
+/**
+ * Créer une notification pour une mise à jour d'événement
+ */
+async function createEventUpdateNotification(event, recipientId, updaterId, updateType) {
+  try {
+    const updater = await getUserById(updaterId);
+    if (!updater) return;
+
+    let title, message;
+    
+    if (updateType === 'assigned') {
+      title = `🔄 Événement réassigné`;
+      message = `${updater.first_name} ${updater.last_name} vous a assigné l'événement : "${event.title}"`;
+    } else {
+      title = `🔄 Événement modifié`;
+      message = `${updater.first_name} ${updater.last_name} a modifié l'événement : "${event.title}"`;
+    }
+
+    const notificationType = 'event_updated';
+
+    await pool.query(`
+      INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
+      VALUES ($1, $2, $3, $4, $5, false)
+    `, [recipientId, title, message, notificationType, event.id]);
+
+    console.log(`✅ Notification de mise à jour créée pour l'utilisateur ${recipientId}`);
+    
+  } catch (error) {
+    console.error('❌ Erreur createEventUpdateNotification:', error);
+  }
+}
+
+/**
+ * Créer une notification pour un événement
+ */
+async function createEventNotification(event, recipientId, creatorId) {
+  try {
+    const creator = await getUserById(creatorId);
+    if (!creator) return;
+
+    // Déterminer le type de notification selon le type d'événement
+    const notificationTypes = {
+      task: 'event_task',
+      memo: 'event_memo',
+      rdv: 'event_rdv',
+      medical: 'event_medical',
+      meeting: 'event_meeting',
+      birthday: 'event_birthday',
+      vacation_reminder: 'event_vacation',
+      custom: 'event_custom'
+    };
+
+    const notificationType = notificationTypes[event.type] || 'event_general';
+
+    // Déterminer le titre et le message selon le type
+    let title, message;
+    
+    if (event.type === 'task') {
+      title = `✅ Nouvelle tâche assignée`;
+      message = `${creator.first_name} ${creator.last_name} vous a assigné une tâche : "${event.title}"`;
+    } else if (event.type === 'memo') {
+      title = `📝 Nouveau mémo`;
+      message = `${creator.first_name} ${creator.last_name} vous a envoyé un mémo : "${event.title}"`;
+    } else if (event.type === 'rdv') {
+      title = `📅 Nouveau rendez-vous`;
+      message = `${creator.first_name} ${creator.last_name} a programmé un rendez-vous : "${event.title}"`;
+    } else if (event.type === 'medical') {
+      title = `🏥 Rendez-vous médical`;
+      message = `${creator.first_name} ${creator.last_name} a programmé un rendez-vous médical : "${event.title}"`;
+    } else if (event.type === 'meeting') {
+      title = `👥 Nouvelle réunion`;
+      message = `${creator.first_name} ${creator.last_name} vous a invité à une réunion : "${event.title}"`;
+    } else {
+      title = `📆 Nouvel événement`;
+      message = `${creator.first_name} ${creator.last_name} a créé un événement : "${event.title}"`;
+    }
+
+    // Ajouter la date
+    const eventDate = new Date(event.start_date);
+    const dateStr = eventDate.toLocaleDateString('fr-FR', { 
+      day: 'numeric', 
+      month: 'long', 
+      year: 'numeric' 
+    });
+    message += ` - ${dateStr}`;
+
+    // Insérer la notification
+    await pool.query(`
+      INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
+      VALUES ($1, $2, $3, $4, $5, false)
+    `, [recipientId, title, message, notificationType, event.id]);
+
+    console.log(`✅ Notification créée pour l'utilisateur ${recipientId} - Événement: ${event.title}`);
+    
+  } catch (error) {
+    console.error('❌ Erreur createEventNotification:', error);
+    // Ne pas bloquer la création de l'événement si la notification échoue
   }
 }
 
