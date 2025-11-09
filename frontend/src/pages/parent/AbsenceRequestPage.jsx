@@ -64,7 +64,7 @@ const AbsenceRequestPage = () => {
 
       // Charger les demandes d'absence existantes
       try {
-        const absenceResponse = await api.get(`/absence-requests/parent/${user.id}`);
+        const absenceResponse = await api.get(`/api/absence-requests/parent/${user.id}`);
         setAbsenceRequests(absenceResponse.data.requests || []);
       } catch (error) {
         console.error('Erreur chargement demandes d\'absence:', error);
@@ -97,7 +97,7 @@ const AbsenceRequestPage = () => {
       console.log('📤 Envoi demande d\'absence:', requestData);
 
       // Envoyer la demande via l'API
-      const response = await api.post('/absence-requests', requestData);
+      const response = await api.post('/api/absence-requests', requestData);
 
       if (response.data.success) {
         toast.success(isRTL ? 'تم إرسال طلب الغياب بنجاح' : 'Demande d\'absence envoyée avec succès');

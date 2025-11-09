@@ -46,7 +46,7 @@ const AttendanceParentPage = () => {
         const year = currentMonth.getFullYear();
         const month = currentMonth.getMonth() + 1;
         
-        const closedDaysResponse = await api.get(`/schedule-settings/closed-days/${year}/${month}`);
+        const closedDaysResponse = await api.get(`/api/schedule-settings/closed-days/${year}/${month}`);
         if (closedDaysResponse.data.success) {
           const closedDaysList = closedDaysResponse.data.closed_days.map(cd => cd.day);
           setClosedDays(closedDaysList);
