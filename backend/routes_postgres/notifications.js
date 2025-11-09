@@ -295,23 +295,7 @@ router.put('/:id/read', async (req, res) => {
   try {
     const { id } = req.params;
     
-    // Vérifier si la notification existe
-    const existingNotification = await db.query('SELECT id, is_read FROM notifications WHERE id = $1', [id]);
-    if (existingNotification.rows.length === 0) {
-      return res.status(404).json({ 
-        success: false,
-        error: 'Notification non trouvée' 
-      });
-    }
-    
-    if (existingNotification.rows[0].is_read) {
-      return res.status(409).json({ 
-        success: false,
-        error: 'Notification déjà marquée comme lue' 
-      });
-    }
-    
-    // Marquer comme lue
+    // Marquer comme lue (idempotent - pas d'erreur si déjà lue)
     const result = await db.query(
       `UPDATE notifications 
        SET is_read = TRUE
@@ -319,6 +303,13 @@ router.put('/:id/read', async (req, res) => {
        RETURNING id, user_id, title, message, type, is_read, created_at`,
       [id]
     );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'Notification non trouvée' 
+      });
+    }
     
     res.json({
       success: true,

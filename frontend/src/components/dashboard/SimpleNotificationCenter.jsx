@@ -25,10 +25,10 @@ const SimpleNotificationCenter = ({ isOpen, onClose }) => {
   const loadNotifications = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/api/notifications');
+      const response = await api.get('/api/notifications?is_read=false');
       
       if (response.data && response.data.success) {
-        // Le filtrage est maintenant fait côté backend
+        // Afficher uniquement les notifications non lues
         setNotifications(response.data.notifications || []);
       }
     } catch (error) {
@@ -67,12 +67,9 @@ const SimpleNotificationCenter = ({ isOpen, onClose }) => {
       const response = await api.put(`/api/notifications/${notificationId}/read`);
       
       if (response.data.success) {
+        // Retirer la notification de la liste (puisqu'elle est maintenant lue)
         setNotifications(prev => 
-          prev.map(notif => 
-            notif.id === notificationId 
-              ? { ...notif, is_read: true }
-              : notif
-          )
+          prev.filter(notif => notif.id !== notificationId)
         );
         if (showToast) {
           toast.success(isRTL ? 'تم تحديد الإشعار كمقروء' : 'Notification marquée comme lue');
