@@ -369,14 +369,22 @@ async function updateEventStatus(eventId, status, userId) {
       `, [eventId, userId, currentEvent.status, status]);
     }
     
-    await client.query('COMMIT');
-    
     const updatedEvent = result.rows[0];
     
-    // Créer une notification si le statut passe à "completed" et qu'il y a un créateur différent
-    if (status === 'completed' && updatedEvent.created_by && updatedEvent.created_by !== userId) {
-      await createStatusChangeNotification(updatedEvent, updatedEvent.created_by, userId, 'completed');
+    // Créer une notification pour le changement de statut (avant COMMIT pour rollback si erreur)
+    if (updatedEvent.created_by && updatedEvent.created_by !== userId) {
+      // Notification pour tous les changements de statut importants
+      if (status === 'completed' || status === 'in_progress' || status === 'cancelled') {
+        console.log(`📬 Création notification changement statut: ${currentEvent.status} → ${status}`);
+        console.log(`   Destinataire: ${updatedEvent.created_by}, Expéditeur: ${userId}`);
+        
+        await createStatusChangeNotification(updatedEvent, updatedEvent.created_by, userId, status);
+      }
+    } else {
+      console.log(`⏭️ Pas de notification: created_by=${updatedEvent.created_by}, userId=${userId}`);
     }
+    
+    await client.query('COMMIT');
     
     return { success: true, event: updatedEvent };
     
