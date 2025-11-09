@@ -146,8 +146,13 @@ app.use('/api/user', userChildrenRoutes);
 app.use('/api/absences', absencesRoutes);
 
 // Routes des tâches
-const tasksRoutes = require('./routes_postgres/tasks');
-app.use('/api/tasks', tasksRoutes);
+try {
+  const tasksRoutes = require('./routes_postgres/tasks');
+  app.use('/api/tasks', tasksRoutes);
+  console.log('✅ Routes tasks chargées avec succès');
+} catch (error) {
+  console.error('❌ Erreur chargement routes tasks:', error.message);
+}
 
 // Route par défaut
 app.get('/', (req, res) => {
