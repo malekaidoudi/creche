@@ -129,7 +129,7 @@ Commit: 1119d27
 - [x] Tables définies
 - [x] Vues créées
 - [x] Triggers configurés
-- [ ] Migration testée
+- [x] Migration testée
 
 ### Phase 2: Backend Core (2 jours)
 - [ ] Routes events
