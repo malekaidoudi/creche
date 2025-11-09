@@ -22,8 +22,8 @@ async function createEvent(eventData, userId) {
         is_recurring, recurrence_rule, status, priority,
         created_by, assigned_to, child_id,
         reminder_enabled, reminder_offset,
-        color, location, attendees, metadata
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+        color, attendees, metadata
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
       RETURNING *
     `, [
       eventData.title,
@@ -42,7 +42,6 @@ async function createEvent(eventData, userId) {
       eventData.reminder_enabled || false,
       eventData.reminder_offset || null,
       eventData.color || getDefaultColor(eventData.type),
-      eventData.location || null,
       eventData.attendees ? JSON.stringify(eventData.attendees) : '[]',
       eventData.metadata ? JSON.stringify(eventData.metadata) : '{}'
     ]);
@@ -270,7 +269,7 @@ async function updateEvent(eventId, updates, userId) {
     const allowedFields = [
       'title', 'description', 'type', 'start_date', 'end_date', 'all_day',
       'status', 'priority', 'assigned_to', 'child_id',
-      'reminder_enabled', 'reminder_offset', 'color', 'location'
+      'reminder_enabled', 'reminder_offset', 'color'
     ];
     
     for (const field of allowedFields) {

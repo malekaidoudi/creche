@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Save, Calendar, Clock, User, MapPin, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Save, Calendar, Clock, User, AlertCircle } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../hooks/useAuth';
 import api from '../../services/api';
@@ -43,7 +43,6 @@ const EventForm = () => {
     end_date: '',
     end_time: '',
     all_day: false,
-    location: '',
     assigned_to: '',
     child_id: '',
     color: '#3B82F6',
@@ -111,7 +110,6 @@ const EventForm = () => {
           end_date: endDate ? endDate.toISOString().split('T')[0] : '',
           end_time: endDate && !event.all_day ? endDate.toTimeString().slice(0, 5) : '',
           all_day: event.all_day || false,
-          location: event.location || '',
           assigned_to: event.assigned_to || '',
           child_id: event.child_id || '',
           color: event.color || '#3B82F6',
@@ -187,7 +185,6 @@ const EventForm = () => {
         start_date: startDateTime,
         end_date: endDateTime,
         all_day: formData.all_day,
-        location: formData.location,
         assigned_to: formData.assigned_to || null,
         child_id: formData.child_id || null,
         color: formData.color,
@@ -407,21 +404,8 @@ const EventForm = () => {
             </div>
           </div>
 
-          {/* Location, Assigned To, Child */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                {isRTL ? 'الموقع' : 'Lieu'}
-              </label>
-              <input
-                type="text"
-                value={formData.location}
-                onChange={(e) => handleChange('location', e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-                placeholder={isRTL ? 'أدخل الموقع' : 'Entrez le lieu'}
-              />
-            </div>
-
+          {/* Assigned To, Child */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 {isRTL ? 'مسند إلى' : 'Assigné à'}
