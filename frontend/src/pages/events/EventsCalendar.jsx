@@ -217,7 +217,7 @@ const EventsCalendar = () => {
           <FullCalendar
             ref={calendarRef}
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-            initialView={view}
+            initialView="dayGridMonth"
             locale={frLocale}
             direction={isRTL ? 'rtl' : 'ltr'}
             headerToolbar={{
