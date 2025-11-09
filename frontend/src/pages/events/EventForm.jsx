@@ -65,22 +65,28 @@ const EventForm = () => {
   const loadUsers = async () => {
     try {
       const response = await api.get('/api/users');
-      if (response.data.success) {
+      if (response.data.success && response.data.users) {
         setUsers(response.data.users.filter(u => u.role !== 'parent'));
+      } else {
+        setUsers([]);
       }
     } catch (error) {
       console.error('Erreur chargement utilisateurs:', error);
+      setUsers([]);
     }
   };
 
   const loadChildren = async () => {
     try {
       const response = await api.get('/api/children');
-      if (response.data.success) {
+      if (response.data.success && response.data.children) {
         setChildren(response.data.children);
+      } else {
+        setChildren([]);
       }
     } catch (error) {
       console.error('Erreur chargement enfants:', error);
+      setChildren([]);
     }
   };
 
@@ -426,7 +432,7 @@ const EventForm = () => {
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">{isRTL ? 'اختر مستخدم' : 'Sélectionner un utilisateur'}</option>
-                {users.map(u => (
+                {users && users.map(u => (
                   <option key={u.id} value={u.id}>
                     {u.first_name} {u.last_name}
                   </option>
@@ -444,7 +450,7 @@ const EventForm = () => {
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">{isRTL ? 'اختر طفل' : 'Sélectionner un enfant'}</option>
-                {children.map(c => (
+                {children && children.map(c => (
                   <option key={c.id} value={c.id}>
                     {c.first_name} {c.last_name}
                   </option>
