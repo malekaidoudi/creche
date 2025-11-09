@@ -3,14 +3,14 @@
  * Génération automatique des événements d'anniversaire
  */
 
-const db = require('../config/db_postgres');
+const { pool } = require('../config/db_postgres');
 const { sendBirthdayReminder } = require('./eventEmailService');
 
 /**
  * Générer les événements d'anniversaire pour tous les enfants
  */
 async function generateBirthdayEvents() {
-  const client = await db.connect();
+  const client = await pool.connect();
   
   try {
     console.log('🎂 Génération des événements d\'anniversaire...');
@@ -21,7 +21,7 @@ async function generateBirthdayEvents() {
     const childrenResult = await client.query(`
       SELECT id, first_name, last_name, birth_date
       FROM children
-      WHERE deleted_at IS NULL
+      WHERE is_active = true
     `);
     
     const currentYear = new Date().getFullYear();
@@ -116,7 +116,7 @@ async function checkBirthdayEventExists(childId, year) {
     const startOfYear = new Date(year, 0, 1);
     const endOfYear = new Date(year, 11, 31);
     
-    const result = await db.query(`
+    const result = await pool.query(`
       SELECT id FROM events
       WHERE type = 'birthday'
         AND child_id = $1
@@ -142,7 +142,7 @@ async function getBirthdaysThisMonth() {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     
-    const result = await db.query(`
+    const result = await pool.query(`
       SELECT 
         e.*,
         c.first_name, c.last_name, c.birth_date, c.photo_url
@@ -172,7 +172,7 @@ async function getUpcomingBirthdays(days = 30) {
     const futureDate = new Date();
     futureDate.setDate(futureDate.getDate() + days);
     
-    const result = await db.query(`
+    const result = await pool.query(`
       SELECT 
         e.*,
         c.first_name, c.last_name, c.birth_date, c.photo_url
@@ -201,7 +201,7 @@ async function sendBirthdayReminders() {
     console.log('🎂 Envoi des rappels d\'anniversaire...');
     
     // Récupérer les rappels à envoyer
-    const result = await db.query(`
+    const result = await pool.query(`
       SELECT 
         er.*,
         e.*,
@@ -220,7 +220,7 @@ async function sendBirthdayReminders() {
     
     for (const reminder of result.rows) {
       // Récupérer tous les staff
-      const staffResult = await db.query(`
+      const staffResult = await pool.query(`
         SELECT id, email, first_name, last_name
         FROM users
         WHERE role IN ('admin', 'staff')
@@ -242,7 +242,7 @@ async function sendBirthdayReminders() {
         
         if (emailResult.success) {
           // Marquer comme envoyé
-          await db.query(`
+          await pool.query(`
             UPDATE event_reminders
             SET sent = true, sent_at = NOW()
             WHERE id = $1
