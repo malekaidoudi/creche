@@ -66,6 +66,7 @@ const userChildrenRoutes = require('./routes_postgres/userChildren');
 const absencesRoutes = require('./routes_postgres/absences');
 const holidaysRoutes = require('./routes_postgres/holidays');
 const scheduleSettingsRoutes = require('./routes_postgres/schedule-settings');
+const eventsRoutes = require('./routes_postgres/events');
 console.log('✅ Routes chargées\n');
 
 const app = express();
@@ -281,6 +282,10 @@ try {
   console.error('  ❌ Erreur chargement /api/tasks:', error.message);
 }
 
+// Routes des événements (v2.2.0)
+app.use('/api/events', eventsRoutes);
+console.log('  ✓ /api/events (système événements) 🆕');
+
 console.log('\n✅ Toutes les routes montées avec succès\n');
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -386,9 +391,18 @@ app.listen(PORT, () => {
   console.log(`🌍 CORS:            Flexible + Sécurisé ✅`);
   console.log(`📝 Logging:         Morgan ✅`);
   console.log(`✨ Tâches:          Système v2.1.0 ✅`);
+  console.log(`📅 Événements:      Système v2.2.0 ✅`);
   console.log('═══════════════════════════════════════════════════════════════');
   console.log('🎯 Serveur prêt à recevoir des requêtes !');
   console.log('═══════════════════════════════════════════════════════════════\n');
+  
+  // Démarrer les jobs cron pour les événements
+  try {
+    const { startAllJobs } = require('./jobs/eventJobs');
+    startAllJobs();
+  } catch (error) {
+    console.error('❌ Erreur démarrage jobs événements:', error.message);
+  }
 });
 
 // Gestion propre de l'arrêt

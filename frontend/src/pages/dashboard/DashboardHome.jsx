@@ -21,6 +21,9 @@ import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import HolidaysList from '../../components/HolidaysList';
 import TodayTasks from '../../components/dashboard/TodayTasks';
 import TodayAbsences from '../../components/dashboard/TodayAbsences';
+import UpcomingEventsWidget from '../../components/widgets/UpcomingEventsWidget';
+import BirthdaysWidget from '../../components/widgets/BirthdaysWidget';
+import OverdueTasksWidget from '../../components/widgets/OverdueTasksWidget';
 import api from '../../services/api';
 
 const DashboardHome = () => {
@@ -286,6 +289,33 @@ const DashboardHome = () => {
           className="mb-8"
         >
           <TodayTasks />
+        </motion.div>
+      )}
+
+      {/* Widgets Événements (staff/admin uniquement) */}
+      {(isStaff() || isAdmin()) && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+          className="mb-8"
+        >
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <UpcomingEventsWidget days={7} limit={5} />
+            <BirthdaysWidget />
+          </div>
+        </motion.div>
+      )}
+
+      {/* Tâches en retard (staff/admin uniquement) */}
+      {(isStaff() || isAdmin()) && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.5 }}
+          className="mb-8"
+        >
+          <OverdueTasksWidget />
         </motion.div>
       )}
 
