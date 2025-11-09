@@ -19,17 +19,21 @@ const TodayTasksWidget = () => {
       setLoading(true);
       const today = new Date().toISOString().split('T')[0];
       
+      // Charger les tâches ET les mémos du jour
       const response = await api.get('/api/events', {
         params: {
-          type: 'task',
           start_date: today,
           end_date: today,
-          limit: 10
+          limit: 20
         }
       });
 
       if (response.data.success) {
-        setTasks(response.data.events || []);
+        // Filtrer pour ne garder que les tâches et mémos
+        const filtered = (response.data.events || []).filter(
+          event => event.type === 'task' || event.type === 'memo'
+        );
+        setTasks(filtered);
       }
     } catch (error) {
       console.error('Erreur chargement tâches du jour:', error);

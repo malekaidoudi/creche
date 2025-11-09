@@ -399,9 +399,20 @@ async function addComment(eventId, userId, comment) {
 async function getUpcomingEvents(userId, days = 7) {
   try {
     const result = await pool.query(`
-      SELECT * FROM upcoming_events
-      WHERE start_date <= NOW() + INTERVAL '${days} days'
-      AND (assigned_to = $1 OR created_by = $1)
+      SELECT 
+        e.*,
+        u1.first_name || ' ' || u1.last_name as created_by_name,
+        u2.first_name || ' ' || u2.last_name as assigned_to_name,
+        c.first_name || ' ' || c.last_name as child_name
+      FROM events e
+      LEFT JOIN users u1 ON e.created_by = u1.id
+      LEFT JOIN users u2 ON e.assigned_to = u2.id
+      LEFT JOIN children c ON e.child_id = c.id
+      WHERE e.deleted_at IS NULL
+        AND e.start_date >= NOW()
+        AND e.start_date <= NOW() + INTERVAL '${days} days'
+        AND (e.assigned_to = $1 OR e.created_by = $1)
+      ORDER BY e.start_date ASC
       LIMIT 10
     `, [userId]);
     
@@ -419,8 +430,21 @@ async function getUpcomingEvents(userId, days = 7) {
 async function getOverdueEvents(userId) {
   try {
     const result = await pool.query(`
-      SELECT * FROM overdue_events
-      WHERE assigned_to = $1 OR created_by = $1
+      SELECT 
+        e.*,
+        u1.first_name || ' ' || u1.last_name as created_by_name,
+        u2.first_name || ' ' || u2.last_name as assigned_to_name,
+        c.first_name || ' ' || c.last_name as child_name
+      FROM events e
+      LEFT JOIN users u1 ON e.created_by = u1.id
+      LEFT JOIN users u2 ON e.assigned_to = u2.id
+      LEFT JOIN children c ON e.child_id = c.id
+      WHERE e.deleted_at IS NULL
+        AND e.type = 'task'
+        AND e.status != 'completed'
+        AND e.start_date < NOW()
+        AND (e.assigned_to = $1 OR e.created_by = $1)
+      ORDER BY e.start_date ASC
     `, [userId]);
     
     return { success: true, events: result.rows };
@@ -437,8 +461,19 @@ async function getOverdueEvents(userId) {
 async function getTasksKanban(userId) {
   try {
     const result = await pool.query(`
-      SELECT * FROM tasks_kanban
-      WHERE assigned_to = $1 OR created_by = $1
+      SELECT 
+        e.*,
+        u1.first_name || ' ' || u1.last_name as created_by_name,
+        u2.first_name || ' ' || u2.last_name as assigned_to_name,
+        c.first_name || ' ' || c.last_name as child_name
+      FROM events e
+      LEFT JOIN users u1 ON e.created_by = u1.id
+      LEFT JOIN users u2 ON e.assigned_to = u2.id
+      LEFT JOIN children c ON e.child_id = c.id
+      WHERE e.deleted_at IS NULL
+        AND e.type = 'task'
+        AND (e.assigned_to = $1 OR e.created_by = $1)
+      ORDER BY e.start_date ASC
     `, [userId]);
     
     // Grouper par statut
