@@ -82,6 +82,29 @@ const DashboardSidebar = ({ isOpen, onClose }) => {
       ]
     },
     {
+      key: 'events',
+      title: isRTL ? 'الأحداث' : 'Événements',
+      icon: Calendar,
+      roles: ['admin', 'staff'],
+      submenu: [
+        {
+          title: isRTL ? 'التقويم' : 'Calendrier',
+          path: '/dashboard/events/calendar',
+          roles: ['admin', 'staff']
+        },
+        {
+          title: isRTL ? 'قائمة الأحداث' : 'Liste des événements',
+          path: '/dashboard/events/list',
+          roles: ['admin', 'staff']
+        },
+        {
+          title: isRTL ? 'إضافة حدث' : 'Nouvel événement',
+          path: '/dashboard/events/new',
+          roles: ['admin', 'staff']
+        }
+      ]
+    },
+    {
       key: 'attendance',
       title: isRTL ? 'الحضور' : 'Présences',
       icon: Clock,

@@ -29,19 +29,15 @@ const EventsCalendar = () => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedTypes, setSelectedTypes] = useState([]);
-  const [view, setView] = useState('dayGridMonth');
-  const [dateRange, setDateRange] = useState({ start: null, end: null });
 
   const loadEvents = useCallback(async () => {
-    if (!dateRange.start || !dateRange.end) {
-      setLoading(false);
-      return;
-    }
     try {
       setLoading(true);
       
-      const start = dateRange.start;
-      const end = dateRange.end;
+      // Charger tous les événements des 12 prochains mois
+      const now = new Date();
+      const start = new Date(now.getFullYear(), now.getMonth() - 6, 1);
+      const end = new Date(now.getFullYear(), now.getMonth() + 12, 0);
       
       const params = new URLSearchParams({
         start: start.toISOString().split('T')[0],
@@ -82,10 +78,11 @@ const EventsCalendar = () => {
     } catch (error) {
       console.error('Erreur chargement événements:', error);
       toast.error(isRTL ? 'خطأ في تحميل الأحداث' : 'Erreur lors du chargement');
+      setEvents([]);
     } finally {
       setLoading(false);
     }
-  }, [dateRange, selectedTypes, isRTL]);
+  }, [selectedTypes, isRTL]);
 
   useEffect(() => {
     loadEvents();
@@ -102,25 +99,6 @@ const EventsCalendar = () => {
     });
   };
 
-  const handleDatesSet = (dateInfo) => {
-    // Mettre à jour la plage de dates quand la vue change
-    // Éviter les mises à jour inutiles qui créent une boucle
-    setDateRange(prev => {
-      const newStart = dateInfo.start.toISOString();
-      const newEnd = dateInfo.end.toISOString();
-      const prevStart = prev.start?.toISOString();
-      const prevEnd = prev.end?.toISOString();
-      
-      if (newStart === prevStart && newEnd === prevEnd) {
-        return prev;
-      }
-      
-      return {
-        start: dateInfo.start,
-        end: dateInfo.end
-      };
-    });
-  };
 
   const toggleTypeFilter = (type) => {
     setSelectedTypes(prev => 
@@ -256,7 +234,6 @@ const EventsCalendar = () => {
             events={events}
             eventClick={handleEventClick}
             dateClick={handleDateClick}
-            datesSet={handleDatesSet}
             height="auto"
             editable={false}
             selectable={true}
