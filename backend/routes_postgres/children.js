@@ -3,47 +3,6 @@ const { body, validationResult } = require('express-validator');
 const router = express.Router();
 const { pool } = require('../config/db_postgres');
 
-// GET /api/children - Liste de tous les enfants actifs
-router.get('/', async (req, res) => {
-  try {
-    const sql = `
-      SELECT 
-        c.id, 
-        c.first_name, 
-        c.last_name, 
-        c.birth_date, 
-        c.gender, 
-        c.medical_info, 
-        c.emergency_contact_name, 
-        c.emergency_contact_phone, 
-        c.photo_url, 
-        c.is_active, 
-        c.created_at,
-        c.parent_id,
-        EXTRACT(YEAR FROM AGE(c.birth_date)) as age,
-        u.first_name || ' ' || u.last_name as parent_name,
-        u.email as parent_email
-      FROM children c
-      LEFT JOIN users u ON c.parent_id = u.id
-      WHERE c.is_active = true
-      ORDER BY c.first_name, c.last_name
-    `;
-    
-    const result = await pool.query(sql);
-    
-    res.json({
-      success: true,
-      children: result.rows
-    });
-  } catch (error) {
-    console.error('Erreur récupération enfants:', error);
-    res.status(500).json({ 
-      success: false,
-      error: 'Erreur lors de la récupération des enfants' 
-    });
-  }
-});
-
 // GET /api/children/available - Enfants disponibles (sans parent)
 router.get('/available', async (req, res) => {
   try {
