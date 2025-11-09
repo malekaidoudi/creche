@@ -49,7 +49,7 @@ const SimpleNotificationCenter = ({ isOpen, onClose }) => {
     try {
       setProcessingId(notificationId);
       
-      const response = await api.put(`/notifications/${notificationId}/read`);
+      const response = await api.put(`/api/notifications/${notificationId}/read`);
       
       if (response.data.success) {
         setNotifications(prev => 
@@ -73,7 +73,7 @@ const SimpleNotificationCenter = ({ isOpen, onClose }) => {
     try {
       setProcessingId(notificationId);
       
-      const response = await api.put(`/absence-requests/${absenceRequestId}/acknowledge`, {
+      const response = await api.put(`/api/absence-requests/${absenceRequestId}/acknowledge`, {
         admin_notes: 'Demande prise en compte par l\'administration'
       });
       
