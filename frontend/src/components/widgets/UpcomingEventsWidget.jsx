@@ -38,10 +38,13 @@ const UpcomingEventsWidget = ({ days = 7, limit = 5 }) => {
       const response = await api.get(`/api/events/views/upcoming?days=${days}&limit=${limit}`);
       
       if (response.data.success) {
-        setEvents(response.data.events);
+        setEvents(response.data.events || []);
+      } else {
+        setEvents([]);
       }
     } catch (error) {
       console.error('Erreur chargement événements à venir:', error);
+      setEvents([]);
     } finally {
       setLoading(false);
     }

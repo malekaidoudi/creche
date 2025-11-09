@@ -22,10 +22,13 @@ const OverdueTasksWidget = () => {
       const response = await api.get('/api/events/views/overdue');
       
       if (response.data.success) {
-        setTasks(response.data.events);
+        setTasks(response.data.events || []);
+      } else {
+        setTasks([]);
       }
     } catch (error) {
       console.error('Erreur chargement tâches en retard:', error);
+      setTasks([]);
     } finally {
       setLoading(false);
     }

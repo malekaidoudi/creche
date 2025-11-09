@@ -25,7 +25,7 @@ const BirthdaysWidget = () => {
         const currentMonth = now.getMonth();
         const currentYear = now.getFullYear();
         
-        const thisMonthBirthdays = response.data.events.filter(event => {
+        const thisMonthBirthdays = (response.data.events || []).filter(event => {
           const eventDate = new Date(event.start_date);
           return eventDate.getMonth() === currentMonth && 
                  eventDate.getFullYear() === currentYear &&
@@ -33,9 +33,12 @@ const BirthdaysWidget = () => {
         });
         
         setBirthdays(thisMonthBirthdays);
+      } else {
+        setBirthdays([]);
       }
     } catch (error) {
       console.error('Erreur chargement anniversaires:', error);
+      setBirthdays([]);
     } finally {
       setLoading(false);
     }
