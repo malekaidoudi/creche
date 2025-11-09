@@ -65,11 +65,12 @@ app.use(helmet({
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000, // limite chaque IP à 1000 requêtes par windowMs
-  message: 'Trop de requêtes depuis cette IP, veuillez réessayer plus tard.',
+  windowMs: 15 * 60 * 1000,
+  max: 1000,
   standardHeaders: true,
   legacyHeaders: false,
+  trustProxy: true,
+  validate: { trustProxy: false }
 });
 app.use(limiter);
 
@@ -93,7 +94,9 @@ const corsOptions = {
       'https://malekaidoudi.github.io',
       'https://creche-mima-elghalia.netlify.app',
       'https://mimaelghalia.tn',
-      'https://www.mimaelghalia.tn'
+      'https://www.mimaelghalia.tn',
+      'https://www.mima-elghalia.com',
+      'https://mima-elghalia.com'
     ];
     
     if (!origin || allowedOrigins.includes(origin)) {
