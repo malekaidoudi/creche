@@ -24,6 +24,7 @@ import AbsenceRequestPage from './pages/parent/AbsenceRequestPage'
 
 // Pages staff
 import AbsenceManagementPage from './pages/staff/AbsenceManagementPage'
+import StaffMemoForm from './pages/staff/StaffMemoForm'
 
 // Pages événements
 import EventsCalendar from './pages/events/EventsCalendar'
@@ -143,6 +144,9 @@ function App() {
         <Route path="events/new" element={<EventForm />} />
         <Route path="events/:id" element={<EventDetails />} />
         <Route path="events/:id/edit" element={<EventForm />} />
+        
+        {/* Route staff pour envoyer mémo/tâche */}
+        <Route path="staff/send-message" element={<StaffMemoForm />} />
         
         {/* Pages placeholder pour fonctionnalités non implémentées */}
         <Route path="parents" element={<ParentsPage />} />

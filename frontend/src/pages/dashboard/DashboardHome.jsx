@@ -12,7 +12,8 @@ import {
   Calendar,
   UserCheck,
   UserX,
-  FileText
+  FileText,
+  MessageSquare
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -287,6 +288,20 @@ const DashboardHome = () => {
           transition={{ duration: 0.6, delay: 0.3 }}
           className="mb-8"
         >
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+              {isRTL ? 'مهام اليوم' : 'Tâches d\'aujourd\'hui'}
+            </h2>
+            {isStaff() && !isAdmin() && (
+              <Link
+                to="/dashboard/staff/send-message"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium flex items-center gap-2 transition-colors"
+              >
+                <MessageSquare className="w-4 h-4" />
+                {isRTL ? 'إرسال رسالة' : 'Envoyer un message'}
+              </Link>
+            )}
+          </div>
           <TodayTasksWidget />
         </motion.div>
       )}
