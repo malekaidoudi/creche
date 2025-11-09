@@ -12,15 +12,19 @@ import {
   Calendar,
   UserCheck,
   UserX,
-  FileText
+  FileText,
+  MessageSquare
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import HolidaysList from '../../components/HolidaysList';
-import TodayTasks from '../../components/dashboard/TodayTasks';
 import TodayAbsences from '../../components/dashboard/TodayAbsences';
+import UpcomingEventsWidget from '../../components/widgets/UpcomingEventsWidget';
+import BirthdaysWidget from '../../components/widgets/BirthdaysWidget';
+import TodayTasksWidget from '../../components/widgets/TodayTasksWidget';
+import StaffMessagesWidget from '../../components/widgets/StaffMessagesWidget';
 import api from '../../services/api';
 
 const DashboardHome = () => {
@@ -285,7 +289,48 @@ const DashboardHome = () => {
           transition={{ duration: 0.6, delay: 0.3 }}
           className="mb-8"
         >
-          <TodayTasks />
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+              {isRTL ? 'مهام اليوم' : 'Tâches d\'aujourd\'hui'}
+            </h2>
+            {isStaff() && !isAdmin() && (
+              <Link
+                to="/dashboard/staff/send-message"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium flex items-center gap-2 transition-colors"
+              >
+                <MessageSquare className="w-4 h-4" />
+                {isRTL ? 'إرسال رسالة' : 'Envoyer un message'}
+              </Link>
+            )}
+          </div>
+          <TodayTasksWidget />
+        </motion.div>
+      )}
+
+      {/* Widgets Événements (staff/admin uniquement) */}
+      {(isStaff() || isAdmin()) && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+          className="mb-8"
+        >
+          {isAdmin() ? (
+            // Layout Admin: Événements à venir + Messages + Anniversaires
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="lg:row-span-2">
+                <UpcomingEventsWidget days={7} limit={5} />
+              </div>
+              <StaffMessagesWidget />
+              <BirthdaysWidget />
+            </div>
+          ) : (
+            // Layout Staff: 1 ligne simple
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <UpcomingEventsWidget days={7} limit={5} />
+              <BirthdaysWidget />
+            </div>
+          )}
         </motion.div>
       )}
 
