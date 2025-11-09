@@ -35,6 +35,17 @@ const TodayTasksWidget = () => {
           // Seulement tâches et mémos
           if (event.type !== 'task' && event.type !== 'memo') return false;
           
+          // Exclure les messages du staff (ils vont dans le widget Messages Staff)
+          if (event.metadata && typeof event.metadata === 'object') {
+            if (event.metadata.from_staff === true) return false;
+          }
+          if (event.metadata && typeof event.metadata === 'string') {
+            try {
+              const meta = JSON.parse(event.metadata);
+              if (meta.from_staff === true) return false;
+            } catch (e) {}
+          }
+          
           // Exclure les complétés et annulés
           if (event.status === 'completed' || event.status === 'cancelled') return false;
           
