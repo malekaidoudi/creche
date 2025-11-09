@@ -90,7 +90,7 @@ CREATE TABLE IF NOT EXISTS event_reminders (
   -- Configuration du rappel
   offset_minutes INTEGER NOT NULL,
   notification_type VARCHAR(50) NOT NULL CHECK (notification_type IN (
-    'email', 'sms', 'push', 'in_app'
+    'email', 'in_app'
   )),
   
   -- Destinataire (optionnel, sinon utilise assigned_to de l'événement)
