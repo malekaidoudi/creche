@@ -74,12 +74,17 @@ async function createEvent(eventData, userId) {
       VALUES ($1, $2, 'created')
     `, [event.id, userId]);
     
-    await client.query('COMMIT');
-    
-    // Créer une notification pour la personne assignée
+    // Créer une notification pour la personne assignée (AVANT COMMIT)
     if (eventData.assigned_to && eventData.assigned_to !== userId) {
+      console.log(`📬 Création notification événement: ${event.title}`);
+      console.log(`   Type: ${event.type}, Destinataire: ${eventData.assigned_to}, Créateur: ${userId}`);
+      
       await createEventNotification(event, eventData.assigned_to, userId);
+    } else {
+      console.log(`⏭️ Pas de notification création: assigned_to=${eventData.assigned_to}, userId=${userId}`);
     }
+    
+    await client.query('COMMIT');
     
     // Envoyer email d'assignation si assigné à quelqu'un d'autre
     if (eventData.assigned_to && eventData.assigned_to !== userId && eventData.type === 'task') {
