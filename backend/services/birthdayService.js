@@ -19,32 +19,42 @@ async function generateBirthdayEvents() {
     
     // Récupérer tous les enfants actifs
     const childrenResult = await client.query(`
-      SELECT id, first_name, last_name, birth_date
+      SELECT id, first_name, last_name, birth_date, 'child' as type
       FROM children
-      WHERE is_active = true
+      WHERE is_active = true AND birth_date IS NOT NULL
     `);
+    
+    // Récupérer tous les utilisateurs staff/admin avec date de naissance
+    const staffResult = await client.query(`
+      SELECT id, first_name, last_name, birth_date, 'staff' as type
+      FROM users
+      WHERE role IN ('admin', 'staff') AND birth_date IS NOT NULL
+    `);
+    
+    // Combiner enfants et staff
+    const allPeople = [...childrenResult.rows, ...staffResult.rows];
     
     const currentYear = new Date().getFullYear();
     const nextYear = currentYear + 1;
     let created = 0;
     
-    for (const child of childrenResult.rows) {
+    for (const person of allPeople) {
       // Créer l'événement pour cette année si pas encore passé
-      const thisYearBirthday = new Date(child.birth_date);
+      const thisYearBirthday = new Date(person.birth_date);
       thisYearBirthday.setFullYear(currentYear);
       
       if (thisYearBirthday > new Date()) {
-        const exists = await checkBirthdayEventExists(child.id, currentYear);
+        const exists = await checkBirthdayEventExists(person.id, currentYear, person.type);
         if (!exists) {
-          await createBirthdayEvent(client, child, currentYear);
+          await createBirthdayEvent(client, person, currentYear, person.type);
           created++;
         }
       }
       
       // Créer l'événement pour l'année prochaine
-      const existsNextYear = await checkBirthdayEventExists(child.id, nextYear);
+      const existsNextYear = await checkBirthdayEventExists(person.id, nextYear, person.type);
       if (!existsNextYear) {
-        await createBirthdayEvent(client, child, nextYear);
+        await createBirthdayEvent(client, person, nextYear, person.type);
         created++;
       }
     }
@@ -64,29 +74,34 @@ async function generateBirthdayEvents() {
 }
 
 /**
- * Créer un événement d'anniversaire pour un enfant
+ * Créer un événement d'anniversaire pour un enfant ou staff
  */
-async function createBirthdayEvent(client, child, year) {
-  const birthDate = new Date(child.birth_date);
+async function createBirthdayEvent(client, person, year, type = 'child') {
+  const birthDate = new Date(person.birth_date);
   const birthdayThisYear = new Date(birthDate);
   birthdayThisYear.setFullYear(year);
   birthdayThisYear.setHours(0, 0, 0, 0);
   
   const age = year - birthDate.getFullYear();
+  const emoji = type === 'child' ? '🎂' : '🎉';
+  const color = type === 'child' ? '#EC4899' : '#8B5CF6';
   
   // Créer l'événement
   const eventResult = await client.query(`
     INSERT INTO events (
       title, description, type, start_date, all_day,
-      is_recurring, status, priority, child_id,
-      reminder_enabled, color, created_by
-    ) VALUES ($1, $2, 'birthday', $3, true, true, 'pending', 'medium', $4, true, '#EC4899', 1)
+      is_recurring, status, priority, child_id, assigned_to,
+      reminder_enabled, color, created_by, metadata
+    ) VALUES ($1, $2, 'birthday', $3, true, true, 'pending', 'medium', $4, $5, true, $6, 1, $7)
     RETURNING *
   `, [
-    `🎂 Anniversaire de ${child.first_name}`,
-    `${child.first_name} ${child.last_name} aura ${age} ans`,
+    `${emoji} Anniversaire de ${person.first_name}`,
+    `${person.first_name} ${person.last_name} aura ${age} ans`,
     birthdayThisYear,
-    child.id
+    type === 'child' ? person.id : null,
+    type === 'staff' ? person.id : null,
+    color,
+    JSON.stringify({ birthday_type: type })
   ]);
   
   const event = eventResult.rows[0];
@@ -111,19 +126,21 @@ async function createBirthdayEvent(client, child, year) {
 /**
  * Vérifier si un événement d'anniversaire existe déjà
  */
-async function checkBirthdayEventExists(childId, year) {
+async function checkBirthdayEventExists(personId, year, type = 'child') {
   try {
     const startOfYear = new Date(year, 0, 1);
     const endOfYear = new Date(year, 11, 31);
     
+    const field = type === 'child' ? 'child_id' : 'assigned_to';
+    
     const result = await pool.query(`
       SELECT id FROM events
       WHERE type = 'birthday'
-        AND child_id = $1
+        AND ${field} = $1
         AND start_date >= $2
         AND start_date <= $3
         AND deleted_at IS NULL
-    `, [childId, startOfYear, endOfYear]);
+    `, [personId, startOfYear, endOfYear]);
     
     return result.rows.length > 0;
     

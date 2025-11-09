@@ -3,14 +3,14 @@
  * Logique métier pour les événements, tâches, RDV, anniversaires, etc.
  */
 
-const db = require('../config/db_postgres');
+const { pool } = require('../config/db_postgres');
 const { sendEventReminder, sendEventAssigned, sendEventOverdue } = require('./eventEmailService');
 
 /**
  * Créer un événement
  */
 async function createEvent(eventData, userId) {
-  const client = await db.connect();
+  const client = await pool.connect();
   
   try {
     await client.query('BEGIN');
@@ -179,7 +179,7 @@ async function getEvents(filters = {}) {
       params.push(filters.offset);
     }
     
-    const result = await db.query(query, params);
+    const result = await pool.query(query, params);
     
     return { success: true, events: result.rows };
     
@@ -194,7 +194,7 @@ async function getEvents(filters = {}) {
  */
 async function getEventById(eventId) {
   try {
-    const result = await db.query(`
+    const result = await pool.query(`
       SELECT 
         e.*,
         u1.first_name || ' ' || u1.last_name as created_by_name,
@@ -212,7 +212,7 @@ async function getEventById(eventId) {
     }
     
     // Récupérer les commentaires
-    const commentsResult = await db.query(`
+    const commentsResult = await pool.query(`
       SELECT 
         ec.*,
         u.first_name || ' ' || u.last_name as user_name
@@ -223,7 +223,7 @@ async function getEventById(eventId) {
     `, [eventId]);
     
     // Récupérer les rappels
-    const remindersResult = await db.query(`
+    const remindersResult = await pool.query(`
       SELECT * FROM event_reminders
       WHERE event_id = $1
       ORDER BY scheduled_for ASC
@@ -245,7 +245,7 @@ async function getEventById(eventId) {
  * Mettre à jour un événement
  */
 async function updateEvent(eventId, updates, userId) {
-  const client = await db.connect();
+  const client = await pool.connect();
   
   try {
     await client.query('BEGIN');
@@ -326,7 +326,7 @@ async function updateEvent(eventId, updates, userId) {
  */
 async function updateEventStatus(eventId, status, userId) {
   try {
-    const result = await db.query(`
+    const result = await pool.query(`
       UPDATE events
       SET status = $1, completed_at = CASE WHEN $1 = 'completed' THEN NOW() ELSE completed_at END
       WHERE id = $2 AND deleted_at IS NULL
@@ -350,7 +350,7 @@ async function updateEventStatus(eventId, status, userId) {
  */
 async function deleteEvent(eventId, userId) {
   try {
-    const result = await db.query(`
+    const result = await pool.query(`
       UPDATE events
       SET deleted_at = NOW()
       WHERE id = $1 AND deleted_at IS NULL
@@ -362,7 +362,7 @@ async function deleteEvent(eventId, userId) {
     }
     
     // Logger la suppression
-    await db.query(`
+    await pool.query(`
       INSERT INTO event_history (event_id, user_id, action)
       VALUES ($1, $2, 'deleted')
     `, [eventId, userId]);
@@ -380,7 +380,7 @@ async function deleteEvent(eventId, userId) {
  */
 async function addComment(eventId, userId, comment) {
   try {
-    const result = await db.query(`
+    const result = await pool.query(`
       INSERT INTO event_comments (event_id, user_id, comment)
       VALUES ($1, $2, $3)
       RETURNING *
@@ -399,7 +399,7 @@ async function addComment(eventId, userId, comment) {
  */
 async function getUpcomingEvents(userId, days = 7) {
   try {
-    const result = await db.query(`
+    const result = await pool.query(`
       SELECT * FROM upcoming_events
       WHERE start_date <= NOW() + INTERVAL '${days} days'
       AND (assigned_to = $1 OR created_by = $1)
@@ -419,7 +419,7 @@ async function getUpcomingEvents(userId, days = 7) {
  */
 async function getOverdueEvents(userId) {
   try {
-    const result = await db.query(`
+    const result = await pool.query(`
       SELECT * FROM overdue_events
       WHERE assigned_to = $1 OR created_by = $1
     `, [userId]);
@@ -437,7 +437,7 @@ async function getOverdueEvents(userId) {
  */
 async function getTasksKanban(userId) {
   try {
-    const result = await db.query(`
+    const result = await pool.query(`
       SELECT * FROM tasks_kanban
       WHERE assigned_to = $1 OR created_by = $1
     `, [userId]);
@@ -469,7 +469,7 @@ async function getTasksKanban(userId) {
  */
 async function getCalendarEvents(startDate, endDate, userId) {
   try {
-    const result = await db.query(`
+    const result = await pool.query(`
       SELECT 
         e.id,
         e.title,
@@ -516,7 +516,7 @@ function getDefaultColor(type) {
 
 async function getUserById(userId) {
   try {
-    const result = await db.query(
+    const result = await pool.query(
       'SELECT id, email, first_name, last_name FROM users WHERE id = $1',
       [userId]
     );

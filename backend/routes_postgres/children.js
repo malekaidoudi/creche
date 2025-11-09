@@ -1,7 +1,48 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const router = express.Router();
-const db = require('../config/db_postgres');
+const { pool } = require('../config/db_postgres');
+
+// GET /api/children - Liste de tous les enfants actifs
+router.get('/', async (req, res) => {
+  try {
+    const sql = `
+      SELECT 
+        c.id, 
+        c.first_name, 
+        c.last_name, 
+        c.birth_date, 
+        c.gender, 
+        c.medical_info, 
+        c.emergency_contact_name, 
+        c.emergency_contact_phone, 
+        c.photo_url, 
+        c.is_active, 
+        c.created_at,
+        c.parent_id,
+        EXTRACT(YEAR FROM AGE(c.birth_date)) as age,
+        u.first_name || ' ' || u.last_name as parent_name,
+        u.email as parent_email
+      FROM children c
+      LEFT JOIN users u ON c.parent_id = u.id
+      WHERE c.is_active = true
+      ORDER BY c.first_name, c.last_name
+    `;
+    
+    const result = await pool.query(sql);
+    
+    res.json({
+      success: true,
+      children: result.rows
+    });
+  } catch (error) {
+    console.error('Erreur récupération enfants:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Erreur lors de la récupération des enfants' 
+    });
+  }
+});
 
 // GET /api/children/available - Enfants disponibles (sans parent)
 router.get('/available', async (req, res) => {
@@ -17,7 +58,7 @@ router.get('/available', async (req, res) => {
       ORDER BY c.created_at DESC
     `;
     
-    const result = await db.query(sql);
+    const result = await pool.query(sql);
     
     res.json({
       success: true,
@@ -46,7 +87,7 @@ router.get('/orphans', async (req, res) => {
       ORDER BY c.created_at DESC
     `;
     
-    const result = await db.query(sql);
+    const result = await pool.query(sql);
     
     res.json({
       success: true,
@@ -78,7 +119,7 @@ router.get('/parent/:parentId', async (req, res) => {
       ORDER BY c.created_at DESC
     `;
     
-    const result = await db.query(sql, [parentId]);
+    const result = await pool.query(sql, [parentId]);
     
     res.json({
       success: true,
@@ -106,7 +147,7 @@ router.get('/stats', async (req, res) => {
       FROM children
     `;
     
-    const result = await db.query(statsQuery);
+    const result = await pool.query(statsQuery);
     const stats = result.rows[0];
     
     res.json({
@@ -143,7 +184,7 @@ router.put('/:id/associate-parent', async (req, res) => {
       RETURNING *
     `;
     
-    const result = await db.query(sql, [id, parentId]);
+    const result = await pool.query(sql, [id, parentId]);
     
     res.json({
       success: true,
@@ -172,7 +213,7 @@ router.put('/:id/deactivate-parent', async (req, res) => {
       RETURNING *
     `;
     
-    const result = await db.query(sql, [id]);
+    const result = await pool.query(sql, [id]);
     
     res.json({
       success: true,
@@ -278,7 +319,7 @@ router.get('/', async (req, res) => {
     sql += ` OFFSET $${paramCount}`;
     params.push(offset);
     
-    const result = await db.query(sql, params);
+    const result = await pool.query(sql, params);
     
     // Compter le total
     let countSql = 'SELECT COUNT(DISTINCT c.id) as total FROM children c LEFT JOIN users u ON c.parent_id = u.id WHERE 1=1';
@@ -319,7 +360,7 @@ router.get('/', async (req, res) => {
       countParams.push(parseInt(age_max));
     }
     
-    const countResult = await db.query(countSql, countParams);
+    const countResult = await pool.query(countSql, countParams);
     
     res.json({
       success: true,
@@ -348,7 +389,7 @@ router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     
-    const result = await db.query(
+    const result = await pool.query(
       `SELECT id, first_name, last_name, birth_date, gender, medical_info, 
               emergency_contact_name, emergency_contact_phone, photo_url, 
               is_active, created_at, updated_at,
@@ -365,7 +406,7 @@ router.get('/:id', async (req, res) => {
     }
     
     // Récupérer les inscriptions de cet enfant
-    const enrollments = await db.query(
+    const enrollments = await pool.query(
       `SELECT e.*, u.first_name as parent_first_name, u.last_name as parent_last_name, u.email as parent_email
        FROM enrollments e
        JOIN users u ON e.parent_id = u.id
@@ -375,7 +416,7 @@ router.get('/:id', async (req, res) => {
     );
     
     // Récupérer les présences récentes
-    const attendance = await db.query(
+    const attendance = await pool.query(
       `SELECT date, check_in_time, check_out_time, notes
        FROM attendance 
        WHERE child_id = $1 
@@ -431,7 +472,7 @@ router.post('/', [
     } = req.body;
     
     // Insérer le nouvel enfant
-    const result = await db.query(
+    const result = await pool.query(
       `INSERT INTO children (first_name, last_name, birth_date, gender, medical_info, 
                             emergency_contact_name, emergency_contact_phone, photo_url, is_active) 
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
@@ -488,7 +529,7 @@ router.put('/:id', [
     } = req.body;
     
     // Vérifier si l'enfant existe
-    const existingChild = await db.query('SELECT id FROM children WHERE id = $1', [id]);
+    const existingChild = await pool.query('SELECT id FROM children WHERE id = $1', [id]);
     if (existingChild.rows.length === 0) {
       return res.status(404).json({ 
         success: false,
@@ -580,7 +621,7 @@ router.put('/:id', [
                 is_active, updated_at
     `;
     
-    const result = await db.query(sql, params);
+    const result = await pool.query(sql, params);
     
     res.json({
       success: true,
@@ -603,7 +644,7 @@ router.delete('/:id', async (req, res) => {
     const { id } = req.params;
     
     // Vérifier si l'enfant existe
-    const existingChild = await db.query('SELECT id, first_name, last_name FROM children WHERE id = $1', [id]);
+    const existingChild = await pool.query('SELECT id, first_name, last_name FROM children WHERE id = $1', [id]);
     if (existingChild.rows.length === 0) {
       return res.status(404).json({ 
         success: false,
@@ -612,7 +653,7 @@ router.delete('/:id', async (req, res) => {
     }
     
     // Soft delete - désactiver l'enfant
-    await db.query(
+    await pool.query(
       'UPDATE children SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = $1',
       [id]
     );
@@ -634,7 +675,7 @@ router.delete('/:id', async (req, res) => {
 // GET /api/children/stats - Statistiques des enfants
 router.get('/stats/overview', async (req, res) => {
   try {
-    const stats = await db.query(`
+    const stats = await pool.query(`
       SELECT 
         COUNT(*) as total_children,
         COUNT(*) FILTER (WHERE is_active = true) as active_children,
