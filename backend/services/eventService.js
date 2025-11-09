@@ -334,23 +334,50 @@ async function updateEvent(eventId, updates, userId) {
  * Changer le statut d'un événement
  */
 async function updateEventStatus(eventId, status, userId) {
+  const client = await pool.connect();
+  
   try {
-    const result = await pool.query(`
+    await client.query('BEGIN');
+    
+    // Récupérer l'événement actuel
+    const currentResult = await client.query(
+      'SELECT * FROM events WHERE id = $1 AND deleted_at IS NULL',
+      [eventId]
+    );
+    
+    if (currentResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return { success: false, error: 'Événement non trouvé' };
+    }
+    
+    const currentEvent = currentResult.rows[0];
+    
+    // Mettre à jour le statut
+    const result = await client.query(`
       UPDATE events
       SET status = $1, completed_at = CASE WHEN $1 = 'completed' THEN NOW() ELSE completed_at END
       WHERE id = $2 AND deleted_at IS NULL
       RETURNING *
     `, [status, eventId]);
     
-    if (result.rows.length === 0) {
-      return { success: false, error: 'Événement non trouvé' };
+    // Logger le changement dans l'historique
+    if (userId) {
+      await client.query(`
+        INSERT INTO event_history (event_id, user_id, action, field_name, old_value, new_value)
+        VALUES ($1, $2, 'status_changed', 'status', $3, $4)
+      `, [eventId, userId, currentEvent.status, status]);
     }
+    
+    await client.query('COMMIT');
     
     return { success: true, event: result.rows[0] };
     
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error('❌ Erreur updateEventStatus:', error);
     throw error;
+  } finally {
+    client.release();
   }
 }
 
