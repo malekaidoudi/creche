@@ -355,11 +355,11 @@ async function updateEventStatus(eventId, status, userId) {
     // Mettre à jour le statut
     const result = await client.query(`
       UPDATE events
-      SET status = $1::varchar, 
-          completed_at = CASE WHEN $1::varchar = 'completed' THEN NOW() ELSE completed_at END
-      WHERE id = $2 AND deleted_at IS NULL
+      SET status = $1, 
+          completed_at = CASE WHEN $2 = 'completed' THEN NOW() ELSE completed_at END
+      WHERE id = $3 AND deleted_at IS NULL
       RETURNING *
-    `, [status, eventId]);
+    `, [status, status, eventId]);
     
     // Logger le changement dans l'historique
     if (userId) {
@@ -371,7 +371,14 @@ async function updateEventStatus(eventId, status, userId) {
     
     await client.query('COMMIT');
     
-    return { success: true, event: result.rows[0] };
+    const updatedEvent = result.rows[0];
+    
+    // Créer une notification si le statut passe à "completed" et qu'il y a un créateur différent
+    if (status === 'completed' && updatedEvent.created_by && updatedEvent.created_by !== userId) {
+      await createStatusChangeNotification(updatedEvent, updatedEvent.created_by, userId, 'completed');
+    }
+    
+    return { success: true, event: updatedEvent };
     
   } catch (error) {
     await client.query('ROLLBACK');
@@ -596,6 +603,43 @@ async function getUserById(userId) {
   } catch (error) {
     console.error('❌ Erreur getUserById:', error);
     return null;
+  }
+}
+
+/**
+ * Créer une notification pour un changement de statut
+ */
+async function createStatusChangeNotification(event, recipientId, userId, newStatus) {
+  try {
+    const user = await getUserById(userId);
+    if (!user) return;
+
+    let title, message;
+    
+    if (newStatus === 'completed') {
+      title = `✅ Tâche complétée`;
+      message = `${user.first_name} ${user.last_name} a marqué comme complétée : "${event.title}"`;
+    } else if (newStatus === 'in_progress') {
+      title = `⏳ Tâche en cours`;
+      message = `${user.first_name} ${user.last_name} a commencé : "${event.title}"`;
+    } else if (newStatus === 'cancelled') {
+      title = `❌ Tâche annulée`;
+      message = `${user.first_name} ${user.last_name} a annulé : "${event.title}"`;
+    } else {
+      return; // Pas de notification pour les autres statuts
+    }
+
+    const notificationType = 'event_status_changed';
+
+    await pool.query(`
+      INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
+      VALUES ($1, $2, $3, $4, $5, false)
+    `, [recipientId, title, message, notificationType, event.id]);
+
+    console.log(`✅ Notification de changement de statut créée pour l'utilisateur ${recipientId}`);
+    
+  } catch (error) {
+    console.error('❌ Erreur createStatusChangeNotification:', error);
   }
 }
 
