@@ -33,7 +33,10 @@ const EventsCalendar = () => {
   const [dateRange, setDateRange] = useState({ start: null, end: null });
 
   const loadEvents = useCallback(async () => {
-    if (!dateRange.start || !dateRange.end) return;
+    if (!dateRange.start || !dateRange.end) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       
@@ -53,7 +56,7 @@ const EventsCalendar = () => {
       
       if (response.data.success) {
         // Transformer les événements pour FullCalendar
-        const formattedEvents = response.data.events.map(event => ({
+        const formattedEvents = (response.data.events || []).map(event => ({
           id: event.id,
           title: event.title,
           start: event.start_date,
@@ -73,6 +76,8 @@ const EventsCalendar = () => {
         }));
         
         setEvents(formattedEvents);
+      } else {
+        setEvents([]);
       }
     } catch (error) {
       console.error('Erreur chargement événements:', error);
@@ -99,9 +104,21 @@ const EventsCalendar = () => {
 
   const handleDatesSet = (dateInfo) => {
     // Mettre à jour la plage de dates quand la vue change
-    setDateRange({
-      start: dateInfo.start,
-      end: dateInfo.end
+    // Éviter les mises à jour inutiles qui créent une boucle
+    setDateRange(prev => {
+      const newStart = dateInfo.start.toISOString();
+      const newEnd = dateInfo.end.toISOString();
+      const prevStart = prev.start?.toISOString();
+      const prevEnd = prev.end?.toISOString();
+      
+      if (newStart === prevStart && newEnd === prevEnd) {
+        return prev;
+      }
+      
+      return {
+        start: dateInfo.start,
+        end: dateInfo.end
+      };
     });
   };
 
