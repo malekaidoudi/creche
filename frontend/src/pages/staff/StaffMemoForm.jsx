@@ -39,7 +39,12 @@ const StaffMemoForm = () => {
         start_date: new Date().toISOString(),
         all_day: true,
         assigned_to: 1, // ID de l'admin (à ajuster selon votre BDD)
-        color: formData.type === 'memo' ? '#8B5CF6' : '#3B82F6'
+        color: formData.type === 'memo' ? '#8B5CF6' : '#3B82F6',
+        metadata: {
+          from_staff: true,
+          sender_name: `${user.first_name} ${user.last_name}`,
+          sender_id: user.id
+        }
       };
 
       const response = await api.post('/api/events', payload);

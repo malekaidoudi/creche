@@ -24,6 +24,7 @@ import TodayAbsences from '../../components/dashboard/TodayAbsences';
 import UpcomingEventsWidget from '../../components/widgets/UpcomingEventsWidget';
 import BirthdaysWidget from '../../components/widgets/BirthdaysWidget';
 import TodayTasksWidget from '../../components/widgets/TodayTasksWidget';
+import StaffMessagesWidget from '../../components/widgets/StaffMessagesWidget';
 import api from '../../services/api';
 
 const DashboardHome = () => {
@@ -314,10 +315,19 @@ const DashboardHome = () => {
           transition={{ duration: 0.6, delay: 0.4 }}
           className="mb-8"
         >
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             <UpcomingEventsWidget days={7} limit={5} />
-            <BirthdaysWidget />
+            {isAdmin() ? (
+              <StaffMessagesWidget />
+            ) : (
+              <BirthdaysWidget />
+            )}
           </div>
+          {isAdmin() && (
+            <div className="grid grid-cols-1 gap-6">
+              <BirthdaysWidget />
+            </div>
+          )}
         </motion.div>
       )}
 
