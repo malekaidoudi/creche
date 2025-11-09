@@ -233,7 +233,8 @@ app.use('/api/news', newsRoutes);
 console.log('  ✓ /api/news');
 
 app.use('/api/contacts', contactRoutes);
-console.log('  ✓ /api/contacts');
+app.use('/api/contact', contactRoutes); // Alias pour compatibilité
+console.log('  ✓ /api/contacts + /api/contact');
 
 app.use('/api/health', healthRoutes);
 console.log('  ✓ /api/health');

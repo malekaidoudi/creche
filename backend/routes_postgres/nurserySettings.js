@@ -153,4 +153,71 @@ router.post('/', async (req, res) => {
   }
 });
 
+// POST /api/nursery-settings/simple-update - Mise à jour simplifiée de plusieurs paramètres (admin)
+router.post('/simple-update', async (req, res) => {
+  try {
+    const updates = req.body;
+    
+    if (!updates || typeof updates !== 'object') {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Données invalides' 
+      });
+    }
+    
+    const client = await db.getClient();
+    
+    try {
+      await client.query('BEGIN');
+      
+      // Pour chaque paramètre à mettre à jour
+      for (const [key, value] of Object.entries(updates)) {
+        // Vérifier si le paramètre existe
+        const existing = await client.query(
+          'SELECT id FROM nursery_settings WHERE setting_key = $1',
+          [key]
+        );
+        
+        if (existing.rows.length > 0) {
+          // Mettre à jour
+          await client.query(
+            `UPDATE nursery_settings 
+             SET value_fr = $1, updated_at = CURRENT_TIMESTAMP
+             WHERE setting_key = $2`,
+            [value, key]
+          );
+        } else {
+          // Créer si n'existe pas
+          await client.query(
+            `INSERT INTO nursery_settings (setting_key, value_fr, category, is_active) 
+             VALUES ($1, $2, 'general', true)`,
+            [key, value]
+          );
+        }
+      }
+      
+      await client.query('COMMIT');
+      
+      res.json({
+        success: true,
+        message: 'Paramètres mis à jour avec succès',
+        updated: Object.keys(updates).length
+      });
+      
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+    
+  } catch (error) {
+    console.error('Erreur mise à jour simple:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Erreur lors de la mise à jour des paramètres' 
+    });
+  }
+});
+
 module.exports = router;
