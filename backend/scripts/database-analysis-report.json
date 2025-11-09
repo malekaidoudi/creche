@@ -1,0 +1,2115 @@
+{
+  "timestamp": "2025-11-09T17:06:39.841Z",
+  "usedTables": [
+    "absence_requests",
+    "age",
+    "attendance",
+    "check_in_time",
+    "children",
+    "children_archive",
+    "children_documents",
+    "contact_messages",
+    "contacts",
+    "current_timestamp",
+    "documents",
+    "email_logs",
+    "enrollment_documents",
+    "enrollments",
+    "enrollments_archive",
+    "event_comments",
+    "event_history",
+    "event_reminders",
+    "events",
+    "holidays",
+    "information_schema",
+    "logs",
+    "new",
+    "notifications",
+    "nursery_settings",
+    "overdue_events",
+    "pg_type",
+    "set",
+    "setting_value",
+    "settings",
+    "tasks",
+    "tasks_kanban",
+    "test_migration",
+    "upcoming_events",
+    "uploads",
+    "user_children",
+    "users"
+  ],
+  "unusedTables": [
+    "articles",
+    "attendance_details",
+    "enrollment_details",
+    "event_attachments"
+  ],
+  "totalTablesInDb": 29,
+  "totalTablesUsed": 37,
+  "schema": {
+    "absence_requests": [
+      {
+        "column": "id",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "column": "child_id",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "column": "parent_id",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "column": "start_date",
+        "type": "date",
+        "nullable": "NO"
+      },
+      {
+        "column": "end_date",
+        "type": "date",
+        "nullable": "NO"
+      },
+      {
+        "column": "reason",
+        "type": "text",
+        "nullable": "NO"
+      },
+      {
+        "column": "status",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "admin_notes",
+        "type": "text",
+        "nullable": "YES"
+      },
+      {
+        "column": "created_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "updated_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "acknowledged_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      }
+    ],
+    "articles": [
+      {
+        "column": "id",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "column": "title_fr",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "content_fr",
+        "type": "text",
+        "nullable": "NO"
+      },
+      {
+        "column": "author_id",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "is_published",
+        "type": "boolean",
+        "nullable": "YES"
+      },
+      {
+        "column": "created_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      }
+    ],
+    "attendance": [
+      {
+        "column": "id",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "column": "child_id",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "column": "date",
+        "type": "date",
+        "nullable": "NO"
+      },
+      {
+        "column": "check_in_time",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "check_out_time",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "notes",
+        "type": "text",
+        "nullable": "YES"
+      },
+      {
+        "column": "created_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "updated_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      }
+    ],
+    "attendance_details": [
+      {
+        "column": "id",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "date",
+        "type": "date",
+        "nullable": "YES"
+      },
+      {
+        "column": "check_in_time",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "check_out_time",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "notes",
+        "type": "text",
+        "nullable": "YES"
+      },
+      {
+        "column": "child_first_name",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "child_last_name",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "child_birth_date",
+        "type": "date",
+        "nullable": "YES"
+      },
+      {
+        "column": "created_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "updated_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      }
+    ],
+    "children": [
+      {
+        "column": "id",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "column": "first_name",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "last_name",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "birth_date",
+        "type": "date",
+        "nullable": "NO"
+      },
+      {
+        "column": "gender",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "medical_info",
+        "type": "text",
+        "nullable": "YES"
+      },
+      {
+        "column": "emergency_contact_name",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "emergency_contact_phone",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "photo_url",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "is_active",
+        "type": "boolean",
+        "nullable": "YES"
+      },
+      {
+        "column": "created_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "updated_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "parent_id",
+        "type": "integer",
+        "nullable": "YES"
+      }
+    ],
+    "children_documents": [
+      {
+        "column": "id",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "column": "child_id",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "column": "filename",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "original_filename",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "file_path",
+        "type": "text",
+        "nullable": "NO"
+      },
+      {
+        "column": "mime_type",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "file_size",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "document_type",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "transferred_from_enrollment",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "uploaded_by",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "uploaded_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "notes",
+        "type": "text",
+        "nullable": "YES"
+      }
+    ],
+    "contact_messages": [
+      {
+        "column": "id",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "column": "name",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "email",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "phone",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "subject",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "message",
+        "type": "text",
+        "nullable": "NO"
+      },
+      {
+        "column": "status",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "responded_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "responded_by",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "created_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      }
+    ],
+    "contacts": [
+      {
+        "column": "id",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "column": "first_name",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "last_name",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "email",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "subject",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "message",
+        "type": "text",
+        "nullable": "NO"
+      },
+      {
+        "column": "status",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "created_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      }
+    ],
+    "documents": [
+      {
+        "column": "id",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "column": "name",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "file_path",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "category",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "uploaded_by",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "created_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      }
+    ],
+    "email_logs": [
+      {
+        "column": "id",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "column": "email_type",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "recipient_email",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "sender_email",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "subject",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "status",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "resend_id",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "error_message",
+        "type": "text",
+        "nullable": "YES"
+      },
+      {
+        "column": "metadata",
+        "type": "jsonb",
+        "nullable": "YES"
+      },
+      {
+        "column": "created_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "updated_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      }
+    ],
+    "enrollment_details": [
+      {
+        "column": "id",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "enrollment_date",
+        "type": "date",
+        "nullable": "YES"
+      },
+      {
+        "column": "status",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "lunch_assistance",
+        "type": "boolean",
+        "nullable": "YES"
+      },
+      {
+        "column": "regulation_accepted",
+        "type": "boolean",
+        "nullable": "YES"
+      },
+      {
+        "column": "appointment_date",
+        "type": "date",
+        "nullable": "YES"
+      },
+      {
+        "column": "appointment_time",
+        "type": "time without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "admin_notes",
+        "type": "text",
+        "nullable": "YES"
+      },
+      {
+        "column": "parent_first_name",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "parent_last_name",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "parent_email",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "parent_phone",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "child_first_name",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "child_last_name",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "child_birth_date",
+        "type": "date",
+        "nullable": "YES"
+      },
+      {
+        "column": "child_gender",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "created_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "updated_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      }
+    ],
+    "enrollment_documents": [
+      {
+        "column": "id",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "column": "enrollment_id",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "column": "filename",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "original_filename",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "file_path",
+        "type": "text",
+        "nullable": "NO"
+      },
+      {
+        "column": "mime_type",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "file_size",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "document_type",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "uploaded_by",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "uploaded_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "is_verified",
+        "type": "boolean",
+        "nullable": "YES"
+      },
+      {
+        "column": "verified_by",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "verified_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "notes",
+        "type": "text",
+        "nullable": "YES"
+      },
+      {
+        "column": "cloudinary_url",
+        "type": "text",
+        "nullable": "YES"
+      },
+      {
+        "column": "cloudinary_public_id",
+        "type": "text",
+        "nullable": "YES"
+      }
+    ],
+    "enrollments": [
+      {
+        "column": "id",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "column": "parent_id",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "child_id",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "enrollment_date",
+        "type": "date",
+        "nullable": "YES"
+      },
+      {
+        "column": "status",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "lunch_assistance",
+        "type": "boolean",
+        "nullable": "YES"
+      },
+      {
+        "column": "regulation_accepted",
+        "type": "boolean",
+        "nullable": "YES"
+      },
+      {
+        "column": "appointment_date",
+        "type": "date",
+        "nullable": "YES"
+      },
+      {
+        "column": "appointment_time",
+        "type": "time without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "admin_notes",
+        "type": "text",
+        "nullable": "YES"
+      },
+      {
+        "column": "created_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "updated_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "applicant_first_name",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "applicant_last_name",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "applicant_email",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "new_status",
+        "type": "USER-DEFINED",
+        "nullable": "YES"
+      },
+      {
+        "column": "approved_by",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "approved_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "applicant_phone",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "child_first_name",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "child_last_name",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "child_birth_date",
+        "type": "date",
+        "nullable": "YES"
+      },
+      {
+        "column": "child_gender",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "child_medical_info",
+        "type": "text",
+        "nullable": "YES"
+      },
+      {
+        "column": "emergency_contact_name",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "emergency_contact_phone",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "password_token",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "password_token_expires",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "rejection_type",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "rejection_reason",
+        "type": "text",
+        "nullable": "YES"
+      },
+      {
+        "column": "processed_by",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "processed_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "parent_chose_rdv",
+        "type": "boolean",
+        "nullable": "YES"
+      },
+      {
+        "column": "parent_rdv_choice_date",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "rejected_by",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "rejected_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      }
+    ],
+    "enrollments_archive": [
+      {
+        "column": "id",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "parent_id",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "child_id",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "enrollment_date",
+        "type": "date",
+        "nullable": "YES"
+      },
+      {
+        "column": "status",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "lunch_assistance",
+        "type": "boolean",
+        "nullable": "YES"
+      },
+      {
+        "column": "regulation_accepted",
+        "type": "boolean",
+        "nullable": "YES"
+      },
+      {
+        "column": "appointment_date",
+        "type": "date",
+        "nullable": "YES"
+      },
+      {
+        "column": "appointment_time",
+        "type": "time without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "admin_notes",
+        "type": "text",
+        "nullable": "YES"
+      },
+      {
+        "column": "created_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "updated_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "applicant_first_name",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "applicant_last_name",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "applicant_email",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "new_status",
+        "type": "USER-DEFINED",
+        "nullable": "YES"
+      },
+      {
+        "column": "approved_by",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "approved_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      }
+    ],
+    "event_attachments": [
+      {
+        "column": "id",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "column": "event_id",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "column": "filename",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "original_name",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "file_path",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "file_size",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "mime_type",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "uploaded_by",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "uploaded_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "deleted_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      }
+    ],
+    "event_comments": [
+      {
+        "column": "id",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "column": "event_id",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "column": "user_id",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "column": "comment",
+        "type": "text",
+        "nullable": "NO"
+      },
+      {
+        "column": "created_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "updated_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "deleted_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      }
+    ],
+    "event_history": [
+      {
+        "column": "id",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "column": "event_id",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "column": "user_id",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "action",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "field_name",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "old_value",
+        "type": "text",
+        "nullable": "YES"
+      },
+      {
+        "column": "new_value",
+        "type": "text",
+        "nullable": "YES"
+      },
+      {
+        "column": "created_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      }
+    ],
+    "event_reminders": [
+      {
+        "column": "id",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "column": "event_id",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "column": "offset_minutes",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "column": "notification_type",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "recipient_id",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "sent",
+        "type": "boolean",
+        "nullable": "YES"
+      },
+      {
+        "column": "sent_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "scheduled_for",
+        "type": "timestamp without time zone",
+        "nullable": "NO"
+      },
+      {
+        "column": "error_message",
+        "type": "text",
+        "nullable": "YES"
+      },
+      {
+        "column": "created_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      }
+    ],
+    "events": [
+      {
+        "column": "id",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "column": "title",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "description",
+        "type": "text",
+        "nullable": "YES"
+      },
+      {
+        "column": "type",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "start_date",
+        "type": "timestamp without time zone",
+        "nullable": "NO"
+      },
+      {
+        "column": "end_date",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "all_day",
+        "type": "boolean",
+        "nullable": "YES"
+      },
+      {
+        "column": "is_recurring",
+        "type": "boolean",
+        "nullable": "YES"
+      },
+      {
+        "column": "recurrence_rule",
+        "type": "jsonb",
+        "nullable": "YES"
+      },
+      {
+        "column": "parent_event_id",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "status",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "priority",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "created_by",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "assigned_to",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "child_id",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "reminder_enabled",
+        "type": "boolean",
+        "nullable": "YES"
+      },
+      {
+        "column": "reminder_offset",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "reminder_sent",
+        "type": "boolean",
+        "nullable": "YES"
+      },
+      {
+        "column": "reminder_sent_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "color",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "location",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "attendees",
+        "type": "jsonb",
+        "nullable": "YES"
+      },
+      {
+        "column": "attachments",
+        "type": "jsonb",
+        "nullable": "YES"
+      },
+      {
+        "column": "metadata",
+        "type": "jsonb",
+        "nullable": "YES"
+      },
+      {
+        "column": "created_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "updated_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "completed_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "deleted_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      }
+    ],
+    "holidays": [
+      {
+        "column": "id",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "column": "name",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "date",
+        "type": "date",
+        "nullable": "NO"
+      },
+      {
+        "column": "is_closed",
+        "type": "boolean",
+        "nullable": "YES"
+      },
+      {
+        "column": "description",
+        "type": "text",
+        "nullable": "YES"
+      },
+      {
+        "column": "created_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "updated_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      }
+    ],
+    "logs": [
+      {
+        "column": "id",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "column": "user_id",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "action",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "description",
+        "type": "text",
+        "nullable": "YES"
+      },
+      {
+        "column": "created_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      }
+    ],
+    "notifications": [
+      {
+        "column": "id",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "column": "user_id",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "column": "title",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "message",
+        "type": "text",
+        "nullable": "NO"
+      },
+      {
+        "column": "type",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "is_read",
+        "type": "boolean",
+        "nullable": "YES"
+      },
+      {
+        "column": "created_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "related_id",
+        "type": "integer",
+        "nullable": "YES"
+      }
+    ],
+    "nursery_settings": [
+      {
+        "column": "id",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "column": "setting_key",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "value_fr",
+        "type": "text",
+        "nullable": "YES"
+      },
+      {
+        "column": "value_ar",
+        "type": "text",
+        "nullable": "YES"
+      },
+      {
+        "column": "category",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "is_active",
+        "type": "boolean",
+        "nullable": "YES"
+      },
+      {
+        "column": "created_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "updated_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      }
+    ],
+    "overdue_events": [
+      {
+        "column": "id",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "title",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "description",
+        "type": "text",
+        "nullable": "YES"
+      },
+      {
+        "column": "type",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "start_date",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "end_date",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "all_day",
+        "type": "boolean",
+        "nullable": "YES"
+      },
+      {
+        "column": "is_recurring",
+        "type": "boolean",
+        "nullable": "YES"
+      },
+      {
+        "column": "recurrence_rule",
+        "type": "jsonb",
+        "nullable": "YES"
+      },
+      {
+        "column": "parent_event_id",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "status",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "priority",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "created_by",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "assigned_to",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "child_id",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "reminder_enabled",
+        "type": "boolean",
+        "nullable": "YES"
+      },
+      {
+        "column": "reminder_offset",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "reminder_sent",
+        "type": "boolean",
+        "nullable": "YES"
+      },
+      {
+        "column": "reminder_sent_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "color",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "location",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "attendees",
+        "type": "jsonb",
+        "nullable": "YES"
+      },
+      {
+        "column": "attachments",
+        "type": "jsonb",
+        "nullable": "YES"
+      },
+      {
+        "column": "metadata",
+        "type": "jsonb",
+        "nullable": "YES"
+      },
+      {
+        "column": "created_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "updated_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "completed_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "deleted_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "created_by_name",
+        "type": "text",
+        "nullable": "YES"
+      },
+      {
+        "column": "assigned_to_name",
+        "type": "text",
+        "nullable": "YES"
+      },
+      {
+        "column": "child_name",
+        "type": "text",
+        "nullable": "YES"
+      }
+    ],
+    "tasks": [
+      {
+        "column": "id",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "column": "title",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "description",
+        "type": "text",
+        "nullable": "YES"
+      },
+      {
+        "column": "task_date",
+        "type": "timestamp without time zone",
+        "nullable": "NO"
+      },
+      {
+        "column": "task_time",
+        "type": "time without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "task_type",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "priority",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "status",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "enrollment_id",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "created_by",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "assigned_to",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "created_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "updated_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "completed_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      }
+    ],
+    "tasks_kanban": [
+      {
+        "column": "id",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "title",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "description",
+        "type": "text",
+        "nullable": "YES"
+      },
+      {
+        "column": "type",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "start_date",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "end_date",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "all_day",
+        "type": "boolean",
+        "nullable": "YES"
+      },
+      {
+        "column": "is_recurring",
+        "type": "boolean",
+        "nullable": "YES"
+      },
+      {
+        "column": "recurrence_rule",
+        "type": "jsonb",
+        "nullable": "YES"
+      },
+      {
+        "column": "parent_event_id",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "status",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "priority",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "created_by",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "assigned_to",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "child_id",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "reminder_enabled",
+        "type": "boolean",
+        "nullable": "YES"
+      },
+      {
+        "column": "reminder_offset",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "reminder_sent",
+        "type": "boolean",
+        "nullable": "YES"
+      },
+      {
+        "column": "reminder_sent_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "color",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "location",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "attendees",
+        "type": "jsonb",
+        "nullable": "YES"
+      },
+      {
+        "column": "attachments",
+        "type": "jsonb",
+        "nullable": "YES"
+      },
+      {
+        "column": "metadata",
+        "type": "jsonb",
+        "nullable": "YES"
+      },
+      {
+        "column": "created_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "updated_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "completed_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "deleted_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "created_by_name",
+        "type": "text",
+        "nullable": "YES"
+      },
+      {
+        "column": "assigned_to_name",
+        "type": "text",
+        "nullable": "YES"
+      },
+      {
+        "column": "comments_count",
+        "type": "bigint",
+        "nullable": "YES"
+      }
+    ],
+    "upcoming_events": [
+      {
+        "column": "id",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "title",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "description",
+        "type": "text",
+        "nullable": "YES"
+      },
+      {
+        "column": "type",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "start_date",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "end_date",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "all_day",
+        "type": "boolean",
+        "nullable": "YES"
+      },
+      {
+        "column": "is_recurring",
+        "type": "boolean",
+        "nullable": "YES"
+      },
+      {
+        "column": "recurrence_rule",
+        "type": "jsonb",
+        "nullable": "YES"
+      },
+      {
+        "column": "parent_event_id",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "status",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "priority",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "created_by",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "assigned_to",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "child_id",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "reminder_enabled",
+        "type": "boolean",
+        "nullable": "YES"
+      },
+      {
+        "column": "reminder_offset",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "reminder_sent",
+        "type": "boolean",
+        "nullable": "YES"
+      },
+      {
+        "column": "reminder_sent_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "color",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "location",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "attendees",
+        "type": "jsonb",
+        "nullable": "YES"
+      },
+      {
+        "column": "attachments",
+        "type": "jsonb",
+        "nullable": "YES"
+      },
+      {
+        "column": "metadata",
+        "type": "jsonb",
+        "nullable": "YES"
+      },
+      {
+        "column": "created_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "updated_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "completed_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "deleted_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "created_by_name",
+        "type": "text",
+        "nullable": "YES"
+      },
+      {
+        "column": "assigned_to_name",
+        "type": "text",
+        "nullable": "YES"
+      },
+      {
+        "column": "child_name",
+        "type": "text",
+        "nullable": "YES"
+      }
+    ],
+    "uploads": [
+      {
+        "column": "id",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "column": "original_name",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "filename",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "file_path",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "file_size",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "column": "mime_type",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "uploaded_by",
+        "type": "integer",
+        "nullable": "YES"
+      },
+      {
+        "column": "created_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      }
+    ],
+    "users": [
+      {
+        "column": "id",
+        "type": "integer",
+        "nullable": "NO"
+      },
+      {
+        "column": "email",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "password",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "first_name",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "last_name",
+        "type": "character varying",
+        "nullable": "NO"
+      },
+      {
+        "column": "phone",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "role",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "profile_image",
+        "type": "character varying",
+        "nullable": "YES"
+      },
+      {
+        "column": "is_active",
+        "type": "boolean",
+        "nullable": "YES"
+      },
+      {
+        "column": "created_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "updated_at",
+        "type": "timestamp without time zone",
+        "nullable": "YES"
+      },
+      {
+        "column": "cloudinary_public_id",
+        "type": "character varying",
+        "nullable": "YES"
+      }
+    ]
+  }
+}
