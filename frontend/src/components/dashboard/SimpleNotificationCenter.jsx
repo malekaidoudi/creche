@@ -43,8 +43,20 @@ const SimpleNotificationCenter = ({ isOpen, onClose }) => {
     switch (type) {
       case 'absence_request':
         return <Calendar className="w-4 h-4 text-blue-500" />;
+      case 'event_task':
+        return <CheckCircle2 className="w-4 h-4 text-green-500" />;
+      case 'event_memo':
+        return <MessageCircle className="w-4 h-4 text-purple-500" />;
+      case 'event_rdv':
+      case 'event_medical':
+      case 'event_meeting':
+        return <Calendar className="w-4 h-4 text-orange-500" />;
+      case 'event_status_changed':
+        return <Check className="w-4 h-4 text-blue-500" />;
+      case 'event_updated':
+        return <Clock className="w-4 h-4 text-yellow-500" />;
       default:
-        return <MessageCircle className="w-4 h-4 text-gray-500" />;
+        return <Bell className="w-4 h-4 text-gray-500" />;
     }
   };
 
@@ -81,16 +93,23 @@ const SimpleNotificationCenter = ({ isOpen, onClose }) => {
       // Marquer comme lue SANS afficher le toast
       await markAsRead(notification.id, false);
       
+      // Fermer le panneau de notifications
+      onClose();
+      
       // Rediriger selon le type de notification
       if (notification.type === 'absence_request') {
-        // Fermer le panneau de notifications
-        onClose();
-        
         // Rediriger vers la page de gestion avec l'ID de la demande
         if (notification.related_id) {
           navigate(`/dashboard/absence-management?requestId=${notification.related_id}`);
         } else {
           navigate('/dashboard/absence-management');
+        }
+      } else if (notification.type && notification.type.startsWith('event_')) {
+        // Toutes les notifications d'événements
+        if (notification.related_id) {
+          navigate(`/dashboard/events/${notification.related_id}`);
+        } else {
+          navigate('/dashboard/events/list');
         }
       }
     } catch (error) {
