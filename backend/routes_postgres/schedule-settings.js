@@ -37,7 +37,8 @@ router.get('/closed-days/:year/:month', async (req, res) => {
     
     // Récupérer les jours fériés du mois
     const startDate = `${year}-${month.toString().padStart(2, '0')}-01`;
-    const endDate = `${year}-${month.toString().padStart(2, '0')}-31`;
+    const lastDay = new Date(yearNum, monthNum, 0).getDate(); // Dernier jour du mois
+    const endDate = `${year}-${month.toString().padStart(2, '0')}-${lastDay.toString().padStart(2, '0')}`;
     
     const holidaysResult = await db.query(
       `SELECT id, name, date, is_closed 

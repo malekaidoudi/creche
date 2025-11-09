@@ -73,6 +73,11 @@ const DashboardSidebar = ({ isOpen, onClose }) => {
           title: isRTL ? 'إضافة طفل' : 'Ajouter un enfant',
           path: '/dashboard/children/add',
           roles: ['admin']
+        },
+        {
+          title: isRTL ? 'إدارة الغيابات' : 'Gestion des absences',
+          path: '/dashboard/absence-management',
+          roles: ['admin', 'staff']
         }
       ]
     },

@@ -10,7 +10,8 @@ import {
   FileText,
   CheckCircle,
   XCircle,
-  ArrowLeft
+  ArrowLeft,
+  Phone
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -89,7 +90,8 @@ const AbsenceRequestPage = () => {
 
       const requestData = {
         child_id: selectedChild,
-        absence_date: selectedDate.toISOString().split('T')[0],
+        start_date: selectedDate.toISOString().split('T')[0],
+        end_date: selectedDate.toISOString().split('T')[0],
         reason: reason,
         notes: notes
       };
@@ -150,10 +152,21 @@ const AbsenceRequestPage = () => {
       case 'pending':
         return isRTL ? 'في الانتظار' : 'En attente';
       case 'acknowledged':
-        return isRTL ? 'تم الاستلام' : 'Pris en compte';
+        return isRTL ? 'تم التأكيد' : 'Validé';
       default:
         return status;
     }
+  };
+
+  const handleCallNursery = () => {
+    const nurseryPhone = '+21671234567'; // Numéro de la crèche
+    window.location.href = `tel:${nurseryPhone}`;
+  };
+
+  const isAbsenceToday = (date) => {
+    const today = new Date();
+    const absenceDate = new Date(date);
+    return today.toDateString() === absenceDate.toDateString();
   };
 
   if (loading) {
@@ -250,18 +263,35 @@ const AbsenceRequestPage = () => {
                               {request.child_first_name} {request.child_last_name}
                             </span>
                           </div>
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}>
-                            {getStatusIcon(request.status)}
-                            <span className="ml-1 rtl:ml-0 rtl:mr-1">
-                              {getStatusText(request.status)}
+                          <div className="flex items-center gap-2">
+                            {/* Icône d'appel si absence aujourd'hui et validée */}
+                            {isAbsenceToday(request.start_date) && request.status === 'acknowledged' && (
+                              <button
+                                onClick={handleCallNursery}
+                                className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-full transition-colors"
+                                title={isRTL ? 'اتصل بالحضانة' : 'Appeler la crèche'}
+                              >
+                                <Phone className="w-4 h-4" />
+                              </button>
+                            )}
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}>
+                              {getStatusIcon(request.status)}
+                              <span className="ml-1 rtl:ml-0 rtl:mr-1">
+                                {getStatusText(request.status)}
+                              </span>
                             </span>
-                          </span>
+                          </div>
                         </div>
                         
                         <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
                           <div className="flex items-center">
                             <Calendar className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
-                            {new Date(request.absence_date).toLocaleDateString(isRTL ? 'ar-TN' : 'fr-FR')}
+                            {new Date(request.start_date).toLocaleDateString(isRTL ? 'ar-TN' : 'fr-FR')}
+                            {isAbsenceToday(request.start_date) && (
+                              <span className="ml-2 rtl:ml-0 rtl:mr-2 text-orange-600 font-semibold">
+                                {isRTL ? '(اليوم)' : '(Aujourd\'hui)'}
+                              </span>
+                            )}
                           </div>
                           <div>
                             <strong>{isRTL ? 'السبب:' : 'Raison:'}</strong> {
@@ -271,6 +301,13 @@ const AbsenceRequestPage = () => {
                           {request.notes && (
                             <div>
                               <strong>{isRTL ? 'ملاحظات:' : 'Notes:'}</strong> {request.notes}
+                            </div>
+                          )}
+                          {request.status === 'acknowledged' && request.acknowledged_at && (
+                            <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                              <span className="text-green-600 dark:text-green-400 text-xs">
+                                ✓ {isRTL ? 'تم التأكيد من قبل الموظفين' : 'Confirmé par le personnel'}
+                              </span>
                             </div>
                           )}
                         </div>

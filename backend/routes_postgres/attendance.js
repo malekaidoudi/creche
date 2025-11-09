@@ -43,6 +43,58 @@ router.get('/today', auth.authenticateToken, async (req, res) => {
   }
 });
 
+// GET /api/attendance/child/:id/month - Présences d'un enfant pour un mois
+router.get('/child/:id/month', auth.authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { year, month } = req.query;
+    
+    if (!year || !month) {
+      return res.status(400).json({
+        success: false,
+        error: 'Année et mois requis'
+      });
+    }
+    
+    // Construire les dates de début et fin du mois
+    const startDate = `${year}-${month.toString().padStart(2, '0')}-01`;
+    const lastDay = new Date(year, month, 0).getDate();
+    const endDate = `${year}-${month.toString().padStart(2, '0')}-${lastDay}`;
+    
+    const result = await db.query(
+      `SELECT 
+        a.id,
+        a.child_id,
+        a.date,
+        a.check_in_time,
+        a.check_out_time,
+        a.notes,
+        a.created_at
+       FROM attendance a
+       WHERE a.child_id = $1 
+       AND a.date >= $2 
+       AND a.date <= $3
+       ORDER BY a.date ASC`,
+      [id, startDate, endDate]
+    );
+    
+    res.json({
+      success: true,
+      attendance: result.rows,
+      child_id: parseInt(id),
+      year: parseInt(year),
+      month: parseInt(month)
+    });
+    
+  } catch (error) {
+    console.error('Erreur présences enfant mois:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération des présences'
+    });
+  }
+});
+
 // GET /api/attendance/currently-present - Enfants actuellement présents
 router.get('/currently-present', async (req, res) => {
   try {

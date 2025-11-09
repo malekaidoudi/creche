@@ -79,7 +79,7 @@ const AttendanceParentPage = () => {
       // Charger les données de présence pour chaque enfant
       const attendancePromises = childrenList.map(async (child) => {
         try {
-          const response = await api.get(`/attendance/child/${child.id}/month`, {
+          const response = await api.get(`/api/attendance/child/${child.id}/month`, {
             params: {
               year: currentMonth.getFullYear(),
               month: currentMonth.getMonth() + 1

@@ -22,6 +22,9 @@ import MySpacePage from './pages/parent/MySpacePage'
 import AttendanceParentPage from './pages/parent/AttendanceParentPage'
 import AbsenceRequestPage from './pages/parent/AbsenceRequestPage'
 
+// Pages staff
+import AbsenceManagementPage from './pages/staff/AbsenceManagementPage'
+
 // Pages dashboard
 import DashboardHome from './pages/dashboard/DashboardHome'
 import UnifiedProfilePage from './pages/UnifiedProfilePage'
@@ -126,6 +129,7 @@ function App() {
         <Route path="documents" element={<DocumentsPage />} />
         <Route path="documents/download" element={<DocumentsPage />} />
         <Route path="documents/uploaded" element={<DocumentsPage />} />
+        <Route path="absence-management" element={<AbsenceManagementPage />} />
         
         {/* Pages placeholder pour fonctionnalités non implémentées */}
         <Route path="parents" element={<ParentsPage />} />

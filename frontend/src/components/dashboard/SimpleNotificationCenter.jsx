@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, X, Clock, Calendar, MessageCircle, Check, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
@@ -10,6 +11,7 @@ import api from '../../services/api';
 const SimpleNotificationCenter = ({ isOpen, onClose }) => {
   const { user } = useAuth();
   const { isRTL } = useLanguage();
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
   const [processingId, setProcessingId] = useState(null);
@@ -26,6 +28,7 @@ const SimpleNotificationCenter = ({ isOpen, onClose }) => {
       const response = await api.get('/api/notifications');
       
       if (response.data && response.data.success) {
+        // Le filtrage est maintenant fait côté backend
         setNotifications(response.data.notifications || []);
       }
     } catch (error) {
@@ -45,7 +48,7 @@ const SimpleNotificationCenter = ({ isOpen, onClose }) => {
     }
   };
 
-  const markAsRead = async (notificationId) => {
+  const markAsRead = async (notificationId, showToast = true) => {
     try {
       setProcessingId(notificationId);
       
@@ -59,13 +62,39 @@ const SimpleNotificationCenter = ({ isOpen, onClose }) => {
               : notif
           )
         );
-        toast.success(isRTL ? 'تم تحديد الإشعار كمقروء' : 'Notification marquée comme lue');
+        if (showToast) {
+          toast.success(isRTL ? 'تم تحديد الإشعار كمقروء' : 'Notification marquée comme lue');
+        }
       }
     } catch (error) {
       console.error('Erreur marquage notification:', error);
-      toast.error(isRTL ? 'خطأ في تحديث الإشعار' : 'Erreur lors de la mise à jour');
+      if (showToast) {
+        toast.error(isRTL ? 'خطأ في تحديث الإشعار' : 'Erreur lors de la mise à jour');
+      }
     } finally {
       setProcessingId(null);
+    }
+  };
+
+  const handleNotificationClick = async (notification) => {
+    try {
+      // Marquer comme lue SANS afficher le toast
+      await markAsRead(notification.id, false);
+      
+      // Rediriger selon le type de notification
+      if (notification.type === 'absence_request') {
+        // Fermer le panneau de notifications
+        onClose();
+        
+        // Rediriger vers la page de gestion avec l'ID de la demande
+        if (notification.related_id) {
+          navigate(`/dashboard/absence-management?requestId=${notification.related_id}`);
+        } else {
+          navigate('/dashboard/absence-management');
+        }
+      }
+    } catch (error) {
+      console.error('Erreur lors du clic sur la notification:', error);
     }
   };
 
@@ -78,17 +107,14 @@ const SimpleNotificationCenter = ({ isOpen, onClose }) => {
       });
       
       if (response.data.success) {
-        toast.success(isRTL ? 'تم إرسال إشعار الاستلام' : 'Accusé de réception envoyé');
+        toast.success(isRTL ? 'تم إرسال إشعار الاستلام' : 'Demande validée');
         
-        // Marquer la notification comme lue
-        await markAsRead(notificationId);
-        
-        // Recharger les notifications
-        loadNotifications();
+        // Supprimer la notification de la liste au lieu de la marquer comme lue
+        setNotifications(prev => prev.filter(notif => notif.id !== notificationId));
       }
     } catch (error) {
       console.error('Erreur accusé de réception:', error);
-      toast.error(isRTL ? 'خطأ في إرسال إشعار الاستلام' : 'Erreur lors de l\'accusé de réception');
+      toast.error(isRTL ? 'خطأ في إرسال إشعار الاستلام' : 'Erreur lors de la validation');
     } finally {
       setProcessingId(null);
     }
@@ -162,16 +188,6 @@ const SimpleNotificationCenter = ({ isOpen, onClose }) => {
               )}
             </div>
             <div className="flex items-center space-x-2 rtl:space-x-reverse">
-              {notifications.filter(n => !n.is_read).length > 0 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={markAllAsRead}
-                  className="text-xs"
-                >
-                  {isRTL ? 'تحديد الكل كمقروء' : 'Tout marquer lu'}
-                </Button>
-              )}
               <button
                 onClick={onClose}
                 className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
@@ -197,23 +213,15 @@ const SimpleNotificationCenter = ({ isOpen, onClose }) => {
             ) : (
               <div className="divide-y divide-gray-200 dark:divide-gray-700">
                 {notifications.map((notification) => {
-                  let data = {};
-                  try {
-                    data = notification.data ? 
-                      (typeof notification.data === 'string' ? JSON.parse(notification.data) : notification.data) 
-                      : {};
-                  } catch (error) {
-                    console.error('Erreur parsing data notification:', error);
-                    data = {};
-                  }
-                  const isAbsenceRequest = notification.type === 'absence_request' && data.absence_request_id;
+                  const isAbsenceRequest = notification.type === 'absence_request' && notification.related_id;
                   
                   return (
                     <div
                       key={notification.id}
-                      className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
+                      className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer ${
                         !notification.is_read ? 'bg-blue-50 dark:bg-blue-900/10' : ''
                       }`}
+                      onClick={() => handleNotificationClick(notification)}
                     >
                       <div className="flex items-start space-x-3 rtl:space-x-reverse">
                         <div className="flex-shrink-0">
@@ -241,10 +249,13 @@ const SimpleNotificationCenter = ({ isOpen, onClose }) => {
                           
                           {/* Actions pour les demandes d'absence */}
                           {isAbsenceRequest && (user?.role === 'admin' || user?.role === 'staff') && (
-                            <div className="mt-3 flex space-x-2 rtl:space-x-reverse">
+                            <div className="mt-3" onClick={(e) => e.stopPropagation()}>
                               <Button
                                 size="sm"
-                                onClick={() => acknowledgeAbsenceRequest(notification.id, data.absence_request_id)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  acknowledgeAbsenceRequest(notification.id, notification.related_id);
+                                }}
                                 disabled={processingId === notification.id}
                                 className="text-xs"
                               >
@@ -253,36 +264,7 @@ const SimpleNotificationCenter = ({ isOpen, onClose }) => {
                                 ) : (
                                   <CheckCircle2 className="w-3 h-3 mr-1 rtl:mr-0 rtl:ml-1" />
                                 )}
-                                {isRTL ? 'تأكيد الاستلام' : 'Accusé de réception'}
-                              </Button>
-                              
-                              {!notification.is_read && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => markAsRead(notification.id)}
-                                  disabled={processingId === notification.id}
-                                  className="text-xs"
-                                >
-                                  <Check className="w-3 h-3 mr-1 rtl:mr-0 rtl:ml-1" />
-                                  {isRTL ? 'تحديد كمقروء' : 'Marquer lu'}
-                                </Button>
-                              )}
-                            </div>
-                          )}
-                          
-                          {/* Action générale pour marquer comme lu */}
-                          {!isAbsenceRequest && !notification.is_read && (
-                            <div className="mt-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => markAsRead(notification.id)}
-                                disabled={processingId === notification.id}
-                                className="text-xs"
-                              >
-                                <Check className="w-3 h-3 mr-1 rtl:mr-0 rtl:ml-1" />
-                                {isRTL ? 'تحديد كمقروء' : 'Marquer comme lu'}
+                                {isRTL ? 'تأكيد الاستلام' : 'Valider'}
                               </Button>
                             </div>
                           )}

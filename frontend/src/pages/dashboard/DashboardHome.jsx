@@ -20,6 +20,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../..
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import HolidaysList from '../../components/HolidaysList';
 import TodayTasks from '../../components/dashboard/TodayTasks';
+import TodayAbsences from '../../components/dashboard/TodayAbsences';
 import api from '../../services/api';
 
 const DashboardHome = () => {
@@ -188,13 +189,13 @@ const DashboardHome = () => {
       bgColor: 'bg-orange-50 dark:bg-orange-900/20'
     },
     {
-      title: isRTL ? 'إضافة طفل' : 'Ajouter enfant',
-      description: isRTL ? 'تسجيل طفل جديد في النظام' : 'Enregistrer nouvel enfant',
-      icon: Baby,
-      link: '/dashboard/children/add',
+      title: isRTL ? 'إدارة الغيابات' : 'Gestion des absences',
+      description: isRTL ? 'عرض وتأكيد طلبات الغياب' : 'Voir et valider les demandes d\'absence',
+      icon: Calendar,
+      link: '/dashboard/absence-management',
       color: 'text-blue-600',
       bgColor: 'bg-blue-50 dark:bg-blue-900/20',
-      adminOnly: true
+      adminOnly: false
     },
     {
       title: isRTL ? 'التقارير' : 'Rapports',
@@ -389,6 +390,11 @@ const DashboardHome = () => {
           </motion.div>
         </div>
       </div>
+
+      {/* Absences du jour (admin/staff uniquement) */}
+      {(isAdmin() || isStaff()) && (
+        <TodayAbsences />
+      )}
 
       {/* Jours fériés sur toute la largeur */}
       {user && (
