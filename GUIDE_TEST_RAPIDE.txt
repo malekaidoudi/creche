@@ -1,0 +1,60 @@
+═══════════════════════════════════════════════════════════════════════════════
+🚀 GUIDE DE TEST RAPIDE - MERGE SERVER FILES
+═══════════════════════════════════════════════════════════════════════════════
+
+Temps estimé: 15 minutes
+Branche: merge-server-files
+
+═══════════════════════════════════════════════════════════════════════════════
+⚡ TESTS ESSENTIELS
+═══════════════════════════════════════════════════════════════════════════════
+
+TEST 1: Démarrage Backend (2 min)
+────────────────────────────────────────────────────────────────────────────
+cd backend
+npm start
+
+✅ Vérifier:
+- Serveur démarre sans erreur
+- Message "Routes tasks chargées avec succès"
+- Port 3005 affiché
+- Pas de warning
+
+TEST 2: Routes API (3 min)
+────────────────────────────────────────────────────────────────────────────
+curl http://localhost:3005/api/health
+# Attendu: 200 OK
+
+curl http://localhost:3005/api/tasks/today
+# Attendu: 401 Unauthorized (PAS 404 !)
+
+TEST 3: Frontend + Backend (5 min)
+────────────────────────────────────────────────────────────────────────────
+Terminal 1: cd backend && npm start
+Terminal 2: cd frontend && npm run dev
+
+Navigateur: http://localhost:5173
+1. Se connecter
+2. Dashboard s'affiche
+3. "Les tâches d'aujourd'hui" visible
+4. Console: Pas d'erreur CORS
+5. Console: Pas d'erreur 404
+
+TEST 4: Tâches (5 min)
+────────────────────────────────────────────────────────────────────────────
+1. Cliquer "Ajouter" → Modal s'ouvre
+2. Créer tâche "Test merge" à 10:00
+3. Tâche apparaît
+4. Cliquer cercle → Statut change
+5. Cliquer poubelle → Supprimée
+
+═══════════════════════════════════════════════════════════════════════════════
+✅ SI TOUS LES TESTS PASSENT
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Remplir RAPPORT_TEST_MERGE_SERVER.md
+2. Supprimer server_postgres.js et server.js.old
+3. Commit et push
+4. Merge vers main
+
+═══════════════════════════════════════════════════════════════════════════════
