@@ -5,6 +5,7 @@ import {
   Clock, User, AlertCircle, CheckCircle, X 
 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useAuth } from '../../hooks/useAuth';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
 
@@ -36,6 +37,7 @@ const PRIORITY_COLORS = {
 
 const EventsList = () => {
   const { isRTL } = useLanguage();
+  const { isAdmin } = useAuth();
   const navigate = useNavigate();
   
   const [events, setEvents] = useState([]);
@@ -177,13 +179,15 @@ const EventsList = () => {
             )}
           </button>
 
-          <button
-            onClick={() => navigate('/dashboard/events/new')}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span>{isRTL ? 'حدث جديد' : 'Nouvel Événement'}</span>
-          </button>
+          {isAdmin() && (
+            <button
+              onClick={() => navigate('/dashboard/events/new')}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              <span>{isRTL ? 'حدث جديد' : 'Nouvel Événement'}</span>
+            </button>
+          )}
         </div>
       </div>
 
