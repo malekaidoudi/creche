@@ -66,7 +66,7 @@ router.get('/children-summary', auth.authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
     
-    // Requête simplifiée sans la table absence_requests qui peut ne pas exister
+    // Requête simplifiée - colonnes existantes uniquement
     const result = await db.query(
       `SELECT 
         c.id,
@@ -74,8 +74,7 @@ router.get('/children-summary', auth.authenticateToken, async (req, res) => {
         c.last_name,
         c.birth_date,
         c.photo_url,
-        e.status as enrollment_status,
-        e.start_date as enrollment_start_date
+        e.status as enrollment_status
        FROM children c
        LEFT JOIN enrollments e ON c.id = e.child_id
        WHERE c.parent_id = $1
