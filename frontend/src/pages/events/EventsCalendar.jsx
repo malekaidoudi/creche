@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -30,19 +30,15 @@ const EventsCalendar = () => {
   const [loading, setLoading] = useState(true);
   const [selectedTypes, setSelectedTypes] = useState([]);
   const [view, setView] = useState('dayGridMonth');
+  const [dateRange, setDateRange] = useState({ start: null, end: null });
 
-  useEffect(() => {
-    loadEvents();
-  }, [selectedTypes]);
-
-  const loadEvents = async () => {
+  const loadEvents = useCallback(async () => {
+    if (!dateRange.start || !dateRange.end) return;
     try {
       setLoading(true);
       
-      // Récupérer la plage de dates visible
-      const calendarApi = calendarRef.current?.getApi();
-      const start = calendarApi?.view.activeStart || new Date();
-      const end = calendarApi?.view.activeEnd || new Date();
+      const start = dateRange.start;
+      const end = dateRange.end;
       
       const params = new URLSearchParams({
         start: start.toISOString().split('T')[0],
@@ -84,7 +80,11 @@ const EventsCalendar = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [dateRange, selectedTypes, isRTL]);
+
+  useEffect(() => {
+    loadEvents();
+  }, [loadEvents]);
 
   const handleEventClick = (info) => {
     navigate(`/dashboard/events/${info.event.id}`);
@@ -97,9 +97,12 @@ const EventsCalendar = () => {
     });
   };
 
-  const handleDatesSet = () => {
-    // Recharger les événements quand la vue change
-    loadEvents();
+  const handleDatesSet = (dateInfo) => {
+    // Mettre à jour la plage de dates quand la vue change
+    setDateRange({
+      start: dateInfo.start,
+      end: dateInfo.end
+    });
   };
 
   const toggleTypeFilter = (type) => {
