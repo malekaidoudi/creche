@@ -315,16 +315,19 @@ const DashboardHome = () => {
           transition={{ duration: 0.6, delay: 0.4 }}
           className="mb-8"
         >
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            <UpcomingEventsWidget days={7} limit={5} />
-            {isAdmin() ? (
+          {isAdmin() ? (
+            // Layout Admin: Événements à venir + Messages + Anniversaires
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="lg:row-span-2">
+                <UpcomingEventsWidget days={7} limit={5} />
+              </div>
               <StaffMessagesWidget />
-            ) : (
               <BirthdaysWidget />
-            )}
-          </div>
-          {isAdmin() && (
-            <div className="grid grid-cols-1 gap-6">
+            </div>
+          ) : (
+            // Layout Staff: 1 ligne simple
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <UpcomingEventsWidget days={7} limit={5} />
               <BirthdaysWidget />
             </div>
           )}
