@@ -7,7 +7,10 @@ import {
   Calendar,
   Baby,
   User,
-  ArrowRight
+  ArrowRight,
+  MessageSquare,
+  Megaphone,
+  Bell
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -18,6 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Ca
 import { Button } from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import HolidaysList from '../../components/HolidaysList';
+import SimpleNotificationCenter from '../../components/dashboard/SimpleNotificationCenter';
 import toast from 'react-hot-toast';
 
 const MySpacePage = () => {
@@ -28,9 +32,16 @@ const MySpacePage = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [children, setChildren] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     loadChildren();
+    loadUnreadCount();
+    
+    // Rafraîchir le compteur toutes les 30 secondes
+    const interval = setInterval(loadUnreadCount, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const loadChildren = async () => {
@@ -49,14 +60,43 @@ const MySpacePage = () => {
     }
   };
 
+  const loadUnreadCount = async () => {
+    try {
+      const response = await api.get('/api/notifications?is_read=false');
+      if (response.data && response.data.success) {
+        setUnreadCount(response.data.notifications?.length || 0);
+      }
+    } catch (error) {
+      console.error('Erreur chargement compteur notifications:', error);
+    }
+  };
+
   const quickActions = [
+    {
+      id: 'messages',
+      title: isRTL ? 'الرسائل' : 'Messages',
+      description: isRTL ? 'تواصل مع الإدارة والموظفين' : 'Communiquez avec la direction et le personnel',
+      icon: MessageSquare,
+      color: 'bg-purple-500',
+      hoverColor: 'hover:bg-purple-600',
+      path: '/mon-espace/messages'
+    },
+    {
+      id: 'announcements',
+      title: isRTL ? 'الإعلانات' : 'Annonces',
+      description: isRTL ? 'اطلع على آخر الأخبار والإعلانات' : 'Consultez les dernières actualités et annonces',
+      icon: Megaphone,
+      color: 'bg-blue-500',
+      hoverColor: 'hover:bg-blue-600',
+      path: '/mon-espace/announcements'
+    },
     {
       id: 'attendance-report',
       title: isRTL ? 'تقرير الحضور' : 'Rapport de présence',
       description: isRTL ? 'عرض تقرير حضور أطفالك' : 'Consultez le rapport de présence de vos enfants',
       icon: FileText,
-      color: 'bg-blue-500',
-      hoverColor: 'hover:bg-blue-600',
+      color: 'bg-green-500',
+      hoverColor: 'hover:bg-green-600',
       path: '/attendance-parent'
     },
     {
@@ -87,7 +127,20 @@ const MySpacePage = () => {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white">
+          <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white relative">
+            {/* Bouton notifications en haut à droite */}
+            <button
+              onClick={() => setShowNotifications(true)}
+              className="absolute top-4 right-4 p-2 bg-white/20 hover:bg-white/30 rounded-full transition-colors"
+            >
+              <Bell className="w-6 h-6" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
+            
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center overflow-hidden">
                 {hasImage() ? (
@@ -227,6 +280,15 @@ const MySpacePage = () => {
           <HolidaysList userRole="parent" />
         </motion.div>
       </div>
+      
+      {/* Centre de notifications */}
+      <SimpleNotificationCenter 
+        isOpen={showNotifications} 
+        onClose={() => {
+          setShowNotifications(false);
+          loadUnreadCount(); // Rafraîchir le compteur après fermeture
+        }} 
+      />
     </div>
   );
 };

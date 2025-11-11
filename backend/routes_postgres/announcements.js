@@ -53,12 +53,23 @@ router.get('/', auth.authenticateToken, auth.requireRole('admin'), async (req, r
 });
 
 /**
- * GET /api/announcements/my - Récupérer mes annonces (parent)
+ * GET /api/announcements/my - Récupérer mes annonces (parent/staff)
  */
-router.get('/my', auth.authenticateToken, auth.requireRole('parent'), async (req, res) => {
+router.get('/my', auth.authenticateToken, async (req, res) => {
   try {
-    const result = await announcementService.getParentAnnouncements(req.user.userId);
+    const userRole = req.user.role;
     
+    // Parents voient leurs annonces filtrées
+    if (userRole === 'parent') {
+      const result = await announcementService.getParentAnnouncements(req.user.userId);
+      return res.json(result);
+    }
+    
+    // Staff/Admin voient toutes les annonces publiées du mois courant
+    const result = await announcementService.getAnnouncements({ 
+      is_published: true,
+      current_month_only: true 
+    });
     res.json(result);
     
   } catch (error) {

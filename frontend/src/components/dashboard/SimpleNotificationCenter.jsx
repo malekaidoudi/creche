@@ -93,8 +93,25 @@ const SimpleNotificationCenter = ({ isOpen, onClose }) => {
       // Fermer le panneau de notifications
       onClose();
       
+      // Déterminer la route selon le rôle de l'utilisateur
+      const isParent = user?.role === 'parent';
+      const messagesRoute = isParent ? '/mon-espace/messages' : '/dashboard/messages';
+      const announcementsRoute = isParent ? '/mon-espace/announcements' : '/dashboard';
+      
       // Rediriger selon le type de notification
-      if (notification.type === 'absence_request') {
+      if (notification.type === 'staff_message') {
+        // Notification de message - ouvrir la conversation avec le contact
+        if (notification.related_id) {
+          // related_id contient l'ID du message
+          // On passe l'ID du message pour ouvrir la conversation automatiquement
+          navigate(`${messagesRoute}?messageId=${notification.related_id}`);
+        } else {
+          navigate(messagesRoute);
+        }
+      } else if (notification.type === 'announcement') {
+        // Notification d'annonce - Parents vont à /mon-espace/announcements, Staff/Admin vont au dashboard
+        navigate(announcementsRoute);
+      } else if (notification.type === 'absence_request') {
         // Rediriger vers la page de gestion avec l'ID de la demande
         if (notification.related_id) {
           navigate(`/dashboard/absence-management?requestId=${notification.related_id}`);
@@ -107,6 +124,20 @@ const SimpleNotificationCenter = ({ isOpen, onClose }) => {
           navigate(`/dashboard/events/${notification.related_id}`);
         } else {
           navigate('/dashboard/events/list');
+        }
+      } else if (notification.type === 'task') {
+        // Notification de tâche
+        if (notification.related_id) {
+          navigate(`/dashboard/tasks?taskId=${notification.related_id}`);
+        } else {
+          navigate('/dashboard/tasks');
+        }
+      } else if (notification.type === 'appointment') {
+        // Notification de rendez-vous
+        if (notification.related_id) {
+          navigate(`/dashboard/appointments?appointmentId=${notification.related_id}`);
+        } else {
+          navigate('/dashboard/appointments');
         }
       }
     } catch (error) {

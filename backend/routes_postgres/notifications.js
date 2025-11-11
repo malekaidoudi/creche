@@ -2,11 +2,14 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const router = express.Router();
 const db = require('../config/db_postgres');
+const auth = require('../middleware/auth');
 
-// GET /api/notifications - Récupérer toutes les notifications
-router.get('/', async (req, res) => {
+// GET /api/notifications - Récupérer les notifications de l'utilisateur connecté
+router.get('/', auth.authenticateToken, async (req, res) => {
   try {
-    const { user_id, type, is_read, page = 1, limit = 50 } = req.query;
+    // Utiliser l'utilisateur connecté au lieu du query param
+    const user_id = req.user.userId;
+    const { type, is_read, page = 1, limit = 50 } = req.query;
     
     let sql = `
       SELECT n.id, n.user_id, n.title, n.message, n.type, n.is_read, n.created_at,
@@ -137,7 +140,7 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/notifications/:id - Récupérer une notification par ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', auth.authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -291,7 +294,7 @@ router.post('/broadcast', [
 });
 
 // PUT /api/notifications/:id/read - Marquer une notification comme lue
-router.put('/:id/read', async (req, res) => {
+router.put('/:id/read', auth.authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     

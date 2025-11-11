@@ -145,9 +145,43 @@ async function getUserById(userId) {
   }
 }
 
+/**
+ * Récupérer messages non lus
+ */
+async function getUnreadMessages(userId) {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        sm.id,
+        sm.content,
+        sm.created_at,
+        sm.sender_id,
+        sm.recipient_id,
+        sm.is_read,
+        sender.first_name || ' ' || sender.last_name as sender_name
+      FROM staff_messages sm
+      LEFT JOIN users sender ON sm.sender_id = sender.id
+      WHERE sm.recipient_id = $1
+        AND sm.is_read = false
+      ORDER BY sm.created_at DESC
+      LIMIT 10
+    `, [userId]);
+    
+    return {
+      success: true,
+      messages: result.rows
+    };
+    
+  } catch (error) {
+    console.error('❌ Erreur getUnreadMessages:', error);
+    throw error;
+  }
+}
+
 module.exports = {
   sendMessage,
   getUserMessages,
   getConversation,
-  markAsRead
+  markAsRead,
+  getUnreadMessages
 };

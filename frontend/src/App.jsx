@@ -89,6 +89,24 @@ function App() {
           } 
         />
         
+        {/* Routes Mon Espace - Messages et Annonces pour parents */}
+        <Route 
+          path="mon-espace/messages" 
+          element={
+            <ProtectedRoute roles={['parent']}>
+              <MessagesPage />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="mon-espace/announcements" 
+          element={
+            <ProtectedRoute roles={['parent']}>
+              <AnnouncementsPage />
+            </ProtectedRoute>
+          } 
+        />
+        
         {/* Page profil unifiée (tous les utilisateurs connectés) */}
         <Route 
           path="profile" 

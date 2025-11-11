@@ -49,6 +49,24 @@ router.get('/', auth.authenticateToken, auth.requireRole('staff', 'admin', 'pare
 });
 
 /**
+ * GET /api/staff-messages/unread - Récupérer messages non lus
+ */
+router.get('/unread', auth.authenticateToken, auth.requireRole('staff', 'admin', 'parent'), async (req, res) => {
+  try {
+    const result = await staffMessageService.getUnreadMessages(req.user.userId);
+    
+    res.json(result);
+    
+  } catch (error) {
+    console.error('❌ Erreur GET /api/staff-messages/unread:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Erreur lors de la récupération des messages non lus' 
+    });
+  }
+});
+
+/**
  * GET /api/staff-messages/:id/conversation - Récupérer une conversation
  */
 router.get('/:id/conversation', auth.authenticateToken, auth.requireRole('staff', 'admin', 'parent'), async (req, res) => {

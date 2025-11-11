@@ -24,7 +24,7 @@ import TodayAbsences from '../../components/dashboard/TodayAbsences';
 import UpcomingEventsWidget from '../../components/widgets/UpcomingEventsWidget';
 import BirthdaysWidget from '../../components/widgets/BirthdaysWidget';
 import TodayTasksWidget from '../../components/widgets/TodayTasksWidget';
-import StaffMessagesWidget from '../../components/widgets/StaffMessagesWidget';
+import MessagesWidget from '../../components/widgets/MessagesWidget';
 import api from '../../services/api';
 
 const DashboardHome = () => {
@@ -317,17 +317,20 @@ const DashboardHome = () => {
         >
           {isAdmin() ? (
             // Layout Admin: Événements à venir + Messages + Anniversaires
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 lg:grid-rows-2 gap-6">
               <div className="lg:row-span-2">
-                <UpcomingEventsWidget days={7} limit={5} />
+                <UpcomingEventsWidget />
               </div>
-              <StaffMessagesWidget />
+              <MessagesWidget />
               <BirthdaysWidget />
             </div>
           ) : (
-            // Layout Staff: 1 ligne simple
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <UpcomingEventsWidget days={7} limit={5} />
+            // Layout Staff: Événements + Messages + Anniversaires
+            <div className="grid grid-cols-1 lg:grid-cols-2 lg:grid-rows-2 gap-6">
+              <div className="lg:row-span-2">
+                <UpcomingEventsWidget />
+              </div>
+              <MessagesWidget />
               <BirthdaysWidget />
             </div>
           )}

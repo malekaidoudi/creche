@@ -58,7 +58,7 @@ async function createAnnouncement(announcementData, creatorId) {
  */
 async function getAnnouncements(filters = {}) {
   try {
-    const { is_published, event_type } = filters;
+    const { is_published, event_type, current_month_only = false } = filters;
     
     let query = `
       SELECT 
@@ -84,7 +84,13 @@ async function getAnnouncements(filters = {}) {
       params.push(event_type);
     }
     
-    query += ` ORDER BY a.event_date DESC`;
+    // Filtrer par mois courant si demandé
+    if (current_month_only) {
+      query += ` AND a.event_date >= DATE_TRUNC('month', CURRENT_DATE)`;
+      query += ` AND a.event_date < DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month'`;
+    }
+    
+    query += ` ORDER BY a.event_date ASC`;
     
     const result = await pool.query(query, params);
     
@@ -99,32 +105,45 @@ async function getAnnouncements(filters = {}) {
 /**
  * Récupérer les annonces pour un parent
  */
-async function getParentAnnouncements(parentId) {
+async function getParentAnnouncements(parentUserId) {
   try {
-    // Récupérer les enfants du parent
+    console.log('🔍 getParentAnnouncements pour user_id:', parentUserId);
+    
+    // Récupérer les enfants du parent (utiliser parent_id)
     const childrenResult = await pool.query(
       'SELECT id FROM children WHERE parent_id = $1',
-      [parentId]
+      [parentUserId]
     );
+    
+    console.log('👶 Enfants trouvés:', childrenResult.rows.length);
     
     const childIds = childrenResult.rows.map(c => c.id);
     
+    // Récupérer les annonces publiées du mois courant uniquement (DISTINCT pour éviter doublons)
     const result = await pool.query(`
-      SELECT *
-      FROM announcements
-      WHERE is_published = true
+      SELECT DISTINCT ON (a.id)
+        a.*,
+        u.first_name || ' ' || u.last_name as author_name
+      FROM announcements a
+      LEFT JOIN users u ON a.created_by = u.id
+      WHERE a.is_published = true
+        AND a.event_date >= DATE_TRUNC('month', CURRENT_DATE)
+        AND a.event_date < DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month'
         AND (
-          target_audience = 'all'
-          OR (target_audience = 'specific' AND target_children && $1)
+          a.target_audience = 'all'
+          OR (a.target_audience = 'specific' AND a.target_children && $1::integer[])
         )
-      ORDER BY event_date DESC
-      LIMIT 20
+      ORDER BY a.id, a.event_date ASC, a.created_at DESC
+      LIMIT 50
     `, [childIds]);
+    
+    console.log('📢 Annonces trouvées:', result.rows.length);
     
     return { success: true, announcements: result.rows };
     
   } catch (error) {
     console.error('❌ Erreur getParentAnnouncements:', error);
+    console.error('Détails:', error.message);
     throw error;
   }
 }
@@ -199,37 +218,37 @@ async function deleteAnnouncement(announcementId) {
  */
 async function notifyParents(client, announcement) {
   try {
-    let parentIds = [];
+    let parentUserIds = [];
     
     if (announcement.target_audience === 'all') {
-      // Tous les parents
+      // Tous les parents (utiliser parent_id)
       const result = await client.query(
         "SELECT DISTINCT parent_id FROM children WHERE parent_id IS NOT NULL"
       );
-      parentIds = result.rows.map(r => r.parent_id);
+      parentUserIds = result.rows.map(r => r.parent_id);
     } else {
-      // Parents des enfants spécifiques
+      // Parents des enfants spécifiques (utiliser parent_id)
       const result = await client.query(
         "SELECT DISTINCT parent_id FROM children WHERE id = ANY($1) AND parent_id IS NOT NULL",
         [announcement.target_children]
       );
-      parentIds = result.rows.map(r => r.parent_id);
+      parentUserIds = result.rows.map(r => r.parent_id);
     }
     
     // Créer notifications
-    for (const parentId of parentIds) {
+    for (const parentUserId of parentUserIds) {
       await client.query(`
         INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
         VALUES ($1, $2, $3, 'announcement', $4, false)
       `, [
-        parentId,
+        parentUserId,
         `📢 ${announcement.title}`,
         announcement.description.substring(0, 200),
         announcement.id
       ]);
     }
     
-    console.log(`✅ ${parentIds.length} parents notifiés`);
+    console.log(`✅ ${parentUserIds.length} parents notifiés`);
     
   } catch (error) {
     console.error('❌ Erreur notifyParents:', error);

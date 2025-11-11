@@ -1,10 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
-import { Send, MessageSquare, X, Info, Shield, Users as UsersIcon, User } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Send, MessageSquare, X, Info, Shield, Users as UsersIcon, User, ArrowLeft, Home } from 'lucide-react';
 import axios from 'axios';
+import { useAuth } from '../../hooks/useAuth';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3003/api';
 
 export default function MessagesPage() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const [contacts, setContacts] = useState([]);
   const [children, setChildren] = useState([]);
   const [selectedContact, setSelectedContact] = useState(null);
@@ -86,6 +91,49 @@ export default function MessagesPage() {
     return () => clearInterval(interval);
   }, [selectedContact]);
 
+  // Ouvrir automatiquement la conversation depuis une notification
+  useEffect(() => {
+    const messageId = searchParams.get('messageId');
+    if (messageId && contacts.length > 0 && !selectedContact) {
+      openConversationFromMessage(parseInt(messageId));
+    }
+  }, [searchParams, contacts, selectedContact]);
+
+  const openConversationFromMessage = async (messageId) => {
+    try {
+      console.log('🔔 Ouverture conversation depuis message ID:', messageId);
+      const token = localStorage.getItem('token');
+      
+      // Récupérer le message pour obtenir le sender_id
+      const response = await axios.get(`${API_URL}/staff-messages/${messageId}/conversation`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.data.success && response.data.conversation.length > 0) {
+        const firstMessage = response.data.conversation[0];
+        const currentUserId = currentUser?.userId || currentUser?.id;
+        
+        // Déterminer qui est le contact (l'autre personne)
+        const contactId = firstMessage.sender_id === currentUserId 
+          ? firstMessage.recipient_id 
+          : firstMessage.sender_id;
+        
+        console.log('👤 Contact ID trouvé:', contactId);
+        
+        // Trouver le contact dans la liste
+        const contact = contacts.find(c => c.id === contactId);
+        if (contact) {
+          console.log('✅ Contact trouvé:', contact.first_name, contact.last_name);
+          await handleSelectContact(contact);
+        } else {
+          console.warn('⚠️ Contact non trouvé dans la liste');
+        }
+      }
+    } catch (error) {
+      console.error('❌ Erreur ouverture conversation:', error);
+    }
+  };
+
   const loadCurrentUser = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -135,20 +183,28 @@ export default function MessagesPage() {
       console.log('🔍 Users array?', Array.isArray(response.data.users));
       
       if (response.data.success && response.data.users) {
-        console.log('👤 Utilisateur actuel:', { userId: user.userId, id: user.id, email: user.email });
-        console.log('📋 Tous contacts AVANT filtrage:', response.data.users.map(u => ({ id: u.id, name: u.first_name + ' ' + u.last_name, email: u.email })));
+        console.log('👤 Utilisateur actuel:', { userId: user.userId, id: user.id, email: user.email, role: user.role });
+        console.log('📋 Tous contacts AVANT filtrage:', response.data.users.map(u => ({ id: u.id, name: u.first_name + ' ' + u.last_name, email: u.email, role: u.role })));
         
-        // Exclure l'utilisateur actuel de la liste des contacts
+        // Exclure l'utilisateur actuel + si parent, exclure les autres parents
         const filtered = response.data.users.filter(u => {
           const isCurrentUser = u.id === user.userId || u.id === user.id || u.email === user.email;
           if (isCurrentUser) {
             console.log('🚫 Exclu utilisateur actuel:', u.first_name, u.last_name, u.email, 'ID:', u.id);
+            return false;
           }
-          return !isCurrentUser && u.is_active;
+          
+          // Si l'utilisateur actuel est un parent, exclure les autres parents
+          if (user.role === 'parent' && u.role === 'parent') {
+            console.log('🚫 Exclu parent (parent ne peut pas contacter parent):', u.first_name, u.last_name);
+            return false;
+          }
+          
+          return u.is_active;
         });
         
-        console.log('✅ Contacts filtrés:', filtered.length, '(exclu utilisateur actuel)');
-        console.log('📋 Contacts APRÈS filtrage:', filtered.map(u => ({ id: u.id, name: u.first_name + ' ' + u.last_name, email: u.email })));
+        console.log('✅ Contacts filtrés:', filtered.length, '(exclu utilisateur actuel + autres parents si parent)');
+        console.log('📋 Contacts APRÈS filtrage:', filtered.map(u => ({ id: u.id, name: u.first_name + ' ' + u.last_name, email: u.email, role: u.role })));
         setContacts(filtered);
       } else {
         console.error('❌ Problème avec la réponse users:', response.data);
@@ -411,9 +467,20 @@ export default function MessagesPage() {
   const grouped = groupContactsByRole();
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
       <div className="mb-6">
+        {/* Bouton retour pour les parents */}
+        {user?.role === 'parent' && (
+          <button
+            onClick={() => navigate('/mon-espace')}
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span>Retour à Mon Espace</span>
+          </button>
+        )}
+        
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Messages</h1>
         <p className="text-gray-600 mt-1">Communiquez avec l'équipe et les parents</p>
       </div>

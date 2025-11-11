@@ -118,6 +118,9 @@ async function getEvents(filters = {}) {
         u1.first_name || ' ' || u1.last_name as created_by_name,
         u2.first_name || ' ' || u2.last_name as assigned_to_name,
         c.first_name || ' ' || c.last_name as child_name,
+        c.birth_date as child_birth_date,
+        c.gender as child_gender,
+        c.photo_url as child_photo_url,
         (SELECT COUNT(*) FROM event_comments ec WHERE ec.event_id = e.id AND ec.deleted_at IS NULL) as comments_count
       FROM events e
       LEFT JOIN users u1 ON e.created_by = u1.id

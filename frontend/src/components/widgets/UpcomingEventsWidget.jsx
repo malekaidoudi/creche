@@ -1,50 +1,62 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, AlertCircle, ChevronRight } from 'lucide-react';
+import { Calendar, Clock, AlertCircle, Info, Megaphone } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../../contexts/LanguageContext';
-import api from '../../services/api';
+import axios from 'axios';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3003/api';
 
 const EVENT_TYPE_ICONS = {
-  memo: '📝',
-  task: '✅',
-  rdv: '📅',
-  birthday: '🎂',
-  vacation_reminder: '🏖️',
-  medical: '🏥',
+  general: '📢',
+  urgent: '🚨',
   meeting: '👥',
-  custom: '⭐'
+  event: '🎉',
+  celebration: '🎊',
+  reunion: '👥',
+  fete: '🎉',
+  sortie: '🚶',
+  fermeture: '🔒'
 };
 
-const PRIORITY_COLORS = {
-  low: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
-  medium: 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-400',
-  high: 'bg-orange-100 text-orange-600 dark:bg-orange-900 dark:text-orange-400',
-  urgent: 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-400'
+const TYPE_COLORS = {
+  general: 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-400',
+  urgent: 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-400',
+  meeting: 'bg-purple-100 text-purple-600 dark:bg-purple-900 dark:text-purple-400',
+  event: 'bg-purple-100 text-purple-600 dark:bg-purple-900 dark:text-purple-400',
+  celebration: 'bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-400'
 };
 
-const UpcomingEventsWidget = ({ days = 7, limit = 5 }) => {
+const UpcomingEventsWidget = () => {
   const { isRTL } = useLanguage();
   const navigate = useNavigate();
-  const [events, setEvents] = useState([]);
+  const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadUpcomingEvents();
-  }, [days]);
+    loadAnnouncements();
+  }, []);
 
-  const loadUpcomingEvents = async () => {
+  const loadAnnouncements = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/api/events/views/upcoming?days=${days}&limit=${limit}`);
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/announcements/my`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       
       if (response.data.success) {
-        setEvents(response.data.events || []);
+        // Filtrer les anniversaires (ils sont dans le widget Anniversaires)
+        const filteredAnnouncements = (response.data.announcements || []).filter(
+          ann => ann.event_type !== 'birthday' && ann.event_type !== 'anniversaire'
+        );
+        // Limiter à 5 événements
+        setAnnouncements(filteredAnnouncements.slice(0, 5));
       } else {
-        setEvents([]);
+        setAnnouncements([]);
       }
     } catch (error) {
-      console.error('Erreur chargement événements à venir:', error);
-      setEvents([]);
+      console.error('Erreur chargement annonces:', error);
+      setAnnouncements([]);
     } finally {
       setLoading(false);
     }
@@ -78,28 +90,19 @@ const UpcomingEventsWidget = ({ days = 7, limit = 5 }) => {
     });
   };
 
-  const getPriorityLabel = (priority) => {
+  const getTypeLabel = (eventType) => {
     const labels = {
-      low: isRTL ? 'منخفضة' : 'Basse',
-      medium: isRTL ? 'متوسطة' : 'Moyenne',
-      high: isRTL ? 'عالية' : 'Haute',
-      urgent: isRTL ? 'عاجلة' : 'Urgente'
-    };
-    return labels[priority] || priority;
-  };
-
-  const getTypeLabel = (type) => {
-    const labels = {
-      memo: isRTL ? 'مذكرة' : 'Mémo',
-      task: isRTL ? 'مهمة' : 'Tâche',
-      rdv: isRTL ? 'موعد' : 'RDV',
-      birthday: isRTL ? 'عيد ميلاد' : 'Anniversaire',
-      vacation_reminder: isRTL ? 'تذكير عطلة' : 'Rappel Vacances',
-      medical: isRTL ? 'موعد طبي' : 'RDV Médical',
+      general: isRTL ? 'معلومات' : 'Information',
+      urgent: isRTL ? 'عاجل' : 'Urgent',
       meeting: isRTL ? 'اجتماع' : 'Réunion',
-      custom: isRTL ? 'مخصص' : 'Personnalisé'
+      event: isRTL ? 'حدث' : 'Événement',
+      celebration: isRTL ? 'احتفال' : 'Célébration',
+      reunion: isRTL ? 'اجتماع' : 'Réunion',
+      fete: isRTL ? 'حفلة' : 'Fête',
+      sortie: isRTL ? 'نزهة' : 'Sortie',
+      fermeture: isRTL ? 'إغلاق' : 'Fermeture'
     };
-    return labels[type] || type;
+    return labels[eventType] || eventType;
   };
 
   if (loading) {
@@ -122,9 +125,9 @@ const UpcomingEventsWidget = ({ days = 7, limit = 5 }) => {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow flex flex-col">
       {/* Header */}
-      <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+      <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
@@ -135,24 +138,16 @@ const UpcomingEventsWidget = ({ days = 7, limit = 5 }) => {
                 {isRTL ? 'الأحداث القادمة' : 'Événements à Venir'}
               </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                {isRTL ? `${days} أيام القادمة` : `${days} prochains jours`}
+                {isRTL ? 'هذا الشهر' : 'Ce mois-ci'}
               </p>
             </div>
           </div>
-          
-          <button
-            onClick={() => navigate('/dashboard/events/calendar')}
-            className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium flex items-center gap-1"
-          >
-            {isRTL ? 'عرض الكل' : 'Voir tout'}
-            <ChevronRight className="w-4 h-4" />
-          </button>
         </div>
       </div>
 
-      {/* Events List */}
+      {/* Events List - 5 événements sans scroll */}
       <div className="p-6">
-        {events.length === 0 ? (
+        {announcements.length === 0 ? (
           <div className="text-center py-8">
             <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-3" />
             <p className="text-gray-500 dark:text-gray-400">
@@ -161,69 +156,50 @@ const UpcomingEventsWidget = ({ days = 7, limit = 5 }) => {
           </div>
         ) : (
           <div className="space-y-3">
-            {events.map((event) => (
+            {announcements.map((announcement) => (
               <div
-                key={event.id}
-                onClick={() => navigate(`/dashboard/events/${event.id}`)}
-                className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
+                key={announcement.id}
+                className="flex items-start gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
                 {/* Icon */}
                 <div className="text-2xl flex-shrink-0 mt-1">
-                  {EVENT_TYPE_ICONS[event.type] || '📌'}
+                  {EVENT_TYPE_ICONS[announcement.event_type] || '📢'}
                 </div>
 
                 {/* Content */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2 mb-1">
-                    <h4 className="font-medium text-gray-900 dark:text-white truncate">
-                      {event.title}
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <h4 className="font-medium text-gray-900 dark:text-white line-clamp-1 flex-1">
+                      {announcement.title}
                     </h4>
-                    <span className={`text-xs px-2 py-1 rounded-full whitespace-nowrap ${PRIORITY_COLORS[event.priority]}`}>
-                      {getPriorityLabel(event.priority)}
+                    <span className={`text-xs px-2 py-1 rounded-full whitespace-nowrap flex-shrink-0 ${TYPE_COLORS[announcement.event_type] || 'bg-gray-100 text-gray-600'}`}>
+                      {getTypeLabel(announcement.event_type)}
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-2 leading-relaxed">
+                    {announcement.description}
+                  </p>
+
+                  <div className="flex items-center justify-between gap-2 text-xs text-gray-500 dark:text-gray-400">
                     <div className="flex items-center gap-1">
-                      <Clock className="w-4 h-4" />
-                      <span>{formatDate(event.start_date)}</span>
-                      {!event.all_day && (
-                        <span className="text-xs">• {formatTime(event.start_date)}</span>
-                      )}
+                      <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span className="whitespace-nowrap">{formatDate(announcement.event_date)}</span>
                     </div>
 
-                    {event.assigned_to_name && (
-                      <div className="flex items-center gap-1 text-xs">
+                    {announcement.author_name && (
+                      <div className="flex items-center gap-1 truncate">
                         <span>👤</span>
-                        <span className="truncate">{event.assigned_to_name}</span>
+                        <span className="truncate">{announcement.author_name}</span>
                       </div>
                     )}
                   </div>
-
-                  {event.location && (
-                    <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      <span>📍</span>
-                      <span className="truncate">{event.location}</span>
-                    </div>
-                  )}
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
-
-      {/* Footer */}
-      {events.length > 0 && (
-        <div className="px-6 py-3 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 rounded-b-lg">
-          <button
-            onClick={() => navigate('/dashboard/events/list')}
-            className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium w-full text-center"
-          >
-            {isRTL ? 'عرض جميع الأحداث' : 'Voir tous les événements'}
-          </button>
-        </div>
-      )}
     </div>
   );
 };
