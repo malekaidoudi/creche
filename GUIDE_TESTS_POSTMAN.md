@@ -40,6 +40,17 @@ Body:
 ```
 ✅ **Résultat attendu**: Token sauvegardé dans `{{staff_token}}`
 
+#### 1.3 Login Parent
+```
+POST /api/auth/login
+Body:
+{
+  "email": "parent1@example.com",
+  "password": "password"
+}
+```
+✅ **Résultat attendu**: Token sauvegardé dans `{{parent_token}}`
+
 ---
 
 ### ÉTAPE 2: TÂCHES (Admin → Staff)
