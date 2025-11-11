@@ -17,7 +17,8 @@ import {
   ChevronDown,
   ChevronRight,
   User,
-  MessageSquare
+  MessageSquare,
+  Megaphone
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -65,6 +66,13 @@ const DashboardSidebar = ({ isOpen, onClose }) => {
       icon: MessageSquare,
       path: '/dashboard/messages',
       roles: ['admin', 'staff', 'parent']
+    },
+    {
+      key: 'announcements',
+      title: isRTL ? 'الإعلانات' : 'Annonces',
+      icon: Megaphone,
+      path: '/dashboard/announcements',
+      roles: ['parent']
     },
     {
       key: 'children',

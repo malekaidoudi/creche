@@ -21,6 +21,7 @@ import RegisterPage from './pages/auth/RegisterPage'
 import MySpacePage from './pages/parent/MySpacePage'
 import AttendanceParentPage from './pages/parent/AttendanceParentPage'
 import AbsenceRequestPage from './pages/parent/AbsenceRequestPage'
+import AnnouncementsPage from './pages/parent/AnnouncementsPage'
 
 // Pages staff
 import AbsenceManagementPage from './pages/staff/AbsenceManagementPage'
@@ -153,6 +154,9 @@ function App() {
         
         {/* Route messages (parent/staff/admin) */}
         <Route path="messages" element={<MessagesPage />} />
+        
+        {/* Route annonces (parent) */}
+        <Route path="announcements" element={<AnnouncementsPage />} />
         
         {/* Pages placeholder pour fonctionnalités non implémentées */}
         <Route path="parents" element={<ParentsPage />} />
