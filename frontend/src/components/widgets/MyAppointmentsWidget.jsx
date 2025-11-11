@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, Plus, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { Calendar, Clock, Plus, CheckCircle, XCircle, AlertCircle, Check, X } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import api from '../../services/api';
+import toast from 'react-hot-toast';
 
 const MyAppointmentsWidget = ({ onRequestAppointment }) => {
   const { isRTL } = useLanguage();
@@ -37,20 +38,35 @@ const MyAppointmentsWidget = ({ onRequestAppointment }) => {
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('fr-FR', { 
-      weekday: 'long',
-      day: 'numeric', 
-      month: 'long',
-      year: 'numeric'
-    });
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
   };
 
   const formatTime = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleTimeString('fr-FR', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
+  };
+
+  const handleConfirmAppointment = async (appointmentId) => {
+    try {
+      const response = await api.patch(`/api/appointments/${appointmentId}/confirm`);
+      if (response.data.success) {
+        toast.success(isRTL ? 'تم تأكيد الموعد' : 'Rendez-vous confirmé');
+        loadAppointments();
+      }
+    } catch (error) {
+      console.error('Erreur confirmation RDV:', error);
+      toast.error(isRTL ? 'خطأ في التأكيد' : 'Erreur lors de la confirmation');
+    }
+  };
+
+  const handleProposeNewDate = (appointmentId) => {
+    // Ouvrir modal avec appointmentId pour proposer nouvelle date
+    onRequestAppointment(appointmentId);
   };
 
   const getStatusConfig = (status) => {
@@ -177,7 +193,7 @@ const MyAppointmentsWidget = ({ onRequestAppointment }) => {
                         </p>
                       )}
                       
-                      <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+                      <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400 mb-3">
                         <div className="flex items-center gap-1">
                           <Calendar className="w-4 h-4" />
                           <span>{formatDate(appointment.scheduled_date)}</span>
@@ -187,6 +203,32 @@ const MyAppointmentsWidget = ({ onRequestAppointment }) => {
                           <span>{formatTime(appointment.scheduled_date)}</span>
                         </div>
                       </div>
+
+                      {/* Boutons d'action pour RDV confirmé */}
+                      {appointment.status === 'confirmed' && (
+                        <div className="flex items-center gap-2 pt-2 border-t border-gray-200 dark:border-gray-600">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleConfirmAppointment(appointment.id);
+                            }}
+                            className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded transition-colors"
+                          >
+                            <Check className="w-3 h-3" />
+                            <span>{isRTL ? 'تأكيد' : 'Valider'}</span>
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleProposeNewDate(appointment.id);
+                            }}
+                            className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors"
+                          >
+                            <Calendar className="w-3 h-3" />
+                            <span>{isRTL ? 'تاريخ آخر' : 'Autre date'}</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

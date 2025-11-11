@@ -169,30 +169,31 @@ const MySpacePage = () => {
           </div>
         </motion.div>
 
-        {/* Résumé des enfants */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="mb-8"
-        >
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Baby className="w-5 h-5" />
-                {isRTL ? 'أطفالي' : 'Mes enfants'}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {children.length === 0 ? (
-                <div className="text-center py-8">
-                  <Baby className={`w-12 h-12 mx-auto mb-4 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
-                  <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {isRTL ? 'لا توجد أطفال مسجلون' : 'Aucun enfant inscrit'}
-                  </p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Résumé des enfants + Widget Rendez-vous */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Résumé des enfants */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+          >
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Baby className="w-5 h-5" />
+                  {isRTL ? 'أطفالي' : 'Mes enfants'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {children.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Baby className={`w-12 h-12 mx-auto mb-4 ${isDark ? 'text-gray-500' : 'text-gray-400'}`} />
+                    <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                      {isRTL ? 'لا توجد أطفال مسجلون' : 'Aucun enfant inscrit'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-4">
                   {children.map((child) => (
                     <div
                       key={child.id}
@@ -228,11 +229,25 @@ const MySpacePage = () => {
           </Card>
         </motion.div>
 
-        {/* Actions rapides */}
+        {/* Widget Rendez-vous */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
+        >
+          <MyAppointmentsWidget 
+            key={appointmentKey}
+            onRequestAppointment={() => setShowAppointmentModal(true)}
+          />
+        </motion.div>
+      </div>
+
+        {/* Actions rapides */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="mb-8"
         >
           <Card>
             <CardHeader>
@@ -272,19 +287,6 @@ const MySpacePage = () => {
               </div>
             </CardContent>
           </Card>
-        </motion.div>
-
-        {/* Widget Rendez-vous */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="mb-8"
-        >
-          <MyAppointmentsWidget 
-            key={appointmentKey}
-            onRequestAppointment={() => setShowAppointmentModal(true)}
-          />
         </motion.div>
 
         {/* Liste des jours fériés et vacances */}
