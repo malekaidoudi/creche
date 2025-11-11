@@ -1,0 +1,718 @@
+{
+  "info": {
+    "name": "Crèche Mima El Ghalia - API Simplifiée",
+    "description": "Collection complète pour tester le système simplifié",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3003",
+      "type": "string"
+    },
+    {
+      "key": "admin_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "staff_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "parent_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "0. AUTH",
+      "item": [
+        {
+          "name": "Login Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('admin_token', response.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"crechemimaelghalia@gmail.com\",\n  \"password\": \"Admin@2024\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Login Staff",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('staff_token', response.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"staff@mimaelghalia.tn\",\n  \"password\": \"Staff@2024\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. TÂCHES",
+      "item": [
+        {
+          "name": "Créer une tâche (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Préparer activité peinture\",\n  \"description\": \"Préparer le matériel pour l'activité peinture de demain\",\n  \"assigned_to\": 2,\n  \"due_date\": \"2025-11-12T14:00:00Z\",\n  \"priority\": \"high\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/tasks",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tasks"]
+            }
+          }
+        },
+        {
+          "name": "Mes tâches (Staff)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staff_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/tasks/my",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tasks", "my"]
+            }
+          }
+        },
+        {
+          "name": "Tâches d'aujourd'hui",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staff_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/tasks/today",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tasks", "today"]
+            }
+          }
+        },
+        {
+          "name": "Tâches en retard (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/tasks/overdue",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tasks", "overdue"]
+            }
+          }
+        },
+        {
+          "name": "Changer statut tâche",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staff_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"completed\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/tasks/1/status",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tasks", "1", "status"]
+            }
+          }
+        },
+        {
+          "name": "Envoyer rappel (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/tasks/1/remind",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tasks", "1", "remind"]
+            }
+          }
+        },
+        {
+          "name": "Supprimer tâche (Admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/tasks/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "tasks", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. ANNONCES",
+      "item": [
+        {
+          "name": "Créer annonce (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Réunion parents\",\n  \"description\": \"Réunion de rentrée pour tous les parents le 15 novembre à 18h\",\n  \"event_date\": \"2025-11-15T18:00:00Z\",\n  \"event_type\": \"reunion\",\n  \"target_audience\": \"all\",\n  \"is_published\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/announcements",
+              "host": ["{{base_url}}"],
+              "path": ["api", "announcements"]
+            }
+          }
+        },
+        {
+          "name": "Toutes les annonces (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/announcements?is_published=true",
+              "host": ["{{base_url}}"],
+              "path": ["api", "announcements"],
+              "query": [
+                {
+                  "key": "is_published",
+                  "value": "true"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Mes annonces (Parent)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{parent_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/announcements/my",
+              "host": ["{{base_url}}"],
+              "path": ["api", "announcements", "my"]
+            }
+          }
+        },
+        {
+          "name": "Publier annonce (Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/announcements/1/publish",
+              "host": ["{{base_url}}"],
+              "path": ["api", "announcements", "1", "publish"]
+            }
+          }
+        },
+        {
+          "name": "Supprimer annonce (Admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/announcements/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "announcements", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. RENDEZ-VOUS",
+      "item": [
+        {
+          "name": "Créer RDV (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"parent_id\": 3,\n  \"child_id\": 1,\n  \"subject\": \"Discussion sur le comportement\",\n  \"description\": \"Discuter du comportement de l'enfant en classe\",\n  \"proposed_date\": \"2025-11-13T10:00:00Z\",\n  \"location\": \"Bureau directrice\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/appointments",
+              "host": ["{{base_url}}"],
+              "path": ["api", "appointments"]
+            }
+          }
+        },
+        {
+          "name": "Mes RDV",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/appointments",
+              "host": ["{{base_url}}"],
+              "path": ["api", "appointments"]
+            }
+          }
+        },
+        {
+          "name": "RDV aujourd'hui (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/appointments/today",
+              "host": ["{{base_url}}"],
+              "path": ["api", "appointments", "today"]
+            }
+          }
+        },
+        {
+          "name": "Confirmer RDV (Parent)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{parent_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"confirmed_date\": \"2025-11-13T10:00:00Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/appointments/1/confirm",
+              "host": ["{{base_url}}"],
+              "path": ["api", "appointments", "1", "confirm"]
+            }
+          }
+        },
+        {
+          "name": "Proposer nouvelle date (Parent)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{parent_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"new_date\": \"2025-11-14T14:00:00Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/appointments/1/reschedule",
+              "host": ["{{base_url}}"],
+              "path": ["api", "appointments", "1", "reschedule"]
+            }
+          }
+        },
+        {
+          "name": "Marquer complété (Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Réunion productive, parents coopératifs\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/appointments/1/complete",
+              "host": ["{{base_url}}"],
+              "path": ["api", "appointments", "1", "complete"]
+            }
+          }
+        },
+        {
+          "name": "Annuler RDV",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/appointments/1/cancel",
+              "host": ["{{base_url}}"],
+              "path": ["api", "appointments", "1", "cancel"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. MESSAGES STAFF",
+      "item": [
+        {
+          "name": "Envoyer message (Staff → Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staff_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recipient_id\": 1,\n  \"subject\": \"Demande de congé\",\n  \"content\": \"Bonjour, je souhaiterais prendre un congé le 20 novembre. Merci\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/staff-messages",
+              "host": ["{{base_url}}"],
+              "path": ["api", "staff-messages"]
+            }
+          }
+        },
+        {
+          "name": "Répondre à un message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recipient_id\": 2,\n  \"parent_message_id\": 1,\n  \"content\": \"Bonjour, votre demande est acceptée. Bon congé !\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/staff-messages",
+              "host": ["{{base_url}}"],
+              "path": ["api", "staff-messages"]
+            }
+          }
+        },
+        {
+          "name": "Mes messages",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staff_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/staff-messages",
+              "host": ["{{base_url}}"],
+              "path": ["api", "staff-messages"]
+            }
+          }
+        },
+        {
+          "name": "Conversation complète",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staff_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/staff-messages/1/conversation",
+              "host": ["{{base_url}}"],
+              "path": ["api", "staff-messages", "1", "conversation"]
+            }
+          }
+        },
+        {
+          "name": "Marquer comme lu",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/staff-messages/1/read",
+              "host": ["{{base_url}}"],
+              "path": ["api", "staff-messages", "1", "read"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. MÉMOS PERSONNELS",
+      "item": [
+        {
+          "name": "Créer mémo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staff_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Appeler le fournisseur de jouets\",\n  \"memo_date\": \"2025-11-12\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/personal-memos",
+              "host": ["{{base_url}}"],
+              "path": ["api", "personal-memos"]
+            }
+          }
+        },
+        {
+          "name": "Mes mémos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staff_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/personal-memos",
+              "host": ["{{base_url}}"],
+              "path": ["api", "personal-memos"]
+            }
+          }
+        },
+        {
+          "name": "Mémos d'aujourd'hui",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staff_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/personal-memos/today",
+              "host": ["{{base_url}}"],
+              "path": ["api", "personal-memos", "today"]
+            }
+          }
+        },
+        {
+          "name": "Marquer complété",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staff_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/personal-memos/1/complete",
+              "host": ["{{base_url}}"],
+              "path": ["api", "personal-memos", "1", "complete"]
+            }
+          }
+        },
+        {
+          "name": "Supprimer mémo",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{staff_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/personal-memos/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "personal-memos", "1"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
