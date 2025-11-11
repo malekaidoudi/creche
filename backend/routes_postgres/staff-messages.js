@@ -11,7 +11,7 @@ const auth = require('../middleware/auth');
 /**
  * POST /api/staff-messages - Envoyer un message
  */
-router.post('/', auth.authenticateToken, auth.requireRole('staff', 'admin'), async (req, res) => {
+router.post('/', auth.authenticateToken, auth.requireRole('staff', 'admin', 'parent'), async (req, res) => {
   try {
     const result = await staffMessageService.sendMessage(req.body, req.user.userId);
     
@@ -33,7 +33,7 @@ router.post('/', auth.authenticateToken, auth.requireRole('staff', 'admin'), asy
 /**
  * GET /api/staff-messages - Récupérer mes messages
  */
-router.get('/', auth.authenticateToken, auth.requireRole('staff', 'admin'), async (req, res) => {
+router.get('/', auth.authenticateToken, auth.requireRole('staff', 'admin', 'parent'), async (req, res) => {
   try {
     const result = await staffMessageService.getUserMessages(req.user.userId);
     
@@ -51,7 +51,7 @@ router.get('/', auth.authenticateToken, auth.requireRole('staff', 'admin'), asyn
 /**
  * GET /api/staff-messages/:id/conversation - Récupérer une conversation
  */
-router.get('/:id/conversation', auth.authenticateToken, auth.requireRole('staff', 'admin'), async (req, res) => {
+router.get('/:id/conversation', auth.authenticateToken, auth.requireRole('staff', 'admin', 'parent'), async (req, res) => {
   try {
     const result = await staffMessageService.getConversation(
       parseInt(req.params.id),
@@ -72,7 +72,7 @@ router.get('/:id/conversation', auth.authenticateToken, auth.requireRole('staff'
 /**
  * PATCH /api/staff-messages/:id/read - Marquer comme lu
  */
-router.patch('/:id/read', auth.authenticateToken, auth.requireRole('staff', 'admin'), async (req, res) => {
+router.patch('/:id/read', auth.authenticateToken, auth.requireRole('staff', 'admin', 'parent'), async (req, res) => {
   try {
     const result = await staffMessageService.markAsRead(
       parseInt(req.params.id),
