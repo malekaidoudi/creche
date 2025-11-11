@@ -163,11 +163,11 @@ async function updateTaskStatus(taskId, status, userId) {
     const result = await client.query(`
       UPDATE tasks
       SET status = $1,
-          completed_at = CASE WHEN $1 = 'completed' THEN NOW() ELSE NULL END,
+          completed_at = CASE WHEN $2 = 'completed' THEN NOW() ELSE NULL END,
           updated_at = NOW()
-      WHERE id = $2
+      WHERE id = $3
       RETURNING *
-    `, [status, taskId]);
+    `, [status, status, taskId]);
     
     const updatedTask = result.rows[0];
     
