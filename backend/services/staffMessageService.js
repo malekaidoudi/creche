@@ -97,7 +97,7 @@ async function getConversation(messageId, userId) {
       ORDER BY m.created_at ASC
     `, [messageId, userId]);
     
-    return { success: true, messages: result.rows };
+    return { success: true, conversation: result.rows };
     
   } catch (error) {
     console.error('❌ Erreur getConversation:', error);

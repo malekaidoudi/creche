@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Send, MessageSquare, X, Info, Shield, Users as UsersIcon, User } from 'lucide-react';
 import axios from 'axios';
 
@@ -9,23 +9,120 @@ export default function MessagesPage() {
   const [children, setChildren] = useState([]);
   const [selectedContact, setSelectedContact] = useState(null);
   const [conversation, setConversation] = useState([]);
+  const [conversationCache, setConversationCache] = useState(() => {
+    // Charger le cache depuis localStorage au démarrage
+    try {
+      const cached = localStorage.getItem('messagesCache');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        // Vérifier si le cache n'est pas expiré (24h)
+        const now = Date.now();
+        const isValid = Object.values(parsed).every(item => 
+          item.timestamp && (now - item.timestamp < 24 * 60 * 60 * 1000)
+        );
+        if (isValid) {
+          console.log('📦 Cache chargé depuis localStorage:', Object.keys(parsed).length, 'conversations');
+          return parsed;
+        }
+      }
+    } catch (error) {
+      console.error('Erreur chargement cache:', error);
+    }
+    return {};
+  });
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
   const [showChildInfo, setShowChildInfo] = useState(null);
   const [replyContent, setReplyContent] = useState('');
+  const messagesEndRef = useRef(null);
 
   useEffect(() => {
-    loadCurrentUser();
-    loadContacts();
-    loadChildren();
+    const initData = async () => {
+      const user = await loadCurrentUser();
+      await loadContacts(user);
+      await loadChildren();
+    };
+    initData();
   }, []);
 
-  const loadCurrentUser = () => {
+  // Sauvegarder le cache dans localStorage à chaque modification
+  useEffect(() => {
+    if (Object.keys(conversationCache).length > 0) {
+      try {
+        localStorage.setItem('messagesCache', JSON.stringify(conversationCache));
+        console.log('💾 Cache sauvegardé dans localStorage:', Object.keys(conversationCache).length, 'conversations');
+      } catch (error) {
+        console.error('Erreur sauvegarde cache:', error);
+      }
+    }
+  }, [conversationCache]);
+
+  // Vider le cache si le token n'existe plus
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      localStorage.removeItem('messagesCache');
+      setConversationCache({});
+      console.log('🗑️ Cache vidé (pas de token)');
+    }
+  }, []);
+
+  // Auto-scroll vers le bas quand la conversation change
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [conversation]);
+
+  // Rafraîchir la conversation toutes les 10 secondes si un contact est sélectionné
+  useEffect(() => {
+    if (!selectedContact) return;
+    
+    const interval = setInterval(async () => {
+      console.log('🔄 Rafraîchissement automatique conversation pour:', selectedContact.first_name);
+      await loadConversation(selectedContact.id);
+    }, 10000); // 10 secondes
+    
+    return () => clearInterval(interval);
+  }, [selectedContact]);
+
+  const loadCurrentUser = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      console.log('📦 Réponse /auth/me:', response.data);
+      
+      // Accepter différentes structures de réponse
+      let user = null;
+      if (response.data.success && response.data.user) {
+        user = response.data.user;
+      } else if (response.data.user) {
+        user = response.data.user;
+      } else if (response.data.id) {
+        // La réponse est directement l'utilisateur
+        user = response.data;
+      }
+      
+      if (user && user.id) {
+        console.log('👤 loadCurrentUser depuis API:', user);
+        setCurrentUser(user);
+        return user;
+      }
+    } catch (error) {
+      console.error('❌ Erreur chargement utilisateur:', error);
+    }
+    
+    // Fallback sur localStorage
     const user = JSON.parse(localStorage.getItem('user') || '{}');
+    console.log('👤 loadCurrentUser depuis localStorage:', user);
     setCurrentUser(user);
+    return user;
   };
 
-  const loadContacts = async () => {
+  const loadContacts = async (user) => {
     try {
       const token = localStorage.getItem('token');
       console.log('🔍 Chargement contacts...');
@@ -34,12 +131,27 @@ export default function MessagesPage() {
       });
       
       console.log('📦 Réponse users:', response.data);
+      console.log('🔍 Success?', response.data.success);
+      console.log('🔍 Users array?', Array.isArray(response.data.users));
       
-      if (response.data.success) {
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
-        const filtered = response.data.users.filter(u => u.id !== user.userId);
-        console.log('✅ Contacts filtrés:', filtered.length);
+      if (response.data.success && response.data.users) {
+        console.log('👤 Utilisateur actuel:', { userId: user.userId, id: user.id, email: user.email });
+        console.log('📋 Tous contacts AVANT filtrage:', response.data.users.map(u => ({ id: u.id, name: u.first_name + ' ' + u.last_name, email: u.email })));
+        
+        // Exclure l'utilisateur actuel de la liste des contacts
+        const filtered = response.data.users.filter(u => {
+          const isCurrentUser = u.id === user.userId || u.id === user.id || u.email === user.email;
+          if (isCurrentUser) {
+            console.log('🚫 Exclu utilisateur actuel:', u.first_name, u.last_name, u.email, 'ID:', u.id);
+          }
+          return !isCurrentUser && u.is_active;
+        });
+        
+        console.log('✅ Contacts filtrés:', filtered.length, '(exclu utilisateur actuel)');
+        console.log('📋 Contacts APRÈS filtrage:', filtered.map(u => ({ id: u.id, name: u.first_name + ' ' + u.last_name, email: u.email })));
         setContacts(filtered);
+      } else {
+        console.error('❌ Problème avec la réponse users:', response.data);
       }
     } catch (error) {
       console.error('❌ Erreur chargement contacts:', error);
@@ -53,15 +165,18 @@ export default function MessagesPage() {
     try {
       const token = localStorage.getItem('token');
       console.log('🔍 Chargement enfants...');
-      const response = await axios.get(`${API_URL}/children?limit=100`, {
+      const response = await axios.get(`${API_URL}/children/simple`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
       console.log('📦 Réponse children:', response.data);
       
       if (response.data.success) {
-        setChildren(response.data.children || []);
-        console.log('✅ Enfants chargés:', response.data.children?.length || 0);
+        const childrenData = response.data.children || [];
+        setChildren(childrenData);
+        console.log('✅ Enfants chargés:', childrenData.length);
+        console.log('📋 Exemple enfant:', childrenData[0]);
+        console.log('👨‍👩‍👧 parent_ids:', childrenData.map(c => ({ id: c.id, name: c.first_name, parent_id: c.parent_id, parent_user_id: c.parent_user_id })));
       }
     } catch (error) {
       console.error('❌ Erreur chargement enfants:', error);
@@ -71,32 +186,69 @@ export default function MessagesPage() {
 
   const loadConversation = async (contactId) => {
     try {
+      console.log('🔄 loadConversation pour contactId:', contactId, 'utilisateur actuel:', currentUser?.userId || currentUser?.id);
       const token = localStorage.getItem('token');
+      const currentUserId = currentUser?.userId || currentUser?.id;
+      
       const response = await axios.get(`${API_URL}/staff-messages`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
       if (response.data.success) {
         const messages = response.data.messages || [];
+        console.log('📨 Messages totaux:', messages.length);
+        
+        // Filtrer UNIQUEMENT les messages entre l'utilisateur actuel ET le contact sélectionné
         const filtered = messages.filter(m => 
-          m.sender_id === contactId || m.recipient_id === contactId
+          (m.sender_id === currentUserId && m.recipient_id === contactId) ||
+          (m.sender_id === contactId && m.recipient_id === currentUserId)
         );
+        console.log('📨 Messages filtrés entre utilisateur', currentUserId, 'et contact', contactId, ':', filtered.length);
         
         const allConversations = [];
         for (const msg of filtered) {
+          console.log('🔍 Chargement conversation pour message ID:', msg.id, 'entre', msg.sender_id, '→', msg.recipient_id);
           const convResponse = await axios.get(
             `${API_URL}/staff-messages/${msg.id}/conversation`,
             { headers: { Authorization: `Bearer ${token}` } }
           );
           if (convResponse.data.success) {
-            allConversations.push(...convResponse.data.conversation);
+            console.log('💬 Messages dans conversation:', convResponse.data.conversation.length);
+            // Filtrer encore une fois les messages de la conversation
+            const filteredConv = convResponse.data.conversation.filter(cm =>
+              (cm.sender_id === currentUserId && cm.recipient_id === contactId) ||
+              (cm.sender_id === contactId && cm.recipient_id === currentUserId)
+            );
+            allConversations.push(...filteredConv);
           }
         }
         
         const unique = Array.from(new Map(allConversations.map(m => [m.id, m])).values());
         unique.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
         
+        console.log('✅ Conversation finale entre utilisateur', currentUserId, 'et contact', contactId, ':', unique.length, 'messages');
+        console.log('📋 Détails messages:', unique.map(m => ({
+          id: m.id,
+          from: m.sender_id,
+          to: m.recipient_id,
+          content: m.content.substring(0, 30) + '...'
+        })));
         setConversation(unique);
+        
+        // Mettre à jour le cache avec la conversation fraîche
+        const contact = contacts.find(c => c.id === contactId);
+        if (contact) {
+          const cacheKey = `contact_${contactId}`;
+          setConversationCache(prev => ({
+            ...prev,
+            [cacheKey]: {
+              contactId: contactId,
+              contactName: contact.first_name + ' ' + contact.last_name,
+              messages: unique,
+              timestamp: Date.now()
+            }
+          }));
+        }
       }
     } catch (error) {
       console.error('Erreur chargement conversation:', error);
@@ -104,8 +256,38 @@ export default function MessagesPage() {
   };
 
   const handleSelectContact = async (contact) => {
+    console.log('🎯 Sélection contact:', contact.first_name, contact.last_name, 'ID:', contact.id, 'Type:', typeof contact.id);
+    
+    // Sauvegarder la conversation actuelle dans le cache
+    if (selectedContact && conversation.length > 0) {
+      const cacheKey = `contact_${selectedContact.id}`;
+      console.log('💾 Sauvegarde conversation pour:', selectedContact.first_name, 'ID:', selectedContact.id, 'CacheKey:', cacheKey, 'Messages:', conversation.length);
+      setConversationCache(prev => ({
+        ...prev,
+        [cacheKey]: {
+          contactId: selectedContact.id,
+          contactName: selectedContact.first_name + ' ' + selectedContact.last_name,
+          messages: conversation,
+          timestamp: Date.now()
+        }
+      }));
+    }
+    
+    // Vider la conversation AVANT de charger la nouvelle
+    setConversation([]);
     setSelectedContact(contact);
-    await loadConversation(contact.id);
+    
+    // Charger depuis le cache ou depuis l'API
+    const cacheKey = `contact_${contact.id}`;
+    if (conversationCache[cacheKey]) {
+      const cached = conversationCache[cacheKey];
+      console.log('📋 Chargement conversation depuis cache pour:', contact.first_name, 'ID:', contact.id, 'CacheKey:', cacheKey);
+      console.log('📋 Cache info:', { contactId: cached.contactId, contactName: cached.contactName, messages: cached.messages.length });
+      setConversation(cached.messages);
+    } else {
+      console.log('🔍 Chargement conversation depuis API pour:', contact.first_name, 'ID:', contact.id, 'CacheKey:', cacheKey);
+      await loadConversation(contact.id);
+    }
   };
 
   const handleSendMessage = async (e) => {
@@ -125,8 +307,31 @@ export default function MessagesPage() {
       );
       
       if (response.data.success) {
+        // Ajouter le message immédiatement à la conversation
+        const newMessage = {
+          id: response.data.message?.id || Date.now(),
+          sender_id: currentUser?.userId || currentUser?.id,
+          recipient_id: selectedContact.id,
+          content: replyContent,
+          created_at: new Date().toISOString(),
+          is_read: false
+        };
+        
+        const updatedConversation = [...conversation, newMessage];
+        setConversation(updatedConversation);
         setReplyContent('');
-        loadConversation(selectedContact.id);
+        
+        // Mettre à jour le cache avec la nouvelle conversation
+        const cacheKey = `contact_${selectedContact.id}`;
+        setConversationCache(prev => ({
+          ...prev,
+          [cacheKey]: {
+            contactId: selectedContact.id,
+            contactName: selectedContact.first_name + ' ' + selectedContact.last_name,
+            messages: updatedConversation,
+            timestamp: Date.now()
+          }
+        }));
       }
     } catch (error) {
       console.error('Erreur envoi message:', error);
@@ -134,19 +339,43 @@ export default function MessagesPage() {
   };
 
   const getChildrenForParent = (parentId) => {
+    // Convertir en nombre pour comparaison
+    const parentIdNum = Number(parentId);
+    
     // Filtrer les enfants par parent_id ou parent_user_id
-    const parentChildren = children.filter(c => 
-      c.parent_id === parentId || c.parent_user_id === parentId
-    );
-    console.log(`👶 Enfants pour parent ${parentId}:`, parentChildren);
+    const parentChildren = children.filter(c => {
+      const childParentId = Number(c.parent_id);
+      const childParentUserId = Number(c.parent_user_id);
+      
+      const match = childParentId === parentIdNum || childParentUserId === parentIdNum;
+      
+      if (match) {
+        console.log(`✅ Match trouvé pour parent ${parentId}:`, c.first_name, c.last_name, '(parent_id:', c.parent_id, ', parent_user_id:', c.parent_user_id, ')');
+      }
+      return match;
+    });
+    
+    console.log(`👶 Recherche enfants pour parent ID ${parentId} (type: ${typeof parentId})`);
+    console.log(`👶 Total enfants trouvés:`, parentChildren.length);
+    
+    if (parentChildren.length === 0) {
+      console.log(`⚠️ Aucun enfant trouvé pour parent ${parentId}.`);
+      console.log(`📋 Tous les enfants disponibles:`, children.map(c => ({ 
+        id: c.id, 
+        name: c.first_name, 
+        parent_id: c.parent_id + ' (type: ' + typeof c.parent_id + ')', 
+        parent_user_id: c.parent_user_id + ' (type: ' + typeof c.parent_user_id + ')'
+      })));
+    }
+    
     return parentChildren;
   };
 
   const groupContactsByRole = () => {
     return {
-      admin: contacts.filter(c => c.role === 'admin'),
-      staff: contacts.filter(c => c.role === 'staff'),
-      parent: contacts.filter(c => c.role === 'parent')
+      admin: contacts.filter(c => c.role === 'admin' && c.is_active),
+      staff: contacts.filter(c => c.role === 'staff' && c.is_active),
+      parent: contacts.filter(c => c.role === 'parent' && c.is_active)
     };
   };
 
@@ -163,6 +392,12 @@ export default function MessagesPage() {
     if (role === 'admin') return <Shield className="w-4 h-4 text-blue-600" />;
     if (role === 'staff') return <UsersIcon className="w-4 h-4 text-green-600" />;
     return <User className="w-4 h-4 text-purple-600" />;
+  };
+
+  const getRoleColor = (role) => {
+    if (role === 'admin') return 'bg-blue-600';
+    if (role === 'staff') return 'bg-green-600';
+    return 'bg-purple-600';
   };
 
   if (loading) {
@@ -186,11 +421,13 @@ export default function MessagesPage() {
       {/* Layout responsive */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Section Contacts */}
-        <div className="lg:col-span-1 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
           <div className="p-4 border-b border-gray-200 bg-gray-50">
-            <h2 className="font-semibold text-gray-900">Contacts</h2>
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <UsersIcon className="w-5 h-5" />
+              Contacts
+            </h2>
           </div>
-          
           <div className="max-h-[600px] overflow-y-auto">
             {/* Directeur */}
             {grouped.admin.length > 0 && (
@@ -255,8 +492,10 @@ export default function MessagesPage() {
                   <User className="w-4 h-4 text-purple-600" />
                   <span className="text-sm font-semibold text-purple-900">Parents</span>
                 </div>
-                {grouped.parent.map((contact) => {
+                {grouped.parent.map((contact, index) => {
                   const contactChildren = getChildrenForParent(contact.id);
+                  const isLastTwo = index >= grouped.parent.length - 2; // Les 2 derniers
+                  console.log(`👤 Contact parent ${contact.id} (${contact.first_name}):`, contactChildren.length, 'enfants');
                   
                   return (
                     <button
@@ -274,30 +513,36 @@ export default function MessagesPage() {
                           <p className="text-xs text-gray-500">{contact.email}</p>
                         </div>
                         
-                        {contactChildren.length > 0 && (
-                          <div className="relative">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setShowChildInfo(showChildInfo === contact.id ? null : contact.id);
-                              }}
-                              className="p-1 hover:bg-gray-200 rounded-full transition-colors"
-                            >
-                              <Info className="w-4 h-4 text-purple-600" />
-                            </button>
-                            
-                            {showChildInfo === contact.id && (
-                              <div className="absolute right-0 top-8 z-10 bg-white border border-gray-200 rounded-lg shadow-lg p-3 min-w-[200px]">
-                                <p className="text-xs font-semibold text-gray-700 mb-2">Enfants:</p>
-                                {contactChildren.map((child) => (
+                        {/* Toujours afficher l'icône info pour les parents */}
+                        <div className="relative">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowChildInfo(showChildInfo === contact.id ? null : contact.id);
+                            }}
+                            className="p-1 hover:bg-gray-200 rounded-full transition-colors"
+                            title={contactChildren.length > 0 ? `${contactChildren.length} enfant(s)` : 'Aucun enfant'}
+                          >
+                            <Info className="w-4 h-4 text-purple-600" />
+                          </button>
+                          
+                          {showChildInfo === contact.id && (
+                            <div className={`absolute right-0 z-10 bg-white border border-gray-200 rounded-lg shadow-lg p-3 min-w-[200px] ${
+                              isLastTwo ? 'bottom-8' : 'top-8'
+                            }`}>
+                              <p className="text-xs font-semibold text-gray-700 mb-2">Enfants:</p>
+                              {contactChildren.length > 0 ? (
+                                contactChildren.map((child) => (
                                   <p key={child.id} className="text-xs text-gray-600">
                                     • {child.first_name} {child.last_name}
                                   </p>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        )}
+                                ))
+                              ) : (
+                                <p className="text-xs text-gray-500 italic">Aucun enfant associé</p>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </button>
                   );
@@ -332,17 +577,31 @@ export default function MessagesPage() {
                       </p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => setSelectedContact(null)}
-                    className="lg:hidden p-2 hover:bg-gray-200 rounded-lg"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={async () => {
+                        console.log('🔄 Rechargement manuel conversation');
+                        await loadConversation(selectedContact.id);
+                      }}
+                      className="p-2 hover:bg-gray-200 rounded-lg text-gray-600"
+                      title="Recharger la conversation"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => setSelectedContact(null)}
+                      className="lg:hidden p-2 hover:bg-gray-200 rounded-lg"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
               </div>
 
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {conversation.length === 0 ? (
                   <div className="flex items-center justify-center h-full text-gray-500">
                     <div className="text-center">
@@ -353,34 +612,35 @@ export default function MessagesPage() {
                   </div>
                 ) : (
                   conversation.map((msg) => {
-                    const isMe = msg.sender_id === currentUser?.userId;
+                    const isMe = msg.sender_id === currentUser?.id || msg.sender_id === currentUser?.userId;
+                    // Couleur selon le rôle du contact sélectionné
+                    const contactRole = selectedContact?.role;
+                    const bgColor = isMe ? getRoleColor(contactRole) : 'bg-gray-100';
+                    const textColor = isMe ? 'text-white' : 'text-gray-900';
                     
                     return (
                       <div
                         key={msg.id}
-                        className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
+                        className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
                       >
-                        <div
-                          className={`max-w-[80%] sm:max-w-[70%] rounded-lg p-3 ${
-                            isMe
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-gray-100 text-gray-900'
-                          }`}
-                        >
+                        {/* Heure au-dessus */}
+                        <p className="text-xs text-gray-500 mb-1 px-1">
+                          {new Date(msg.created_at).toLocaleTimeString('fr-FR', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </p>
+                        
+                        {/* Message */}
+                        <div className={`max-w-[80%] sm:max-w-[70%] rounded-lg px-4 py-2 ${bgColor} ${textColor}`}>
                           <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
-                          <p className={`text-xs mt-1 ${isMe ? 'text-blue-100' : 'text-gray-500'}`}>
-                            {new Date(msg.created_at).toLocaleString('fr-FR', {
-                              day: 'numeric',
-                              month: 'short',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </p>
                         </div>
                       </div>
                     );
                   })
                 )}
+                {/* Référence pour auto-scroll */}
+                <div ref={messagesEndRef} />
               </div>
 
               {/* Formulaire envoi */}

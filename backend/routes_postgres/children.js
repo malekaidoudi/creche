@@ -4,6 +4,41 @@ const router = express.Router();
 const { pool } = require('../config/db_postgres');
 const auth = require('../middleware/auth');
 
+// GET /api/children/simple - Liste simple des enfants avec parent_id (pour messages)
+router.get('/simple', auth.authenticateToken, async (req, res) => {
+  try {
+    const sql = `
+      SELECT 
+        c.id, 
+        c.first_name, 
+        c.last_name, 
+        c.parent_id,
+        c.birth_date,
+        u.id as parent_user_id,
+        u.first_name as parent_first_name,
+        u.last_name as parent_last_name
+      FROM children c
+      LEFT JOIN users u ON c.parent_id = u.id
+      WHERE c.is_active = true
+      ORDER BY c.first_name, c.last_name
+    `;
+    
+    const result = await pool.query(sql);
+    
+    res.json({
+      success: true,
+      children: result.rows,
+      count: result.rows.length
+    });
+  } catch (error) {
+    console.error('❌ Erreur récupération enfants simple:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Erreur lors de la récupération des enfants' 
+    });
+  }
+});
+
 // GET /api/children/available - Enfants disponibles (sans parent)
 router.get('/available', async (req, res) => {
   try {
