@@ -16,7 +16,8 @@ import {
   Download,
   ChevronDown,
   ChevronRight,
-  User
+  User,
+  MessageSquare
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -58,6 +59,13 @@ const DashboardSidebar = ({ isOpen, onClose }) => {
       path: '/mon-espace',
       roles: ['admin', 'staff', 'parent']
     }] : []),
+    {
+      key: 'messages',
+      title: isRTL ? 'الرسائل' : 'Messages',
+      icon: MessageSquare,
+      path: '/dashboard/messages',
+      roles: ['admin', 'staff', 'parent']
+    },
     {
       key: 'children',
       title: isRTL ? 'الأطفال' : 'Enfants',
