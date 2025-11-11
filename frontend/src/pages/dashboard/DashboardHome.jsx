@@ -13,7 +13,8 @@ import {
   UserCheck,
   UserX,
   FileText,
-  MessageSquare
+  MessageSquare,
+  Plus
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -25,7 +26,9 @@ import UpcomingEventsWidget from '../../components/widgets/UpcomingEventsWidget'
 import BirthdaysWidget from '../../components/widgets/BirthdaysWidget';
 import TodayTasksWidget from '../../components/widgets/TodayTasksWidget';
 import MessagesWidget from '../../components/widgets/MessagesWidget';
+import CreateAppointmentModal from '../../components/modals/CreateAppointmentModal';
 import api from '../../services/api';
+import toast from 'react-hot-toast';
 
 const DashboardHome = () => {
   const { user, isAdmin, isStaff } = useAuth();
@@ -33,6 +36,8 @@ const DashboardHome = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [recentActivities, setRecentActivities] = useState([]);
+  const [showAppointmentModal, setShowAppointmentModal] = useState(false);
+  const [appointmentKey, setAppointmentKey] = useState(0);
 
   // Fonction pour formater un log en activité affichable
   const formatLogToActivity = (log) => {
@@ -303,7 +308,7 @@ const DashboardHome = () => {
               </Link>
             )}
           </div>
-          <TodayTasksWidget />
+          <TodayTasksWidget key={appointmentKey} />
         </motion.div>
       )}
 
@@ -454,6 +459,30 @@ const DashboardHome = () => {
           <HolidaysList userRole={user?.role} />
         </motion.div>
       )}
+
+      {/* Bouton flottant pour créer RDV (Admin seulement) */}
+      {isAdmin && (
+        <motion.button
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ delay: 0.5, type: 'spring' }}
+          onClick={() => setShowAppointmentModal(true)}
+          className="fixed bottom-8 right-8 w-14 h-14 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center group z-40"
+          title={isRTL ? 'إنشاء موعد' : 'Créer un rendez-vous'}
+        >
+          <Plus className="w-6 h-6 group-hover:rotate-90 transition-transform" />
+        </motion.button>
+      )}
+
+      {/* Modal création RDV */}
+      <CreateAppointmentModal
+        isOpen={showAppointmentModal}
+        onClose={() => setShowAppointmentModal(false)}
+        onSuccess={() => {
+          toast.success(isRTL ? 'تم إنشاء الموعد بنجاح' : 'Rendez-vous créé avec succès');
+          setAppointmentKey(prev => prev + 1); // Recharger le widget tâches
+        }}
+      />
     </div>
   );
 };
