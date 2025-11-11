@@ -125,7 +125,7 @@ const UpcomingEventsWidget = () => {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow flex flex-col">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow flex flex-col h-full max-h-[824px]">
       {/* Header */}
       <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
         <div className="flex items-center justify-between">
@@ -145,8 +145,8 @@ const UpcomingEventsWidget = () => {
         </div>
       </div>
 
-      {/* Events List - 5 événements sans scroll */}
-      <div className="p-6">
+      {/* Events List */}
+      <div className="p-6 flex-1 min-h-0 overflow-y-auto">
         {announcements.length === 0 ? (
           <div className="text-center py-8">
             <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-3" />

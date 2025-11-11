@@ -105,7 +105,7 @@ const BirthdaysWidget = () => {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow h-full flex flex-col">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow h-full max-h-[400px] flex flex-col">
       {/* Header */}
       <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
         <div className="flex items-center justify-between">

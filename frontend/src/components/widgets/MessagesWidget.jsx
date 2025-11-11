@@ -101,7 +101,7 @@ const MessagesWidget = () => {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow flex flex-col h-full">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow flex flex-col h-full max-h-[400px]">
       {/* Header */}
       <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
         <div className="flex items-center justify-between">
