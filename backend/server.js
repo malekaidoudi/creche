@@ -67,7 +67,7 @@ const absencesRoutes = require('./routes_postgres/absences');
 const holidaysRoutes = require('./routes_postgres/holidays');
 const scheduleSettingsRoutes = require('./routes_postgres/schedule-settings');
 const eventsRoutes = require('./routes_postgres/events');
-const tasksV2Routes = require('./routes_postgres/tasks_v2');
+const tasksRoutes = require('./routes_postgres/tasks');
 const announcementsRoutes = require('./routes_postgres/announcements');
 const appointmentsRoutes = require('./routes_postgres/appointments');
 const staffMessagesRoutes = require('./routes_postgres/staff-messages');
@@ -278,22 +278,13 @@ console.log('  ✓ /api/user');
 app.use('/api/absences', absencesRoutes);
 console.log('  ✓ /api/absences');
 
-// Routes des tâches quotidiennes (v2.1.0)
-try {
-  const tasksRoutes = require('./routes_postgres/tasks');
-  app.use('/api/tasks', tasksRoutes);
-  console.log('  ✓ /api/tasks (tâches quotidiennes) 🆕');
-} catch (error) {
-  console.error('  ❌ Erreur chargement /api/tasks:', error.message);
-}
-
 // Routes des événements (v2.2.0)
 app.use('/api/events', eventsRoutes);
 console.log('  ✓ /api/events (système événements) 🆕');
 
 // Routes système simplifié (v3.0.0)
-app.use('/api/tasks-v2', tasksV2Routes);
-console.log('  ✓ /api/tasks-v2 (tâches simplifiées) 🆕');
+app.use('/api/tasks', tasksRoutes);
+console.log('  ✓ /api/tasks (tâches simplifiées) 🆕');
 
 app.use('/api/announcements', announcementsRoutes);
 console.log('  ✓ /api/announcements (actualités parents) 🆕');

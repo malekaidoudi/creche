@@ -123,9 +123,9 @@
               }
             },
             "url": {
-              "raw": "{{base_url}}/api/tasks-v2",
+              "raw": "{{base_url}}/api/tasks",
               "host": ["{{base_url}}"],
-              "path": ["api", "tasks-v2"]
+              "path": ["api", "tasks"]
             }
           }
         },

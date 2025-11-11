@@ -3,7 +3,7 @@
  * Gestion des actualités/événements pour les parents
  */
 
-const pool = require('../config/db_postgres');
+const { pool } = require('../config/db_postgres');
 
 /**
  * Créer une annonce

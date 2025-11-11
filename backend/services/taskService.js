@@ -3,7 +3,7 @@
  * Gestion des tâches assignées par admin au staff
  */
 
-const pool = require('../config/db_postgres');
+const { pool } = require('../config/db_postgres');
 
 /**
  * Créer une nouvelle tâche
@@ -15,6 +15,8 @@ async function createTask(taskData, creatorId) {
     await client.query('BEGIN');
     
     const { title, description, assigned_to, due_date, priority = 'medium' } = taskData;
+    
+    console.log('📝 Création tâche:', { title, assigned_to, creatorId, due_date, priority });
     
     // Créer la tâche
     const result = await client.query(`

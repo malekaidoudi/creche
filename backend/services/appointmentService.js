@@ -3,7 +3,7 @@
  * Gestion des RDV admin ↔ parent
  */
 
-const pool = require('../config/db_postgres');
+const { pool } = require('../config/db_postgres');
 
 /**
  * Créer un rendez-vous

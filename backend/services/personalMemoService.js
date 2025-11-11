@@ -3,7 +3,7 @@
  * Mémos personnels pour chaque utilisateur
  */
 
-const pool = require('../config/db_postgres');
+const { pool } = require('../config/db_postgres');
 
 /**
  * Créer un mémo personnel

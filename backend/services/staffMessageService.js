@@ -3,7 +3,7 @@
  * Messages staff ↔ admin avec réponses
  */
 
-const pool = require('../config/db_postgres');
+const { pool } = require('../config/db_postgres');
 
 /**
  * Envoyer un message

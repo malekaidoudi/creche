@@ -24,7 +24,7 @@ POST /api/auth/login
 Body:
 {
   "email": "crechemimaelghalia@gmail.com",
-  "password": "Admin@2024"
+  "password": "password"
 }
 ```
 ✅ **Résultat attendu**: Token sauvegardé automatiquement dans `{{admin_token}}`
@@ -35,7 +35,7 @@ POST /api/auth/login
 Body:
 {
   "email": "staff@mimaelghalia.tn",
-  "password": "Staff@2024"
+  "password": "password"
 }
 ```
 ✅ **Résultat attendu**: Token sauvegardé dans `{{staff_token}}`
