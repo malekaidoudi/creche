@@ -67,6 +67,11 @@ const absencesRoutes = require('./routes_postgres/absences');
 const holidaysRoutes = require('./routes_postgres/holidays');
 const scheduleSettingsRoutes = require('./routes_postgres/schedule-settings');
 const eventsRoutes = require('./routes_postgres/events');
+const tasksV2Routes = require('./routes_postgres/tasks_v2');
+const announcementsRoutes = require('./routes_postgres/announcements');
+const appointmentsRoutes = require('./routes_postgres/appointments');
+const staffMessagesRoutes = require('./routes_postgres/staff-messages');
+const personalMemosRoutes = require('./routes_postgres/personal-memos');
 console.log('✅ Routes chargées\n');
 
 const app = express();
@@ -285,6 +290,22 @@ try {
 // Routes des événements (v2.2.0)
 app.use('/api/events', eventsRoutes);
 console.log('  ✓ /api/events (système événements) 🆕');
+
+// Routes système simplifié (v3.0.0)
+app.use('/api/tasks-v2', tasksV2Routes);
+console.log('  ✓ /api/tasks-v2 (tâches simplifiées) 🆕');
+
+app.use('/api/announcements', announcementsRoutes);
+console.log('  ✓ /api/announcements (actualités parents) 🆕');
+
+app.use('/api/appointments', appointmentsRoutes);
+console.log('  ✓ /api/appointments (rendez-vous) 🆕');
+
+app.use('/api/staff-messages', staffMessagesRoutes);
+console.log('  ✓ /api/staff-messages (messages staff) 🆕');
+
+app.use('/api/personal-memos', personalMemosRoutes);
+console.log('  ✓ /api/personal-memos (mémos personnels) 🆕');
 
 console.log('\n✅ Toutes les routes montées avec succès\n');
 
