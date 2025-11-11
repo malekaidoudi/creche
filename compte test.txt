@@ -17,3 +17,10 @@ Enfants:  Adam (3 ans), Salma (2 ans)
 Email:    parent3@example.com
 Password: password
 Enfants:  Omar (3 ans), Nour (2 ans)
+
+Prochaines étapes:
+
+AnnouncementsPage (parent)
+AppointmentsPage (parent/admin)
+TasksPage (staff/admin)
+PersonalMemosPage (tous)
