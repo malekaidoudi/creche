@@ -4,7 +4,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 
-const MyAppointmentsWidget = ({ onRequestAppointment }) => {
+const MyAppointmentsWidget = ({ onRequestAppointment, onRescheduleAppointment }) => {
   const { isRTL } = useLanguage();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -19,10 +19,21 @@ const MyAppointmentsWidget = ({ onRequestAppointment }) => {
       const response = await api.get('/api/appointments');
       
       if (response.data.success) {
-        // Trier par date (plus récents en premier)
-        const sorted = (response.data.appointments || []).sort((a, b) => 
-          new Date(b.scheduled_date) - new Date(a.scheduled_date)
-        );
+        const allAppointments = response.data.appointments || [];
+        
+        // Filtrer: exclure les annulés ET les terminés
+        const activeAppointments = allAppointments.filter(apt => {
+          // Exclure les RDV annulés et terminés
+          return apt.status !== 'cancelled' && apt.status !== 'completed';
+        });
+        
+        // Trier par date (plus proches en premier)
+        const sorted = activeAppointments.sort((a, b) => {
+          const dateA = new Date(a.confirmed_date || a.proposed_date);
+          const dateB = new Date(b.confirmed_date || b.proposed_date);
+          return dateA - dateB;
+        });
+        
         // Limiter aux 5 prochains RDV
         setAppointments(sorted.slice(0, 5));
       } else {
@@ -51,11 +62,14 @@ const MyAppointmentsWidget = ({ onRequestAppointment }) => {
     return `${hours}:${minutes}`;
   };
 
-  const handleConfirmAppointment = async (appointmentId) => {
+  const handleConfirmAppointment = async (appointment) => {
     try {
-      const response = await api.patch(`/api/appointments/${appointmentId}/confirm`);
+      // Confirmer avec la date proposée
+      const response = await api.patch(`/api/appointments/${appointment.id}/confirm`, {
+        confirmed_date: appointment.proposed_date
+      });
       if (response.data.success) {
-        toast.success(isRTL ? 'تم تأكيد الموعد' : 'Rendez-vous confirmé');
+        toast.success(isRTL ? 'تم تأكيد الموعد' : 'Rendez-vous confirmé avec succès');
         loadAppointments();
       }
     } catch (error) {
@@ -64,33 +78,33 @@ const MyAppointmentsWidget = ({ onRequestAppointment }) => {
     }
   };
 
-  const handleProposeNewDate = (appointmentId) => {
-    // Ouvrir modal avec appointmentId pour proposer nouvelle date
-    onRequestAppointment(appointmentId);
+  const handleProposeNewDate = (appointment) => {
+    // Ouvrir modal de replanification
+    onRescheduleAppointment?.(appointment);
   };
 
   const getStatusConfig = (status) => {
     const configs = {
-      pending: {
-        label: isRTL ? 'قيد الانتظار' : 'En attente',
+      proposed: {
+        label: isRTL ? 'في انتظار التأكيد' : 'En attente de validation',
         icon: AlertCircle,
-        color: 'text-yellow-600 dark:text-yellow-400',
-        bg: 'bg-yellow-50 dark:bg-yellow-900/20',
-        border: 'border-yellow-200 dark:border-yellow-800'
+        color: 'text-blue-600 dark:text-blue-400',
+        bg: 'bg-blue-50 dark:bg-blue-900/20',
+        border: 'border-blue-200 dark:border-blue-800'
       },
       confirmed: {
-        label: isRTL ? 'مؤكد' : 'Confirmé',
+        label: isRTL ? 'مؤكد' : 'Validé',
         icon: CheckCircle,
         color: 'text-green-600 dark:text-green-400',
         bg: 'bg-green-50 dark:bg-green-900/20',
         border: 'border-green-200 dark:border-green-800'
       },
-      cancelled: {
-        label: isRTL ? 'ملغى' : 'Annulé',
-        icon: XCircle,
-        color: 'text-red-600 dark:text-red-400',
-        bg: 'bg-red-50 dark:bg-red-900/20',
-        border: 'border-red-200 dark:border-red-800'
+      rescheduled: {
+        label: isRTL ? 'إعادة جدولة' : 'Replanifié',
+        icon: AlertCircle,
+        color: 'text-orange-600 dark:text-orange-400',
+        bg: 'bg-orange-50 dark:bg-orange-900/20',
+        border: 'border-orange-200 dark:border-orange-800'
       },
       completed: {
         label: isRTL ? 'مكتمل' : 'Terminé',
@@ -98,9 +112,16 @@ const MyAppointmentsWidget = ({ onRequestAppointment }) => {
         color: 'text-gray-600 dark:text-gray-400',
         bg: 'bg-gray-50 dark:bg-gray-900/20',
         border: 'border-gray-200 dark:border-gray-800'
+      },
+      cancelled: {
+        label: isRTL ? 'ملغى' : 'Annulé',
+        icon: XCircle,
+        color: 'text-red-600 dark:text-red-400',
+        bg: 'bg-red-50 dark:bg-red-900/20',
+        border: 'border-red-200 dark:border-red-800'
       }
     };
-    return configs[status] || configs.pending;
+    return configs[status] || configs.proposed;
   };
 
   if (loading) {
@@ -116,7 +137,7 @@ const MyAppointmentsWidget = ({ onRequestAppointment }) => {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow h-full flex flex-col">
       {/* Header */}
       <div className="p-6 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between">
@@ -148,7 +169,7 @@ const MyAppointmentsWidget = ({ onRequestAppointment }) => {
       </div>
 
       {/* Appointments List */}
-      <div className="p-6">
+      <div className="p-6 flex-1 min-h-0 overflow-y-auto">
         {appointments.length === 0 ? (
           <div className="text-center py-8">
             <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-3" />
@@ -184,7 +205,7 @@ const MyAppointmentsWidget = ({ onRequestAppointment }) => {
                       </div>
                       
                       <h4 className="font-semibold text-gray-900 dark:text-white mb-1">
-                        {appointment.title || (isRTL ? 'موعد' : 'Rendez-vous')}
+                        {appointment.subject || appointment.title || (isRTL ? 'موعد' : 'Rendez-vous')}
                       </h4>
                       
                       {appointment.description && (
@@ -196,21 +217,21 @@ const MyAppointmentsWidget = ({ onRequestAppointment }) => {
                       <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400 mb-3">
                         <div className="flex items-center gap-1">
                           <Calendar className="w-4 h-4" />
-                          <span>{formatDate(appointment.scheduled_date)}</span>
+                          <span>{formatDate(appointment.confirmed_date || appointment.proposed_date)}</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <Clock className="w-4 h-4" />
-                          <span>{formatTime(appointment.scheduled_date)}</span>
+                          <span>{formatTime(appointment.confirmed_date || appointment.proposed_date)}</span>
                         </div>
                       </div>
 
-                      {/* Boutons d'action pour RDV confirmé */}
-                      {appointment.status === 'confirmed' && (
+                      {/* Boutons d'action pour RDV proposé */}
+                      {appointment.status === 'proposed' && (
                         <div className="flex items-center gap-2 pt-2 border-t border-gray-200 dark:border-gray-600">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleConfirmAppointment(appointment.id);
+                              handleConfirmAppointment(appointment);
                             }}
                             className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded transition-colors"
                           >
@@ -220,7 +241,7 @@ const MyAppointmentsWidget = ({ onRequestAppointment }) => {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleProposeNewDate(appointment.id);
+                              handleProposeNewDate(appointment);
                             }}
                             className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors"
                           >

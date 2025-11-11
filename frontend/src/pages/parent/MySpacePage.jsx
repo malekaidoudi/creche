@@ -24,6 +24,7 @@ import HolidaysList from '../../components/HolidaysList';
 import SimpleNotificationCenter from '../../components/dashboard/SimpleNotificationCenter';
 import MyAppointmentsWidget from '../../components/widgets/MyAppointmentsWidget';
 import RequestAppointmentModal from '../../components/modals/RequestAppointmentModal';
+import RescheduleAppointmentModal from '../../components/modals/RescheduleAppointmentModal';
 import toast from 'react-hot-toast';
 
 const MySpacePage = () => {
@@ -37,6 +38,8 @@ const MySpacePage = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showAppointmentModal, setShowAppointmentModal] = useState(false);
+  const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [appointmentKey, setAppointmentKey] = useState(0);
 
   useEffect(() => {
@@ -176,8 +179,9 @@ const MySpacePage = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
+            className="h-full"
           >
-            <Card>
+            <Card className="h-full flex flex-col">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Baby className="w-5 h-5" />
@@ -234,10 +238,15 @@ const MySpacePage = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
+          className="h-full"
         >
           <MyAppointmentsWidget 
             key={appointmentKey}
             onRequestAppointment={() => setShowAppointmentModal(true)}
+            onRescheduleAppointment={(appointment) => {
+              setSelectedAppointment(appointment);
+              setShowRescheduleModal(true);
+            }}
           />
         </motion.div>
       </div>
@@ -314,6 +323,19 @@ const MySpacePage = () => {
         onClose={() => setShowAppointmentModal(false)}
         onSuccess={() => {
           toast.success(isRTL ? 'تم إرسال طلب الموعد بنجاح' : 'Demande de rendez-vous envoyée avec succès');
+          setAppointmentKey(prev => prev + 1); // Recharger le widget
+        }}
+      />
+
+      {/* Modal replanification */}
+      <RescheduleAppointmentModal
+        isOpen={showRescheduleModal}
+        onClose={() => {
+          setShowRescheduleModal(false);
+          setSelectedAppointment(null);
+        }}
+        appointment={selectedAppointment}
+        onSuccess={() => {
           setAppointmentKey(prev => prev + 1); // Recharger le widget
         }}
       />
