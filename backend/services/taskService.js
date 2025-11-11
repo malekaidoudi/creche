@@ -3,7 +3,7 @@
  * Gestion des tâches assignées par admin au staff
  */
 
-const pool = require('../config/database');
+const pool = require('../config/db_postgres');
 
 /**
  * Créer une nouvelle tâche
