@@ -22,6 +22,8 @@ import { Button } from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import HolidaysList from '../../components/HolidaysList';
 import SimpleNotificationCenter from '../../components/dashboard/SimpleNotificationCenter';
+import MyAppointmentsWidget from '../../components/widgets/MyAppointmentsWidget';
+import RequestAppointmentModal from '../../components/modals/RequestAppointmentModal';
 import toast from 'react-hot-toast';
 
 const MySpacePage = () => {
@@ -34,6 +36,8 @@ const MySpacePage = () => {
   const [children, setChildren] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [showAppointmentModal, setShowAppointmentModal] = useState(false);
+  const [appointmentKey, setAppointmentKey] = useState(0);
 
   useEffect(() => {
     loadChildren();
@@ -270,6 +274,18 @@ const MySpacePage = () => {
           </Card>
         </motion.div>
 
+        {/* Widget Rendez-vous */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="mb-8"
+        >
+          <MyAppointmentsWidget 
+            key={appointmentKey}
+            onRequestAppointment={() => setShowAppointmentModal(true)}
+          />
+        </motion.div>
 
         {/* Liste des jours fériés et vacances */}
         <motion.div
@@ -288,6 +304,16 @@ const MySpacePage = () => {
           setShowNotifications(false);
           loadUnreadCount(); // Rafraîchir le compteur après fermeture
         }} 
+      />
+
+      {/* Modal demande rendez-vous */}
+      <RequestAppointmentModal
+        isOpen={showAppointmentModal}
+        onClose={() => setShowAppointmentModal(false)}
+        onSuccess={() => {
+          toast.success(isRTL ? 'تم إرسال طلب الموعد بنجاح' : 'Demande de rendez-vous envoyée avec succès');
+          setAppointmentKey(prev => prev + 1); // Recharger le widget
+        }}
       />
     </div>
   );

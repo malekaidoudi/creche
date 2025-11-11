@@ -9,10 +9,16 @@ const appointmentService = require('../services/appointmentService');
 const auth = require('../middleware/auth');
 
 /**
- * POST /api/appointments - Créer un RDV (admin uniquement)
+ * POST /api/appointments - Créer un RDV (admin) ou demander un RDV (parent)
  */
-router.post('/', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
+router.post('/', auth.authenticateToken, async (req, res) => {
   try {
+    // Si parent, créer avec status 'pending' automatiquement
+    if (req.user.role === 'parent') {
+      req.body.status = 'pending';
+      req.body.parent_id = req.user.userId;
+    }
+    
     const result = await appointmentService.createAppointment(req.body, req.user.userId);
     
     if (result.success) {

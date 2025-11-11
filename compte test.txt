@@ -18,9 +18,11 @@ Email:    parent3@example.com
 Password: password
 Enfants:  Omar (3 ans), Nour (2 ans)
 
-Prochaines étapes:
 
-AnnouncementsPage (parent)
+
+
+Prochaines étapes:
+AnnouncementsPage (parent) ok
 AppointmentsPage (parent/admin)
 TasksPage (staff/admin)
 PersonalMemosPage (tous)
