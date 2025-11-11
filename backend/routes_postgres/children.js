@@ -2,6 +2,7 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const router = express.Router();
 const { pool } = require('../config/db_postgres');
+const auth = require('../middleware/auth');
 
 // GET /api/children/available - Enfants disponibles (sans parent)
 router.get('/available', async (req, res) => {
@@ -205,7 +206,7 @@ router.get('/unassociated', async (req, res) => {
 });
 
 // GET /api/children - Récupérer tous les enfants avec leurs parents
-router.get('/', async (req, res) => {
+router.get('/', auth.authenticateToken, async (req, res) => {
   try {
     const { status = 'active', search, gender, age_min, age_max, page = 1, limit = 50 } = req.query;
     
