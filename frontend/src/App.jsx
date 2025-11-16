@@ -22,6 +22,7 @@ import MySpacePage from './pages/parent/MySpacePage'
 import AttendanceParentPage from './pages/parent/AttendanceParentPage'
 import AbsenceRequestPage from './pages/parent/AbsenceRequestPage'
 import AnnouncementsPage from './pages/parent/AnnouncementsPage'
+import ParentCalendarPage from './pages/parent/ParentCalendarPage'
 
 // Pages staff
 import AbsenceManagementPage from './pages/staff/AbsenceManagementPage'
@@ -30,11 +31,12 @@ import StaffMemoForm from './pages/staff/StaffMemoForm'
 // Pages messages
 import MessagesPage from './pages/messages/MessagesPage'
 
+// Pages tasks
+import TasksPage from './pages/tasks/TasksPage'
+
 // Pages événements
 import EventsCalendar from './pages/events/EventsCalendar'
-import EventsList from './pages/events/EventsList'
 import EventDetails from './pages/events/EventDetails'
-import EventForm from './pages/events/EventForm'
 
 // Pages dashboard
 import DashboardHome from './pages/dashboard/DashboardHome'
@@ -53,6 +55,7 @@ import AddUserPage from './pages/dashboard/AddUserPage'
 import GeneralStatsPage from './pages/dashboard/GeneralStatsPage'
 import AttendanceReportPage from './pages/dashboard/AttendanceReportPage'
 import DashboardSettingsPage from './pages/dashboard/DashboardSettingsPage'
+import StaffSettingsPage from './pages/dashboard/StaffSettingsPage'
 
 // Composants
 import ProtectedRoute from './components/auth/ProtectedRoute'
@@ -65,7 +68,7 @@ function App() {
     <Routes>
       {/* Routes d'authentification */}
       <Route path="/register" element={<RegisterPage />} />
-      
+
       {/* Routes workflow inscription */}
       <Route path="/create-password" element={<CreatePasswordPage />} />
       <Route path="/upload-documents" element={<UploadDocumentsPage />} />
@@ -78,65 +81,89 @@ function App() {
         <Route path="inscription" element={<EnrollmentPage />} />
         <Route path="contact" element={<ContactPageDynamic />} />
         <Route path="visite-virtuelle" element={<VirtualTourPage />} />
-        
+
         {/* Mon Espace (protégé - parents + admin/staff avec enfants) */}
-        <Route 
-          path="mon-espace" 
+        <Route
+          path="mon-espace"
           element={
             <ProtectedRoute roles={['parent', 'admin', 'staff']}>
               <MySpacePage />
             </ProtectedRoute>
-          } 
+          }
         />
-        
+
         {/* Routes Mon Espace - Messages et Annonces pour parents */}
-        <Route 
-          path="mon-espace/messages" 
+        <Route
+          path="mon-espace/messages"
           element={
             <ProtectedRoute roles={['parent']}>
               <MessagesPage />
             </ProtectedRoute>
-          } 
+          }
         />
-        <Route 
-          path="mon-espace/announcements" 
+        <Route
+          path="mon-espace/announcements"
           element={
             <ProtectedRoute roles={['parent']}>
               <AnnouncementsPage />
             </ProtectedRoute>
-          } 
+          }
         />
-        
-        {/* Page profil unifiée (tous les utilisateurs connectés) */}
-        <Route 
-          path="profile" 
+        <Route
+          path="mon-espace/calendar"
           element={
-            <ProtectedRoute roles={['admin', 'staff', 'parent']}>
-              <UnifiedProfilePage />
+            <ProtectedRoute roles={['parent']}>
+              <ParentCalendarPage />
             </ProtectedRoute>
-          } 
+          }
         />
-        <Route 
-          path="attendance-parent" 
+        <Route
+          path="mon-espace/attendance-report"
           element={
             <ProtectedRoute roles={['parent']}>
               <AttendanceParentPage />
             </ProtectedRoute>
-          } 
+          }
         />
-        <Route 
-          path="absence-request" 
+        <Route
+          path="mon-espace/events/:id"
+          element={
+            <ProtectedRoute roles={['parent']}>
+              <EventDetails />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Page profil unifiée (tous les utilisateurs connectés) */}
+        <Route
+          path="profile"
+          element={
+            <ProtectedRoute roles={['admin', 'staff', 'parent']}>
+              <UnifiedProfilePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="attendance-parent"
+          element={
+            <ProtectedRoute roles={['parent']}>
+              <AttendanceParentPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="absence-request"
           element={
             <ProtectedRoute roles={['parent']}>
               <AbsenceRequestPage />
             </ProtectedRoute>
-          } 
+          }
         />
       </Route>
 
       {/* Routes dashboard (protégées) */}
-      <Route 
-        path="/dashboard" 
+      <Route
+        path="/dashboard"
         element={
           <ProtectedRoute roles={['admin', 'staff']}>
             <DashboardLayout />
@@ -159,23 +186,23 @@ function App() {
         <Route path="documents/download" element={<DocumentsPage />} />
         <Route path="documents/uploaded" element={<DocumentsPage />} />
         <Route path="absence-management" element={<AbsenceManagementPage />} />
-        
+
         {/* Routes événements */}
         <Route path="events/calendar" element={<EventsCalendar />} />
-        <Route path="events/list" element={<EventsList />} />
-        <Route path="events/new" element={<EventForm />} />
         <Route path="events/:id" element={<EventDetails />} />
-        <Route path="events/:id/edit" element={<EventForm />} />
-        
+
         {/* Route staff pour envoyer mémo/tâche */}
         <Route path="staff/send-message" element={<StaffMemoForm />} />
-        
+
         {/* Route messages (parent/staff/admin) */}
         <Route path="messages" element={<MessagesPage />} />
-        
+
         {/* Route annonces (parent) */}
         <Route path="announcements" element={<AnnouncementsPage />} />
-        
+
+        {/* Route tâches (staff/admin) */}
+        <Route path="tasks" element={<TasksPage />} />
+
         {/* Pages placeholder pour fonctionnalités non implémentées */}
         <Route path="parents" element={<ParentsPage />} />
         <Route path="staff" element={<StaffPage />} />
@@ -185,6 +212,11 @@ function App() {
         <Route path="settings" element={
           <ErrorBoundary>
             <DashboardSettingsPage />
+          </ErrorBoundary>
+        } />
+        <Route path="staff-settings" element={
+          <ErrorBoundary>
+            <StaffSettingsPage />
           </ErrorBoundary>
         } />
       </Route>

@@ -4,7 +4,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 
-const CreateAppointmentModal = ({ isOpen, onClose, onSuccess }) => {
+const CreateAppointmentModal = ({ isOpen, onClose, onSuccess, prefilledParentId, prefilledDate }) => {
   const { isRTL } = useLanguage();
   const [parents, setParents] = useState([]);
   const [formData, setFormData] = useState({
@@ -21,8 +21,23 @@ const CreateAppointmentModal = ({ isOpen, onClose, onSuccess }) => {
   useEffect(() => {
     if (isOpen) {
       loadParents();
+      
+      // Pré-remplir avec les données si fournies
+      if (prefilledParentId) {
+        setFormData(prev => ({ ...prev, parent_id: prefilledParentId.toString() }));
+      }
+      if (prefilledDate) {
+        const date = new Date(prefilledDate);
+        const dateStr = date.toISOString().split('T')[0];
+        const timeStr = date.toTimeString().slice(0, 5);
+        setFormData(prev => ({ 
+          ...prev, 
+          proposed_date: dateStr,
+          proposed_time: timeStr
+        }));
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, prefilledParentId, prefilledDate]);
 
   const loadParents = async () => {
     try {

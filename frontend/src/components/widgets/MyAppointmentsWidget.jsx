@@ -168,8 +168,8 @@ const MyAppointmentsWidget = ({ onRequestAppointment, onRescheduleAppointment })
         </div>
       </div>
 
-      {/* Appointments List */}
-      <div className="p-6 flex-1 min-h-0 overflow-y-auto">
+      {/* Appointments List - Hauteur fixe pour 1 RDV, scroll si plus */}
+      <div className="p-6 flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
         {appointments.length === 0 ? (
           <div className="text-center py-8">
             <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-3" />

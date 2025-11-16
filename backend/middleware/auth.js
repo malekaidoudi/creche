@@ -27,6 +27,12 @@ const auth = {
       }
 
       console.log('🔐 Token décodé - user:', user);
+      
+      // 🔧 Normaliser userId → id pour compatibilité
+      if (user.userId && !user.id) {
+        user.id = user.userId;
+      }
+      
       req.user = user;
       next();
     });

@@ -157,6 +157,15 @@ try {
   console.error('❌ Erreur chargement routes tasks:', error.message);
 }
 
+// Routes des alertes de paiement
+try {
+  const paymentAlertsRoutes = require('./routes_postgres/paymentAlerts');
+  app.use('/api/payment-alerts', paymentAlertsRoutes);
+  console.log('✅ Routes payment-alerts chargées avec succès');
+} catch (error) {
+  console.error('❌ Erreur chargement routes payment-alerts:', error.message);
+}
+
 // Route par défaut
 app.get('/', (req, res) => {
   res.json({

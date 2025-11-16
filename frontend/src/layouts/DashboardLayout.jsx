@@ -1,26 +1,33 @@
 import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useLanguage } from '../hooks/useLanguage';
+import { useAuth } from '../contexts/AuthContext';
 import DashboardSidebar from '../components/layout/DashboardSidebar';
 import DashboardHeader from '../components/layout/DashboardHeader';
+import FloatingActionButton from '../components/ui/FloatingActionButton';
+import SideMenu from '../components/ui/SideMenu';
 
 const DashboardLayout = () => {
   const { isRTL } = useLanguage();
+  const { user } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [menuType, setMenuType] = useState(() => {
+    return localStorage.getItem('menuType') || 'side';
+  });
 
   return (
     <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 ${isRTL ? 'font-arabic' : 'font-sans'}`}>
       {/* Sidebar */}
-      <DashboardSidebar 
-        isOpen={sidebarOpen} 
-        onClose={() => setSidebarOpen(false)} 
+      <DashboardSidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
       />
 
       {/* Main content */}
       <div className={`${isRTL ? 'lg:pr-64' : 'lg:pl-64'}`}>
         {/* Header */}
-        <DashboardHeader 
-          onMenuClick={() => setSidebarOpen(true)} 
+        <DashboardHeader
+          onMenuClick={() => setSidebarOpen(true)}
         />
 
         {/* Page content */}
@@ -33,11 +40,19 @@ const DashboardLayout = () => {
 
       {/* Overlay pour mobile */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-40 bg-gray-600 bg-opacity-75 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
+
+      {/* Menu latéral sur grand écran, bouton flottant sur petit écran */}
+      <div className="hidden lg:block">
+        <SideMenu />
+      </div>
+      <div className="block lg:hidden">
+        <FloatingActionButton />
+      </div>
     </div>
   );
 };

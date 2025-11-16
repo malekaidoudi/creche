@@ -78,15 +78,16 @@ router.get('/today', auth.authenticateToken, auth.requireRole('admin'), async (r
 });
 
 /**
- * PATCH /api/appointments/:id/confirm - Confirmer un RDV (parent)
+ * PATCH /api/appointments/:id/confirm - Confirmer un RDV (parent ou admin)
  */
-router.patch('/:id/confirm', auth.authenticateToken, auth.requireRole('parent'), async (req, res) => {
+router.patch('/:id/confirm', auth.authenticateToken, async (req, res) => {
   try {
     const { confirmed_date } = req.body;
     const result = await appointmentService.confirmAppointment(
       parseInt(req.params.id),
       confirmed_date,
-      req.user.userId
+      req.user.userId,
+      req.user.role
     );
     
     if (result.success) {
@@ -175,6 +176,34 @@ router.patch('/:id/cancel', auth.authenticateToken, async (req, res) => {
     res.status(500).json({ 
       success: false,
       error: 'Erreur lors de l\'annulation' 
+    });
+  }
+});
+
+/**
+ * POST /api/appointments/:id/reject-with-proposal - Refuser et proposer nouvelle date (admin)
+ */
+router.post('/:id/reject-with-proposal', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
+  try {
+    const { proposed_date, reason } = req.body;
+    const result = await appointmentService.rejectWithProposal(
+      parseInt(req.params.id),
+      proposed_date,
+      reason,
+      req.user.userId
+    );
+    
+    if (result.success) {
+      res.json(result);
+    } else {
+      res.status(404).json(result);
+    }
+    
+  } catch (error) {
+    console.error('❌ Erreur POST /api/appointments/:id/reject-with-proposal:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Erreur lors du refus avec proposition' 
     });
   }
 });

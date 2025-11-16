@@ -41,12 +41,17 @@ const EventDetails = () => {
   const { isRTL } = useLanguage();
   const { user } = useAuth();
   const navigate = useNavigate();
-  
+
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [newComment, setNewComment] = useState('');
   const [sendingComment, setSendingComment] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Déterminer si l'utilisateur est un parent
+  const isParent = user?.role === 'parent';
+  const isAdmin = user?.role === 'admin';
+  const isStaff = user?.role === 'staff';
 
   useEffect(() => {
     loadEvent();
@@ -56,7 +61,7 @@ const EventDetails = () => {
     try {
       setLoading(true);
       const response = await api.get(`/api/events/${id}`);
-      
+
       if (response.data.success) {
         setEvent(response.data.event);
       }
@@ -74,7 +79,7 @@ const EventDetails = () => {
       const response = await api.patch(`/api/events/${id}/status`, {
         status: newStatus
       });
-      
+
       if (response.data.success) {
         setEvent(prev => ({ ...prev, status: newStatus }));
         toast.success(isRTL ? 'تم تحديث الحالة' : 'Statut mis à jour');
@@ -87,15 +92,15 @@ const EventDetails = () => {
 
   const handleAddComment = async (e) => {
     e.preventDefault();
-    
+
     if (!newComment.trim()) return;
-    
+
     try {
       setSendingComment(true);
       const response = await api.post(`/api/events/${id}/comments`, {
         comment: newComment
       });
-      
+
       if (response.data.success) {
         setEvent(prev => ({
           ...prev,
@@ -115,7 +120,7 @@ const EventDetails = () => {
   const handleDelete = async () => {
     try {
       const response = await api.delete(`/api/events/${id}`);
-      
+
       if (response.data.success) {
         toast.success(isRTL ? 'تم حذف الحدث' : 'Événement supprimé');
         navigate('/dashboard/events/list');
@@ -145,12 +150,12 @@ const EventDetails = () => {
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
-    
+
     if (diffMins < 1) return isRTL ? 'الآن' : 'À l\'instant';
     if (diffMins < 60) return isRTL ? `منذ ${diffMins} دقيقة` : `Il y a ${diffMins} min`;
     if (diffHours < 24) return isRTL ? `منذ ${diffHours} ساعة` : `Il y a ${diffHours}h`;
     if (diffDays < 7) return isRTL ? `منذ ${diffDays} يوم` : `Il y a ${diffDays}j`;
-    
+
     return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
   };
 
@@ -214,294 +219,218 @@ const EventDetails = () => {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <button
-          onClick={() => navigate('/dashboard/events/list')}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          <span>{isRTL ? 'رجوع' : 'Retour'}</span>
-        </button>
-
-        <div className="flex items-center gap-3">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
           <button
-            onClick={() => navigate(`/dashboard/events/${id}/edit`)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+            onClick={() => navigate(isParent ? '/mon-espace/calendar' : '/dashboard/events/calendar')}
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
           >
-            <Edit className="w-4 h-4" />
-            <span>{isRTL ? 'تعديل' : 'Modifier'}</span>
-          </button>
-
-          <button
-            onClick={() => setShowDeleteConfirm(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
-          >
-            <Trash2 className="w-4 h-4" />
-            <span>{isRTL ? 'حذف' : 'Supprimer'}</span>
+            <ArrowLeft className="w-5 h-5" />
+            <span>{isRTL ? 'رجوع' : 'Retour au calendrier'}</span>
           </button>
         </div>
-      </div>
 
-      {/* Event Details */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-        {/* Header with icon and title */}
-        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-start gap-4">
-            <div className="text-5xl">
-              {EVENT_TYPE_ICONS[event.type] || '📌'}
-            </div>
-            <div className="flex-1">
-              <div className="flex items-start justify-between gap-4 mb-3">
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {event.title}
-                </h1>
-                <div className="flex items-center gap-2">
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${STATUS_COLORS[event.status]}`}>
-                    {getStatusLabel(event.status)}
-                  </span>
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${PRIORITY_COLORS[event.priority]}`}>
-                    {getPriorityLabel(event.priority)}
-                  </span>
-                </div>
+        {/* Event Details */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+          {/* Header with icon and title */}
+          <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-start gap-4">
+              <div className="text-5xl">
+                {EVENT_TYPE_ICONS[event.type] || '📌'}
               </div>
-
-              <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded">
-                  {getTypeLabel(event.type)}
-                </span>
-                <span>•</span>
-                <span>{isRTL ? 'تم الإنشاء' : 'Créé le'} {formatDate(event.created_at)}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="p-6 space-y-6">
-          {/* Description */}
-          {event.description && (
-            <div>
-              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
-                {isRTL ? 'الوصف' : 'Description'}
-              </h3>
-              <p className="text-gray-900 dark:text-white whitespace-pre-wrap">
-                {event.description}
-              </p>
-            </div>
-          )}
-
-          {/* Details Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Date */}
-            <div className="flex items-start gap-3">
-              <Calendar className="w-5 h-5 text-gray-400 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  {isRTL ? 'التاريخ' : 'Date'}
-                </p>
-                <p className="text-gray-900 dark:text-white">
-                  {formatDate(event.start_date)}
-                  {event.end_date && event.end_date !== event.start_date && (
-                    <span> → {formatDate(event.end_date)}</span>
-                  )}
-                </p>
-                {event.all_day && (
-                  <span className="text-xs text-gray-500">
-                    {isRTL ? 'طوال اليوم' : 'Toute la journée'}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Assigned to */}
-            {event.assigned_to_name && (
-              <div className="flex items-start gap-3">
-                <User className="w-5 h-5 text-gray-400 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                    {isRTL ? 'مسند إلى' : 'Assigné à'}
-                  </p>
-                  <p className="text-gray-900 dark:text-white">
-                    {event.assigned_to_name}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Location */}
-            {event.location && (
-              <div className="flex items-start gap-3">
-                <MapPin className="w-5 h-5 text-gray-400 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                    {isRTL ? 'الموقع' : 'Lieu'}
-                  </p>
-                  <p className="text-gray-900 dark:text-white">
-                    {event.location}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Child */}
-            {event.child_name && (
-              <div className="flex items-start gap-3">
-                <span className="text-xl mt-0.5">👶</span>
-                <div>
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                    {isRTL ? 'الطفل' : 'Enfant'}
-                  </p>
-                  <p className="text-gray-900 dark:text-white">
-                    {event.child_name}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Status Actions */}
-          {event.status !== 'completed' && event.status !== 'cancelled' && (
-            <div className="flex items-center gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                {isRTL ? 'تغيير الحالة:' : 'Changer le statut:'}
-              </p>
-              <div className="flex gap-2">
-                {event.status !== 'in_progress' && (
-                  <button
-                    onClick={() => handleStatusChange('in_progress')}
-                    className="px-3 py-1 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-300 rounded-lg text-sm transition-colors"
-                  >
-                    {isRTL ? 'قيد التنفيذ' : 'En cours'}
-                  </button>
-                )}
-                <button
-                  onClick={() => handleStatusChange('completed')}
-                  className="px-3 py-1 bg-green-100 hover:bg-green-200 dark:bg-green-900 dark:hover:bg-green-800 text-green-700 dark:text-green-300 rounded-lg text-sm transition-colors"
-                >
-                  <CheckCircle className="w-4 h-4 inline mr-1" />
-                  {isRTL ? 'مكتمل' : 'Complété'}
-                </button>
-                <button
-                  onClick={() => handleStatusChange('cancelled')}
-                  className="px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg text-sm transition-colors"
-                >
-                  {isRTL ? 'إلغاء' : 'Annuler'}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Comments Section */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
-        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-2">
-            <MessageSquare className="w-5 h-5 text-gray-500" />
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              {isRTL ? 'التعليقات' : 'Commentaires'}
-            </h2>
-            <span className="text-sm text-gray-500">
-              ({event.comments?.length || 0})
-            </span>
-          </div>
-        </div>
-
-        <div className="p-6 space-y-6">
-          {/* Add Comment Form */}
-          <form onSubmit={handleAddComment} className="flex gap-3">
-            <input
-              type="text"
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder={isRTL ? 'أضف تعليقاً...' : 'Ajouter un commentaire...'}
-              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-              disabled={sendingComment}
-            />
-            <button
-              type="submit"
-              disabled={sendingComment || !newComment.trim()}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {sendingComment ? (
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              ) : (
-                <Send className="w-5 h-5" />
-              )}
-            </button>
-          </form>
-
-          {/* Comments List */}
-          {event.comments && event.comments.length > 0 ? (
-            <div className="space-y-4">
-              {event.comments.map((comment, index) => (
-                <div key={index} className="flex gap-3">
-                  <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400 font-semibold flex-shrink-0">
-                    {comment.user_name?.charAt(0) || 'U'}
+              <div className="flex-1">
+                <div className="flex items-start justify-between gap-4 mb-3">
+                  <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {event.title}
+                  </h1>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${STATUS_COLORS[event.status]}`}>
+                      {getStatusLabel(event.status)}
+                    </span>
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${PRIORITY_COLORS[event.priority]}`}>
+                      {getPriorityLabel(event.priority)}
+                    </span>
                   </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-medium text-gray-900 dark:text-white">
-                        {comment.user_name}
-                      </span>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {formatCommentDate(comment.created_at)}
-                      </span>
-                    </div>
-                    <p className="text-gray-700 dark:text-gray-300">
-                      {comment.comment}
+                </div>
+
+                <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                  <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded">
+                    {getTypeLabel(event.type)}
+                  </span>
+                  <span>•</span>
+                  <span>{isRTL ? 'تم الإنشاء' : 'Créé le'} {formatDate(event.created_at)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="p-6 space-y-6">
+            {/* Description */}
+            {event.description && (
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+                  {isRTL ? 'الوصف' : 'Description'}
+                </h3>
+                <p className="text-gray-900 dark:text-white whitespace-pre-wrap">
+                  {event.description}
+                </p>
+              </div>
+            )}
+
+            {/* Details Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Date */}
+              <div className="flex items-start gap-3">
+                <Calendar className="w-5 h-5 text-gray-400 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    {isRTL ? 'التاريخ' : 'Date'}
+                  </p>
+                  <p className="text-gray-900 dark:text-white">
+                    {formatDate(event.start_date)}
+                    {event.end_date && event.end_date !== event.start_date && (
+                      <span> → {formatDate(event.end_date)}</span>
+                    )}
+                  </p>
+                  {event.all_day && (
+                    <span className="text-xs text-gray-500">
+                      {isRTL ? 'طوال اليوم' : 'Toute la journée'}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Assigned to */}
+              {event.assigned_to_name && (
+                <div className="flex items-start gap-3">
+                  <User className="w-5 h-5 text-gray-400 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                      {isRTL ? 'مسند إلى' : 'Assigné à'}
+                    </p>
+                    <p className="text-gray-900 dark:text-white">
+                      {event.assigned_to_name}
                     </p>
                   </div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <MessageSquare className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-              <p className="text-gray-500 dark:text-gray-400">
-                {isRTL ? 'لا توجد تعليقات بعد' : 'Aucun commentaire pour le moment'}
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
+              )}
 
-      {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-red-100 dark:bg-red-900 rounded-lg">
-                <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
+              {/* Location */}
+              {event.location && (
+                <div className="flex items-start gap-3">
+                  <MapPin className="w-5 h-5 text-gray-400 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                      {isRTL ? 'الموقع' : 'Lieu'}
+                    </p>
+                    <p className="text-gray-900 dark:text-white">
+                      {event.location}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Child */}
+              {event.child_name && (
+                <div className="flex items-start gap-3">
+                  <span className="text-xl mt-0.5">👶</span>
+                  <div>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                      {isRTL ? 'الطفل' : 'Enfant'}
+                    </p>
+                    <p className="text-gray-900 dark:text-white">
+                      {event.child_name}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Status Actions */}
+            {event.status !== 'completed' && event.status !== 'cancelled' && (
+              <div className="flex items-center gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {isRTL ? 'تغيير الحالة:' : 'Changer le statut:'}
+                </p>
+                <div className="flex gap-2">
+                  {event.status !== 'in_progress' && (
+                    <button
+                      onClick={() => handleStatusChange('in_progress')}
+                      className="px-3 py-1 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:hover:bg-blue-800 text-blue-700 dark:text-blue-300 rounded-lg text-sm transition-colors"
+                    >
+                      {isRTL ? 'قيد التنفيذ' : 'En cours'}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleStatusChange('completed')}
+                    className="px-3 py-1 bg-green-100 hover:bg-green-200 dark:bg-green-900 dark:hover:bg-green-800 text-green-700 dark:text-green-300 rounded-lg text-sm transition-colors"
+                  >
+                    <CheckCircle className="w-4 h-4 inline mr-1" />
+                    {isRTL ? 'مكتمل' : 'Complété'}
+                  </button>
+                  <button
+                    onClick={() => handleStatusChange('cancelled')}
+                    className="px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg text-sm transition-colors"
+                  >
+                    {isRTL ? 'إلغاء' : 'Annuler'}
+                  </button>
+                </div>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                {isRTL ? 'تأكيد الحذف' : 'Confirmer la suppression'}
-              </h3>
-            </div>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              {isRTL
-                ? 'هل أنت متأكد من حذف هذا الحدث؟ لا يمكن التراجع عن هذا الإجراء.'
-                : 'Êtes-vous sûr de vouloir supprimer cet événement ? Cette action ne peut pas être annulée.'}
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors"
-              >
-                {isRTL ? 'إلغاء' : 'Annuler'}
-              </button>
-              <button
-                onClick={handleDelete}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
-              >
-                {isRTL ? 'حذف' : 'Supprimer'}
-              </button>
-            </div>
+            )}
           </div>
         </div>
-      )}
+
+        {/* Bouton Annuler pour les RDV */}
+        {event.type === 'rdv' && event.status !== 'cancelled' && (
+          <div className="flex justify-end">
+            <button
+              onClick={() => handleStatusChange('cancelled')}
+              className="flex items-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium"
+            >
+              <X className="w-5 h-5" />
+              <span>{isRTL ? 'إلغاء الموعد' : 'Annuler le rendez-vous'}</span>
+            </button>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-red-100 dark:bg-red-900 rounded-lg">
+                  <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  {isRTL ? 'تأكيد الحذف' : 'Confirmer la suppression'}
+                </h3>
+              </div>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">
+                {isRTL
+                  ? 'هل أنت متأكد من حذف هذا الحدث؟ لا يمكن التراجع عن هذا الإجراء.'
+                  : 'Êtes-vous sûr de vouloir supprimer cet événement ? Cette action ne peut pas être annulée.'}
+              </p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors"
+                >
+                  {isRTL ? 'إلغاء' : 'Annuler'}
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                >
+                  {isRTL ? 'حذف' : 'Supprimer'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

@@ -5,73 +5,190 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import frLocale from '@fullcalendar/core/locales/fr';
-import { Calendar, Plus, Filter, Download } from 'lucide-react';
+import { Calendar, Filter } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
+import QuickEventModal from '../../components/modals/QuickEventModal';
+import EventModal from '../../components/modals/EventModal';
+import TaskModal from '../../components/modals/TaskModal';
+import CreateAppointmentModal from '../../components/modals/CreateAppointmentModal';
 
 const EVENT_TYPE_COLORS = {
-  memo: '#3B82F6',        // Bleu
-  task: '#10B981',        // Vert
-  rdv: '#8B5CF6',         // Violet
-  birthday: '#EC4899',    // Rose
-  vacation_reminder: '#F59E0B', // Orange
-  medical: '#EF4444',     // Rouge
-  meeting: '#6366F1',     // Indigo
-  custom: '#6B7280'       // Gris
+  event: '#3B82F6',       // Bleu - Événement
+  task: '#10B981',        // Vert - Tâche
+  birthday: '#EC4899',    // Rose - Anniversaire
+  vacation_reminder: '#F59E0B', // Orange - Vacances
+  rdv: '#8B5CF6',         // Violet - RDV
+  meeting: '#6366F1'      // Indigo - Réunion
 };
 
 const EventsCalendar = () => {
   const { isRTL } = useLanguage();
   const navigate = useNavigate();
   const calendarRef = useRef(null);
-  
+
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedTypes, setSelectedTypes] = useState([]);
+  const [showQuickModal, setShowQuickModal] = useState(false);
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [showAppointmentModal, setShowAppointmentModal] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(null);
 
   const loadEvents = useCallback(async () => {
     try {
+      console.log('🔄 CHARGEMENT CALENDRIER - Début');
+      console.log('📋 Filtres actifs:', selectedTypes);
+
       setLoading(true);
-      
+
       // Charger tous les événements des 12 prochains mois
       const now = new Date();
       const start = new Date(now.getFullYear(), now.getMonth() - 6, 1);
       const end = new Date(now.getFullYear(), now.getMonth() + 12, 0);
-      
+
+      console.log('📅 Période:', { start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0] });
+
       const params = new URLSearchParams({
         start: start.toISOString().split('T')[0],
         end: end.toISOString().split('T')[0]
       });
-      
+
       if (selectedTypes.length > 0) {
         params.append('type', selectedTypes.join(','));
       }
-      
+
+      console.log('🌐 Requête événements:', `/api/events/views/calendar?${params}`);
       const response = await api.get(`/api/events/views/calendar?${params}`);
-      
+      console.log('📅 Réponse API events:', response.data);
+
       if (response.data.success) {
+        // Debug: Afficher les 3 premiers événements bruts
+        console.log('🔍 3 premiers événements bruts:', response.data.events.slice(0, 3));
+
         // Transformer les événements pour FullCalendar
-        const formattedEvents = (response.data.events || []).map(event => ({
-          id: event.id,
-          title: event.title,
-          start: event.start_date,
-          end: event.end_date || event.start_date,
-          allDay: event.all_day,
-          backgroundColor: event.color || EVENT_TYPE_COLORS[event.type],
-          borderColor: event.color || EVENT_TYPE_COLORS[event.type],
-          extendedProps: {
-            type: event.type,
-            status: event.status,
-            priority: event.priority,
-            description: event.description,
-            location: event.location,
-            assigned_to_name: event.assigned_to_name,
-            child_name: event.child_name
+        const formattedEvents = (response.data.events || []).map(event => {
+          return {
+            id: event.id,
+            title: event.title,
+            start: event.start || event.start_date, // L'API retourne 'start', pas 'start_date'
+            end: event.end || event.end_date || event.start || event.start_date,
+            allDay: event.allDay !== undefined ? event.allDay : event.all_day,
+            backgroundColor: event.color || EVENT_TYPE_COLORS[event.type],
+            borderColor: event.color || EVENT_TYPE_COLORS[event.type],
+            extendedProps: {
+              type: event.type,
+              status: event.status,
+              priority: event.priority,
+              description: event.description,
+              location: event.location,
+              assigned_to_name: event.assigned_to_name,
+              child_name: event.child_name
+            }
+          };
+        });
+
+        // Charger les jours fériés
+        let holidayEvents = [];
+        try {
+          const holidaysResponse = await api.get('/api/holidays');
+          if (holidaysResponse.data.success) {
+            holidayEvents = holidaysResponse.data.holidays.map(holiday => ({
+              id: `holiday-${holiday.id}`,
+              title: `🎉 ${holiday.name}`,
+              start: holiday.date.split('T')[0],
+              allDay: true,
+              backgroundColor: '#EF4444',
+              borderColor: '#EF4444',
+              extendedProps: {
+                type: 'holiday',
+                isHoliday: true
+              }
+            }));
           }
-        }));
-        
-        setEvents(formattedEvents);
+        } catch (error) {
+          console.log('Pas de jours fériés chargés');
+        }
+
+        // Charger les vacances annuelles
+        let vacationEvents = [];
+        try {
+          const vacationResponse = await api.get('/api/nursery-settings/annual-vacation');
+          if (vacationResponse.data.success && vacationResponse.data.enabled) {
+            const startDate = vacationResponse.data.start_date;
+            const endDate = vacationResponse.data.end_date;
+
+            if (startDate && endDate) {
+              vacationEvents.push({
+                id: 'annual-vacation',
+                title: '🏖️ Vacances Annuelles',
+                start: startDate,
+                end: endDate,
+                allDay: true,
+                backgroundColor: '#F59E0B',
+                borderColor: '#F59E0B',
+                display: 'background',
+                extendedProps: {
+                  type: 'vacation',
+                  isVacation: true
+                }
+              });
+            }
+          }
+        } catch (error) {
+          console.log('Pas de vacances annuelles configurées');
+        }
+
+        // Charger les anniversaires des enfants
+        let birthdayEvents = [];
+        try {
+          const childrenResponse = await api.get('/api/children');
+          if (childrenResponse.data.success && childrenResponse.data.data) {
+            const currentYear = new Date().getFullYear();
+            const children = childrenResponse.data.data.children || [];
+
+            birthdayEvents = children
+              .filter(child => child.birth_date)
+              .map(child => {
+                const birthDate = new Date(child.birth_date);
+                const birthdayThisYear = `${currentYear}-${String(birthDate.getMonth() + 1).padStart(2, '0')}-${String(birthDate.getDate()).padStart(2, '0')}`;
+
+                return {
+                  id: `birthday-${child.id}`,
+                  title: `🎂 ${child.first_name} ${child.last_name}`,
+                  start: birthdayThisYear,
+                  allDay: true,
+                  backgroundColor: '#EC4899',
+                  borderColor: '#EC4899',
+                  extendedProps: {
+                    type: 'birthday',
+                    childId: child.id,
+                    isBirthday: true
+                  }
+                };
+              });
+
+            console.log('🎂 Anniversaires chargés:', birthdayEvents.length);
+          }
+        } catch (error) {
+          console.log('Pas d\'anniversaires chargés:', error);
+        }
+
+        // Combiner tous les événements
+        const allEvents = [...formattedEvents, ...holidayEvents, ...vacationEvents, ...birthdayEvents];
+        console.log('📊 Résumé chargement:');
+        console.log('  - Événements normaux:', formattedEvents.length);
+        console.log('  - Jours fériés:', holidayEvents.length);
+        console.log('  - Vacances:', vacationEvents.length);
+        console.log('  - Anniversaires:', birthdayEvents.length);
+        console.log('  - TOTAL:', allEvents.length);
+
+        // Debug: Afficher les 3 premiers événements formatés
+        console.log('🔍 Exemple événements formatés:', allEvents.slice(0, 3));
+
+        setEvents(allEvents);
       } else {
         setEvents([]);
       }
@@ -89,39 +206,60 @@ const EventsCalendar = () => {
   }, [loadEvents]);
 
   const handleEventClick = (info) => {
-    navigate(`/dashboard/events/${info.event.id}`);
+    // Ne pas ouvrir les détails pour les jours fériés, anniversaires et vacances
+    const eventId = info.event.id;
+    if (eventId && !eventId.startsWith('holiday-') && !eventId.startsWith('birthday-') && eventId !== 'annual-vacation') {
+      navigate(`/dashboard/events/${eventId}`);
+    }
   };
 
   const handleDateClick = (info) => {
-    // Créer un nouvel événement à cette date
-    navigate('/dashboard/events/new', {
-      state: { date: info.dateStr }
-    });
+    // Ouvrir le modal de sélection de type
+    setSelectedDate(info.dateStr);
+    setShowQuickModal(true);
+  };
+
+  const handleTypeSelect = (type) => {
+    // Après sélection du type, ouvrir le modal approprié
+    console.log('🎯 Type sélectionné:', type);
+
+    switch (type) {
+      case 'event':
+        setShowEventModal(true);
+        break;
+      case 'task':
+        setShowTaskModal(true);
+        break;
+      case 'rdv':
+        setShowAppointmentModal(true);
+        break;
+      default:
+        console.error('Type inconnu:', type);
+    }
+  };
+
+  const handleModalSuccess = () => {
+    // Recharger les événements après création
+    loadEvents();
   };
 
 
   const toggleTypeFilter = (type) => {
-    setSelectedTypes(prev => 
+    setSelectedTypes(prev =>
       prev.includes(type)
         ? prev.filter(t => t !== type)
         : [...prev, type]
     );
   };
 
-  const exportCalendar = () => {
-    // Exporter au format ICS
-    toast.success(isRTL ? 'التصدير قريبا' : 'Export bientôt disponible');
-  };
 
   const eventTypes = [
-    { value: 'memo', label: isRTL ? 'مذكرة' : 'Mémo', icon: '📝' },
+    { value: 'event', label: isRTL ? 'حدث' : 'Événement', icon: '📅' },
     { value: 'task', label: isRTL ? 'مهمة' : 'Tâche', icon: '✅' },
-    { value: 'rdv', label: isRTL ? 'موعد' : 'RDV', icon: '📅' },
     { value: 'birthday', label: isRTL ? 'عيد ميلاد' : 'Anniversaire', icon: '🎂' },
-    { value: 'vacation_reminder', label: isRTL ? 'تذكير عطلة' : 'Vacances', icon: '🏖️' },
-    { value: 'medical', label: isRTL ? 'طبي' : 'Médical', icon: '🏥' },
-    { value: 'meeting', label: isRTL ? 'اجتماع' : 'Réunion', icon: '👥' },
-    { value: 'custom', label: isRTL ? 'مخصص' : 'Personnalisé', icon: '⭐' }
+    { value: 'vacation_reminder', label: isRTL ? 'عطلة' : 'Vacances', icon: '🏖️' },
+    { value: 'rdv', label: isRTL ? 'موعد' : 'RDV', icon: '🩺' },
+    { value: 'meeting', label: isRTL ? 'اجتماع' : 'Réunion', icon: '👥' }
   ];
 
   return (
@@ -142,23 +280,6 @@ const EventsCalendar = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={exportCalendar}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors"
-          >
-            <Download className="w-4 h-4" />
-            <span>{isRTL ? 'تصدير' : 'Exporter'}</span>
-          </button>
-
-          <button
-            onClick={() => navigate('/dashboard/events/new')}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span>{isRTL ? 'حدث جديد' : 'Nouvel Événement'}</span>
-          </button>
-        </div>
       </div>
 
       {/* Filters */}
@@ -175,11 +296,10 @@ const EventsCalendar = () => {
             <button
               key={type.value}
               onClick={() => toggleTypeFilter(type.value)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all ${
-                selectedTypes.includes(type.value)
-                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-                  : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
-              }`}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all ${selectedTypes.includes(type.value)
+                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
+                }`}
               style={
                 selectedTypes.includes(type.value)
                   ? { borderColor: EVENT_TYPE_COLORS[type.value] }
@@ -244,6 +364,22 @@ const EventsCalendar = () => {
             displayEventTime={true}
             displayEventEnd={true}
             nowIndicator={true}
+            eventContent={(eventInfo) => {
+              // Afficher le texte seulement sur tablette et desktop (pas mobile)
+              const isMobile = window.innerWidth < 768;
+              return (
+                <div className="fc-event-main-frame">
+                  <div className="fc-event-time">{eventInfo.timeText}</div>
+                  {!isMobile && (
+                    <div className="fc-event-title-container">
+                      <div className="fc-event-title fc-sticky">
+                        {eventInfo.event.title}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            }}
             eventTimeFormat={{
               hour: '2-digit',
               minute: '2-digit',
@@ -277,6 +413,36 @@ const EventsCalendar = () => {
           ))}
         </div>
       </div>
+
+      {/* Modal de sélection de type */}
+      <QuickEventModal
+        isOpen={showQuickModal}
+        onClose={() => setShowQuickModal(false)}
+        selectedDate={selectedDate}
+        onTypeSelect={handleTypeSelect}
+      />
+
+      {/* Modal Événement */}
+      <EventModal
+        isOpen={showEventModal}
+        onClose={() => setShowEventModal(false)}
+        onSuccess={handleModalSuccess}
+      />
+
+      {/* Modal Tâche */}
+      <TaskModal
+        isOpen={showTaskModal}
+        onClose={() => setShowTaskModal(false)}
+        onSuccess={handleModalSuccess}
+      />
+
+      {/* Modal Rendez-vous */}
+      <CreateAppointmentModal
+        isOpen={showAppointmentModal}
+        onClose={() => setShowAppointmentModal(false)}
+        onSuccess={handleModalSuccess}
+        prefilledDate={selectedDate}
+      />
     </div>
   );
 };
