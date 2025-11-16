@@ -435,9 +435,22 @@ const ParentCalendarPage = () => {
                                 }
                             }}
                             eventDidMount={(info) => {
+                                const isMobile = window.innerWidth < 1024;
+                                const eventDate = info.event.start;
+                                const today = new Date();
+                                today.setHours(0, 0, 0, 0);
+                                const isPast = eventDate < today;
+
+                                // Afficher les événements passés en gris
+                                if (isPast) {
+                                    info.el.style.opacity = '0.5';
+                                    info.el.style.filter = 'grayscale(70%)';
+                                }
+
                                 // UNIQUEMENT sur mobile : remplacer par un point
-                                if (window.innerWidth < 1024) {
-                                    info.el.innerHTML = `<div style="width: 6px; height: 6px; border-radius: 50%; background-color: ${info.event.backgroundColor};"></div>`;
+                                if (isMobile) {
+                                    const color = isPast ? '#9ca3af' : info.event.backgroundColor;
+                                    info.el.innerHTML = `<div style="width: 6px; height: 6px; border-radius: 50%; background-color: ${color};"></div>`;
                                     info.el.style.cssText = 'background: transparent !important; border: none !important; padding: 0 !important; margin: 0 2px !important; pointer-events: none !important;';
                                 }
                                 // Sur desktop : ne rien faire, laisser l'affichage par défaut

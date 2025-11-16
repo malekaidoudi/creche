@@ -46,13 +46,9 @@ const DashboardLayout = () => {
         />
       )}
 
-      {/* Menu latéral sur grand écran, bouton flottant sur petit écran */}
-      <div className="hidden lg:block">
-        <SideMenu />
-      </div>
-      <div className="block lg:hidden">
-        <FloatingActionButton />
-      </div>
+      {/* Menu latéral sur grand écran (disparaît au scroll), bouton flottant sur petit écran ou au scroll */}
+      <SideMenu />
+      <FloatingActionButton />
     </div>
   );
 };

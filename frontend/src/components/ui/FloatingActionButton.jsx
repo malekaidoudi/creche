@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, X, Calendar, CheckSquare, Mail, FileText, DollarSign, Megaphone, CalendarCheck } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
@@ -21,6 +21,21 @@ export default function FloatingActionButton() {
   const [showEventModal, setShowEventModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showRequestAppointmentModal, setShowRequestAppointmentModal] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  // Détecter la largeur pour afficher sur desktop
+  useEffect(() => {
+    const handleResize = () => {
+      // Afficher si largeur < 1310px
+      setIsScrolled(window.innerWidth < 1310);
+    };
+
+    handleResize(); // Appel initial
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
 
   // Vérifier les permissions
   const canCreateAppointment = user?.role === 'admin';
@@ -151,7 +166,7 @@ export default function FloatingActionButton() {
     },
     user?.role === 'admin' && {
       icon: DollarSign,
-      label: 'Alerte paiement',
+      label: 'Rappel paiement',
       action: 'payment',
       color: 'bg-red-600 hover:bg-red-700'
     }
@@ -204,13 +219,17 @@ export default function FloatingActionButton() {
         </div>
       )}
 
-      {/* Main button */}
+      {/* Main button - Visible sur mobile OU sur desktop quand scrollé */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`fixed bottom-6 right-6 z-50 p-4 rounded-full shadow-2xl transition-all ${isOpen
-          ? 'bg-red-600 hover:bg-red-700'
-          : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700'
-          }`}
+        className={`
+          fixed bottom-6 right-6 z-50 p-4 rounded-full shadow-2xl transition-all
+          lg:${isScrolled ? 'block' : 'hidden'}
+          ${isOpen
+            ? 'bg-red-600 hover:bg-red-700'
+            : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700'
+          }
+        `}
       >
         {isOpen ? (
           <X className="w-7 h-7 text-white" />

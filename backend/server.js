@@ -148,32 +148,32 @@ const corsOptions = {
       'https://www.mima-elghalia.com',
       'https://mima-elghalia.com'
     ];
-    
+
     // Autoriser les requêtes sans origin (Postman, curl, mobile apps)
     if (!origin) {
       return callback(null, true);
     }
-    
+
     // Autoriser tous les sous-domaines Render (*.onrender.com)
     if (origin.includes('.onrender.com')) {
       return callback(null, true);
     }
-    
+
     // Autoriser tous les sous-domaines Vercel (*.vercel.app)
     if (origin.includes('.vercel.app')) {
       return callback(null, true);
     }
-    
+
     // Autoriser le domaine principal et sous-domaines
     if (origin.includes('mima-elghalia.com') || origin.includes('mimaelghalia.tn')) {
       return callback(null, true);
     }
-    
+
     // Vérifier la liste explicite
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
-    
+
     // Bloquer les autres origines
     console.log('❌ CORS bloqué pour:', origin);
     callback(new Error('Non autorisé par CORS'));
@@ -298,6 +298,11 @@ console.log('  ✓ /api/staff-messages (messages staff) 🆕');
 app.use('/api/personal-memos', personalMemosRoutes);
 console.log('  ✓ /api/personal-memos (mémos personnels) 🆕');
 
+// Routes des rappels de paiement
+const paymentAlertsRoutes = require('./routes_postgres/paymentAlerts');
+app.use('/api/payment-alerts', paymentAlertsRoutes);
+console.log('  ✓ /api/payment-alerts (rappels paiement) 🆕');
+
 console.log('\n✅ Toutes les routes montées avec succès\n');
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -351,7 +356,7 @@ app.use('*', (req, res) => {
 // Middleware de gestion d'erreurs globales
 app.use((error, req, res, next) => {
   console.error('❌ Erreur serveur:', error);
-  
+
   // Erreur de validation
   if (error.name === 'ValidationError') {
     return res.status(400).json({
@@ -360,7 +365,7 @@ app.use((error, req, res, next) => {
       details: error.message
     });
   }
-  
+
   // Erreur JWT
   if (error.name === 'JsonWebTokenError') {
     return res.status(401).json({
@@ -368,7 +373,7 @@ app.use((error, req, res, next) => {
       error: 'Token invalide'
     });
   }
-  
+
   // Erreur CORS
   if (error.message === 'Non autorisé par CORS') {
     return res.status(403).json({
@@ -377,13 +382,13 @@ app.use((error, req, res, next) => {
       message: 'Votre domaine n\'est pas autorisé à accéder à cette API'
     });
   }
-  
+
   // Erreur générique
   res.status(500).json({
     success: false,
     error: 'Erreur serveur interne',
-    message: process.env.NODE_ENV === 'production' 
-      ? 'Une erreur est survenue' 
+    message: process.env.NODE_ENV === 'production'
+      ? 'Une erreur est survenue'
       : error.message
   });
 });
@@ -407,7 +412,7 @@ app.listen(PORT, () => {
   console.log('═══════════════════════════════════════════════════════════════');
   console.log('🎯 Serveur prêt à recevoir des requêtes !');
   console.log('═══════════════════════════════════════════════════════════════\n');
-  
+
   // Démarrer les jobs cron pour les événements
   try {
     const { startAllJobs } = require('./jobs/eventJobs');

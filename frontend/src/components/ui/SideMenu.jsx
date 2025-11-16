@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { MessageSquare, StickyNote, Calendar, CheckSquare, Bell, DollarSign, CalendarCheck, Settings, Mail, Megaphone, FileText } from 'lucide-react';
@@ -19,6 +19,21 @@ export default function SideMenu() {
   const [showAppointmentModal, setShowAppointmentModal] = useState(false);
   const [showRequestAppointmentModal, setShowRequestAppointmentModal] = useState(false);
   const [hoveredItem, setHoveredItem] = useState(null);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  // Détecter la largeur pour transformer en bouton flotant
+  useEffect(() => {
+    const handleResize = () => {
+      // Cacher le menu si la largeur est < 1310px (le menu cache le contenu)
+      setIsScrolled(window.innerWidth < 1310);
+    };
+
+    handleResize(); // Appel initial
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
 
   // Permissions selon le rôle
   const canCreateMemo = user?.role === 'admin' || user?.role === 'staff';
@@ -104,9 +119,9 @@ export default function SideMenu() {
     {
       id: 'payment',
       icon: DollarSign,
-      label: 'Alerte Paiement',
-      color: 'from-red-500 to-orange-500',
-      hoverColor: 'hover:from-red-600 hover:to-orange-600',
+      label: 'Rappel paiement',
+      color: 'from-red-500 to-pink-500',
+      hoverColor: 'hover:from-red-600 hover:to-pink-600',
       show: canCreatePaymentAlert,
       onClick: () => setShowPaymentModal(true)
     },
@@ -174,8 +189,13 @@ export default function SideMenu() {
 
   return (
     <>
-      {/* Menu latéral moderne fixé à droite */}
-      <div className="fixed right-0 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-2">
+      {/* Menu latéral moderne fixé à droite - Caché sur mobile et quand on scroll */}
+      <div className={`
+        fixed right-0 top-1/2 -translate-y-1/2 z-40 flex-col gap-2
+        hidden lg:flex
+        transition-all duration-300
+        ${isScrolled ? 'opacity-0 pointer-events-none translate-x-full' : 'opacity-100'}
+      `}>
         {/* Conteneur avec effet de verre */}
         <div className="bg-white/10 backdrop-blur-md rounded-l-3xl p-3 shadow-2xl border-l-4 border-white/20 space-y-3">
           {menuItems.map((item, index) => {

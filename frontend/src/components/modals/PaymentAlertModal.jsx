@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, DollarSign, Users, User, Send } from 'lucide-react';
-import axios from 'axios';
+import api from '../../services/api';
 import toast from 'react-hot-toast';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3003/api';
 
 export default function PaymentAlertModal({ isOpen, onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
@@ -24,9 +22,7 @@ export default function PaymentAlertModal({ isOpen, onClose, onSuccess }) {
 
   const loadParents = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/users`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const response = await api.get('/api/users', {
         params: { role: 'parent' }
       });
 
@@ -55,7 +51,6 @@ export default function PaymentAlertModal({ isOpen, onClose, onSuccess }) {
 
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
 
       const payload = {
         recipient_type: formData.recipient_type,
@@ -65,14 +60,10 @@ export default function PaymentAlertModal({ isOpen, onClose, onSuccess }) {
         message: formData.message
       };
 
-      const response = await axios.post(
-        `${API_URL}/payment-alerts`,
-        payload,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const response = await api.post('/api/payment-alerts', payload);
 
       if (response.data.success) {
-        toast.success('Alerte de paiement envoyée avec succès');
+        toast.success('Rappel de paiement envoyé avec succès');
         onSuccess?.();
         handleClose();
       }
@@ -127,7 +118,7 @@ export default function PaymentAlertModal({ isOpen, onClose, onSuccess }) {
         <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between flex-shrink-0">
           <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
             <DollarSign className="w-5 h-5 text-red-600" />
-            Alerte de Paiement
+            Rappel de Paiement
           </h2>
           <button
             onClick={handleClose}
@@ -148,11 +139,10 @@ export default function PaymentAlertModal({ isOpen, onClose, onSuccess }) {
               <button
                 type="button"
                 onClick={() => setFormData({ ...formData, recipient_type: 'single', parent_ids: [] })}
-                className={`p-3 rounded-lg border-2 transition-all ${
-                  formData.recipient_type === 'single'
-                    ? 'border-red-600 bg-red-50 text-red-700'
-                    : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
-                }`}
+                className={`p-3 rounded-lg border-2 transition-all ${formData.recipient_type === 'single'
+                  ? 'border-red-600 bg-red-50 text-red-700'
+                  : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                  }`}
               >
                 <User className="w-5 h-5 mx-auto mb-1" />
                 <div className="text-sm font-medium">Parent(s) spécifique(s)</div>
@@ -160,11 +150,10 @@ export default function PaymentAlertModal({ isOpen, onClose, onSuccess }) {
               <button
                 type="button"
                 onClick={() => setFormData({ ...formData, recipient_type: 'all', parent_ids: [] })}
-                className={`p-3 rounded-lg border-2 transition-all ${
-                  formData.recipient_type === 'all'
-                    ? 'border-red-600 bg-red-50 text-red-700'
-                    : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
-                }`}
+                className={`p-3 rounded-lg border-2 transition-all ${formData.recipient_type === 'all'
+                  ? 'border-red-600 bg-red-50 text-red-700'
+                  : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                  }`}
               >
                 <Users className="w-5 h-5 mx-auto mb-1" />
                 <div className="text-sm font-medium">Tous les parents</div>

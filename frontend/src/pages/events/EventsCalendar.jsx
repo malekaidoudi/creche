@@ -4,7 +4,7 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import frLocale from '@fullcalendar/core/locales/fr';
-import { Calendar, Filter, X } from 'lucide-react';
+import { Calendar, Filter, X, Plus } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
@@ -209,7 +209,7 @@ const EventsCalendar = () => {
   }, [loadEvents]);
 
   const handleEventClick = (info) => {
-    // Sur mobile, ne pas naviguer directement, utiliser le collapse panel
+    // Sur mobile, ne pas naviguer directement, utiliser le modal
     const isMobile = window.innerWidth < 1024;
     if (isMobile) {
       return; // Ne rien faire, le dateClick gère l'affichage
@@ -224,12 +224,17 @@ const EventsCalendar = () => {
 
   const handleDateClick = (info) => {
     const isMobile = window.innerWidth < 1024;
-    console.log('📅 ADMIN/STAFF - dateClick déclenché, date:', info.dateStr, 'isMobile:', isMobile);
+    const clickedDate = info.dateStr;
+    const today = new Date().toISOString().split('T')[0];
+
+    console.log('📅 ADMIN/STAFF - dateClick déclenché, date:', clickedDate, 'isMobile:', isMobile);
+
+    // Bloquer les jours passés pour la création
+    const isPastDate = clickedDate < today;
 
     if (isMobile) {
       // Récupérer les événements directement depuis FullCalendar
       const calendarApi = info.view.calendar;
-      const clickedDate = info.dateStr;
       const startOfDay = new Date(clickedDate + 'T00:00:00');
       const endOfDay = new Date(clickedDate + 'T23:59:59');
 
@@ -257,11 +262,17 @@ const EventsCalendar = () => {
         setDayEvents(eventsOnDay);
         setSelectedDayDate(clickedDate);
         setShowDayEventsModal(true);
+      } else if (!isPastDate) {
+        // Pas d'événements et date future : ouvrir le modal de création
+        setSelectedDate(clickedDate);
+        setShowQuickModal(true);
       }
     } else {
-      // Sur desktop : ouvrir le modal de création
-      setSelectedDate(info.dateStr);
-      setShowQuickModal(true);
+      // Sur desktop : ouvrir le modal de création seulement si date future
+      if (!isPastDate) {
+        setSelectedDate(info.dateStr);
+        setShowQuickModal(true);
+      }
     }
   };
 
@@ -473,12 +484,24 @@ const EventsCalendar = () => {
             nowIndicator={true}
             eventDidMount={(info) => {
               const isMobile = window.innerWidth < 1024;
+              const eventDate = info.event.start;
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const isPast = eventDate < today;
+
               console.log('🎨 ADMIN/STAFF eventDidMount - isMobile:', isMobile, 'width:', window.innerWidth, 'event:', info.event.title);
+
+              // Afficher les événements passés en gris
+              if (isPast) {
+                info.el.style.opacity = '0.5';
+                info.el.style.filter = 'grayscale(70%)';
+              }
 
               // UNIQUEMENT sur mobile : remplacer par un point
               if (isMobile) {
                 console.log('📍 ADMIN/STAFF - Création point pour:', info.event.title);
-                info.el.innerHTML = `<div style="width: 6px; height: 6px; border-radius: 50%; background-color: ${info.event.backgroundColor};"></div>`;
+                const color = isPast ? '#9ca3af' : info.event.backgroundColor;
+                info.el.innerHTML = `<div style="width: 6px; height: 6px; border-radius: 50%; background-color: ${color};"></div>`;
                 info.el.style.cssText = 'background: transparent !important; border: none !important; padding: 0 !important; margin: 0 2px !important; pointer-events: none !important;';
               } else {
                 console.log('📝 ADMIN/STAFF - Desktop, affichage normal pour:', info.event.title);
@@ -543,7 +566,7 @@ const EventsCalendar = () => {
                 <X className="w-5 h-5 text-gray-600 dark:text-gray-400" />
               </button>
             </div>
-            <div className="p-4 space-y-3 overflow-y-auto max-h-[calc(80vh-80px)]">
+            <div className="p-4 space-y-3 overflow-y-auto max-h-[calc(80vh-160px)]">
               {dayEvents.map((event) => (
                 <div
                   key={event.id}
@@ -587,6 +610,21 @@ const EventsCalendar = () => {
                 </div>
               ))}
             </div>
+            {selectedDayDate && selectedDayDate >= new Date().toISOString().split('T')[0] && (
+              <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+                <button
+                  onClick={() => {
+                    setShowDayEventsModal(false);
+                    setSelectedDate(selectedDayDate);
+                    setShowQuickModal(true);
+                  }}
+                  className="w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium flex items-center justify-center gap-2"
+                >
+                  <Plus className="w-5 h-5" />
+                  {isRTL ? 'إضافة حدث جديد' : 'Ajouter un événement'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

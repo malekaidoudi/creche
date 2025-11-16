@@ -249,13 +249,9 @@ const MySpacePage = () => {
         }}
       />
 
-      {/* Menu latéral sur grand écran, bouton flottant sur petit écran */}
-      <div className="hidden lg:block">
-        <SideMenu />
-      </div>
-      <div className="block lg:hidden">
-        <FloatingActionButton />
-      </div>
+      {/* Menu latéral et bouton flottant gèrent leur propre affichage */}
+      <SideMenu />
+      <FloatingActionButton />
     </div>
   );
 };
