@@ -11,10 +11,10 @@ const { sendEventReminder, sendEventAssigned, sendEventOverdue } = require('./ev
  */
 async function createEvent(eventData, userId) {
   const client = await pool.connect();
-  
+
   try {
     await client.query('BEGIN');
-    
+
     // Insérer l'événement
     const eventResult = await client.query(`
       INSERT INTO events (
@@ -45,15 +45,15 @@ async function createEvent(eventData, userId) {
       eventData.attendees ? JSON.stringify(eventData.attendees) : '[]',
       eventData.metadata ? JSON.stringify(eventData.metadata) : '{}'
     ]);
-    
+
     const event = eventResult.rows[0];
-    
+
     // Créer les rappels si activés
     if (eventData.reminder_enabled && eventData.reminders && eventData.reminders.length > 0) {
       for (const reminder of eventData.reminders) {
         const scheduledFor = new Date(event.start_date);
         scheduledFor.setMinutes(scheduledFor.getMinutes() - reminder.offset_minutes);
-        
+
         await client.query(`
           INSERT INTO event_reminders (
             event_id, offset_minutes, notification_type, scheduled_for, recipient_id
@@ -67,37 +67,37 @@ async function createEvent(eventData, userId) {
         ]);
       }
     }
-    
+
     // Logger la création
     await client.query(`
       INSERT INTO event_history (event_id, user_id, action)
       VALUES ($1, $2, 'created')
     `, [event.id, userId]);
-    
+
     // Créer une notification pour la personne assignée (AVANT COMMIT)
     if (eventData.assigned_to && eventData.assigned_to !== userId) {
       console.log(`📬 Création notification événement: ${event.title}`);
       console.log(`   Type: ${event.type}, Destinataire: ${eventData.assigned_to}, Créateur: ${userId}`);
-      
+
       await createEventNotification(event, eventData.assigned_to, userId);
     } else {
       console.log(`⏭️ Pas de notification création: assigned_to=${eventData.assigned_to}, userId=${userId}`);
     }
-    
+
     await client.query('COMMIT');
-    
+
     // Envoyer email d'assignation si assigné à quelqu'un d'autre
     if (eventData.assigned_to && eventData.assigned_to !== userId && eventData.type === 'task') {
       const assignedUser = await getUserById(eventData.assigned_to);
       const creatorUser = await getUserById(userId);
-      
+
       if (assignedUser && creatorUser) {
         await sendEventAssigned(event, assignedUser, creatorUser);
       }
     }
-    
+
     return { success: true, event };
-    
+
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('❌ Erreur createEvent:', error);
@@ -118,6 +118,9 @@ async function getEvents(filters = {}) {
         u1.first_name || ' ' || u1.last_name as created_by_name,
         u2.first_name || ' ' || u2.last_name as assigned_to_name,
         c.first_name || ' ' || c.last_name as child_name,
+        c.birth_date as child_birth_date,
+        c.gender as child_gender,
+        c.photo_url as child_photo_url,
         (SELECT COUNT(*) FROM event_comments ec WHERE ec.event_id = e.id AND ec.deleted_at IS NULL) as comments_count
       FROM events e
       LEFT JOIN users u1 ON e.created_by = u1.id
@@ -125,73 +128,88 @@ async function getEvents(filters = {}) {
       LEFT JOIN children c ON e.child_id = c.id
       WHERE e.deleted_at IS NULL
     `;
-    
+
     const params = [];
     let paramCount = 0;
-    
+
     // Filtres
     if (filters.type) {
       paramCount++;
       query += ` AND e.type = $${paramCount}`;
       params.push(filters.type);
     }
-    
+
     if (filters.status) {
       paramCount++;
       query += ` AND e.status = $${paramCount}`;
       params.push(filters.status);
     }
-    
+
     if (filters.priority) {
       paramCount++;
       query += ` AND e.priority = $${paramCount}`;
       params.push(filters.priority);
     }
-    
+
     if (filters.assigned_to) {
       paramCount++;
       query += ` AND e.assigned_to = $${paramCount}`;
       params.push(filters.assigned_to);
     }
-    
+
     if (filters.child_id) {
       paramCount++;
       query += ` AND e.child_id = $${paramCount}`;
       params.push(filters.child_id);
     }
-    
+
+    // 🆕 Filtre par créateur (pour les mémos privés)
+    // Si created_by est fourni, l'utiliser pour filtrer
+    // Sinon, si user_id est fourni (contexte utilisateur), filtrer TOUS les mémos par cet utilisateur
+    if (filters.created_by) {
+      paramCount++;
+      query += ` AND e.created_by = $${paramCount}`;
+      params.push(filters.created_by);
+    } else if (filters.user_id) {
+      // Filtrer automatiquement les mémos par utilisateur
+      // Les autres types (task, event, etc.) restent visibles par tous
+      paramCount++;
+      query += ` AND (e.type != 'memo' OR e.created_by = $${paramCount})`;
+      params.push(filters.user_id);
+    }
+
     if (filters.start_date) {
       paramCount++;
       query += ` AND e.start_date >= $${paramCount}`;
       params.push(filters.start_date);
     }
-    
+
     if (filters.end_date) {
       paramCount++;
       query += ` AND e.start_date <= $${paramCount}`;
       params.push(filters.end_date);
     }
-    
+
     // Tri
     query += ` ORDER BY e.start_date ASC`;
-    
+
     // Pagination
     if (filters.limit) {
       paramCount++;
       query += ` LIMIT $${paramCount}`;
       params.push(filters.limit);
     }
-    
+
     if (filters.offset) {
       paramCount++;
       query += ` OFFSET $${paramCount}`;
       params.push(filters.offset);
     }
-    
+
     const result = await pool.query(query, params);
-    
+
     return { success: true, events: result.rows };
-    
+
   } catch (error) {
     console.error('❌ Erreur getEvents:', error);
     throw error;
@@ -215,11 +233,11 @@ async function getEventById(eventId) {
       LEFT JOIN children c ON e.child_id = c.id
       WHERE e.id = $1 AND e.deleted_at IS NULL
     `, [eventId]);
-    
+
     if (result.rows.length === 0) {
       return { success: false, error: 'Événement non trouvé' };
     }
-    
+
     // Récupérer les commentaires
     const commentsResult = await pool.query(`
       SELECT 
@@ -230,20 +248,20 @@ async function getEventById(eventId) {
       WHERE ec.event_id = $1 AND ec.deleted_at IS NULL
       ORDER BY ec.created_at DESC
     `, [eventId]);
-    
+
     // Récupérer les rappels
     const remindersResult = await pool.query(`
       SELECT * FROM event_reminders
       WHERE event_id = $1
       ORDER BY scheduled_for ASC
     `, [eventId]);
-    
+
     const event = result.rows[0];
     event.comments = commentsResult.rows;
     event.reminders = remindersResult.rows;
-    
+
     return { success: true, event };
-    
+
   } catch (error) {
     console.error('❌ Erreur getEventById:', error);
     throw error;
@@ -255,33 +273,33 @@ async function getEventById(eventId) {
  */
 async function updateEvent(eventId, updates, userId) {
   const client = await pool.connect();
-  
+
   try {
     await client.query('BEGIN');
-    
+
     // Récupérer l'événement actuel
     const currentResult = await client.query(
       'SELECT * FROM events WHERE id = $1 AND deleted_at IS NULL',
       [eventId]
     );
-    
+
     if (currentResult.rows.length === 0) {
       throw new Error('Événement non trouvé');
     }
-    
+
     const current = currentResult.rows[0];
-    
+
     // Construire la requête de mise à jour
     const fields = [];
     const values = [];
     let paramCount = 0;
-    
+
     const allowedFields = [
       'title', 'description', 'type', 'start_date', 'end_date', 'all_day',
       'status', 'priority', 'assigned_to', 'child_id',
       'reminder_enabled', 'reminder_offset', 'color'
     ];
-    
+
     for (const field of allowedFields) {
       if (updates[field] !== undefined) {
         paramCount++;
@@ -289,24 +307,24 @@ async function updateEvent(eventId, updates, userId) {
         values.push(updates[field]);
       }
     }
-    
+
     if (fields.length === 0) {
       throw new Error('Aucune mise à jour fournie');
     }
-    
+
     paramCount++;
     values.push(eventId);
-    
+
     const query = `
       UPDATE events
       SET ${fields.join(', ')}
       WHERE id = $${paramCount} AND deleted_at IS NULL
       RETURNING *
     `;
-    
+
     const result = await client.query(query, values);
     const event = result.rows[0];
-    
+
     // Logger les changements
     for (const field of allowedFields) {
       if (updates[field] !== undefined && current[field] !== updates[field]) {
@@ -316,16 +334,24 @@ async function updateEvent(eventId, updates, userId) {
         `, [eventId, userId, field, String(current[field]), String(updates[field])]);
       }
     }
-    
+
     await client.query('COMMIT');
-    
+
     // Si l'assignation a changé, créer une notification
     if (updates.assigned_to && updates.assigned_to !== current.assigned_to && updates.assigned_to !== userId) {
       await createEventUpdateNotification(event, updates.assigned_to, userId, 'assigned');
     }
-    
+
+    // Si une tâche est terminée, notifier le créateur/admin
+    if (event.type === 'task' && updates.status === 'completed' && current.status !== 'completed') {
+      // Notifier le créateur de la tâche
+      if (current.created_by && current.created_by !== userId) {
+        await createTaskCompletedNotification(event, current.created_by, userId);
+      }
+    }
+
     return { success: true, event };
-    
+
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('❌ Erreur updateEvent:', error);
@@ -340,23 +366,23 @@ async function updateEvent(eventId, updates, userId) {
  */
 async function updateEventStatus(eventId, status, userId) {
   const client = await pool.connect();
-  
+
   try {
     await client.query('BEGIN');
-    
+
     // Récupérer l'événement actuel
     const currentResult = await client.query(
       'SELECT * FROM events WHERE id = $1 AND deleted_at IS NULL',
       [eventId]
     );
-    
+
     if (currentResult.rows.length === 0) {
       await client.query('ROLLBACK');
       return { success: false, error: 'Événement non trouvé' };
     }
-    
+
     const currentEvent = currentResult.rows[0];
-    
+
     // Mettre à jour le statut
     const result = await client.query(`
       UPDATE events
@@ -365,7 +391,7 @@ async function updateEventStatus(eventId, status, userId) {
       WHERE id = $3 AND deleted_at IS NULL
       RETURNING *
     `, [status, status, eventId]);
-    
+
     // Logger le changement dans l'historique
     if (userId) {
       await client.query(`
@@ -373,26 +399,26 @@ async function updateEventStatus(eventId, status, userId) {
         VALUES ($1, $2, 'status_changed', 'status', $3, $4)
       `, [eventId, userId, currentEvent.status, status]);
     }
-    
+
     const updatedEvent = result.rows[0];
-    
+
     // Créer une notification pour le changement de statut (avant COMMIT pour rollback si erreur)
     if (updatedEvent.created_by && updatedEvent.created_by !== userId) {
       // Notification pour tous les changements de statut importants
       if (status === 'completed' || status === 'in_progress' || status === 'cancelled') {
         console.log(`📬 Création notification changement statut: ${currentEvent.status} → ${status}`);
         console.log(`   Destinataire: ${updatedEvent.created_by}, Expéditeur: ${userId}`);
-        
+
         await createStatusChangeNotification(updatedEvent, updatedEvent.created_by, userId, status);
       }
     } else {
       console.log(`⏭️ Pas de notification: created_by=${updatedEvent.created_by}, userId=${userId}`);
     }
-    
+
     await client.query('COMMIT');
-    
+
     return { success: true, event: updatedEvent };
-    
+
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('❌ Erreur updateEventStatus:', error);
@@ -413,19 +439,19 @@ async function deleteEvent(eventId, userId) {
       WHERE id = $1 AND deleted_at IS NULL
       RETURNING *
     `, [eventId]);
-    
+
     if (result.rows.length === 0) {
       return { success: false, error: 'Événement non trouvé' };
     }
-    
+
     // Logger la suppression
     await pool.query(`
       INSERT INTO event_history (event_id, user_id, action)
       VALUES ($1, $2, 'deleted')
     `, [eventId, userId]);
-    
+
     return { success: true };
-    
+
   } catch (error) {
     console.error('❌ Erreur deleteEvent:', error);
     throw error;
@@ -442,9 +468,9 @@ async function addComment(eventId, userId, comment) {
       VALUES ($1, $2, $3)
       RETURNING *
     `, [eventId, userId, comment]);
-    
+
     return { success: true, comment: result.rows[0] };
-    
+
   } catch (error) {
     console.error('❌ Erreur addComment:', error);
     throw error;
@@ -473,9 +499,9 @@ async function getUpcomingEvents(userId, days = 7) {
       ORDER BY e.start_date ASC
       LIMIT 10
     `, [userId]);
-    
+
     return { success: true, events: result.rows };
-    
+
   } catch (error) {
     console.error('❌ Erreur getUpcomingEvents:', error);
     throw error;
@@ -504,9 +530,9 @@ async function getOverdueEvents(userId) {
         AND (e.assigned_to = $1 OR e.created_by = $1)
       ORDER BY e.start_date ASC
     `, [userId]);
-    
+
     return { success: true, events: result.rows };
-    
+
   } catch (error) {
     console.error('❌ Erreur getOverdueEvents:', error);
     throw error;
@@ -533,7 +559,7 @@ async function getTasksKanban(userId) {
         AND (e.assigned_to = $1 OR e.created_by = $1)
       ORDER BY e.start_date ASC
     `, [userId]);
-    
+
     // Grouper par statut
     const kanban = {
       pending: [],
@@ -541,15 +567,15 @@ async function getTasksKanban(userId) {
       completed: [],
       cancelled: []
     };
-    
+
     result.rows.forEach(task => {
       if (kanban[task.status]) {
         kanban[task.status].push(task);
       }
     });
-    
+
     return { success: true, kanban };
-    
+
   } catch (error) {
     console.error('❌ Erreur getTasksKanban:', error);
     throw error;
@@ -557,11 +583,183 @@ async function getTasksKanban(userId) {
 }
 
 /**
+ * Créer une notification pour un changement de statut
+ */
+async function createStatusChangeNotification(event, recipientId, userId, newStatus) {
+  try {
+    const user = await getUserById(userId);
+    if (!user) return;
+
+    let title, message;
+
+    if (newStatus === 'completed') {
+      title = `✅ Tâche complétée`;
+      message = `${user.first_name} ${user.last_name} a marqué comme complétée : "${event.title}"`;
+    } else if (newStatus === 'in_progress') {
+      title = `⏳ Tâche en cours`;
+      message = `${user.first_name} ${user.last_name} a commencé : "${event.title}"`;
+    } else if (newStatus === 'cancelled') {
+      title = `❌ Tâche annulée`;
+      message = `${user.first_name} ${user.last_name} a annulé : "${event.title}"`;
+    } else {
+      return; // Pas de notification pour les autres statuts
+    }
+
+    const notificationType = 'event_status_changed';
+
+    await pool.query(`
+      INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
+      VALUES ($1, $2, $3, $4, $5, false)
+    `, [recipientId, title, message, notificationType, event.id]);
+
+    console.log(`✅ Notification de changement de statut créée pour l'utilisateur ${recipientId}`);
+
+  } catch (error) {
+    console.error('❌ Erreur createStatusChangeNotification:', error);
+  }
+}
+
+/**
+ * Créer une notification pour une mise à jour d'événement
+ */
+async function createEventUpdateNotification(event, recipientId, updaterId, updateType) {
+  try {
+    const updater = await getUserById(updaterId);
+    if (!updater) return;
+
+    let title, message;
+
+    if (updateType === 'assigned') {
+      title = `🔄 Événement réassigné`;
+      message = `${updater.first_name} ${updater.last_name} vous a assigné l'événement : "${event.title}"`;
+    } else {
+      title = `🔄 Événement modifié`;
+      message = `${updater.first_name} ${updater.last_name} a modifié l'événement : "${event.title}"`;
+    }
+
+    const notificationType = 'event_updated';
+
+    await pool.query(`
+      INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
+      VALUES ($1, $2, $3, $4, $5, false)
+    `, [recipientId, title, message, notificationType, event.id]);
+
+    console.log(`✅ Notification de mise à jour créée pour l'utilisateur ${recipientId}`);
+
+  } catch (error) {
+    console.error('❌ Erreur createEventUpdateNotification:', error);
+  }
+}
+
+/**
+ * Créer une notification pour un événement
+ */
+async function createEventNotification(event, recipientId, creatorId) {
+  try {
+    console.log(`🔔 createEventNotification appelée: event=${event.title}, recipient=${recipientId}, creator=${creatorId}`);
+
+    const creator = await getUserById(creatorId);
+    if (!creator) {
+      console.log(`⚠️ Créateur ${creatorId} non trouvé`);
+      return;
+    }
+
+    // Déterminer le type de notification selon le type d'événement
+    const notificationTypes = {
+      task: 'event_task',
+      memo: 'event_memo',
+      rdv: 'event_rdv',
+      medical: 'event_medical',
+      meeting: 'event_meeting',
+      birthday: 'event_birthday',
+      vacation_reminder: 'event_vacation',
+      custom: 'event_custom'
+    };
+
+    const notificationType = notificationTypes[event.type] || 'event_general';
+
+    // Déterminer le titre et le message selon le type
+    let title, message;
+
+    if (event.type === 'task') {
+      title = `✅ Nouvelle tâche assignée`;
+      message = `${creator.first_name} ${creator.last_name} vous a assigné une tâche : "${event.title}"`;
+    } else if (event.type === 'memo') {
+      title = `📝 Nouveau mémo`;
+      message = `${creator.first_name} ${creator.last_name} vous a envoyé un mémo : "${event.title}"`;
+    } else if (event.type === 'rdv') {
+      title = `📅 Nouveau rendez-vous`;
+      message = `${creator.first_name} ${creator.last_name} a programmé un rendez-vous : "${event.title}"`;
+    } else if (event.type === 'medical') {
+      title = `🏥 Rendez-vous médical`;
+      message = `${creator.first_name} ${creator.last_name} a programmé un rendez-vous médical : "${event.title}"`;
+    } else if (event.type === 'meeting') {
+      title = `👥 Nouvelle réunion`;
+      message = `${creator.first_name} ${creator.last_name} vous a invité à une réunion : "${event.title}"`;
+    } else {
+      title = `📆 Nouvel événement`;
+      message = `${creator.first_name} ${creator.last_name} a créé un événement : "${event.title}"`;
+    }
+
+    // Ajouter la date
+    const eventDate = new Date(event.start_date);
+    const dateStr = eventDate.toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+    message += ` - ${dateStr}`;
+
+    // Insérer la notification
+    await pool.query(`
+      INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
+      VALUES ($1, $2, $3, $4, $5, false)
+    `, [recipientId, title, message, notificationType, event.id]);
+
+    console.log(`✅ Notification créée pour l'utilisateur ${recipientId} - Événement: ${event.title}`);
+
+  } catch (error) {
+    console.error('❌ Erreur createEventNotification:', error);
+    // Ne pas bloquer la création de l'événement si la notification échoue
+  }
+}
+
+/**
+ * Créer une notification quand une tâche est terminée
+ */
+async function createTaskCompletedNotification(task, recipientId, completedById) {
+  try {
+    console.log(`🎉 createTaskCompletedNotification: task=${task.title}, recipient=${recipientId}, completedBy=${completedById}`);
+
+    const completedBy = await getUserById(completedById);
+    if (!completedBy) {
+      console.log(`⚠️ Utilisateur ${completedById} non trouvé`);
+      return;
+    }
+
+    const title = '✅ Tâche terminée';
+    const message = `${completedBy.first_name} ${completedBy.last_name} a terminé la tâche : "${task.title}"`;
+    const notificationType = 'task_completed';
+
+    // Insérer la notification
+    await pool.query(`
+      INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
+      VALUES ($1, $2, $3, $4, $5, false)
+    `, [recipientId, title, message, notificationType, task.id]);
+
+    console.log(`✅ Notification de tâche terminée créée pour l'utilisateur ${recipientId}`);
+
+  } catch (error) {
+    console.error('❌ Erreur createTaskCompletedNotification:', error);
+  }
+}
+
+/**
  * Récupérer les événements pour le calendrier
  */
-async function getCalendarEvents(startDate, endDate, userId) {
+async function getCalendarEvents(startDate, endDate, userId, types = null, userRole = 'admin') {
   try {
-    const result = await pool.query(`
+    let query = `
       SELECT 
         e.id,
         e.title,
@@ -576,12 +774,63 @@ async function getCalendarEvents(startDate, endDate, userId) {
       WHERE e.deleted_at IS NULL
         AND e.start_date >= $1
         AND e.start_date <= $2
-        AND (e.assigned_to = $3 OR e.created_by = $3)
-      ORDER BY e.start_date ASC
-    `, [startDate, endDate, userId]);
-    
-    return { success: true, events: result.rows };
-    
+    `;
+
+    const params = [startDate, endDate];
+    let paramIndex = 3;
+
+    // Filtres selon le rôle
+    if (userRole === 'admin') {
+      // Admin voit tout ce qui lui est assigné ou créé par lui SAUF les mémos
+      query += ` AND (e.assigned_to = $${paramIndex} OR e.created_by = $${paramIndex}) AND e.type != 'memo'`;
+      params.push(userId);
+      paramIndex++;
+    } else if (userRole === 'staff') {
+      // Staff voit tout SAUF:
+      // - Les mémos de l'admin (type='memo' ET created_by != staff)
+      // - Les RDV non assignés à lui
+      // - Les tâches non assignées à lui
+      query += ` AND (
+        (e.type NOT IN ('memo', 'rdv', 'task'))
+        OR (e.type = 'memo' AND e.created_by = $${paramIndex})
+        OR (e.type = 'rdv' AND e.assigned_to = $${paramIndex})
+        OR (e.type = 'task' AND e.assigned_to = $${paramIndex})
+      )`;
+      params.push(userId);
+      paramIndex++;
+    } else if (userRole === 'parent') {
+      // Parent voit uniquement:
+      // - Les événements généraux (type='event')
+      // - Les anniversaires (type='birthday')
+      // - Les vacances (type='vacation_reminder')
+      // - Les RDV liés à lui (assigned_to)
+      query += ` AND (
+        e.type = 'event'
+        OR e.type = 'birthday'
+        OR e.type = 'vacation_reminder'
+        OR (e.type = 'rdv' AND e.assigned_to = $${paramIndex})
+      )`;
+      params.push(userId);
+      paramIndex++;
+    }
+
+    // Ajouter le filtre par type si spécifié
+    if (types && types.length > 0) {
+      query += ` AND e.type = ANY($${paramIndex})`;
+      params.push(types);
+      paramIndex++;
+    }
+
+    query += ` ORDER BY e.start_date ASC`;
+
+    try {
+      const result = await pool.query(query, params);
+      return { success: true, events: result.rows };
+    } catch (queryError) {
+      console.error('❌ Erreur SQL Query:', queryError.message);
+      throw queryError;
+    }
+
   } catch (error) {
     console.error('❌ Erreur getCalendarEvents:', error);
     throw error;
@@ -628,7 +877,7 @@ async function createStatusChangeNotification(event, recipientId, userId, newSta
     if (!user) return;
 
     let title, message;
-    
+
     if (newStatus === 'completed') {
       title = `✅ Tâche complétée`;
       message = `${user.first_name} ${user.last_name} a marqué comme complétée : "${event.title}"`;
@@ -650,7 +899,7 @@ async function createStatusChangeNotification(event, recipientId, userId, newSta
     `, [recipientId, title, message, notificationType, event.id]);
 
     console.log(`✅ Notification de changement de statut créée pour l'utilisateur ${recipientId}`);
-    
+
   } catch (error) {
     console.error('❌ Erreur createStatusChangeNotification:', error);
   }
@@ -665,7 +914,7 @@ async function createEventUpdateNotification(event, recipientId, updaterId, upda
     if (!updater) return;
 
     let title, message;
-    
+
     if (updateType === 'assigned') {
       title = `🔄 Événement réassigné`;
       message = `${updater.first_name} ${updater.last_name} vous a assigné l'événement : "${event.title}"`;
@@ -682,7 +931,7 @@ async function createEventUpdateNotification(event, recipientId, updaterId, upda
     `, [recipientId, title, message, notificationType, event.id]);
 
     console.log(`✅ Notification de mise à jour créée pour l'utilisateur ${recipientId}`);
-    
+
   } catch (error) {
     console.error('❌ Erreur createEventUpdateNotification:', error);
   }
@@ -694,7 +943,7 @@ async function createEventUpdateNotification(event, recipientId, updaterId, upda
 async function createEventNotification(event, recipientId, creatorId) {
   try {
     console.log(`🔔 createEventNotification appelée: event=${event.title}, recipient=${recipientId}, creator=${creatorId}`);
-    
+
     const creator = await getUserById(creatorId);
     if (!creator) {
       console.log(`⚠️ Créateur ${creatorId} non trouvé`);
@@ -717,7 +966,7 @@ async function createEventNotification(event, recipientId, creatorId) {
 
     // Déterminer le titre et le message selon le type
     let title, message;
-    
+
     if (event.type === 'task') {
       title = `✅ Nouvelle tâche assignée`;
       message = `${creator.first_name} ${creator.last_name} vous a assigné une tâche : "${event.title}"`;
@@ -740,10 +989,10 @@ async function createEventNotification(event, recipientId, creatorId) {
 
     // Ajouter la date
     const eventDate = new Date(event.start_date);
-    const dateStr = eventDate.toLocaleDateString('fr-FR', { 
-      day: 'numeric', 
-      month: 'long', 
-      year: 'numeric' 
+    const dateStr = eventDate.toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
     });
     message += ` - ${dateStr}`;
 
@@ -754,10 +1003,40 @@ async function createEventNotification(event, recipientId, creatorId) {
     `, [recipientId, title, message, notificationType, event.id]);
 
     console.log(`✅ Notification créée pour l'utilisateur ${recipientId} - Événement: ${event.title}`);
-    
+
   } catch (error) {
     console.error('❌ Erreur createEventNotification:', error);
     // Ne pas bloquer la création de l'événement si la notification échoue
+  }
+}
+
+/**
+ * Créer une notification quand une tâche est terminée
+ */
+async function createTaskCompletedNotification(task, recipientId, completedById) {
+  try {
+    console.log(`🎉 createTaskCompletedNotification: task=${task.title}, recipient=${recipientId}, completedBy=${completedById}`);
+
+    const completedBy = await getUserById(completedById);
+    if (!completedBy) {
+      console.log(`⚠️ Utilisateur ${completedById} non trouvé`);
+      return;
+    }
+
+    const title = '✅ Tâche terminée';
+    const message = `${completedBy.first_name} ${completedBy.last_name} a terminé la tâche : "${task.title}"`;
+    const notificationType = 'task_completed';
+
+    // Insérer la notification
+    await pool.query(`
+      INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
+      VALUES ($1, $2, $3, $4, $5, false)
+    `, [recipientId, title, message, notificationType, task.id]);
+
+    console.log(`✅ Notification tâche terminée créée pour l'utilisateur ${recipientId}`);
+
+  } catch (error) {
+    console.error('❌ Erreur createTaskCompletedNotification:', error);
   }
 }
 

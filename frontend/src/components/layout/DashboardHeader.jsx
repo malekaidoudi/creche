@@ -14,11 +14,11 @@ const DashboardHeader = ({ onMenuClick }) => {
   const { user, logout } = useAuth();
   const { isRTL } = useLanguage();
   const { getImageUrl, hasImage } = useProfileImage();
-  
+
   // Utiliser les notifications seulement pour admin/staff
   const notificationsHook = useNotifications();
   const { unreadCount } = (user?.role === 'admin' || user?.role === 'staff') ? notificationsHook : { unreadCount: 0 };
-  
+
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const userMenuRef = useRef(null);
@@ -104,7 +104,7 @@ const DashboardHeader = ({ onMenuClick }) => {
             </Link>
             {/* Notifications - Visible seulement pour admin/staff */}
             {(user?.role === 'admin' || user?.role === 'staff') && (
-              <button 
+              <button
                 onClick={() => setNotificationOpen(true)}
                 className="p-2 text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 relative transition-colors"
               >
@@ -185,10 +185,10 @@ const DashboardHeader = ({ onMenuClick }) => {
                       {isRTL ? 'الملف الشخصي' : 'Profil'}
                     </Link>
 
-                    {/* Paramètres - Visible seulement pour admin */}
-                    {user?.role === 'admin' && (
+                    {/* Paramètres - Admin et Staff */}
+                    {(user?.role === 'admin' || user?.role === 'staff') && (
                       <Link
-                        to="/dashboard/settings"
+                        to={user?.role === 'admin' ? '/dashboard/settings' : '/dashboard/staff-settings'}
                         onClick={() => setUserMenuOpen(false)}
                         className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                       >
@@ -213,13 +213,13 @@ const DashboardHeader = ({ onMenuClick }) => {
           </div>
         </div>
       </div>
-      
+
       {/* Centre de notifications avec ErrorBoundary */}
-      <ErrorBoundary 
+      <ErrorBoundary
         fallbackMessage="Erreur lors du chargement des notifications"
         showRetry={true}
       >
-        <SimpleNotificationCenter 
+        <SimpleNotificationCenter
           isOpen={notificationOpen}
           onClose={() => setNotificationOpen(false)}
         />

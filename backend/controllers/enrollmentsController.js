@@ -135,7 +135,14 @@ const enrollmentsController = {
       );
       
       // Générer le lien de création de mot de passe
-      const frontendUrl = process.env.FRONTEND_URL || 'https://malekaidoudi.github.io/creche';
+      // Détecter l'environnement et utiliser la bonne URL
+      let frontendUrl = process.env.FRONTEND_URL;
+      if (!frontendUrl) {
+        // Fallback selon l'environnement
+        frontendUrl = process.env.NODE_ENV === 'production' 
+          ? 'https://mima-elghalia.com' 
+          : 'http://localhost:5173';
+      }
       const passwordLink = `${frontendUrl}/create-password?token=${passwordToken}&email=${encodeURIComponent(enrollment.applicant_email)}`;
       
       // Formater la date de rendez-vous en français
@@ -257,7 +264,14 @@ const enrollmentsController = {
       if (rejection_type === 'dossier_manquant') {
         // Générer un token pour l'upload des documents
         const uploadToken = crypto.randomBytes(32).toString('hex');
-        const frontendUrl = process.env.FRONTEND_URL || 'https://malekaidoudi.github.io/creche';
+        
+        // Détecter l'environnement et utiliser la bonne URL
+        let frontendUrl = process.env.FRONTEND_URL;
+        if (!frontendUrl) {
+          frontendUrl = process.env.NODE_ENV === 'production' 
+            ? 'https://mima-elghalia.com' 
+            : 'http://localhost:5173';
+        }
         const uploadLink = `${frontendUrl}/upload-documents?token=${uploadToken}&enrollment=${id}`;
         
         // Liste des documents manquants (à personnaliser selon les besoins)

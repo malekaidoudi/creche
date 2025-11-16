@@ -98,7 +98,7 @@ router.get('/children-summary', auth.authenticateToken, async (req, res) => {
 });
 
 // GET /api/users - Récupérer tous les utilisateurs
-router.get('/', async (req, res) => {
+router.get('/', auth.authenticateToken, async (req, res) => {
   try {
     const { role, active, search, page = 1, limit = 50 } = req.query;
     

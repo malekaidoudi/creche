@@ -13,7 +13,8 @@ import {
   UserCheck,
   UserX,
   FileText,
-  MessageSquare
+  MessageSquare,
+  Plus
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -24,7 +25,8 @@ import TodayAbsences from '../../components/dashboard/TodayAbsences';
 import UpcomingEventsWidget from '../../components/widgets/UpcomingEventsWidget';
 import BirthdaysWidget from '../../components/widgets/BirthdaysWidget';
 import TodayTasksWidget from '../../components/widgets/TodayTasksWidget';
-import StaffMessagesWidget from '../../components/widgets/StaffMessagesWidget';
+import MessagesWidget from '../../components/widgets/MessagesWidget';
+import PendingAppointmentsWidget from '../../components/widgets/PendingAppointmentsWidget';
 import api from '../../services/api';
 
 const DashboardHome = () => {
@@ -281,6 +283,18 @@ const DashboardHome = () => {
         </div>
       </div>
 
+      {/* Rendez-vous à valider (admin uniquement) */}
+      {isAdmin && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.25 }}
+          className="mb-8"
+        >
+          <PendingAppointmentsWidget />
+        </motion.div>
+      )}
+
       {/* Tâches d'aujourd'hui (staff/admin uniquement) */}
       {(isStaff() || isAdmin()) && (
         <motion.div
@@ -289,20 +303,7 @@ const DashboardHome = () => {
           transition={{ duration: 0.6, delay: 0.3 }}
           className="mb-8"
         >
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              {isRTL ? 'مهام اليوم' : 'Tâches d\'aujourd\'hui'}
-            </h2>
-            {isStaff() && !isAdmin() && (
-              <Link
-                to="/dashboard/staff/send-message"
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium flex items-center gap-2 transition-colors"
-              >
-                <MessageSquare className="w-4 h-4" />
-                {isRTL ? 'إرسال رسالة' : 'Envoyer un message'}
-              </Link>
-            )}
-          </div>
+         
           <TodayTasksWidget />
         </motion.div>
       )}
@@ -317,17 +318,20 @@ const DashboardHome = () => {
         >
           {isAdmin() ? (
             // Layout Admin: Événements à venir + Messages + Anniversaires
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 lg:grid-rows-2 gap-6">
               <div className="lg:row-span-2">
-                <UpcomingEventsWidget days={7} limit={5} />
+                <UpcomingEventsWidget />
               </div>
-              <StaffMessagesWidget />
+              <MessagesWidget />
               <BirthdaysWidget />
             </div>
           ) : (
-            // Layout Staff: 1 ligne simple
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <UpcomingEventsWidget days={7} limit={5} />
+            // Layout Staff: Événements + Messages + Anniversaires
+            <div className="grid grid-cols-1 lg:grid-cols-2 lg:grid-rows-2 gap-6">
+              <div className="lg:row-span-2">
+                <UpcomingEventsWidget />
+              </div>
+              <MessagesWidget />
               <BirthdaysWidget />
             </div>
           )}
@@ -451,6 +455,7 @@ const DashboardHome = () => {
           <HolidaysList userRole={user?.role} />
         </motion.div>
       )}
+
     </div>
   );
 };

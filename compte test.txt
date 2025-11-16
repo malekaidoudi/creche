@@ -1,0 +1,28 @@
+Email:    crechemimaelghalia@gmail.com
+Password: password
+Rôle:     admin
+
+Email:    staff@mimaelghalia.tn
+Password: password
+Rôle:     staff
+
+Email:    parent1@example.com
+Password: password
+Enfants:  Youssef (3 ans), Lina (2 ans)
+
+Email:    parent2@example.com
+Password: password
+Enfants:  Adam (3 ans), Salma (2 ans)
+
+Email:    parent3@example.com
+Password: password
+Enfants:  Omar (3 ans), Nour (2 ans)
+
+
+
+
+Prochaines étapes:
+AnnouncementsPage (parent) ok
+AppointmentsPage (parent/admin)
+TasksPage (staff/admin)
+PersonalMemosPage (tous)

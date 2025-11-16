@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  X, 
-  Home, 
-  Users, 
-  Baby, 
-  ClipboardList, 
-  Clock, 
-  FileText, 
-  Settings, 
+import {
+  X,
+  Home,
+  Users,
+  Baby,
+  ClipboardList,
+  Clock,
+  FileText,
+  Settings,
   BarChart3,
   UserCheck,
   Calendar,
@@ -16,7 +16,8 @@ import {
   Download,
   ChevronDown,
   ChevronRight,
-  User
+  User,
+  MessageSquare
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -59,6 +60,13 @@ const DashboardSidebar = ({ isOpen, onClose }) => {
       roles: ['admin', 'staff', 'parent']
     }] : []),
     {
+      key: 'messages',
+      title: isRTL ? 'الرسائل' : 'Messages',
+      icon: MessageSquare,
+      path: '/dashboard/messages',
+      roles: ['admin', 'staff']
+    },
+    {
       key: 'children',
       title: isRTL ? 'الأطفال' : 'Enfants',
       icon: Baby,
@@ -82,27 +90,11 @@ const DashboardSidebar = ({ isOpen, onClose }) => {
       ]
     },
     {
-      key: 'events',
-      title: isRTL ? 'الأحداث' : 'Événements',
+      key: 'calendar',
+      title: isRTL ? 'التقويم' : 'Calendrier',
       icon: Calendar,
-      roles: ['admin'], // Uniquement admin
-      submenu: [
-        {
-          title: isRTL ? 'التقويم' : 'Calendrier',
-          path: '/dashboard/events/calendar',
-          roles: ['admin']
-        },
-        {
-          title: isRTL ? 'قائمة الأحداث' : 'Liste des événements',
-          path: '/dashboard/events/list',
-          roles: ['admin']
-        },
-        {
-          title: isRTL ? 'إضافة حدث' : 'Nouvel événement',
-          path: '/dashboard/events/new',
-          roles: ['admin']
-        }
-      ]
+      path: '/dashboard/events/calendar',
+      roles: ['admin', 'staff']
     },
     {
       key: 'attendance',
@@ -208,11 +200,10 @@ const DashboardSidebar = ({ isOpen, onClose }) => {
         <div>
           <button
             onClick={() => toggleMenu(item.key)}
-            className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
-              active
-                ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'
-                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
+            className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium rounded-lg transition-colors ${active
+              ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'
+              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}
           >
             <div className="flex items-center">
               <item.icon className="w-5 h-5 mr-3 rtl:mr-0 rtl:ml-3" />
@@ -224,7 +215,7 @@ const DashboardSidebar = ({ isOpen, onClose }) => {
               <ChevronRight className="w-4 h-4" />
             )}
           </button>
-          
+
           {isExpanded && (
             <div className="ml-8 rtl:ml-0 rtl:mr-8 mt-2 space-y-1">
               {item.submenu
@@ -234,11 +225,10 @@ const DashboardSidebar = ({ isOpen, onClose }) => {
                     key={index}
                     to={subItem.path}
                     onClick={onClose}
-                    className={`block px-4 py-2 text-sm rounded-lg transition-colors ${
-                      isActive(subItem.path)
-                        ? 'bg-primary-50 dark:bg-primary-900/50 text-primary-600 dark:text-primary-400'
-                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'
-                    }`}
+                    className={`block px-4 py-2 text-sm rounded-lg transition-colors ${isActive(subItem.path)
+                      ? 'bg-primary-50 dark:bg-primary-900/50 text-primary-600 dark:text-primary-400'
+                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                      }`}
                   >
                     {subItem.title}
                   </Link>
@@ -253,11 +243,10 @@ const DashboardSidebar = ({ isOpen, onClose }) => {
       <Link
         to={item.path}
         onClick={onClose}
-        className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
-          active
-            ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'
-            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-        }`}
+        className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${active
+          ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'
+          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+          }`}
       >
         <item.icon className="w-5 h-5 mr-3 rtl:mr-0 rtl:ml-3" />
         {item.title}
@@ -268,17 +257,16 @@ const DashboardSidebar = ({ isOpen, onClose }) => {
   return (
     <>
       {/* Sidebar */}
-      <div 
-        className={`fixed inset-y-0 z-50 w-64 bg-white dark:bg-gray-800 shadow-lg transform transition-transform duration-300 ease-in-out ${
-          isRTL 
-            ? `right-0 ${isOpen ? 'translate-x-0' : 'translate-x-full'} lg:translate-x-0`
-            : `left-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`
-        }`}
-        style={{ 
+      <div
+        className={`fixed inset-y-0 z-50 w-64 bg-white dark:bg-gray-800 shadow-lg transform transition-transform duration-300 ease-in-out ${isRTL
+          ? `right-0 ${isOpen ? 'translate-x-0' : 'translate-x-full'} lg:translate-x-0`
+          : `left-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`
+          }`}
+        style={{
           direction: isRTL ? 'rtl' : 'ltr'
         }}
       >
-        
+
         {/* Header */}
         <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200 dark:border-gray-700">
           <Link to="/dashboard" className="flex items-center space-x-3 rtl:space-x-reverse">
@@ -299,7 +287,7 @@ const DashboardSidebar = ({ isOpen, onClose }) => {
               </p>
             </div>
           </Link>
-          
+
           <button
             onClick={onClose}
             className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
