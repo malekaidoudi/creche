@@ -287,6 +287,14 @@ const ParentCalendarPage = () => {
                 {/* Calendar */}
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                     <style>{`
+                        /* Forcer la visibilité des en-têtes de colonnes en mode dark */
+                        .dark .fc-col-header-cell {
+                            background-color: #1f2937 !important;
+                        }
+                        .dark .fc-col-header-cell-cushion {
+                            color: #e5e7eb !important;
+                        }
+                        
                         /* Masquer les bordures de grille sur mobile et tablette */
                         @media (max-width: 1023px) {
                             .fc-scrollgrid {
