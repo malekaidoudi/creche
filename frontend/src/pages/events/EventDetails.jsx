@@ -59,16 +59,20 @@ const EventDetails = () => {
 
   const loadEvent = async () => {
     try {
+      console.log('🔄 EventDetails - Chargement événement ID:', id);
       setLoading(true);
       const response = await api.get(`/api/events/${id}`);
+      console.log('✅ EventDetails - Réponse:', response.data);
 
       if (response.data.success) {
         setEvent(response.data.event);
       }
     } catch (error) {
-      console.error('Erreur chargement événement:', error);
+      console.error('❌ EventDetails - Erreur chargement événement:', error);
+      console.error('❌ EventDetails - Détails:', error.response?.data);
       toast.error(isRTL ? 'خطأ في تحميل الحدث' : 'Erreur lors du chargement');
-      navigate('/dashboard/events/list');
+      // Rediriger selon le rôle
+      navigate(isParent ? '/mon-espace/calendar' : '/dashboard/events/calendar');
     } finally {
       setLoading(false);
     }

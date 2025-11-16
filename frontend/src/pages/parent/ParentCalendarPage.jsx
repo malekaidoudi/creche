@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar as CalendarIcon, Filter } from 'lucide-react';
+import { ArrowLeft, Calendar as CalendarIcon, Filter, X } from 'lucide-react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
-import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import frLocale from '@fullcalendar/core/locales/fr';
-import { useLanguage } from '../../hooks/useLanguage';
+import { useLanguage } from '../../contexts/LanguageContext';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 
@@ -29,9 +28,13 @@ const ParentCalendarPage = () => {
     const [events, setEvents] = useState([]); // Événements filtrés affichés
     const [loading, setLoading] = useState(true);
     const [selectedTypes, setSelectedTypes] = useState([]);
+    const [showDayEventsModal, setShowDayEventsModal] = useState(false);
+    const [dayEvents, setDayEvents] = useState([]);
+    const [selectedDayDate, setSelectedDayDate] = useState(null);
 
     const loadEvents = useCallback(async () => {
         try {
+            console.log('🔄 PARENT CALENDAR - Début chargement');
             setLoading(true);
 
             // Charger tous les événements des 12 prochains mois
@@ -47,107 +50,127 @@ const ParentCalendarPage = () => {
             // Ne PAS envoyer le filtre au backend, on filtre tout côté frontend
             // pour inclure les jours fériés, vacances et anniversaires
 
-            const eventsResponse = await api.get(`/api/events/views/calendar?${params}`);
-            const formattedEvents = eventsResponse.data.events.map(event => ({
-                id: event.id,
-                title: event.title,
-                start: event.start || event.start_date,
-                end: event.end || event.end_date || event.start || event.start_date,
-                allDay: event.allDay !== undefined ? event.allDay : event.all_day,
-                backgroundColor: event.color || EVENT_TYPE_COLORS[event.type],
-                borderColor: event.color || EVENT_TYPE_COLORS[event.type],
-                extendedProps: {
-                    type: event.type,
-                    status: event.status,
-                    priority: event.priority,
-                    description: event.description,
-                    location: event.location
-                }
-            }));
+            const response = await api.get(`/api/events/views/calendar?${params}`);
+            console.log('📅 PARENT - Réponse API events:', response.data);
+            console.log('📅 PARENT - Événements bruts:', response.data.events?.slice(0, 5));
+            console.log('📅 PARENT - Anniversaires dans la réponse:', response.data.events?.filter(e => e.type === 'birthday'));
 
-            // Charger les jours fériés
-            let holidayEvents = [];
-            try {
-                const holidaysResponse = await api.get('/api/holidays');
-                if (holidaysResponse.data.success) {
-                    holidayEvents = holidaysResponse.data.holidays.map(holiday => ({
-                        id: `holiday-${holiday.id}`,
-                        title: `🎉 ${holiday.name}`,
-                        start: holiday.date.split('T')[0],
-                        allDay: true,
-                        backgroundColor: '#EF4444',
-                        borderColor: '#EF4444',
-                        extendedProps: {
-                            type: 'holiday',
-                            isHoliday: true
-                        }
-                    }));
+            if (response.data.success) {
+                const formattedEvents = response.data.events.map(event => ({
+                    id: event.id,
+                    title: event.title,
+                    start: event.start || event.start_date,
+                    end: event.end || event.end_date || event.start || event.start_date,
+                    allDay: event.allDay !== undefined ? event.allDay : event.all_day,
+                    backgroundColor: event.color || EVENT_TYPE_COLORS[event.type],
+                    borderColor: event.color || EVENT_TYPE_COLORS[event.type],
+                    extendedProps: {
+                        type: event.type,
+                        status: event.status,
+                        priority: event.priority,
+                        description: event.description,
+                        location: event.location
+                    }
+                }));
+
+                // Charger les jours fériés
+                let holidayEvents = [];
+                try {
+                    const holidaysResponse = await api.get('/api/holidays');
+                    if (holidaysResponse.data.success) {
+                        holidayEvents = holidaysResponse.data.holidays.map(holiday => ({
+                            id: `holiday-${holiday.id}`,
+                            title: `🎉 ${holiday.name}`,
+                            start: holiday.date.split('T')[0],
+                            allDay: true,
+                            backgroundColor: '#EF4444',
+                            borderColor: '#EF4444',
+                            extendedProps: {
+                                type: 'holiday',
+                                isHoliday: true
+                            }
+                        }));
+                    }
+                } catch (error) {
+                    // Jours fériés non chargés
                 }
-            } catch (error) {
-                // Jours fériés non chargés
+
+                // Charger les vacances annuelles
+                let vacationEvents = [];
+                try {
+                    const vacationResponse = await api.get('/api/nursery-settings/annual-vacation');
+                    if (vacationResponse.data.success && vacationResponse.data.enabled && vacationResponse.data.start_date && vacationResponse.data.end_date) {
+                        vacationEvents = [{
+                            id: 'annual-vacation',
+                            title: '🏖️ Vacances annuelles',
+                            start: vacationResponse.data.start_date.split('T')[0],
+                            end: vacationResponse.data.end_date.split('T')[0],
+                            allDay: true,
+                            backgroundColor: '#F59E0B',
+                            borderColor: '#F59E0B',
+                            display: 'background',
+                            extendedProps: {
+                                type: 'vacation',
+                                isVacation: true
+                            }
+                        }];
+                    }
+                } catch (error) {
+                    // Vacances non chargées
+                }
+
+                // Charger les anniversaires
+                let birthdayEvents = [];
+                try {
+                    console.log('🔄 PARENT - Chargement des enfants pour anniversaires...');
+                    const childrenResponse = await api.get('/api/children');
+                    console.log('📋 PARENT - Réponse API children:', childrenResponse.data);
+
+                    if (childrenResponse.data.success && childrenResponse.data.children) {
+                        console.log('👶 PARENT - Nombre d\'enfants:', childrenResponse.data.children.length);
+                        console.log('👶 PARENT - Enfants avec date de naissance:', childrenResponse.data.children.filter(c => c.date_of_birth));
+
+                        birthdayEvents = childrenResponse.data.children
+                            .filter(child => child.date_of_birth)
+                            .map(child => {
+                                const birthDate = new Date(child.date_of_birth);
+                                const currentYear = new Date().getFullYear();
+                                const birthdayThisYear = `${currentYear}-${String(birthDate.getMonth() + 1).padStart(2, '0')}-${String(birthDate.getDate()).padStart(2, '0')}`;
+                                console.log(`🎂 PARENT - Anniversaire de ${child.first_name}: ${birthdayThisYear}`);
+                                return {
+                                    id: `birthday-${child.id}`,
+                                    title: `🎂 ${child.first_name} ${child.last_name}`,
+                                    start: birthdayThisYear,
+                                    allDay: true,
+                                    backgroundColor: '#EC4899',
+                                    borderColor: '#EC4899',
+                                    extendedProps: {
+                                        type: 'birthday',
+                                        childId: child.id
+                                    }
+                                };
+                            });
+
+                    }
+                } catch (error) {
+                    console.error('❌ PARENT - Erreur chargement anniversaires:', error);
+                    console.error('❌ PARENT - Détails:', error.response?.data);
+                }
+
+                // Combiner tous les événements
+                const combinedEvents = [...formattedEvents, ...holidayEvents, ...birthdayEvents, ...vacationEvents];
+                console.log('✅ PARENT - Total événements combinés:', combinedEvents.length);
+                console.log('📋 PARENT - Événements:', combinedEvents.slice(0, 3));
+                console.log('🎂 PARENT - Anniversaires:', birthdayEvents);
+                setAllEvents(combinedEvents);
+                setEvents(combinedEvents);
             }
-
-            // Charger les vacances annuelles
-            let vacationEvents = [];
-            try {
-                const vacationResponse = await api.get('/api/nursery-settings/annual-vacation');
-                if (vacationResponse.data.success && vacationResponse.data.enabled && vacationResponse.data.start_date && vacationResponse.data.end_date) {
-                    vacationEvents = [{
-                        id: 'annual-vacation',
-                        title: '🏖️ Vacances annuelles',
-                        start: vacationResponse.data.start_date.split('T')[0],
-                        end: vacationResponse.data.end_date.split('T')[0],
-                        allDay: true,
-                        backgroundColor: '#F59E0B',
-                        borderColor: '#F59E0B',
-                        display: 'background',
-                        extendedProps: {
-                            type: 'vacation',
-                            isVacation: true
-                        }
-                    }];
-                }
-            } catch (error) {
-                // Vacances non chargées
-            }
-
-            // Charger les anniversaires
-            let birthdayEvents = [];
-            try {
-                const childrenResponse = await api.get('/api/children');
-                if (childrenResponse.data.success && childrenResponse.data.children) {
-                    birthdayEvents = childrenResponse.data.children
-                        .filter(child => child.date_of_birth)
-                        .map(child => {
-                            const birthDate = new Date(child.date_of_birth);
-                            const currentYear = new Date().getFullYear();
-                            return {
-                                id: `birthday-${child.id}`,
-                                title: `🎂 ${child.first_name} ${child.last_name}`,
-                                start: `${currentYear}-${String(birthDate.getMonth() + 1).padStart(2, '0')}-${String(birthDate.getDate()).padStart(2, '0')}`,
-                                allDay: true,
-                                backgroundColor: '#EC4899',
-                                borderColor: '#EC4899',
-                                extendedProps: {
-                                    type: 'birthday',
-                                    childId: child.id
-                                }
-                            };
-                        });
-
-                }
-            } catch (error) {
-                // Anniversaires non chargés
-            }
-
-            // Combiner tous les événements
-            const combinedEvents = [...formattedEvents, ...holidayEvents, ...vacationEvents, ...birthdayEvents];
-
-            // Stocker tous les événements
-            setAllEvents(combinedEvents);
-            setEvents(combinedEvents);
         } catch (error) {
-            toast.error(isRTL ? 'خطأ في تحميل الأحداث' : 'Erreur lors du chargement des événements');
+            console.error('❌ PARENT - Erreur chargement événements:', error);
+            console.error('❌ PARENT - Détails erreur:', error.response?.data);
+            toast.error('Erreur lors du chargement des événements');
+            setAllEvents([]);
+            setEvents([]);
         } finally {
             setLoading(false);
         }
@@ -263,6 +286,58 @@ const ParentCalendarPage = () => {
 
                 {/* Calendar */}
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                    <style>{`
+                        /* Masquer les bordures de grille sur mobile et tablette */
+                        @media (max-width: 1023px) {
+                            .fc-scrollgrid {
+                                border: none !important;
+                            }
+                            .fc-scrollgrid td,
+                            .fc-scrollgrid th {
+                                border: none !important;
+                            }
+                            .fc-col-header-cell {
+                                border: none !important;
+                            }
+                            .fc-daygrid-day {
+                                border: none !important;
+                            }
+                            .fc-daygrid-day-frame {
+                                min-height: 50px !important;
+                            }
+                            /* Centrer la date */
+                            .fc-daygrid-day-top {
+                                display: flex !important;
+                                justify-content: center !important;
+                                align-items: center !important;
+                                padding: 4px !important;
+                            }
+                            .fc-daygrid-day-number {
+                                text-align: center !important;
+                            }
+                            /* Masquer complètement le contenu par défaut sur mobile */
+                            .fc-event-main,
+                            .fc-event-title,
+                            .fc-event-time {
+                                display: none !important;
+                            }
+                            .fc-event {
+                                background: transparent !important;
+                                border: none !important;
+                                padding: 0 !important;
+                            }
+                            /* Positionner les points en bas */
+                            .fc-daygrid-day-events {
+                                display: flex !important;
+                                flex-wrap: wrap !important;
+                                align-items: flex-end !important;
+                                justify-content: center !important;
+                                gap: 2px !important;
+                                min-height: 20px !important;
+                                padding-bottom: 2px !important;
+                            }
+                        }
+                    `}</style>
                     {loading ? (
                         <div className="flex items-center justify-center h-96">
                             <div className="text-center">
@@ -275,14 +350,14 @@ const ParentCalendarPage = () => {
                     ) : (
                         <FullCalendar
                             ref={calendarRef}
-                            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+                            plugins={[dayGridPlugin, interactionPlugin]}
                             initialView="dayGridMonth"
                             locale={frLocale}
                             direction={isRTL ? 'rtl' : 'ltr'}
                             headerToolbar={{
                                 left: 'prev,next today',
                                 center: 'title',
-                                right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                                right: ''
                             }}
                             buttonText={{
                                 today: isRTL ? 'اليوم' : 'Aujourd\'hui',
@@ -291,11 +366,10 @@ const ParentCalendarPage = () => {
                                 day: isRTL ? 'يوم' : 'Jour'
                             }}
                             events={events}
-                            key={events.length}
                             editable={false}
-                            selectable={false}
+                            selectable={true}
                             selectMirror={true}
-                            dayMaxEvents={true}
+                            dayMaxEvents={false}
                             weekends={true}
                             height="auto"
                             eventTimeFormat={{
@@ -303,17 +377,140 @@ const ParentCalendarPage = () => {
                                 minute: '2-digit',
                                 meridiem: false
                             }}
+                            dateClick={(info) => {
+                                const isMobile = window.innerWidth < 1024;
+                                console.log('📅 PARENT - dateClick déclenché, date:', info.dateStr, 'isMobile:', isMobile);
+                                if (isMobile) {
+                                    // Récupérer les événements directement depuis FullCalendar
+                                    const calendarApi = info.view.calendar;
+                                    const clickedDate = info.dateStr;
+                                    const startOfDay = new Date(clickedDate + 'T00:00:00');
+                                    const endOfDay = new Date(clickedDate + 'T23:59:59');
+
+                                    // Récupérer tous les événements de FullCalendar pour cette journée
+                                    const fcEvents = calendarApi.getEvents().filter(event => {
+                                        const eventStart = event.start;
+                                        return eventStart >= startOfDay && eventStart <= endOfDay;
+                                    });
+
+                                    console.log('📅 PARENT - Événements FullCalendar du jour:', fcEvents.length);
+
+                                    if (fcEvents.length > 0) {
+                                        // Convertir les événements FullCalendar en format simple
+                                        const eventsOnDay = fcEvents.map(fcEvent => ({
+                                            id: fcEvent.id,
+                                            title: fcEvent.title,
+                                            start: fcEvent.start,
+                                            end: fcEvent.end,
+                                            allDay: fcEvent.allDay,
+                                            backgroundColor: fcEvent.backgroundColor,
+                                            borderColor: fcEvent.borderColor,
+                                            extendedProps: fcEvent.extendedProps
+                                        }));
+
+                                        setDayEvents(eventsOnDay);
+                                        setSelectedDayDate(clickedDate);
+                                        setShowDayEventsModal(true);
+                                    }
+                                }
+                            }}
                             eventClick={(info) => {
-                                // Ouvrir la page de détails pour les événements cliquables
+                                // Sur mobile, ne pas naviguer directement, utiliser le modal
+                                const isMobile = window.innerWidth < 1024;
+                                if (isMobile) {
+                                    return; // Ne rien faire, le dateClick gère l'affichage
+                                }
+                                // Sur desktop, naviguer vers les détails
                                 const eventId = info.event.id;
-                                if (eventId && !eventId.startsWith('holiday-') && !eventId.startsWith('birthday-') && eventId !== 'annual-vacation') {
+                                if (eventId && !String(eventId).startsWith('holiday-') && !String(eventId).startsWith('birthday-') && eventId !== 'annual-vacation') {
                                     navigate(`/mon-espace/events/${eventId}`);
                                 }
+                            }}
+                            eventDidMount={(info) => {
+                                // UNIQUEMENT sur mobile : remplacer par un point
+                                if (window.innerWidth < 1024) {
+                                    info.el.innerHTML = `<div style="width: 6px; height: 6px; border-radius: 50%; background-color: ${info.event.backgroundColor};"></div>`;
+                                    info.el.style.cssText = 'background: transparent !important; border: none !important; padding: 0 !important; margin: 0 2px !important; pointer-events: none !important;';
+                                }
+                                // Sur desktop : ne rien faire, laisser l'affichage par défaut
                             }}
                         />
                     )}
                 </div>
             </div>
+
+            {/* Modal - Liste des événements d'une journée (mobile/tablette) */}
+            {showDayEventsModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full max-h-[80vh] overflow-hidden">
+                        <div className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800">
+                            <div>
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                    Événements du jour
+                                </h3>
+                                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                    {selectedDayDate && new Date(selectedDayDate + 'T00:00:00').toLocaleDateString('fr-FR', {
+                                        weekday: 'long',
+                                        year: 'numeric',
+                                        month: 'long',
+                                        day: 'numeric'
+                                    })}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setShowDayEventsModal(false)}
+                                className="p-2 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-lg transition-colors"
+                            >
+                                <X className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                            </button>
+                        </div>
+                        <div className="p-4 space-y-3 overflow-y-auto max-h-[calc(80vh-80px)]">
+                            {dayEvents.map((event) => (
+                                <div
+                                    key={event.id}
+                                    className="bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-4"
+                                >
+                                    <div className="flex items-start gap-3">
+                                        <div
+                                            className="w-3 h-3 rounded-full flex-shrink-0 mt-1"
+                                            style={{ backgroundColor: event.backgroundColor }}
+                                        />
+                                        <div className="flex-1 min-w-0">
+                                            <h4 className="font-medium text-gray-900 dark:text-white mb-1">
+                                                {event.title}
+                                            </h4>
+                                            {!event.allDay && (
+                                                <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                                                    {new Date(event.start).toLocaleTimeString('fr-FR', {
+                                                        hour: '2-digit',
+                                                        minute: '2-digit'
+                                                    })}
+                                                </p>
+                                            )}
+                                            {event.extendedProps?.description && (
+                                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                                                    {event.extendedProps.description}
+                                                </p>
+                                            )}
+                                            {!String(event.id).startsWith('holiday-') && !String(event.id).startsWith('birthday-') && event.id !== 'annual-vacation' && (
+                                                <button
+                                                    onClick={() => {
+                                                        setShowDayEventsModal(false);
+                                                        navigate(`/mon-espace/events/${event.id}`);
+                                                    }}
+                                                    className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
+                                                >
+                                                    Voir les détails
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
