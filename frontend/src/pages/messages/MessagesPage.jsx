@@ -640,21 +640,32 @@ export default function MessagesPage() {
             <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 shrink-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
+                  {/* Bouton retour mobile */}
+                  <button
+                    onClick={() => setSelectedContact(null)}
+                    className="lg:hidden p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                    aria-label="Retour aux contacts"
+                    type="button"
+                  >
+                    <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                  </button>
                   {getRoleIcon(selectedContact.role)}
                   <div>
                     <h3 className="font-semibold text-gray-900 dark:text-white">
                       {selectedContact.first_name} {selectedContact.last_name}
                     </h3>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       {getRoleLabel(selectedContact.role)}
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={() => setSelectedContact(null)}
-                  className="lg:hidden p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg"
+                  className="lg:hidden p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                  aria-label="Fermer la conversation"
+                  type="button"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-6 h-6 text-gray-600 dark:text-gray-300" />
                 </button>
               </div>
             </div>
