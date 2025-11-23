@@ -36,6 +36,7 @@ export default function MessagesPage() {
   // Refs
   const messagesContainerRef = useRef(null);
   const messageInputRef = useRef(null);
+  const hasOpenedFromNotification = useRef(false);
 
   // ============================================================================
   // FONCTIONS UTILITAIRES
@@ -48,6 +49,25 @@ export default function MessagesPage() {
       e.stopPropagation();
     }
     console.log('🔙 Fermeture conversation mobile');
+
+    // Nettoyer le paramètre messageId de l'URL si présent
+    const messageId = searchParams.get('messageId');
+    if (messageId) {
+      console.log('🗑️ Suppression paramètre messageId de l\'URL');
+      // Réinitialiser le flag pour permettre une future ouverture depuis notification
+      hasOpenedFromNotification.current = false;
+
+      // Rediriger vers le dashboard approprié selon le rôle
+      if (user?.role === 'parent') {
+        console.log('👤 Redirection vers Mon espace parent');
+        navigate('/mon-espace', { replace: true });
+      } else {
+        console.log('👔 Redirection vers Dashboard staff/admin');
+        navigate('/dashboard', { replace: true });
+      }
+      return; // Sortir de la fonction après redirection
+    }
+
     setSelectedContact(null);
     setConversation([]);
     setReplyContent('');
@@ -472,7 +492,9 @@ export default function MessagesPage() {
 
   useEffect(() => {
     const messageId = searchParams.get('messageId');
-    if (messageId && contacts.length > 0 && !selectedContact) {
+    if (messageId && contacts.length > 0 && !selectedContact && !hasOpenedFromNotification.current) {
+      console.log('📬 Ouverture conversation depuis notification:', messageId);
+      hasOpenedFromNotification.current = true;
       openConversationFromMessage(parseInt(messageId));
     }
   }, [searchParams, contacts, selectedContact]);
