@@ -13,12 +13,13 @@ import { useLanguage } from '../../hooks/useLanguage';
 import { useTheme } from '../../hooks/useTheme';
 import { useAuth } from '../../hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
-import toast from 'react-hot-toast';
+import { useDialogContext } from '../../contexts/DialogContext';
 
 const StaffSettingsPage = () => {
     const { isRTL, currentLanguage, toggleLanguage } = useLanguage();
     const { theme, toggleTheme } = useTheme();
     const { user } = useAuth();
+    const dialog = useDialogContext();
     const [menuType, setMenuType] = useState(() => {
         return localStorage.getItem('menuType') || 'side';
     });
@@ -41,7 +42,7 @@ const StaffSettingsPage = () => {
             ...prev,
             [key]: value
         }));
-        toast.success(isRTL ? 'تم حفظ الإعدادات' : 'Paramètres enregistrés');
+        dialog.success(isRTL ? 'تم حفظ الإعدادات' : 'Paramètres enregistrés');
     };
 
     return (
@@ -143,7 +144,7 @@ const StaffSettingsPage = () => {
                                         const newType = menuType === 'side' ? 'floating' : 'side';
                                         setMenuType(newType);
                                         localStorage.setItem('menuType', newType);
-                                        toast.success(
+                                        dialog.success(
                                             isRTL
                                                 ? 'تم حفظ التفضيل! جاري إعادة التحميل...'
                                                 : 'Préférence enregistrée ! Rechargement...'

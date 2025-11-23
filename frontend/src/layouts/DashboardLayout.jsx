@@ -11,6 +11,7 @@ const DashboardLayout = () => {
   const { isRTL } = useLanguage();
   const { user } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [menuType, setMenuType] = useState(() => {
     return localStorage.getItem('menuType') || 'side';
   });
@@ -21,10 +22,11 @@ const DashboardLayout = () => {
       <DashboardSidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
+        onCollapsedChange={setSidebarCollapsed}
       />
 
       {/* Main content */}
-      <div className={`${isRTL ? 'lg:pr-64' : 'lg:pl-64'}`}>
+      <div className={`${isRTL ? (sidebarCollapsed ? 'lg:pr-20' : 'lg:pr-64') : (sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64')} transition-all duration-300`}>
         {/* Header */}
         <DashboardHeader
           onMenuClick={() => setSidebarOpen(true)}
@@ -46,9 +48,13 @@ const DashboardLayout = () => {
         />
       )}
 
-      {/* Menu latéral sur grand écran (disparaît au scroll), bouton flottant sur petit écran ou au scroll */}
-      <SideMenu />
-      <FloatingActionButton />
+      {/* Menu latéral sur grand écran, bouton flottant sur petit écran */}
+      <div className="hidden lg:block">
+        <SideMenu />
+      </div>
+      <div className="block lg:hidden">
+        <FloatingActionButton />
+      </div>
     </div>
   );
 };

@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Send, MessageSquare, CheckSquare } from 'lucide-react';
-import { useAuth } from '../../hooks/useAuth';
+import { useLanguage } from '../../hooks/useLanguage';
 import api from '../../services/api';
-import { toast } from 'react-hot-toast';
+import { useDialogContext } from '../../contexts/DialogContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 
 const StaffMemoForm = () => {
-  const { user } = useAuth();
+  const { isRTL } = useLanguage();
+  const dialog = useDialogContext();
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     type: 'memo',
     title: '',
@@ -20,15 +21,15 @@ const StaffMemoForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.title.trim()) {
-      toast.error('Le titre est obligatoire');
+      dialog.error('Le titre est obligatoire');
       return;
     }
 
     try {
       setSaving(true);
-      
+
       // Créer un événement de type memo/task assigné à l'admin
       const payload = {
         title: formData.title,
@@ -48,20 +49,20 @@ const StaffMemoForm = () => {
       };
 
       const response = await api.post('/api/events', payload);
-      
+
       if (response.data.success) {
-        toast.success(
-          formData.type === 'memo' 
-            ? '📝 Mémo envoyé à l\'admin avec succès' 
+        dialog.success(
+          formData.type === 'memo'
+            ? '📝 Mémo envoyé à l\'admin avec succès'
             : '✅ Tâche envoyée à l\'admin avec succès'
         );
         navigate('/dashboard');
       } else {
-        toast.error('Erreur lors de l\'envoi');
+        dialog.error('Erreur lors de l\'envoi');
       }
     } catch (error) {
       console.error('Erreur:', error);
-      toast.error('Erreur lors de l\'envoi');
+      dialog.error('Erreur lors de l\'envoi');
     } finally {
       setSaving(false);
     }
@@ -102,15 +103,13 @@ const StaffMemoForm = () => {
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, type: 'memo' })}
-                  className={`p-4 rounded-lg border-2 transition-all ${
-                    formData.type === 'memo'
+                  className={`p-4 rounded-lg border-2 transition-all ${formData.type === 'memo'
                       ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
                       : 'border-gray-200 dark:border-gray-700 hover:border-purple-300'
-                  }`}
+                    }`}
                 >
-                  <MessageSquare className={`w-8 h-8 mx-auto mb-2 ${
-                    formData.type === 'memo' ? 'text-purple-600' : 'text-gray-400'
-                  }`} />
+                  <MessageSquare className={`w-8 h-8 mx-auto mb-2 ${formData.type === 'memo' ? 'text-purple-600' : 'text-gray-400'
+                    }`} />
                   <div className="text-center">
                     <div className="font-medium text-gray-900 dark:text-white">📝 Mémo</div>
                     <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -122,15 +121,13 @@ const StaffMemoForm = () => {
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, type: 'task' })}
-                  className={`p-4 rounded-lg border-2 transition-all ${
-                    formData.type === 'task'
+                  className={`p-4 rounded-lg border-2 transition-all ${formData.type === 'task'
                       ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                       : 'border-gray-200 dark:border-gray-700 hover:border-blue-300'
-                  }`}
+                    }`}
                 >
-                  <CheckSquare className={`w-8 h-8 mx-auto mb-2 ${
-                    formData.type === 'task' ? 'text-blue-600' : 'text-gray-400'
-                  }`} />
+                  <CheckSquare className={`w-8 h-8 mx-auto mb-2 ${formData.type === 'task' ? 'text-blue-600' : 'text-gray-400'
+                    }`} />
                   <div className="text-center">
                     <div className="font-medium text-gray-900 dark:text-white">✅ Tâche</div>
                     <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">

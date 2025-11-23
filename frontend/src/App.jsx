@@ -152,7 +152,7 @@ function App() {
           }
         />
         <Route
-          path="absence-request"
+          path="mon-espace/absence-request"
           element={
             <ProtectedRoute roles={['parent']}>
               <AbsenceRequestPage />

@@ -13,18 +13,18 @@ import { useProfileImage } from '../../hooks/useProfileImage';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import HolidaysList from '../../components/HolidaysList';
 import SimpleNotificationCenter from '../../components/dashboard/SimpleNotificationCenter';
 import MyAppointmentsWidget from '../../components/widgets/MyAppointmentsWidget';
 import RequestAppointmentModal from '../../components/modals/RequestAppointmentModal';
 import RescheduleAppointmentModal from '../../components/modals/RescheduleAppointmentModal';
 import SideMenu from '../../components/ui/SideMenu';
 import FloatingActionButton from '../../components/ui/FloatingActionButton';
-import toast from 'react-hot-toast';
+import { useDialogContext } from '../../contexts/DialogContext';
 
 const MySpacePage = () => {
   const { user } = useAuth();
   const { isRTL } = useLanguage();
+  const dialog = useDialogContext();
   const { getImageUrl, hasImage } = useProfileImage();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -55,7 +55,7 @@ const MySpacePage = () => {
       }
     } catch (error) {
       console.error('Erreur chargement enfants:', error);
-      toast.error(isRTL ? 'خطأ في تحميل البيانات' : 'Erreur de chargement');
+      dialog.error(isRTL ? 'خطأ في تحميل البيانات' : 'Erreur de chargement');
     } finally {
       setLoading(false);
     }
@@ -90,11 +90,11 @@ const MySpacePage = () => {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white relative">
-            {/* Bouton notifications en haut à droite */}
+          <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-4 sm:p-8 text-white relative">
+            {/* Bouton notifications - Desktop uniquement en haut à droite */}
             <button
               onClick={() => setShowNotifications(true)}
-              className="absolute top-4 right-4 p-2 bg-white/20 hover:bg-white/30 rounded-full transition-colors"
+              className="hidden sm:flex absolute top-4 right-4 p-2 bg-white/20 hover:bg-white/30 rounded-full transition-colors"
             >
               <Bell className="w-6 h-6" />
               {unreadCount > 0 && (
@@ -104,25 +104,39 @@ const MySpacePage = () => {
               )}
             </button>
 
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center overflow-hidden">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white/20 rounded-full flex items-center justify-center overflow-hidden shrink-0">
                 {hasImage() ? (
                   <img
                     src={getImageUrl()}
                     alt="Photo de profil"
-                    className="w-16 h-16 object-cover rounded-full"
+                    className="w-full h-full object-cover"
                   />
                 ) : (
-                  <User className="w-8 h-8" />
+                  <User className="w-6 h-6 sm:w-8 sm:h-8" />
                 )}
               </div>
-              <div>
-                <h1 className="text-3xl font-bold mb-2">
+              <div className="flex-1 min-w-0">
+                <h1 className="text-xl sm:text-3xl font-bold mb-1 sm:mb-2">
                   {isRTL ? `مرحباً ${user?.first_name}` : `Bienvenue ${user?.first_name}`}
                 </h1>
-                <p className="text-blue-100">
-                  {isRTL ? 'مساحتك الشخصية لمتابعة أطفالك' : 'Votre espace personnel pour suivre vos enfants'}
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-blue-100 text-sm sm:text-base flex-1">
+                    {isRTL ? 'مساحتك الشخصية لمتابعة أطفالك' : 'Votre espace personnel pour suivre vos enfants'}
+                  </p>
+                  {/* Bouton notifications - Mobile uniquement en ligne avec le sous-titre */}
+                  <button
+                    onClick={() => setShowNotifications(true)}
+                    className="sm:hidden p-1.5 bg-white/20 hover:bg-white/30 rounded-full transition-colors shrink-0 relative"
+                  >
+                    <Bell className="w-4 h-4" />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center text-[10px]">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -207,14 +221,6 @@ const MySpacePage = () => {
           </motion.div>
         </div>
 
-        {/* Liste des jours fériés et vacances */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.8 }}
-        >
-          <HolidaysList userRole="parent" />
-        </motion.div>
       </div>
 
       {/* Centre de notifications */}
@@ -231,7 +237,7 @@ const MySpacePage = () => {
         isOpen={showAppointmentModal}
         onClose={() => setShowAppointmentModal(false)}
         onSuccess={() => {
-          toast.success(isRTL ? 'تم إرسال طلب الموعد بنجاح' : 'Demande de rendez-vous envoyée avec succès');
+          dialog.success(isRTL ? 'تم إرسال طلب الموعد بنجاح' : 'Demande de rendez-vous envoyée avec succès');
           setAppointmentKey(prev => prev + 1); // Recharger le widget
         }}
       />
@@ -249,9 +255,13 @@ const MySpacePage = () => {
         }}
       />
 
-      {/* Menu latéral et bouton flottant gèrent leur propre affichage */}
-      <SideMenu />
-      <FloatingActionButton />
+      {/* Menu latéral sur grand écran, bouton flottant sur petit écran */}
+      <div className="hidden lg:block">
+        <SideMenu />
+      </div>
+      <div className="block lg:hidden">
+        <FloatingActionButton />
+      </div>
     </div>
   );
 };

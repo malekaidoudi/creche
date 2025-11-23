@@ -4,9 +4,9 @@ import { X, Send, Baby, Calendar, MessageSquare } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { Button } from './Button';
 
-const AbsenceFormModal = ({ 
-  isOpen, 
-  onClose, 
+const AbsenceFormModal = ({
+  isOpen,
+  onClose,
   selectedDate,
   children,
   selectedChild,
@@ -16,7 +16,7 @@ const AbsenceFormModal = ({
   notes,
   onNotesChange,
   onSubmit,
-  submitting 
+  submitting
 }) => {
   const { isRTL } = useLanguage();
 
@@ -54,15 +54,15 @@ const AbsenceFormModal = ({
           onClick={(e) => e.stopPropagation()}
         >
           {/* En-tête */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-            <div className="flex items-center">
-              <Calendar className="w-6 h-6 mr-3 rtl:mr-0 rtl:ml-3 text-primary-500" />
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+          <div className="flex items-start justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-start flex-1 min-w-0 mr-2">
+              <Calendar className="w-5 h-5 sm:w-6 sm:h-6 mr-2 sm:mr-3 rtl:mr-0 rtl:ml-2 sm:rtl:ml-3 text-primary-500 shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <h2 className="text-base sm:text-xl font-semibold text-gray-900 dark:text-white leading-tight">
                   {isRTL ? 'تفاصيل طلب الغياب' : 'Détails de la demande'}
                 </h2>
                 {selectedDate && (
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                  <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
                     {selectedDate.toLocaleDateString(isRTL ? 'ar-TN' : 'fr-FR', {
                       weekday: 'long',
                       year: 'numeric',
@@ -75,7 +75,7 @@ const AbsenceFormModal = ({
             </div>
             <button
               onClick={onClose}
-              className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg transition-colors"
+              className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg transition-colors shrink-0"
               disabled={submitting}
             >
               <X className="w-5 h-5" />
@@ -167,7 +167,7 @@ const AbsenceFormModal = ({
                     </div>
                   )}
                 </Button>
-                
+
                 <Button
                   type="button"
                   variant="outline"

@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { motion } from 'framer-motion'
-import { 
-  Play, 
-  Pause, 
-  RotateCcw, 
-  ZoomIn, 
-  ZoomOut, 
+import {
+  Play,
+  Pause,
+  RotateCcw,
+  ZoomIn,
+  ZoomOut,
   Maximize,
   ArrowLeft,
   ArrowRight,
@@ -46,7 +46,7 @@ const VirtualTourPage = () => {
     {
       id: 'entrance',
       name: isRTL ? 'المدخل الرئيسي' : 'Hall d\'entrée',
-      description: isRTL 
+      description: isRTL
         ? 'مدخل واسع ومضيء مع استقبال ودود وبيئة آمنة'
         : 'Hall spacieux et lumineux avec accueil chaleureux et environnement sécurisé',
       image: '/images/tour/entrance.jpg',
@@ -181,7 +181,7 @@ const VirtualTourPage = () => {
                 </div>
               </div>
             </CardHeader>
-            
+
             <CardContent className="p-0 relative">
               {/* Main Image/360 Viewer */}
               <div className="relative h-[500px] md:h-[600px] bg-gray-100 dark:bg-gray-700">
@@ -191,7 +191,7 @@ const VirtualTourPage = () => {
                   fallback={defaultImages.placeholder}
                   className="w-full h-full object-cover"
                 />
-                
+
                 {/* 360 Overlay */}
                 <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
                   <div className="text-center text-white">
@@ -274,17 +274,16 @@ const VirtualTourPage = () => {
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 text-center">
             {isRTL ? 'استكشف جميع المرافق' : 'Explorez toutes nos installations'}
           </h2>
-          
+
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {rooms.map((room, index) => (
               <motion.div key={room.id} variants={fadeInUp}>
                 <button
                   onClick={() => setCurrentRoom(index)}
-                  className={`w-full p-3 rounded-xl transition-all duration-300 ${
-                    currentRoom === index
+                  className={`w-full p-3 rounded-xl transition-all duration-300 ${currentRoom === index
                       ? 'bg-primary-600 text-white shadow-lg scale-105'
                       : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-primary-50 dark:hover:bg-gray-700 shadow-md'
-                  }`}
+                    }`}
                 >
                   <div className="aspect-square mb-2 rounded-lg overflow-hidden">
                     <ImageWithFallback
@@ -337,8 +336,8 @@ const VirtualTourPage = () => {
                 icon: MapPin,
                 title: isRTL ? 'موقع مثالي' : 'Emplacement idéal',
                 description: isRTL
-                  ? 'موقع استراتيجي سهل الوصول مع مواقف سيارات آمنة'
-                  : 'Emplacement stratégique facilement accessible avec parking sécurisé'
+                  ? 'موقع استراتيجي سهل الوصول'
+                  : 'Emplacement stratégique facilement accessible'
               }
             ].map((feature, index) => (
               <Card key={index} className="text-center border-0 bg-white dark:bg-gray-800 shadow-lg">

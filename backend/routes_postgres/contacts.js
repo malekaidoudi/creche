@@ -17,9 +17,9 @@ router.post('/', [
     // Valider les données
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ 
-        success: false, 
-        errors: errors.array() 
+      return res.status(400).json({
+        success: false,
+        errors: errors.array()
       });
     }
 
@@ -89,6 +89,67 @@ router.get('/', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Erreur lors de la récupération des messages'
+    });
+  }
+});
+
+/**
+ * GET /api/contact/info
+ * Informations de contact avec horaires depuis nursery_settings
+ */
+router.get('/info', async (req, res) => {
+  try {
+    // Récupérer les horaires depuis nursery_settings
+    const result = await db.query(`
+      SELECT setting_key, value_fr, value_ar
+      FROM nursery_settings
+      WHERE setting_key IN ('working_hours_weekdays', 'working_hours_saturday', 'saturday_open')
+      AND is_active = true
+    `);
+
+    // Horaires par défaut
+    let hoursFr = 'Lun - Ven: 07:00-18:00';
+    let hoursAr = 'الإثنين - الجمعة: 07:00-18:00';
+
+    // Parser les résultats
+    const settings = {};
+    result.rows.forEach(row => {
+      settings[row.setting_key] = row.value_fr;
+    });
+
+    console.log('📋 Settings trouvés:', settings);
+
+    // Horaires de semaine (format: "07:00-18:00")
+    if (settings.working_hours_weekdays) {
+      hoursFr = `Lun - Ven: ${settings.working_hours_weekdays}`;
+      hoursAr = `الإثنين - الجمعة: ${settings.working_hours_weekdays}`;
+    }
+
+    // Samedi (format: "true" et "08:00-12:00")
+    if (settings.saturday_open === 'true' && settings.working_hours_saturday) {
+      hoursFr += `, Sam: ${settings.working_hours_saturday}`;
+      hoursAr += `، السبت: ${settings.working_hours_saturday}`;
+    }
+
+    console.log('✅ Horaires finaux:', hoursFr);
+
+    res.json({
+      success: true,
+      contact: {
+        address: '8 Rue Bizerte, Medenine 4100, Tunisie',
+        address_ar: '8 شارع بنزرت، مدنين 4100، تونس',
+        phone: '+216 25 95 35 32',
+        email: 'contact@mimaelghalia.tn',
+        hours: hoursFr,
+        hours_ar: hoursAr
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur récupération infos contact:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération des informations'
     });
   }
 });

@@ -4,7 +4,7 @@ import { useLanguage } from '../hooks/useLanguage';
 import { useTheme } from '../hooks/useTheme';
 import api from '../services/api';
 
-const HolidaysList = ({ userRole = 'parent' }) => {
+const HolidaysList = ({ userRole = 'parent', isMobileView = false }) => {
   const { isRTL } = useLanguage();
   const { isDark } = useTheme();
   const [holidays, setHolidays] = useState([]);
@@ -36,16 +36,16 @@ const HolidaysList = ({ userRole = 'parent' }) => {
     // Déterminer le type basé sur le nom ou la description
     const name = holiday.name.toLowerCase();
     const desc = (holiday.description || '').toLowerCase();
-    
-    if (name.includes('national') || name.includes('indépendance') || name.includes('révolution') || 
-        name.includes('république') || name.includes('travail') || name.includes('martyrs')) {
+
+    if (name.includes('national') || name.includes('indépendance') || name.includes('révolution') ||
+      name.includes('république') || name.includes('travail') || name.includes('martyrs')) {
       return 'national';
-    } else if (name.includes('aïd') || name.includes('ramadan') || name.includes('hégirien') || 
-               name.includes('achoura') || name.includes('mawlid') || name.includes('عيد') || 
-               name.includes('رمضان') || name.includes('هجرية')) {
+    } else if (name.includes('aïd') || name.includes('ramadan') || name.includes('hégirien') ||
+      name.includes('achoura') || name.includes('mawlid') || name.includes('عيد') ||
+      name.includes('رمضان') || name.includes('هجرية')) {
       return 'religious';
-    } else if (name.includes('vacances') || name.includes('scolaire') || name.includes('école') || 
-               name.includes('عطلة') || desc.includes('école')) {
+    } else if (name.includes('vacances') || name.includes('scolaire') || name.includes('école') ||
+      name.includes('عطلة') || desc.includes('école')) {
       return 'school';
     } else {
       return 'custom';
@@ -83,11 +83,11 @@ const HolidaysList = ({ userRole = 'parent' }) => {
     return getHolidayType(holiday) === filter;
   });
 
-  const upcomingHolidays = filteredHolidays.filter(holiday => 
+  const upcomingHolidays = filteredHolidays.filter(holiday =>
     new Date(holiday.date) >= new Date()
   );
 
-  const pastHolidays = filteredHolidays.filter(holiday => 
+  const pastHolidays = filteredHolidays.filter(holiday =>
     new Date(holiday.date) < new Date()
   );
 
@@ -107,46 +107,48 @@ const HolidaysList = ({ userRole = 'parent' }) => {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-      <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3 rtl:space-x-reverse">
-            <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              {isRTL ? 'الأعياد والعطل' : 'Jours Fériés'}
-            </h3>
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col h-[500px]">
+      {/* Header et filtres - Masqués en mode mobile */}
+      {!isMobileView && (
+        <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3 rtl:space-x-reverse">
+              <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                {isRTL ? 'الأعياد والعطل' : 'Jours Fériés'}
+              </h3>
+            </div>
+            <div className="flex items-center space-x-2 rtl:space-x-reverse">
+              <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 text-xs rounded-full">
+                {isRTL ? `${filteredHolidays.length} يوم` : `${filteredHolidays.length} jours`}
+              </span>
+            </div>
           </div>
-          <div className="flex items-center space-x-2 rtl:space-x-reverse">
-            <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 text-xs rounded-full">
-              {isRTL ? `${filteredHolidays.length} يوم` : `${filteredHolidays.length} jours`}
-            </span>
-          </div>
-        </div>
 
-        {/* Filtres */}
-        <div className="flex flex-wrap gap-2 mt-4">
-          {[
-            { key: 'all', label: isRTL ? 'الكل' : 'Tous' },
-            { key: 'national', label: isRTL ? 'وطني' : 'National' },
-            { key: 'religious', label: isRTL ? 'ديني' : 'Religieux' },
-            { key: 'school', label: isRTL ? 'مدرسي' : 'Scolaire' }
-          ].map(filterOption => (
-            <button
-              key={filterOption.key}
-              onClick={() => setFilter(filterOption.key)}
-              className={`px-3 py-1 text-xs rounded-full transition-colors ${
-                filter === filterOption.key
+          {/* Filtres */}
+          <div className="flex flex-wrap gap-2 mt-4">
+            {[
+              { key: 'all', label: isRTL ? 'الكل' : 'Tous' },
+              { key: 'national', label: isRTL ? 'وطني' : 'National' },
+              { key: 'religious', label: isRTL ? 'ديني' : 'Religieux' },
+              { key: 'school', label: isRTL ? 'مدرسي' : 'Scolaire' }
+            ].map(filterOption => (
+              <button
+                key={filterOption.key}
+                onClick={() => setFilter(filterOption.key)}
+                className={`px-3 py-1 text-xs rounded-full transition-colors ${filter === filterOption.key
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-              }`}
-            >
-              {filterOption.label}
-            </button>
-          ))}
+                  }`}
+              >
+                {filterOption.label}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="p-6">
+      <div className={`flex-1 overflow-y-auto ${isMobileView ? 'p-3' : 'p-6'}`}>
         {filteredHolidays.length === 0 ? (
           <div className="text-center py-8">
             <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
@@ -170,12 +172,11 @@ const HolidaysList = ({ userRole = 'parent' }) => {
                       <div key={holiday.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                         <div className="flex-1">
                           <div className="flex items-center space-x-3 rtl:space-x-reverse">
-                            <div className={`w-3 h-3 rounded-full ${
-                              type === 'national' ? 'bg-blue-500' :
+                            <div className={`w-3 h-3 rounded-full ${type === 'national' ? 'bg-blue-500' :
                               type === 'religious' ? 'bg-green-500' :
-                              type === 'school' ? 'bg-orange-500' :
-                              'bg-purple-500'
-                            }`}></div>
+                                type === 'school' ? 'bg-orange-500' :
+                                  'bg-purple-500'
+                              }`}></div>
                             <div>
                               <h5 className="font-medium text-gray-900 dark:text-white text-sm">
                                 {holiday.name}
@@ -213,12 +214,11 @@ const HolidaysList = ({ userRole = 'parent' }) => {
                     return (
                       <div key={holiday.id} className="flex items-center justify-between p-2 opacity-60">
                         <div className="flex items-center space-x-3 rtl:space-x-reverse">
-                          <div className={`w-2 h-2 rounded-full ${
-                            type === 'national' ? 'bg-blue-400' :
+                          <div className={`w-2 h-2 rounded-full ${type === 'national' ? 'bg-blue-400' :
                             type === 'religious' ? 'bg-green-400' :
-                            type === 'school' ? 'bg-orange-400' :
-                            'bg-purple-400'
-                          }`}></div>
+                              type === 'school' ? 'bg-orange-400' :
+                                'bg-purple-400'
+                            }`}></div>
                           <div>
                             <h5 className="font-medium text-gray-700 dark:text-gray-300 text-sm">
                               {holiday.name}

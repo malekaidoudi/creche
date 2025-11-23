@@ -1,5 +1,5 @@
 import axios from 'axios'
-import toast from 'react-hot-toast'
+import dialogHelper from '../utils/dialogHelper'
 import API_CONFIG from '../config/api.js'
 
 // Configuration de base d'Axios avec la nouvelle config centralisée
@@ -18,22 +18,13 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
-    
+
     // Si c'est un FormData, supprimer le Content-Type pour laisser le navigateur le gérer
     if (config.data instanceof FormData) {
       delete config.headers['Content-Type'];
     }
-    
-    // 🔍 LOG DEBUG - Voir exactement ce qui est envoyé
-    console.log('🌐 API Request:', {
-      method: config.method?.toUpperCase(),
-      url: config.url,
-      baseURL: config.baseURL,
-      fullURL: `${config.baseURL}${config.url}`,
-      headers: config.headers,
-      data: config.data instanceof FormData ? 'FormData' : config.data
-    });
-    
+
+
     return config
   },
   (error) => {
@@ -44,47 +35,38 @@ api.interceptors.request.use(
 // Intercepteur de réponse pour gérer les erreurs globalement
 api.interceptors.response.use(
   (response) => {
-    console.log('✅ API Response:', {
-      status: response.status,
-      data: response.data
-    });
     return response
   },
   (error) => {
-    // 🔍 LOG DEBUG - Voir les détails de l'erreur
-    console.error('❌ API Error:', {
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      data: error.response?.data,
-      config: {
-        method: error.config?.method,
-        url: error.config?.url,
-        data: error.config?.data
-      }
-    });
-    
+    // Log des erreurs API pour le debugging
+    if (error.response) {
+      console.error('API Error:', error.response.status, error.response.data?.message || error.message);
+    } else {
+      console.error('Network Error:', error.message);
+    }
+
     // Gestion des erreurs d'authentification
     if (error.response?.status === 401) {
       // Ne pas intercepter les erreurs de login
       const isLoginRequest = error.config?.url?.includes('/auth/login')
-      
+
       if (!isLoginRequest) {
         localStorage.removeItem('token')
         window.location.href = '/'
-        toast.error('Session expirée, veuillez vous reconnecter')
+        dialogHelper.error('Session expirée, veuillez vous reconnecter')
       }
-      
+
       return Promise.reject(error)
     }
 
     // Gestion des erreurs de serveur
     if (error.response?.status >= 500) {
-      toast.error('Erreur serveur, veuillez réessayer plus tard')
+      dialogHelper.error('Erreur serveur, veuillez réessayer plus tard')
     }
 
     // Gestion des erreurs réseau
     if (!error.response) {
-      toast.error('Erreur de connexion, vérifiez votre connexion internet')
+      dialogHelper.error('Erreur de connexion, vérifiez votre connexion internet')
     }
 
     return Promise.reject(error)
@@ -211,7 +193,7 @@ export const downloadFile = async (url, filename) => {
     link.remove()
     window.URL.revokeObjectURL(downloadUrl)
   } catch (error) {
-    toast.error('Erreur lors du téléchargement')
+    dialogHelper.error('Erreur lors du téléchargement')
     throw error
   }
 }

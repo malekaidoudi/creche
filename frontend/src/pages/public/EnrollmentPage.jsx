@@ -3,17 +3,20 @@ import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { useLanguage } from '../../hooks/useLanguage'
 import { useAuth } from '../../hooks/useAuth'
-import { Baby, User, Calendar, Phone, FileText, Send, CheckCircle, AlertCircle, ArrowRight, ArrowLeft, Utensils, Heart, Upload, Download, ToggleLeft, ToggleRight } from 'lucide-react'
+import { useDialogContext } from '../../contexts/DialogContext'
+import { Baby, User, Calendar, Phone, FileText, Send, CheckCircle, AlertCircle, ChevronRight, ChevronLeft, Utensils, Heart, Upload, Download, ToggleLeft, ToggleRight } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
 import { Button } from '../../components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card'
 import DocumentUpload from '../../components/ui/DocumentUpload'
-import toast from 'react-hot-toast'
+import DatePicker from '../../components/ui/DatePicker'
 import api from '../../services/api'
+import { convertToISO } from '../../utils/dateUtils'
 
 const EnrollmentPage = () => {
-  const { isRTL } = useLanguage()
+  const { isRTL } = useLanguage();
+  const dialog = useDialogContext();
   const { isAuthenticated, user } = useAuth()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
@@ -133,6 +136,20 @@ const EnrollmentPage = () => {
     try {
       setLoading(true)
 
+      // Validation manuelle pour les DatePickers
+      if (!isExistingChild) {
+        if (!data.birth_date) {
+          dialog.error(isRTL ? 'تاريخ الميلاد مطلوب' : 'La date de naissance est requise')
+          setLoading(false)
+          return
+        }
+        if (!data.enrollment_date) {
+          dialog.error(isRTL ? 'تاريخ التسجيل مطلوب' : 'La date d\'inscription est requise')
+          setLoading(false)
+          return
+        }
+      }
+
       if (isExistingChild) {
         // Note: Le compte parent sera créé après approbation du dossier
         // via le lien de création de mot de passe envoyé par email
@@ -144,9 +161,9 @@ const EnrollmentPage = () => {
           email: data.parent_email,
           phone: data.parent_phone,
         })
-        
-        toast.success(isRTL ? 'تم إنشاء الطلب بنجاح!' : 'Demande créée avec succès!')
-        
+
+        dialog.success(isRTL ? 'تم إنشاء الطلب بنجاح!' : 'Demande créée avec succès!')
+
         // Rediriger vers la page d'accueil
         setTimeout(() => {
           navigate('/')
@@ -155,32 +172,32 @@ const EnrollmentPage = () => {
       } else {
         // Cas 1: Nouvelle inscription complète
         console.log('📝 Données du formulaire:', data);
-        
+
         const enrollmentData = {
           // Données de l'enfant (noms conformes au backend)
           child_first_name: data.child_first_name,
           child_last_name: data.child_last_name,
-          child_birth_date: data.birth_date,
+          child_birth_date: convertToISO(data.birth_date), // Convertir dd/mm/yyyy → yyyy-mm-dd
           child_gender: data.gender,
-          
+
           // Données du parent/applicant (noms conformes au backend)
           applicant_first_name: data.parent_first_name,
           applicant_last_name: data.parent_last_name,
           applicant_email: data.parent_email,
           applicant_phone: data.parent_phone
         };
-        
+
         console.log('📤 Envoi au backend:', enrollmentData);
 
         const response = await api.post('/api/enrollments', enrollmentData)
-        
+
         console.log('✅ Inscription créée:', response.data);
-        
+
         // Upload des documents si présents
         if (documents.carnet_medical || documents.acte_naissance || documents.certificat_medical) {
           const enrollmentId = response.data.enrollment.id;
           const formData = new FormData();
-          
+
           if (documents.carnet_medical) {
             formData.append('carnet_medical', documents.carnet_medical);
           }
@@ -190,9 +207,9 @@ const EnrollmentPage = () => {
           if (documents.certificat_medical) {
             formData.append('certificat_medical', documents.certificat_medical);
           }
-          
+
           console.log('📎 Upload des documents pour enrollment:', enrollmentId);
-          
+
           try {
             const uploadResponse = await api.post(`/api/enrollments/${enrollmentId}/documents`, formData, {
               headers: {
@@ -202,12 +219,12 @@ const EnrollmentPage = () => {
             console.log('✅ Documents uploadés:', uploadResponse.data);
           } catch (uploadError) {
             console.error('❌ Erreur upload documents:', uploadError);
-            toast.error(isRTL ? 'خطأ في تحميل الوثائق' : 'Erreur lors de l\'upload des documents');
+            dialog.error(isRTL ? 'خطأ في تحميل الوثائق' : 'Erreur lors de l\'upload des documents');
           }
         }
 
-        toast.success(isRTL ? 'تم التسجيل بنجاح!' : 'Inscription réussie !')
-        
+        dialog.success(isRTL ? 'تم التسجيل بنجاح!' : 'Inscription réussie !')
+
         // Rediriger vers la page d'accueil
         setTimeout(() => {
           navigate('/')
@@ -226,17 +243,22 @@ const EnrollmentPage = () => {
 
     } catch (error) {
       console.error('Erreur lors de l\'inscription:', error)
-      toast.error(error.response?.data?.error || (isRTL ? 'خطأ في التسجيل' : 'Erreur lors de l\'inscription'))
+      dialog.error(error.response?.data?.error || (isRTL ? 'خطأ في التسجيل' : 'Erreur lors de l\'inscription'))
     } finally {
       setLoading(false)
     }
   }
 
-  const nextStep = () => {
+  const nextStep = (e) => {
+    // Empêcher la soumission du formulaire
+    if (e) {
+      e.preventDefault()
+    }
+
     // Validation spéciale pour l'étape des documents (seulement si nouveau enfant)
     if (step === 3 && !isExistingChild) {
       if (!validateDocuments()) {
-        toast.error(isRTL ? 'يرجى تحميل جميع الوثائق المطلوبة' : 'Veuillez télécharger tous les documents requis')
+        dialog.error(isRTL ? 'يرجى تحميل جميع الوثائق المطلوبة' : 'Veuillez télécharger tous les documents requis')
         return
       }
     }
@@ -259,7 +281,12 @@ const EnrollmentPage = () => {
     }, 100)
   }
 
-  const prevStep = () => {
+  const prevStep = (e) => {
+    // Empêcher la soumission du formulaire
+    if (e) {
+      e.preventDefault()
+    }
+
     // Si enfant existant et on est à l'étape 4, revenir à l'étape 2 (skip documents)
     if (isExistingChild && step === 4) {
       setStep(2)
@@ -300,10 +327,10 @@ const EnrollmentPage = () => {
             {(isExistingChild ? [1, 2, 4, 5] : [1, 2, 3, 4, 5]).map((stepNumber) => (
               <div key={stepNumber} className="flex items-center">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${step === stepNumber
+                  ? 'bg-primary-600 text-white'
+                  : step > stepNumber
                     ? 'bg-primary-600 text-white'
-                    : step > stepNumber
-                      ? 'bg-primary-600 text-white'
-                      : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
                   }`}>
                   {stepNumber}
                 </div>
@@ -316,7 +343,7 @@ const EnrollmentPage = () => {
           </div>
           <div className="flex justify-center mt-2">
             <span className="text-sm text-gray-600 dark:text-gray-300">
-              {step === 1 && (isExistingChild 
+              {step === 1 && (isExistingChild
                 ? (isRTL ? 'اختيار الطفل' : 'Sélection de l\'enfant')
                 : (isRTL ? 'معلومات الطفل' : 'Informations de l\'enfant')
               )}
@@ -346,13 +373,13 @@ const EnrollmentPage = () => {
                       <p className="text-gray-600 dark:text-gray-300">
                         {isRTL ? 'هل طفلك مسجل بالفعل في الحضانة؟' : 'Votre enfant est-il déjà inscrit à la crèche ?'}
                       </p>
-                      
-                      <div className="flex items-center space-x-4 rtl:space-x-reverse">
+
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:space-x-4 sm:rtl:space-x-reverse">
                         <Button
                           type="button"
                           variant={!isExistingChild ? "default" : "outline"}
                           onClick={() => setIsExistingChild(false)}
-                          className="flex-1"
+                          className="flex-1 whitespace-nowrap"
                         >
                           {isRTL ? 'لا، تسجيل جديد' : 'Non, nouvelle inscription'}
                         </Button>
@@ -360,7 +387,7 @@ const EnrollmentPage = () => {
                           type="button"
                           variant={isExistingChild ? "default" : "outline"}
                           onClick={() => setIsExistingChild(true)}
-                          className="flex-1"
+                          className="flex-1 text-sm sm:text-base whitespace-normal sm:whitespace-nowrap"
                         >
                           {isRTL ? 'نعم، طفلي مسجل بالفعل' : 'Oui, mon enfant est déjà inscrit'}
                         </Button>
@@ -369,7 +396,7 @@ const EnrollmentPage = () => {
                       {isExistingChild && (
                         <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                           <p className="text-sm text-blue-800 dark:text-blue-200">
-                            {isRTL 
+                            {isRTL
                               ? 'سنحتاج فقط لإنشاء حسابك الشخصي وربطه بطفلك المسجل بالفعل.'
                               : 'Nous aurons seulement besoin de créer votre compte personnel et de le lier à votre enfant déjà inscrit.'
                             }
@@ -428,21 +455,13 @@ const EnrollmentPage = () => {
                       )}
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        {isRTL ? 'تاريخ الميلاد' : 'Date de naissance'} *
-                      </label>
-                      <input
-                        type="date"
-                        className={`w-full px-4 py-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent ${errors.birth_date ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
-                        {...register('birth_date', {
-                          required: isRTL ? 'تاريخ الميلاد مطلوب' : 'La date de naissance est requise'
-                        })}
-                      />
-                      {errors.birth_date && (
-                        <p className="text-red-500 text-sm mt-1">{errors.birth_date.message}</p>
-                      )}
-                    </div>
+                    <DatePicker
+                      label={isRTL ? 'تاريخ الميلاد' : 'Date de naissance'}
+                      required
+                      value={watch('birth_date')}
+                      onChange={(value) => setValue('birth_date', value)}
+                      error={errors.birth_date?.message}
+                    />
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -483,12 +502,12 @@ const EnrollmentPage = () => {
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                       {isRTL ? 'جهة الاتصال للطوارئ' : 'Contact d\'urgence'}
                     </h3>
-                    
+
                     <div className="flex items-center justify-between mb-4">
                       <label htmlFor="differentContact" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                         {isRTL ? 'شخص مختلف عن الوالد' : 'Personne différente du parent'}
                       </label>
-                      
+
                       {/* Toggle Switch */}
                       <div className="relative">
                         <input
@@ -500,16 +519,13 @@ const EnrollmentPage = () => {
                         />
                         <label
                           htmlFor="differentContact"
-                          className={`flex items-center cursor-pointer transition-colors duration-200 ${
-                            hasDifferentEmergencyContact ? 'text-primary-600' : 'text-gray-400'
-                          }`}
+                          className={`flex items-center cursor-pointer transition-colors duration-200 ${hasDifferentEmergencyContact ? 'text-primary-600' : 'text-gray-400'
+                            }`}
                         >
-                          <div className={`relative w-12 h-6 rounded-full transition-colors duration-200 ${
-                            hasDifferentEmergencyContact ? 'bg-primary-600' : 'bg-gray-300 dark:bg-gray-600'
-                          }`}>
-                            <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-200 ${
-                              hasDifferentEmergencyContact ? 'translate-x-6' : 'translate-x-0'
-                            }`}></div>
+                          <div className={`relative w-12 h-6 rounded-full transition-colors duration-200 ${hasDifferentEmergencyContact ? 'bg-primary-600' : 'bg-gray-300 dark:bg-gray-600'
+                            }`}>
+                            <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-200 ${hasDifferentEmergencyContact ? 'translate-x-6' : 'translate-x-0'
+                              }`}></div>
                           </div>
                         </label>
                       </div>
@@ -699,22 +715,13 @@ const EnrollmentPage = () => {
 
                   {/* Date d'inscription souhaitée - seulement pour nouveau enfant */}
                   {!isExistingChild && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        {isRTL ? 'تاريخ التسجيل المرغوب' : 'Date d\'inscription souhaitée'} *
-                      </label>
-                      <input
-                        type="date"
-                        defaultValue={new Date().toISOString().split('T')[0]}
-                        className={`w-full px-4 py-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent ${errors.enrollment_date ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
-                        {...register('enrollment_date', {
-                          required: !isExistingChild ? (isRTL ? 'تاريخ التسجيل مطلوب' : 'La date d\'inscription est requise') : false
-                        })}
-                      />
-                      {errors.enrollment_date && (
-                        <p className="text-red-500 text-sm mt-1">{errors.enrollment_date.message}</p>
-                      )}
-                    </div>
+                    <DatePicker
+                      label={isRTL ? 'تاريخ التسجيل المرغوب' : 'Date d\'inscription souhaitée'}
+                      required
+                      value={watch('enrollment_date')}
+                      onChange={(value) => setValue('enrollment_date', value)}
+                      error={errors.enrollment_date?.message}
+                    />
                   )}
 
                   {/* Assistance au déjeuner - seulement pour nouveau enfant */}
@@ -813,8 +820,8 @@ const EnrollmentPage = () => {
 
                   {/* Téléchargement du règlement */}
                   <div className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="flex-1">
                         <h3 className="font-medium text-gray-900 dark:text-white">
                           {isRTL ? 'النظام الداخلي للحضانة' : 'Règlement intérieur de la crèche'}
                         </h3>
@@ -828,7 +835,7 @@ const EnrollmentPage = () => {
                       <button
                         type="button"
                         onClick={() => window.open('/creche/reg-interne-mimaelghalia.pdf', '_blank')}
-                        className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                        className="flex items-center justify-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors whitespace-nowrap text-sm sm:text-base"
                       >
                         <Download className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
                         {isRTL ? 'تحميل' : 'Télécharger'}
@@ -1029,7 +1036,7 @@ const EnrollmentPage = () => {
                       <div className="md:col-span-2">
                         <span className="text-gray-600 dark:text-gray-300">{isRTL ? 'جهة الاتصال للطوارئ:' : 'Contact d\'urgence :'}</span>
                         <span className="ml-2 rtl:ml-0 rtl:mr-2 font-medium text-gray-900 dark:text-white">
-                          {hasDifferentEmergencyContact && watch('emergency_contact_name') 
+                          {hasDifferentEmergencyContact && watch('emergency_contact_name')
                             ? `${watch('emergency_contact_name')} - ${watch('emergency_contact_phone')}`
                             : `${watch('parent_first_name')} ${watch('parent_last_name')} - ${watch('parent_phone')} ${isRTL ? '(الوالد)' : '(Parent)'}`
                           }
@@ -1100,40 +1107,40 @@ const EnrollmentPage = () => {
               )}
 
               {/* Boutons de navigation */}
-              <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
-                {step > 1 && (
+              <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+                {step > 1 && step < 5 && (
                   <button
                     type="button"
                     onClick={prevStep}
-                    className="flex items-center px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                    className="flex items-center justify-center gap-2 px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors text-base font-medium min-w-[140px]"
                   >
-                    <ArrowLeft className={`w-4 h-4 mr-2 rtl:ml-2 rtl:mr-0 ${isRTL ? 'rotate-180' : ''}`} />
+                    <ChevronLeft className={`w-5 h-5 ${isRTL ? 'rotate-180' : ''}`} />
                     {isRTL ? 'السابق' : 'Précédent'}
                   </button>
                 )}
 
-                <div className={step === 1 ? 'ml-auto rtl:ml-0 rtl:mr-auto' : ''}>
+                <div className={step === 1 || step === 5 ? 'sm:ml-auto sm:rtl:ml-0 sm:rtl:mr-auto w-full sm:w-auto' : 'w-full sm:w-auto'}>
                   {step < 5 ? (
                     <button
                       type="button"
                       onClick={nextStep}
-                      className="flex items-center px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="flex items-center justify-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-base font-medium min-w-[140px] w-full sm:w-auto"
                       disabled={step === 4 && !regulationScrolled}
                     >
                       {isRTL ? 'التالي' : 'Suivant'}
-                      <ArrowRight className={`w-4 h-4 ml-2 rtl:ml-0 rtl:mr-2 ${isRTL ? 'rotate-180' : ''}`} />
+                      <ChevronRight className={`w-5 h-5 ${isRTL ? 'rotate-180' : ''}`} />
                     </button>
                   ) : (
                     <button
                       type="submit"
                       disabled={loading}
-                      className="flex items-center px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-lg hover:from-primary-700 hover:to-primary-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-base font-semibold shadow-lg hover:shadow-xl w-full"
                     >
                       {loading ? (
                         <LoadingSpinner size="sm" color="white" />
                       ) : (
                         <>
-                          <Send className={`w-4 h-4 ${isRTL ? 'ml-2' : 'mr-2'}`} />
+                          <Send className="w-5 h-5" />
                           {isRTL ? 'إرسال الطلب' : 'Envoyer la demande'}
                         </>
                       )}

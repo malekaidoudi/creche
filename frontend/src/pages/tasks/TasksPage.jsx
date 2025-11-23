@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  CheckSquare, 
-  Clock, 
-  AlertCircle, 
-  CheckCircle, 
+import {
+  CheckSquare,
+  Clock,
+  AlertCircle,
+  CheckCircle,
   XCircle,
   ArrowLeft,
   Plus,
@@ -14,14 +14,16 @@ import {
   Filter
 } from 'lucide-react';
 import axios from 'axios';
-import { useAuth } from '../../hooks/useAuth';
-import toast from 'react-hot-toast';
+import { useLanguage } from '../../hooks/useLanguage';
+import api from '../../services/api';
+import { useDialogContext } from '../../contexts/DialogContext';
 import TaskModal from '../../components/modals/TaskModal';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3003/api';
 
 export default function TasksPage() {
-  const navigate = useNavigate();
+  const { isRTL } = useLanguage();
+  const dialog = useDialogContext();
   const { user } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
@@ -52,7 +54,7 @@ export default function TasksPage() {
       }
     } catch (error) {
       console.error('❌ Erreur chargement tâches:', error);
-      toast.error('Erreur lors du chargement des tâches');
+      dialog.error('Erreur lors du chargement des tâches');
     } finally {
       setLoading(false);
     }
@@ -86,12 +88,12 @@ export default function TasksPage() {
       );
 
       if (response.data.success) {
-        toast.success('Statut mis à jour');
+        dialog.success('Statut mis à jour');
         loadTasks();
       }
     } catch (error) {
       console.error('❌ Erreur mise à jour statut:', error);
-      toast.error('Erreur lors de la mise à jour');
+      dialog.error('Erreur lors de la mise à jour');
     }
   };
 
@@ -105,12 +107,12 @@ export default function TasksPage() {
       });
 
       if (response.data.success) {
-        toast.success('Tâche supprimée');
+        dialog.success('Tâche supprimée');
         loadTasks();
       }
     } catch (error) {
       console.error('❌ Erreur suppression tâche:', error);
-      toast.error('Erreur lors de la suppression');
+      dialog.error('Erreur lors de la suppression');
     }
   };
 
@@ -168,18 +170,18 @@ export default function TasksPage() {
   const filteredTasks = tasks.filter(task => {
     // Filtre par statut
     if (filter !== 'all' && task.status !== filter) return false;
-    
+
     // Filtre par priorité
     if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false;
-    
+
     // Filtre par assigné
     if (assignedFilter !== 'all' && task.assigned_to !== parseInt(assignedFilter)) return false;
-    
+
     // Filtre par date
     if (dateFilter !== 'all') {
       const now = new Date();
       const taskDate = task.end_date ? new Date(task.end_date) : null;
-      
+
       if (dateFilter === 'today') {
         if (!taskDate || taskDate.toDateString() !== now.toDateString()) return false;
       } else if (dateFilter === 'week') {
@@ -190,7 +192,7 @@ export default function TasksPage() {
         if (!taskDate || taskDate >= now || task.status === 'completed' || task.status === 'cancelled') return false;
       }
     }
-    
+
     return true;
   });
 
@@ -220,7 +222,7 @@ export default function TasksPage() {
           <ArrowLeft className="w-5 h-5" />
           <span>Retour au Dashboard</span>
         </button>
-        
+
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-3 mb-2">
@@ -231,7 +233,7 @@ export default function TasksPage() {
               Gérez et suivez vos tâches quotidiennes
             </p>
           </div>
-          
+
           {user?.role === 'admin' && (
             <button
               onClick={() => setShowCreateModal(true)}
@@ -249,53 +251,48 @@ export default function TasksPage() {
         <div className="flex flex-wrap items-center gap-2 mb-4">
           <button
             onClick={() => setFilter('all')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              filter === 'all'
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${filter === 'all'
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
+              }`}
           >
             Toutes ({tasks.length})
           </button>
           <button
             onClick={() => setFilter('pending')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              filter === 'pending'
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${filter === 'pending'
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
+              }`}
           >
             En attente ({tasks.filter(t => t.status === 'pending').length})
           </button>
           <button
             onClick={() => setFilter('in_progress')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              filter === 'in_progress'
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${filter === 'in_progress'
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
+              }`}
           >
             En cours ({tasks.filter(t => t.status === 'in_progress').length})
           </button>
           <button
             onClick={() => setFilter('completed')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              filter === 'completed'
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${filter === 'completed'
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
+              }`}
           >
             Terminées ({tasks.filter(t => t.status === 'completed').length})
           </button>
-          
+
           {/* Bouton filtres avancés */}
           <button
             onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-            className={`ml-auto flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-              showAdvancedFilters
+            className={`ml-auto flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${showAdvancedFilters
                 ? 'bg-purple-600 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
+              }`}
           >
             <Filter className="w-4 h-4" />
             Filtres avancés
@@ -387,13 +384,12 @@ export default function TasksPage() {
         <div className="space-y-4">
           {filteredTasks.map((task) => {
             const overdue = isOverdue(task);
-            
+
             return (
               <div
                 key={task.id}
-                className={`bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow ${
-                  overdue ? 'border-l-4 border-red-500' : ''
-                }`}
+                className={`bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow ${overdue ? 'border-l-4 border-red-500' : ''
+                  }`}
               >
                 {/* Header */}
                 <div className="flex items-start justify-between mb-4">

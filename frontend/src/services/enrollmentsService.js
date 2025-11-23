@@ -41,19 +41,19 @@ const enrollmentsService = {
   createEnrollment: async (enrollmentData, files = []) => {
     try {
       const formData = new FormData()
-      
+
       // Ajouter les données de l'inscription
       Object.keys(enrollmentData).forEach(key => {
         if (enrollmentData[key] !== null && enrollmentData[key] !== undefined) {
           formData.append(key, enrollmentData[key])
         }
       })
-      
+
       // Ajouter les fichiers
       files.forEach(file => {
         formData.append('documents', file)
       })
-      
+
       const response = await api.post('/api/enrollments', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
@@ -84,6 +84,17 @@ const enrollmentsService = {
       return response.data
     } catch (error) {
       console.error('Erreur lors du rejet de l\'inscription:', error)
+      throw error
+    }
+  },
+
+  // Obtenir les documents d'une inscription
+  getEnrollmentDocuments: async (id) => {
+    try {
+      const response = await api.get(`/api/enrollments/${id}/documents`)
+      return response.data
+    } catch (error) {
+      console.error('Erreur lors de la récupération des documents:', error)
       throw error
     }
   }

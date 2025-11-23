@@ -5,9 +5,9 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import frLocale from '@fullcalendar/core/locales/fr';
-import { useLanguage } from '../../contexts/LanguageContext';
+import { useLanguage } from '../../hooks/useLanguage';
 import api from '../../services/api';
-import toast from 'react-hot-toast';
+import { useDialogContext } from '../../contexts/DialogContext';
 
 const EVENT_TYPE_COLORS = {
     event: '#3B82F6',
@@ -22,6 +22,7 @@ const EVENT_TYPE_COLORS = {
 
 const ParentCalendarPage = () => {
     const { isRTL } = useLanguage();
+    const dialog = useDialogContext();
     const navigate = useNavigate();
     const calendarRef = useRef(null);
     const [allEvents, setAllEvents] = useState([]); // Tous les événements chargés
@@ -31,6 +32,7 @@ const ParentCalendarPage = () => {
     const [showDayEventsModal, setShowDayEventsModal] = useState(false);
     const [dayEvents, setDayEvents] = useState([]);
     const [selectedDayDate, setSelectedDayDate] = useState(null);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
 
     const loadEvents = useCallback(async () => {
         try {
@@ -157,18 +159,59 @@ const ParentCalendarPage = () => {
                     console.error('❌ PARENT - Détails:', error.response?.data);
                 }
 
+                // Charger les rendez-vous du parent
+                let appointmentEvents = [];
+                try {
+                    console.log('🔄 PARENT - Chargement des rendez-vous...');
+                    const appointmentsResponse = await api.get('/api/appointments');
+                    console.log('📅 PARENT - Réponse API appointments:', appointmentsResponse.data);
+
+                    if (appointmentsResponse.data.success && appointmentsResponse.data.appointments) {
+                        const now = new Date();
+                        appointmentEvents = appointmentsResponse.data.appointments
+                            .filter(apt => {
+                                // Exclure les annulés
+                                if (apt.status === 'cancelled') return false;
+
+                                // Garder seulement les rendez-vous futurs
+                                const appointmentDate = new Date(apt.confirmed_date || apt.proposed_date);
+                                return appointmentDate >= now;
+                            })
+                            .map(apt => {
+                                const appointmentDate = apt.confirmed_date || apt.proposed_date;
+                                return {
+                                    id: `appointment-${apt.id}`,
+                                    title: '📅 Rendez-vous',
+                                    start: appointmentDate,
+                                    allDay: false,
+                                    backgroundColor: '#F59E0B',
+                                    borderColor: '#F59E0B',
+                                    extendedProps: {
+                                        type: 'rdv',
+                                        status: apt.status,
+                                        description: apt.description
+                                    }
+                                };
+                            });
+                        console.log('📅 PARENT - Rendez-vous futurs chargés:', appointmentEvents.length);
+                    }
+                } catch (error) {
+                    console.error('❌ PARENT - Erreur chargement rendez-vous:', error);
+                }
+
                 // Combiner tous les événements
-                const combinedEvents = [...formattedEvents, ...holidayEvents, ...birthdayEvents, ...vacationEvents];
+                const combinedEvents = [...formattedEvents, ...holidayEvents, ...birthdayEvents, ...vacationEvents, ...appointmentEvents];
                 console.log('✅ PARENT - Total événements combinés:', combinedEvents.length);
                 console.log('📋 PARENT - Événements:', combinedEvents.slice(0, 3));
                 console.log('🎂 PARENT - Anniversaires:', birthdayEvents);
+                console.log('📅 PARENT - Rendez-vous:', appointmentEvents);
                 setAllEvents(combinedEvents);
                 setEvents(combinedEvents);
             }
         } catch (error) {
             console.error('❌ PARENT - Erreur chargement événements:', error);
             console.error('❌ PARENT - Détails erreur:', error.response?.data);
-            toast.error('Erreur lors du chargement des événements');
+            dialog.error('Erreur lors du chargement des événements');
             setAllEvents([]);
             setEvents([]);
         } finally {
@@ -179,6 +222,15 @@ const ParentCalendarPage = () => {
     useEffect(() => {
         loadEvents();
     }, [loadEvents]);
+
+    // Détecter le changement de taille d'écran
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobile(window.innerWidth < 1024);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // Effet séparé pour filtrer les événements quand selectedTypes change
     useEffect(() => {
@@ -241,14 +293,26 @@ const ParentCalendarPage = () => {
 
                 {/* Filters */}
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
-                    <div className="flex items-center gap-2 mb-3">
-                        <Filter className="w-4 h-4 text-gray-500" />
-                        <h3 className="font-medium text-gray-900 dark:text-white">
-                            {isRTL ? 'تصفية حسب النوع' : 'Filtrer par type'}
-                        </h3>
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                            <Filter className="w-4 h-4 text-gray-500" />
+                            <h3 className="font-medium text-gray-900 dark:text-white">
+                                {isRTL ? 'تصفية حسب النوع' : 'Filtrer par type'}
+                            </h3>
+                        </div>
+                        {selectedTypes.length > 0 && (
+                            <button
+                                onClick={() => setSelectedTypes([])}
+                                className="text-xs sm:text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
+                            >
+                                <X className="w-3 h-3" />
+                                <span className="hidden sm:inline">{isRTL ? 'مسح الفلاتر' : 'Effacer'}</span>
+                            </button>
+                        )}
                     </div>
 
-                    <div className="flex flex-wrap gap-2">
+                    {/* Desktop: Boutons */}
+                    <div className="hidden sm:flex flex-wrap gap-2">
                         {eventTypes.map(type => {
                             const isSelected = selectedTypes.includes(type.value);
                             const borderColor = EVENT_TYPE_COLORS[type.value];
@@ -274,25 +338,79 @@ const ParentCalendarPage = () => {
                         })}
                     </div>
 
-                    {selectedTypes.length > 0 && (
-                        <button
-                            onClick={() => setSelectedTypes([])}
-                            className="mt-3 text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-                        >
-                            {isRTL ? 'مسح الفلاتر' : 'Effacer les filtres'}
-                        </button>
-                    )}
+                    {/* Mobile: Grille compacte */}
+                    <div className="grid grid-cols-2 gap-2 sm:hidden">
+                        {eventTypes.map(type => {
+                            const isSelected = selectedTypes.includes(type.value);
+                            const borderColor = EVENT_TYPE_COLORS[type.value];
+
+                            return (
+                                <button
+                                    key={type.value}
+                                    onClick={() => toggleTypeFilter(type.value)}
+                                    className={`flex items-center gap-1.5 px-2 py-2 rounded-lg border-2 transition-all text-xs ${isSelected
+                                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                                        : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300'
+                                        }`}
+                                    style={
+                                        isSelected
+                                            ? { borderColor: borderColor }
+                                            : {}
+                                    }
+                                >
+                                    <span className="text-base">{type.icon}</span>
+                                    <span className="font-medium truncate">{type.label}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
 
                 {/* Calendar */}
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                     <style>{`
-                        /* Forcer la visibilité des en-têtes de colonnes en mode dark */
-                        .dark .fc-col-header-cell {
-                            background-color: #1f2937 !important;
+                        /* Centrer le titre du mois et réduire la taille */
+                        .fc-toolbar {
+                            display: flex !important;
+                            align-items: center !important;
+                            justify-content: space-between !important;
+                            padding: 0.5rem 0 !important;
+                        }
+                        .fc-toolbar-title {
+                            font-size: 1.25rem !important;
+                            text-align: center !important;
+                            flex: 1 !important;
+                            margin: 0 !important;
+                        }
+                        .fc-toolbar-chunk {
+                            display: flex !important;
+                            align-items: center !important;
+                        }
+                        .fc-button {
+                            padding: 0.25rem 0.5rem !important;
+                            font-size: 0.875rem !important;
+                        }
+                        
+                        /* Responsive: réduire encore plus sur mobile/tablette */
+                        @media (max-width: 1023px) {
+                            .fc-toolbar-title {
+                                font-size: 1rem !important;
+                            }
+                        }
+                        
+                        /* Dark mode: améliorer la visibilité */
+                        .dark .fc-daygrid-day-number {
+                            color: #e5e7eb !important;
                         }
                         .dark .fc-col-header-cell-cushion {
-                            color: #e5e7eb !important;
+                            color: #9ca3af !important;
+                        }
+                        .dark .fc-daygrid-day.fc-day-today {
+                            background-color: rgba(59, 130, 246, 0.1) !important;
+                        }
+                        .dark .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+                            color: #60a5fa !important;
+                            font-weight: bold !important;
                         }
                         
                         /* Masquer les bordures de grille sur mobile et tablette */
@@ -363,9 +481,9 @@ const ParentCalendarPage = () => {
                             locale={frLocale}
                             direction={isRTL ? 'rtl' : 'ltr'}
                             headerToolbar={{
-                                left: 'prev,next today',
+                                left: 'prev',
                                 center: 'title',
-                                right: ''
+                                right: 'next'
                             }}
                             buttonText={{
                                 today: isRTL ? 'اليوم' : 'Aujourd\'hui',
@@ -435,22 +553,9 @@ const ParentCalendarPage = () => {
                                 }
                             }}
                             eventDidMount={(info) => {
-                                const isMobile = window.innerWidth < 1024;
-                                const eventDate = info.event.start;
-                                const today = new Date();
-                                today.setHours(0, 0, 0, 0);
-                                const isPast = eventDate < today;
-
-                                // Afficher les événements passés en gris
-                                if (isPast) {
-                                    info.el.style.opacity = '0.5';
-                                    info.el.style.filter = 'grayscale(70%)';
-                                }
-
                                 // UNIQUEMENT sur mobile : remplacer par un point
-                                if (isMobile) {
-                                    const color = isPast ? '#9ca3af' : info.event.backgroundColor;
-                                    info.el.innerHTML = `<div style="width: 6px; height: 6px; border-radius: 50%; background-color: ${color};"></div>`;
+                                if (window.innerWidth < 1024) {
+                                    info.el.innerHTML = `<div style="width: 6px; height: 6px; border-radius: 50%; background-color: ${info.event.backgroundColor};"></div>`;
                                     info.el.style.cssText = 'background: transparent !important; border: none !important; padding: 0 !important; margin: 0 2px !important; pointer-events: none !important;';
                                 }
                                 // Sur desktop : ne rien faire, laisser l'affichage par défaut

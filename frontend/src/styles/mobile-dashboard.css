@@ -1,0 +1,416 @@
+/* Mobile Dashboard Optimizations */
+
+/* Wrapper pour les widgets dans les cards collapsibles */
+.mobile-widget-wrapper {
+    /* Réduire les paddings internes des widgets */
+    --mobile-padding: 0.75rem;
+}
+
+.mobile-widget-wrapper>* {
+    /* Supprimer les marges externes des widgets */
+    margin: 0 !important;
+}
+
+/* Masquer TOUS les headers des widgets en mode mobile */
+@media (max-width: 1024px) {
+
+    /* Masquer les headers avec classe spécifique */
+    .mobile-widget-wrapper .bg-white.rounded-lg.shadow>div:first-child,
+    .mobile-widget-wrapper .bg-white.dark\\:bg-gray-800.rounded-lg.shadow>div:first-child,
+    .mobile-widget-wrapper [class*="CardHeader"],
+    .mobile-widget-wrapper header,
+    .mobile-widget-wrapper .widget-header {
+        display: none !important;
+    }
+
+    /* Supprimer les styles de card pour intégration transparente */
+    .mobile-widget-wrapper .bg-white.rounded-lg.shadow,
+    .mobile-widget-wrapper .bg-white.dark\\:bg-gray-800.rounded-lg.shadow {
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+    }
+
+    /* Supprimer padding top des widgets sans header */
+    .mobile-widget-wrapper>*>div:first-child {
+        padding-top: 0 !important;
+    }
+
+    /* Forcer la suppression des bordures et ombres */
+    .mobile-widget-wrapper * {
+        border: none !important;
+    }
+}
+
+/* Optimisations pour les widgets existants en mode mobile */
+@media (max-width: 1024px) {
+
+    /* Réduire la hauteur des widgets */
+    .mobile-widget-wrapper .max-h-96,
+    .mobile-widget-wrapper .h-96 {
+        max-height: 20rem !important;
+    }
+
+    /* Marge en bas pour éviter que le FAB cache le dernier module */
+    .mobile-dashboard-container>div:last-child {
+        margin-bottom: 5rem !important;
+    }
+
+    /* Optimiser les cartes de widgets */
+    .mobile-widget-wrapper .bg-white,
+    .mobile-widget-wrapper .dark\\:bg-gray-800 {
+        box-shadow: none !important;
+        border: none !important;
+    }
+
+    /* Réduire les espacements */
+    .mobile-widget-wrapper .space-y-4>*+* {
+        margin-top: 0.75rem !important;
+    }
+
+    .mobile-widget-wrapper .space-y-3>*+* {
+        margin-top: 0.5rem !important;
+    }
+
+    /* Optimiser les textes */
+    .mobile-widget-wrapper h3 {
+        font-size: 0.875rem !important;
+    }
+
+    .mobile-widget-wrapper h4 {
+        font-size: 0.8125rem !important;
+    }
+}
+
+/* Scroll horizontal pour les carousels */
+.mobile-carousel {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* IE and Edge */
+}
+
+.mobile-carousel::-webkit-scrollbar {
+    display: none;
+    /* Chrome, Safari, Opera */
+}
+
+.mobile-carousel>* {
+    scroll-snap-align: start;
+    flex-shrink: 0;
+}
+
+/* Améliorer les interactions tactiles */
+.mobile-touch-target {
+    min-height: 44px;
+    min-width: 44px;
+}
+
+/* Optimiser les badges */
+.mobile-badge {
+    font-size: 0.625rem;
+    padding: 0.125rem 0.375rem;
+}
+
+/* Améliorer la lisibilité */
+.mobile-text-base {
+    font-size: 0.9375rem;
+    line-height: 1.5;
+}
+
+.mobile-text-sm {
+    font-size: 0.8125rem;
+    line-height: 1.4;
+}
+
+/* Optimiser les animations */
+.mobile-transition {
+    transition: all 0.2s ease-in-out;
+}
+
+/* Améliorer les zones de tap */
+.mobile-tap-area {
+    padding: 0.75rem;
+    margin: -0.75rem;
+}
+
+/* Swipe indicators */
+.swipe-indicator {
+    position: absolute;
+    bottom: 0.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 0.25rem;
+}
+
+.swipe-indicator-dot {
+    width: 0.375rem;
+    height: 0.375rem;
+    border-radius: 9999px;
+    background-color: currentColor;
+    opacity: 0.3;
+    transition: opacity 0.2s;
+}
+
+.swipe-indicator-dot.active {
+    opacity: 1;
+}
+
+/* Pull to refresh indicator */
+.pull-to-refresh {
+    position: absolute;
+    top: -3rem;
+    left: 50%;
+    transform: translateX(-50%);
+    transition: transform 0.3s;
+}
+
+.pull-to-refresh.active {
+    transform: translateX(-50%) translateY(4rem);
+}
+
+/* Optimiser les modals en plein écran */
+.mobile-modal-fullscreen {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background-color: white;
+}
+
+@media (prefers-color-scheme: dark) {
+    .mobile-modal-fullscreen {
+        background-color: #1f2937;
+    }
+}
+
+/* Améliorer les zones de scroll */
+.mobile-scroll-area {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+}
+
+/* Optimiser les grilles */
+.mobile-grid-auto {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.75rem;
+}
+
+/* Améliorer les chips interactives */
+.mobile-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.375rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.mobile-chip:active {
+    transform: scale(0.95);
+}
+
+/* Optimiser les cartes */
+.mobile-card {
+    border-radius: 1rem;
+    overflow: hidden;
+    background-color: white;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+    .mobile-card {
+        background-color: #1f2937;
+    }
+}
+
+/* Améliorer les séparateurs */
+.mobile-divider {
+    height: 1px;
+    background-color: #e5e7eb;
+    margin: 0.75rem 0;
+}
+
+@media (prefers-color-scheme: dark) {
+    .mobile-divider {
+        background-color: #374151;
+    }
+}
+
+/* Optimiser les listes */
+.mobile-list-item {
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    transition: background-color 0.2s;
+}
+
+.mobile-list-item:active {
+    background-color: #f3f4f6;
+}
+
+@media (prefers-color-scheme: dark) {
+    .mobile-list-item:active {
+        background-color: #374151;
+    }
+}
+
+/* Améliorer les boutons flottants */
+.mobile-fab {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    z-index: 40;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s;
+}
+
+.mobile-fab:active {
+    transform: scale(0.9);
+}
+
+/* Optimiser les en-têtes collants */
+.mobile-sticky-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: white;
+    backdrop-filter: blur(8px);
+    background-color: rgba(255, 255, 255, 0.9);
+}
+
+@media (prefers-color-scheme: dark) {
+    .mobile-sticky-header {
+        background-color: rgba(31, 41, 55, 0.9);
+    }
+}
+
+/* Améliorer les skeleton loaders */
+.mobile-skeleton {
+    background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-loading {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+@media (prefers-color-scheme: dark) {
+    .mobile-skeleton {
+        background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%);
+        background-size: 200% 100%;
+    }
+}
+
+/* Animations mobiles */
+@keyframes slideInFromBottom {
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideInFromRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes scaleIn {
+    from {
+        transform: scale(0.9);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.animate-slide-in-bottom {
+    animation: slideInFromBottom 0.3s ease-out;
+}
+
+.animate-slide-in-right {
+    animation: slideInFromRight 0.3s ease-out;
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.2s ease-out;
+}
+
+.animate-scale-in {
+    animation: scaleIn 0.2s ease-out;
+}
+
+/* Gestures support */
+.swipeable {
+    touch-action: pan-y;
+    user-select: none;
+}
+
+.swipeable-horizontal {
+    touch-action: pan-x;
+    user-select: none;
+}
+
+/* Safe area insets pour les notches */
+@supports (padding: max(0px)) {
+    .mobile-safe-area-top {
+        padding-top: max(1rem, env(safe-area-inset-top));
+    }
+
+    .mobile-safe-area-bottom {
+        padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    }
+
+    .mobile-safe-area-left {
+        padding-left: max(1rem, env(safe-area-inset-left));
+    }
+
+    .mobile-safe-area-right {
+        padding-right: max(1rem, env(safe-area-inset-right));
+    }
+}

@@ -1,30 +1,34 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { 
-  Calendar, 
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Calendar,
   Baby,
   Clock,
   CheckCircle,
   User,
   FileText,
-  Filter
+  Filter,
+  ChevronDown,
+  BarChart3
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
+import api from '../../services/api';
+import { useDialogContext } from '../../contexts/DialogContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import toast from 'react-hot-toast';
-import api from '../../services/api';
 
 const AbsenceManagementPage = () => {
   const { isRTL } = useLanguage();
+  const dialog = useDialogContext();
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [absenceRequests, setAbsenceRequests] = useState([]);
   const [filter, setFilter] = useState('all'); // all, pending, acknowledged
   const [highlightedId, setHighlightedId] = useState(null);
   const highlightedRef = useRef(null);
+  const [statsExpanded, setStatsExpanded] = useState(false);
 
   const absenceReasons = {
     'sick': isRTL ? 'مريض' : 'Maladie',
@@ -44,14 +48,14 @@ const AbsenceManagementPage = () => {
     if (requestId && absenceRequests.length > 0) {
       const id = parseInt(requestId);
       setHighlightedId(id);
-      
+
       // Scroll vers l'élément après un court délai
       setTimeout(() => {
         if (highlightedRef.current) {
           highlightedRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       }, 300);
-      
+
       // Retirer le highlight après 3 secondes
       setTimeout(() => {
         setHighlightedId(null);
@@ -65,7 +69,7 @@ const AbsenceManagementPage = () => {
       setLoading(true);
       const response = await api.get('/api/absence-requests/all');
       console.log('📥 Réponse reçue:', response.data);
-      
+
       if (response.data.success) {
         const requests = response.data.requests || [];
         console.log(`✅ ${requests.length} demande(s) chargée(s)`);
@@ -77,7 +81,7 @@ const AbsenceManagementPage = () => {
     } catch (error) {
       console.error('❌ Erreur chargement demandes:', error);
       console.error('Détails:', error.response?.data);
-      toast.error(isRTL ? 'خطأ في تحميل الطلبات' : 'Erreur lors du chargement des demandes');
+      dialog.error(isRTL ? 'خطأ في تحميل الطلبات' : 'Erreur lors du chargement des demandes');
       setAbsenceRequests([]);
     } finally {
       setLoading(false);
@@ -88,14 +92,14 @@ const AbsenceManagementPage = () => {
   const handleAcknowledge = async (requestId) => {
     try {
       const response = await api.put(`/api/absence-requests/${requestId}/acknowledge`);
-      
+
       if (response.data.success) {
-        toast.success(isRTL ? 'تم تأكيد الطلب' : 'Demande validée');
+        dialog.success(isRTL ? 'تم تأكيد الطلب' : 'Demande validée');
         loadAbsenceRequests();
       }
     } catch (error) {
       console.error('Erreur validation:', error);
-      toast.error(isRTL ? 'خطأ في التأكيد' : 'Erreur lors de la validation');
+      dialog.error(isRTL ? 'خطأ في التأكيد' : 'Erreur lors de la validation');
     }
   };
 
@@ -153,8 +157,8 @@ const AbsenceManagementPage = () => {
           </p>
         </motion.div>
 
-        {/* Statistiques */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        {/* Statistiques - Version Desktop (md et plus) */}
+        <div className="hidden md:grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-200 dark:border-blue-700">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -204,38 +208,159 @@ const AbsenceManagementPage = () => {
           </Card>
         </div>
 
+        {/* Statistiques - Version Mobile Collapsible (< md) */}
+        <motion.div
+          className="md:hidden mb-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden"
+          layout
+        >
+          {/* Header Collapsible */}
+          <div
+            onClick={() => setStatsExpanded(!statsExpanded)}
+            className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                <BarChart3 className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+                  {isRTL ? 'الإحصائيات' : 'Statistiques'}
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {isRTL ? `${absenceRequests.length} طلب` : `${absenceRequests.length} demandes`}
+                </p>
+              </div>
+            </div>
+            <motion.div
+              animate={{ rotate: statsExpanded ? 180 : 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <ChevronDown className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            </motion.div>
+          </div>
+
+          {/* Content Collapsible */}
+          <AnimatePresence>
+            {statsExpanded && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                className="overflow-hidden"
+              >
+                <div className="p-4 pt-0 space-y-3 border-t border-gray-100 dark:border-gray-700">
+                  {/* Total */}
+                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-blue-600 dark:text-blue-300 font-medium">
+                          {isRTL ? 'المجموع' : 'Total'}
+                        </p>
+                        <p className="text-2xl font-bold text-blue-700 dark:text-blue-200">
+                          {absenceRequests.length}
+                        </p>
+                      </div>
+                      <FileText className="w-10 h-10 text-blue-500 opacity-50" />
+                    </div>
+                  </div>
+
+                  {/* En attente */}
+                  <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-yellow-600 dark:text-yellow-300 font-medium">
+                          {isRTL ? 'في الانتظار' : 'En attente'}
+                        </p>
+                        <p className="text-2xl font-bold text-yellow-700 dark:text-yellow-200">
+                          {pendingCount}
+                        </p>
+                      </div>
+                      <Clock className="w-10 h-10 text-yellow-500 opacity-50" />
+                    </div>
+                  </div>
+
+                  {/* Validées */}
+                  <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 border border-green-200 dark:border-green-700 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-green-600 dark:text-green-300 font-medium">
+                          {isRTL ? 'تم التأكيد' : 'Validées'}
+                        </p>
+                        <p className="text-2xl font-bold text-green-700 dark:text-green-200">
+                          {acknowledgedCount}
+                        </p>
+                      </div>
+                      <CheckCircle className="w-10 h-10 text-green-500 opacity-50" />
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+
         {/* Filtres */}
         <Card className="mb-6">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2">
-              <Filter className="w-5 h-5 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300 mr-4 rtl:mr-0 rtl:ml-4">
-                {isRTL ? 'تصفية:' : 'Filtrer:'}
-              </span>
-              <div className="flex gap-2">
-                <Button
-                  variant={filter === 'all' ? 'default' : 'outline'}
-                  size="sm"
+          <CardContent className="pt-4 pb-4">
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-gray-500" />
+                <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {isRTL ? 'تصفية:' : 'Filtrer:'}
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <button
                   onClick={() => setFilter('all')}
+                  className={`flex flex-col items-center justify-center p-2 sm:p-3 rounded-lg border-2 transition-all ${filter === 'all'
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                    }`}
                 >
-                  {isRTL ? 'الكل' : 'Tous'} ({absenceRequests.length})
-                </Button>
-                <Button
-                  variant={filter === 'pending' ? 'default' : 'outline'}
-                  size="sm"
+                  <span className={`text-lg sm:text-2xl font-bold ${filter === 'all' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'
+                    }`}>
+                    {absenceRequests.length}
+                  </span>
+                  <span className={`text-xs sm:text-sm font-medium mt-1 ${filter === 'all' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'
+                    }`}>
+                    {isRTL ? 'الكل' : 'Tous'}
+                  </span>
+                </button>
+
+                <button
                   onClick={() => setFilter('pending')}
-                  className="bg-yellow-500 hover:bg-yellow-600 text-white"
+                  className={`flex flex-col items-center justify-center p-2 sm:p-3 rounded-lg border-2 transition-all ${filter === 'pending'
+                      ? 'border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                    }`}
                 >
-                  {isRTL ? 'في الانتظار' : 'En attente'} ({pendingCount})
-                </Button>
-                <Button
-                  variant={filter === 'acknowledged' ? 'default' : 'outline'}
-                  size="sm"
+                  <span className={`text-lg sm:text-2xl font-bold ${filter === 'pending' ? 'text-yellow-600 dark:text-yellow-400' : 'text-gray-700 dark:text-gray-300'
+                    }`}>
+                    {pendingCount}
+                  </span>
+                  <span className={`text-xs sm:text-sm font-medium mt-1 ${filter === 'pending' ? 'text-yellow-600 dark:text-yellow-400' : 'text-gray-600 dark:text-gray-400'
+                    }`}>
+                    {isRTL ? 'في الانتظار' : 'En attente'}
+                  </span>
+                </button>
+
+                <button
                   onClick={() => setFilter('acknowledged')}
-                  className="bg-green-500 hover:bg-green-600 text-white"
+                  className={`flex flex-col items-center justify-center p-2 sm:p-3 rounded-lg border-2 transition-all ${filter === 'acknowledged'
+                      ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                    }`}
                 >
-                  {isRTL ? 'تم التأكيد' : 'Validées'} ({acknowledgedCount})
-                </Button>
+                  <span className={`text-lg sm:text-2xl font-bold ${filter === 'acknowledged' ? 'text-green-600 dark:text-green-400' : 'text-gray-700 dark:text-gray-300'
+                    }`}>
+                    {acknowledgedCount}
+                  </span>
+                  <span className={`text-xs sm:text-sm font-medium mt-1 ${filter === 'acknowledged' ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-400'
+                    }`}>
+                    {isRTL ? 'تم التأكيد' : 'Validées'}
+                  </span>
+                </button>
               </div>
             </div>
           </CardContent>
@@ -248,13 +373,13 @@ const AbsenceManagementPage = () => {
               {isRTL ? 'طلبات الغياب' : 'Demandes d\'absence'}
             </CardTitle>
             <CardDescription>
-              {isRTL 
+              {isRTL
                 ? `${filteredRequests.length} ${filteredRequests.length === 1 ? 'طلب' : 'طلبات'}`
                 : `${filteredRequests.length} demande${filteredRequests.length > 1 ? 's' : ''}`
               }
             </CardDescription>
           </CardHeader>
-          
+
           <CardContent>
             {loading ? (
               <div className="text-center py-12">
@@ -281,11 +406,10 @@ const AbsenceManagementPage = () => {
                     ref={request.id === highlightedId ? highlightedRef : null}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className={`border rounded-lg p-4 hover:shadow-md transition-all ${
-                      request.id === highlightedId
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-lg'
-                        : 'border-gray-200 dark:border-gray-700'
-                    }`}
+                    className={`border rounded-lg p-4 hover:shadow-md transition-all ${request.id === highlightedId
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-lg'
+                      : 'border-gray-200 dark:border-gray-700'
+                      }`}
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
@@ -295,7 +419,7 @@ const AbsenceManagementPage = () => {
                             {request.child_first_name} {request.child_last_name}
                           </span>
                         </div>
-                        
+
                         <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-2">
                           <User className="w-4 h-4" />
                           <span>
@@ -318,7 +442,7 @@ const AbsenceManagementPage = () => {
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}>
                           {getStatusText(request.status)}
                         </span>
-                        
+
                         {request.status === 'pending' && (
                           <Button
                             size="sm"

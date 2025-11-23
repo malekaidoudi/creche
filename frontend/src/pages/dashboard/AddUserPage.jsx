@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  UserPlus, 
-  Users, 
-  Shield, 
-  Mail, 
-  Phone, 
+import {
+  UserPlus,
+  Users,
+  Shield,
+  Mail,
+  Phone,
   Lock,
   User,
   ArrowLeft,
@@ -18,11 +18,12 @@ import { useLanguage } from '../../hooks/useLanguage';
 import { useAuth } from '../../hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import toast from 'react-hot-toast';
+import { useDialogContext } from '../../contexts/DialogContext';
 import { Link } from 'react-router-dom';
 
 const AddUserPage = () => {
   const { isRTL } = useLanguage();
+  const dialog = useDialogContext();
   const { isAdmin } = useAuth();
   const [selectedRole, setSelectedRole] = useState('parent');
   const [showPassword, setShowPassword] = useState(false);
@@ -48,7 +49,7 @@ const AddUserPage = () => {
     const fetchUnassociatedChildren = async () => {
       try {
         console.log('Tentative de chargement des enfants non associés...');
-        
+
         // Utiliser directement les données de test pour éviter les erreurs API
         const mockChildren = [
           { id: 1, first_name: 'Ahmed', last_name: 'Ben Ali', age: 4, birth_date: '2020-03-15' },
@@ -56,7 +57,7 @@ const AddUserPage = () => {
         ];
         console.log('Utilisation des données de test:', mockChildren);
         setUnassociatedChildren(mockChildren);
-        
+
       } catch (error) {
         console.error('Erreur lors du chargement des enfants:', error);
         // Fallback vide
@@ -115,7 +116,7 @@ const AddUserPage = () => {
       ...prev,
       [name]: value
     }));
-    
+
     // Clear error for this field
     if (errors[name]) {
       setErrors(prev => ({
@@ -191,19 +192,19 @@ const AddUserPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
 
     setLoading(true);
-    
+
     try {
       // Simulation d'appel API
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      toast.success(isRTL ? 'تم إنشاء المستخدم بنجاح' : 'Utilisateur créé avec succès');
-      
+
+      dialog.success(isRTL ? 'تم إنشاء المستخدم بنجاح' : 'Utilisateur créé avec succès');
+
       // Reset form
       setFormData({
         first_name: '',
@@ -217,9 +218,9 @@ const AddUserPage = () => {
         specialization: ''
       });
       setSelectedRole('parent');
-      
+
     } catch (error) {
-      toast.error(isRTL ? 'خطأ في إنشاء المستخدم' : 'Erreur lors de la création');
+      dialog.error(isRTL ? 'خطأ في إنشاء المستخدم' : 'Erreur lors de la création');
     } finally {
       setLoading(false);
     }
@@ -242,12 +243,7 @@ const AddUserPage = () => {
             {isRTL ? 'إنشاء حساب جديد للأولياء أو الموظفين' : 'Créer un nouveau compte pour parents ou personnel'}
           </p>
         </div>
-        <Link to="/dashboard">
-          <Button variant="outline" className="flex items-center">
-            <ArrowLeft className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2 rtl:rotate-180" />
-            {isRTL ? 'العودة' : 'Retour'}
-          </Button>
-        </Link>
+        
       </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -269,11 +265,10 @@ const AddUserPage = () => {
                 <div
                   key={option.value}
                   onClick={() => handleRoleSelect(option.value)}
-                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                    selectedRole === option.value
+                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${selectedRole === option.value
                       ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
                       : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-start space-x-3 rtl:space-x-reverse">
                     <div className={`p-2 rounded-lg ${option.bgColor}`}>
@@ -324,9 +319,8 @@ const AddUserPage = () => {
                       name="first_name"
                       value={formData.first_name}
                       onChange={handleInputChange}
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
-                        errors.first_name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                      }`}
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${errors.first_name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                        }`}
                       placeholder={isRTL ? 'أدخل الاسم الأول' : 'Entrez le prénom'}
                     />
                     {errors.first_name && (
@@ -346,9 +340,8 @@ const AddUserPage = () => {
                       name="last_name"
                       value={formData.last_name}
                       onChange={handleInputChange}
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
-                        errors.last_name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                      }`}
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${errors.last_name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                        }`}
                       placeholder={isRTL ? 'أدخل اسم العائلة' : 'Entrez le nom de famille'}
                     />
                     {errors.last_name && (
@@ -373,9 +366,8 @@ const AddUserPage = () => {
                         name="email"
                         value={formData.email}
                         onChange={handleInputChange}
-                        className={`w-full pl-10 rtl:pl-3 rtl:pr-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
-                          errors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                        }`}
+                        className={`w-full pl-10 rtl:pl-3 rtl:pr-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${errors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                          }`}
                         placeholder={isRTL ? 'أدخل البريد الإلكتروني' : 'Entrez l\'email'}
                       />
                     </div>
@@ -398,9 +390,8 @@ const AddUserPage = () => {
                         name="phone"
                         value={formData.phone}
                         onChange={handleInputChange}
-                        className={`w-full pl-10 rtl:pl-3 rtl:pr-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
-                          errors.phone ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                        }`}
+                        className={`w-full pl-10 rtl:pl-3 rtl:pr-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${errors.phone ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                          }`}
                         placeholder={isRTL ? 'أدخل رقم الهاتف' : 'Entrez le téléphone'}
                         dir="ltr"
                       />
@@ -427,9 +418,8 @@ const AddUserPage = () => {
                         name="password"
                         value={formData.password}
                         onChange={handleInputChange}
-                        className={`w-full pl-10 rtl:pl-3 rtl:pr-10 pr-10 rtl:pr-3 rtl:pl-10 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
-                          errors.password ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                        }`}
+                        className={`w-full pl-10 rtl:pl-3 rtl:pr-10 pr-10 rtl:pr-3 rtl:pl-10 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${errors.password ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                          }`}
                         placeholder={isRTL ? 'أدخل كلمة المرور' : 'Entrez le mot de passe'}
                       />
                       <button
@@ -459,9 +449,8 @@ const AddUserPage = () => {
                         name="confirm_password"
                         value={formData.confirm_password}
                         onChange={handleInputChange}
-                        className={`w-full pl-10 rtl:pl-3 rtl:pr-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
-                          errors.confirm_password ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                        }`}
+                        className={`w-full pl-10 rtl:pl-3 rtl:pr-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${errors.confirm_password ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                          }`}
                         placeholder={isRTL ? 'أعد إدخال كلمة المرور' : 'Confirmez le mot de passe'}
                       />
                     </div>
@@ -483,7 +472,7 @@ const AddUserPage = () => {
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                       {isRTL ? 'اختر الأطفال الذين سيكونون تحت رعاية هذا الولي' : 'Sélectionnez les enfants qui seront sous la responsabilité de ce parent'}
                     </p>
-                    
+
                     {unassociatedChildren.length === 0 ? (
                       <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                         <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
@@ -495,43 +484,41 @@ const AddUserPage = () => {
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                         {unassociatedChildren.map(child => (
-                        <div
-                          key={child.id}
-                          onClick={() => handleChildSelection(child.id)}
-                          className={`p-3 border rounded-lg cursor-pointer transition-all ${
-                            formData.children_ids.includes(child.id)
-                              ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                              : 'border-gray-300 dark:border-gray-600 hover:border-primary-300'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="font-medium text-gray-900 dark:text-white">
-                                {child.first_name} {child.last_name}
-                              </p>
-                              <p className="text-sm text-gray-500 dark:text-gray-400">
-                                {isRTL ? `${child.age} سنوات` : `${child.age} ans`}
-                              </p>
-                            </div>
-                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                              formData.children_ids.includes(child.id)
-                                ? 'border-primary-500 bg-primary-500'
-                                : 'border-gray-300'
-                            }`}>
-                              {formData.children_ids.includes(child.id) && (
-                                <Check className="w-3 h-3 text-white" />
-                              )}
+                          <div
+                            key={child.id}
+                            onClick={() => handleChildSelection(child.id)}
+                            className={`p-3 border rounded-lg cursor-pointer transition-all ${formData.children_ids.includes(child.id)
+                                ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                                : 'border-gray-300 dark:border-gray-600 hover:border-primary-300'
+                              }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="font-medium text-gray-900 dark:text-white">
+                                  {child.first_name} {child.last_name}
+                                </p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                  {isRTL ? `${child.age} سنوات` : `${child.age} ans`}
+                                </p>
+                              </div>
+                              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${formData.children_ids.includes(child.id)
+                                  ? 'border-primary-500 bg-primary-500'
+                                  : 'border-gray-300'
+                                }`}>
+                                {formData.children_ids.includes(child.id) && (
+                                  <Check className="w-3 h-3 text-white" />
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
                         ))}
                       </div>
                     )}
-                    
+
                     {formData.children_ids.length > 0 && (
                       <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
                         <p className="text-sm text-green-700 dark:text-green-300">
-                          {isRTL 
+                          {isRTL
                             ? `تم اختيار ${formData.children_ids.length} طفل/أطفال`
                             : `${formData.children_ids.length} enfant(s) sélectionné(s)`
                           }
@@ -547,7 +534,7 @@ const AddUserPage = () => {
                     <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
                       {isRTL ? 'المعلومات المهنية' : 'Informations Professionnelles'}
                     </h3>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -557,9 +544,8 @@ const AddUserPage = () => {
                           name="department"
                           value={formData.department}
                           onChange={handleInputChange}
-                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
-                            errors.department ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                          }`}
+                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${errors.department ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                            }`}
                         >
                           <option value="">{isRTL ? 'اختر القسم' : 'Sélectionner le département'}</option>
                           {departmentOptions.map(dept => (
@@ -585,9 +571,8 @@ const AddUserPage = () => {
                           name="specialization"
                           value={formData.specialization}
                           onChange={handleInputChange}
-                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${
-                            errors.specialization ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                          }`}
+                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${errors.specialization ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                            }`}
                           placeholder={isRTL ? 'أدخل التخصص' : 'Entrez la spécialisation'}
                         />
                         {errors.specialization && (

@@ -6,19 +6,20 @@ import { useAuth } from '../hooks/useAuth';
 import { useLanguage } from '../hooks/useLanguage';
 import { useTheme } from '../hooks/useTheme';
 import api from '../services/api';
+import { useDialogContext } from '../contexts/DialogContext';
 import { useProfileImage } from '../hooks/useProfileImage';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import toast from 'react-hot-toast';
 
 const UnifiedProfilePage = () => {
   const { user, updateUser } = useAuth();
   const { isRTL } = useLanguage();
+  const dialog = useDialogContext();
   const { isDark } = useTheme();
   const { getImageUrl, hasImage, refreshImage } = useProfileImage();
   const navigate = useNavigate();
-  
+
   const [loading, setLoading] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [showPasswordSection, setShowPasswordSection] = useState(false);
@@ -54,24 +55,24 @@ const UnifiedProfilePage = () => {
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    
+
     // Validation de la taille du fichier (5MB max)
     if (file.size > 5 * 1024 * 1024) {
-      toast.error(isRTL ? 'الملف كبير جداً (5 ميجا كحد أقصى)' : 'Fichier trop volumineux (5MB max)');
+      dialog.error(isRTL ? 'الملف كبير جداً (5 ميجا كحد أقصى)' : 'Fichier trop volumineux (5MB max)');
       return;
     }
-    
+
     // Validation du type de fichier
     if (!file.type.startsWith('image/')) {
-      toast.error(isRTL ? 'يجب أن يكون الملف صورة' : 'Le fichier doit être une image');
+      dialog.error(isRTL ? 'يجب أن يكون الملف صورة' : 'Le fichier doit être une image');
       return;
     }
-    
+
     try {
       setLoading(true);
       const uploadFormData = new FormData();
       uploadFormData.append('image', file);
-      
+
       console.log('📤 Upload - Fichier:', file);
       console.log('📤 Upload - FormData entries:', Array.from(uploadFormData.entries()));
 
@@ -84,13 +85,13 @@ const UnifiedProfilePage = () => {
         updateUser(response.data.user);
         // Forcer le rechargement de l'image
         refreshImage();
-        toast.success(isRTL ? 'تم تحديث الصورة بنجاح' : 'Photo mise à jour avec succès');
+        dialog.success(isRTL ? 'تم تحديث الصورة بنجاح' : 'Photo mise à jour avec succès');
       }
     } catch (error) {
       console.error('Erreur upload:', error);
-      const errorMessage = error.response?.data?.error || 
-        (isRTL ? 'خطأ في تحميل الصورة' : 'Erreur lors de l\'upload');
-      toast.error(errorMessage);
+      const errorMessage = error.response?.data?.error ||
+        (isRTL ? 'خطأ في تحميل البيانات' : 'Erreur lors du chargement des données');
+      dialog.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -99,88 +100,83 @@ const UnifiedProfilePage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!editMode && !showPasswordSection) return;
-    
+
     // Validation des mots de passe
     if (showPasswordSection) {
       if (!formData.current_password) {
-        toast.error(isRTL ? 'كلمة المرور الحالية مطلوبة' : 'Mot de passe actuel requis');
+        dialog.error(isRTL ? 'كلمة المرور الحالية مطلوبة' : 'Mot de passe actuel requis');
         return;
       }
-      
+
       if (!formData.new_password) {
-        toast.error(isRTL ? 'كلمة المرور الجديدة مطلوبة' : 'Nouveau mot de passe requis');
+        dialog.error(isRTL ? 'كلمة المرور الجديدة مطلوبة' : 'Nouveau mot de passe requis');
         return;
       }
-      
+
       if (formData.new_password.length < 6) {
-        toast.error(isRTL ? 'كلمة المرور يجب أن تحتوي على 6 أحرف على الأقل' : 'Le mot de passe doit contenir au moins 6 caractères');
+        dialog.error(isRTL ? 'كلمة المرور يجب أن تحتوي على 6 أحرف على الأقل' : 'Le mot de passe doit contenir au moins 6 caractères');
         return;
       }
-      
+
       if (formData.new_password !== formData.confirm_password) {
-        toast.error(isRTL ? 'كلمات المرور غير متطابقة' : 'Les mots de passe ne correspondent pas');
+        dialog.error(isRTL ? 'كلمات المرور غير متطابقة' : 'Les mots de passe ne correspondent pas');
         return;
       }
     }
-    
+
     // Validation des champs obligatoires
     if (editMode) {
-      if (!formData.first_name || !formData.last_name) {
-        toast.error(isRTL ? 'الاسم الأول والأخير مطلوبان' : 'Prénom et nom requis');
-        return;
-      }
-      
-      if (!formData.email) {
-        toast.error(isRTL ? 'البريد الإلكتروني مطلوب' : 'Email requis');
+      if (!formData.first_name || !formData.last_name || !formData.email) {
+        dialog.error(isRTL ? 'يرجى ملء جميع الحقول المطلوبة' : 'Veuillez remplir tous les champs requis');
         return;
       }
     }
-    
+
     setLoading(true);
     try {
       // Préparer les données à envoyer (seulement les champs non vides)
       const dataToSend = {};
-      
+
       if (editMode) {
         if (formData.first_name) dataToSend.first_name = formData.first_name;
         if (formData.last_name) dataToSend.last_name = formData.last_name;
         if (formData.email) dataToSend.email = formData.email;
         if (formData.phone) dataToSend.phone = formData.phone;
       }
-      
+
       if (showPasswordSection) {
         if (formData.current_password) dataToSend.current_password = formData.current_password;
         if (formData.new_password) dataToSend.new_password = formData.new_password;
         if (formData.confirm_password) dataToSend.confirm_password = formData.confirm_password;
       }
-      
+
       console.log('📝 Données envoyées:', dataToSend);
-      
+
       const response = await api.put('/api/profile', dataToSend);
       if (response.data.success) {
         // Mettre à jour l'utilisateur dans le contexte
         updateUser(response.data.user);
-        
+
         // Réinitialiser les champs de mot de passe
-        setFormData(prev => ({ 
-          ...prev, 
-          current_password: '', 
-          new_password: '', 
-          confirm_password: '' 
+        setFormData(prev => ({
+          ...prev,
+          current_password: '',
+          new_password: '',
+          confirm_password: ''
         }));
-        
+
         // Désactiver les modes d'édition
         setEditMode(false);
         setShowPasswordSection(false);
-        
+
         // Message de succès
-        toast.success(isRTL ? 'تم تحديث الملف الشخصي بنجاح' : 'Profil mis à jour avec succès');
+        dialog.success(isRTL ? 'تم تحديث الملف الشخصي بنجاح' : 'Profil mis à jour avec succès');
       }
     } catch (error) {
       console.error('Erreur mise à jour profil:', error);
-      const errorMessage = error.response?.data?.error || 
+      const errorMessage = error.response?.data?.error ||
         (isRTL ? 'خطأ في تحديث الملف الشخصي' : 'Erreur lors de la mise à jour du profil');
-      toast.error(errorMessage);
+      dialog.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -202,7 +198,7 @@ const UnifiedProfilePage = () => {
             <ArrowLeft className={`w-4 h-4 ${isRTL ? 'rotate-180' : ''}`} />
             {isRTL ? 'رجوع' : 'Retour'}
           </Button>
-          
+
           <div className="text-center">
             <h1 className={`text-3xl font-bold mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
               {isRTL ? 'الملف الشخصي' : 'Mon Profil'}
@@ -228,13 +224,13 @@ const UnifiedProfilePage = () => {
                     <User className="w-16 h-16 text-gray-400" />
                   )}
                 </div>
-                
+
                 <label className="absolute bottom-0 right-0 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full cursor-pointer transition-colors">
                   <Upload className="w-4 h-4" />
                   <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
                 </label>
               </div>
-              
+
               <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
                 {user?.first_name} {user?.last_name}
               </h3>
@@ -242,8 +238,8 @@ const UnifiedProfilePage = () => {
                 <Shield className="w-4 h-4 text-blue-600" />
                 <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                   {user?.role === 'admin' ? (isRTL ? 'مدير' : 'Administrateur') :
-                   user?.role === 'staff' ? (isRTL ? 'موظف' : 'Personnel') :
-                   (isRTL ? 'ولي أمر' : 'Parent')}
+                    user?.role === 'staff' ? (isRTL ? 'موظف' : 'Personnel') :
+                      (isRTL ? 'ولي أمر' : 'Parent')}
                 </span>
               </div>
             </CardContent>
@@ -258,7 +254,7 @@ const UnifiedProfilePage = () => {
                     <User className="w-5 h-5" />
                     {isRTL ? 'المعلومات الشخصية' : 'Informations personnelles'}
                   </CardTitle>
-                  
+
                   {!editMode && !showPasswordSection && (
                     <Button variant="outline" size="sm" onClick={() => setEditMode(true)} className="flex items-center gap-2">
                       <Edit3 className="w-4 h-4" />
@@ -267,7 +263,7 @@ const UnifiedProfilePage = () => {
                   )}
                 </div>
               </CardHeader>
-              
+
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -284,7 +280,7 @@ const UnifiedProfilePage = () => {
                         className={`w-full px-4 py-2 border rounded-lg ${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'} ${!editMode ? 'opacity-60' : ''}`}
                       />
                     </div>
-                    
+
                     <div>
                       <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                         {isRTL ? 'اسم العائلة' : 'Nom'}
@@ -298,7 +294,7 @@ const UnifiedProfilePage = () => {
                         className={`w-full px-4 py-2 border rounded-lg ${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'} ${!editMode ? 'opacity-60' : ''}`}
                       />
                     </div>
-                    
+
                     <div>
                       <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                         {isRTL ? 'البريد الإلكتروني' : 'Email'}
@@ -312,7 +308,7 @@ const UnifiedProfilePage = () => {
                         className={`w-full px-4 py-2 border rounded-lg ${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'} ${!editMode ? 'opacity-60' : ''}`}
                       />
                     </div>
-                    
+
                     <div>
                       <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                         {isRTL ? 'رقم الهاتف' : 'Téléphone'}
@@ -346,7 +342,7 @@ const UnifiedProfilePage = () => {
                       <h3 className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
                         {isRTL ? 'تغيير كلمة المرور' : 'Changer le mot de passe'}
                       </h3>
-                      
+
                       <div>
                         <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                           {isRTL ? 'كلمة المرور الحالية' : 'Mot de passe actuel'}
@@ -359,7 +355,7 @@ const UnifiedProfilePage = () => {
                           className={`w-full px-4 py-2 border rounded-lg ${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
                         />
                       </div>
-                      
+
                       <div>
                         <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                           {isRTL ? 'كلمة المرور الجديدة' : 'Nouveau mot de passe'}
@@ -372,7 +368,7 @@ const UnifiedProfilePage = () => {
                           className={`w-full px-4 py-2 border rounded-lg ${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
                         />
                       </div>
-                      
+
                       <div>
                         <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                           {isRTL ? 'تأكيد كلمة المرور' : 'Confirmer le mot de passe'}
@@ -395,7 +391,7 @@ const UnifiedProfilePage = () => {
                         <Save className="w-4 h-4" />
                         {isRTL ? 'حفظ' : 'Sauvegarder'}
                       </Button>
-                      
+
                       <Button
                         type="button"
                         variant="outline"

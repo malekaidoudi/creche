@@ -5,14 +5,15 @@ import { motion } from 'framer-motion';
 import { Eye, EyeOff, Mail, Lock, User, Phone, UserPlus } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
+import { useDialogContext } from '../../contexts/DialogContext';
 import { Button } from '../../components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import toast from 'react-hot-toast';
 
 const RegisterPage = () => {
   const { isRTL } = useLanguage();
   const { register: registerUser, loading, error, clearError, isAuthenticated, user } = useAuth();
+  const dialog = useDialogContext();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -32,13 +33,13 @@ const RegisterPage = () => {
     try {
       const { confirmPassword, ...userData } = data;
       await registerUser(userData);
-      toast.success(isRTL ? 'تم إنشاء الحساب بنجاح' : 'Compte créé avec succès');
+      dialog.success(isRTL ? 'تم إنشاء الحساب بنجاح' : 'Compte créé avec succès');
       // Redirection manuelle après inscription réussie
       setTimeout(() => {
         navigate('/', { replace: true });
       }, 1000);
     } catch (error) {
-      toast.error(error.response?.data?.error || (isRTL ? 'خطأ في إنشاء الحساب' : 'Erreur lors de la création du compte'));
+      dialog.error(error.response?.data?.error || (isRTL ? 'خطأ في إنشاء الحساب' : 'Erreur lors de la création du compte'));
     }
   };
 
@@ -65,7 +66,7 @@ const RegisterPage = () => {
               {isRTL ? 'إنشاء حساب' : 'Créer un compte'}
             </CardTitle>
             <CardDescription className="text-gray-600 dark:text-gray-300">
-              {isRTL 
+              {isRTL
                 ? 'املأ المعلومات أدناه لإنشاء حساب جديد'
                 : 'Remplissez les informations ci-dessous pour créer votre compte'
               }
@@ -84,16 +85,15 @@ const RegisterPage = () => {
                     <User className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                     <input
                       type="text"
-                      {...register('first_name', { 
+                      {...register('first_name', {
                         required: isRTL ? 'الاسم الأول مطلوب' : 'Prénom requis',
                         minLength: {
                           value: 2,
                           message: isRTL ? 'الاسم قصير جداً' : 'Prénom trop court'
                         }
                       })}
-                      className={`w-full pl-10 rtl:pl-4 rtl:pr-10 pr-4 py-3 border rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${
-                        errors.first_name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                      }`}
+                      className={`w-full pl-10 rtl:pl-4 rtl:pr-10 pr-4 py-3 border rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${errors.first_name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                        }`}
                       placeholder={isRTL ? 'الاسم الأول' : 'Prénom'}
                     />
                   </div>
@@ -110,16 +110,15 @@ const RegisterPage = () => {
                     <User className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                     <input
                       type="text"
-                      {...register('last_name', { 
+                      {...register('last_name', {
                         required: isRTL ? 'اسم العائلة مطلوب' : 'Nom requis',
                         minLength: {
                           value: 2,
                           message: isRTL ? 'الاسم قصير جداً' : 'Nom trop court'
                         }
                       })}
-                      className={`w-full pl-10 rtl:pl-4 rtl:pr-10 pr-4 py-3 border rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${
-                        errors.last_name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                      }`}
+                      className={`w-full pl-10 rtl:pl-4 rtl:pr-10 pr-4 py-3 border rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${errors.last_name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                        }`}
                       placeholder={isRTL ? 'اسم العائلة' : 'Nom'}
                     />
                   </div>
@@ -138,16 +137,15 @@ const RegisterPage = () => {
                   <Mail className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                   <input
                     type="email"
-                    {...register('email', { 
+                    {...register('email', {
                       required: isRTL ? 'البريد الإلكتروني مطلوب' : 'Email requis',
                       pattern: {
                         value: /^\S+@\S+$/i,
                         message: isRTL ? 'بريد إلكتروني غير صحيح' : 'Email invalide'
                       }
                     })}
-                    className={`w-full pl-10 rtl:pl-4 rtl:pr-10 pr-4 py-3 border rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${
-                      errors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}
+                    className={`w-full pl-10 rtl:pl-4 rtl:pr-10 pr-4 py-3 border rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${errors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                      }`}
                     placeholder={isRTL ? 'أدخل بريدك الإلكتروني' : 'Entrez votre email'}
                   />
                 </div>
@@ -181,16 +179,15 @@ const RegisterPage = () => {
                   <Lock className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                   <input
                     type={showPassword ? 'text' : 'password'}
-                    {...register('password', { 
+                    {...register('password', {
                       required: isRTL ? 'كلمة المرور مطلوبة' : 'Mot de passe requis',
                       minLength: {
                         value: 6,
                         message: isRTL ? 'كلمة المرور قصيرة جداً (6 أحرف على الأقل)' : 'Mot de passe trop court (6 caractères minimum)'
                       }
                     })}
-                    className={`w-full pl-10 rtl:pl-4 rtl:pr-12 pr-12 py-3 border rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${
-                      errors.password ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}
+                    className={`w-full pl-10 rtl:pl-4 rtl:pr-12 pr-12 py-3 border rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${errors.password ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                      }`}
                     placeholder={isRTL ? 'أدخل كلمة المرور' : 'Entrez votre mot de passe'}
                   />
                   <button
@@ -215,13 +212,12 @@ const RegisterPage = () => {
                   <Lock className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                   <input
                     type={showConfirmPassword ? 'text' : 'password'}
-                    {...register('confirmPassword', { 
+                    {...register('confirmPassword', {
                       required: isRTL ? 'تأكيد كلمة المرور مطلوب' : 'Confirmation du mot de passe requise',
                       validate: value => value === password || (isRTL ? 'كلمات المرور غير متطابقة' : 'Les mots de passe ne correspondent pas')
                     })}
-                    className={`w-full pl-10 rtl:pl-4 rtl:pr-12 pr-12 py-3 border rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${
-                      errors.confirmPassword ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                    }`}
+                    className={`w-full pl-10 rtl:pl-4 rtl:pr-12 pr-12 py-3 border rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${errors.confirmPassword ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                      }`}
                     placeholder={isRTL ? 'أعد إدخال كلمة المرور' : 'Confirmez votre mot de passe'}
                   />
                   <button

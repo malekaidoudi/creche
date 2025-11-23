@@ -97,7 +97,7 @@ const frTranslations = {
     passwordsNotMatch: 'Les mots de passe ne correspondent pas'
   },
   roles: {
-    admin: 'Administrateur',
+    admin: 'Directeur',
     staff: 'Personnel',
     parent: 'Parent'
   },

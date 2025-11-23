@@ -22,7 +22,7 @@ export default function AnnouncementsPage() {
       const token = localStorage.getItem('token');
       // Parents utilisent /my, admin/staff utilisent la route normale
       const endpoint = user?.role === 'parent' ? '/announcements/my' : '/announcements';
-      
+
       const response = await axios.get(`${API_URL}${endpoint}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -103,7 +103,7 @@ export default function AnnouncementsPage() {
             <span>Retour à Mon Espace</span>
           </button>
         )}
-        
+
         <div className="flex items-center gap-3 mb-2">
           <Megaphone className="w-8 h-8 text-blue-600" />
           <h1 className="text-3xl font-bold text-gray-900">Annonces</h1>
@@ -114,54 +114,51 @@ export default function AnnouncementsPage() {
       </div>
 
       {/* Filtres */}
-      <div className="flex flex-wrap gap-2 mb-6">
+      <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 mb-6">
         <button
           onClick={() => setFilter('all')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            filter === 'all'
+          className={`px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors text-xs sm:text-sm ${filter === 'all'
               ? 'bg-blue-600 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+            }`}
         >
           Toutes ({announcements.length})
         </button>
         <button
           onClick={() => setFilter('general')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            filter === 'general'
+          className={`px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors text-xs sm:text-sm ${filter === 'general'
               ? 'bg-blue-600 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+            }`}
         >
-          Informations ({announcements.filter(a => a.event_type === 'general').length})
+          <span className="hidden sm:inline">Informations</span>
+          <span className="sm:hidden">Info</span> ({announcements.filter(a => a.event_type === 'general').length})
         </button>
         <button
           onClick={() => setFilter('urgent')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            filter === 'urgent'
+          className={`px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors text-xs sm:text-sm ${filter === 'urgent'
               ? 'bg-blue-600 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+            }`}
         >
           Urgent ({announcements.filter(a => a.event_type === 'urgent').length})
         </button>
         <button
           onClick={() => setFilter('meeting')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            filter === 'meeting'
+          className={`px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors text-xs sm:text-sm ${filter === 'meeting'
               ? 'bg-blue-600 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+            }`}
         >
-          Réunions ({announcements.filter(a => a.event_type === 'meeting').length})
+          <span className="hidden sm:inline">Réunions</span>
+          <span className="sm:hidden">RDV</span> ({announcements.filter(a => a.event_type === 'meeting').length})
         </button>
         <button
           onClick={() => setFilter('event')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            filter === 'event'
+          className={`px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors text-xs sm:text-sm col-span-2 sm:col-span-1 ${filter === 'event'
               ? 'bg-blue-600 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+            }`}
         >
           Événements ({announcements.filter(a => a.event_type === 'event').length})
         </button>

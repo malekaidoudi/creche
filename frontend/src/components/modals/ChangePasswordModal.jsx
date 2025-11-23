@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Eye, EyeOff, Lock, Save } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
-import toast from 'react-hot-toast';
+import { useDialogContext } from '../../contexts/DialogContext';
 
 const ChangePasswordModal = ({ isOpen, onClose, onSuccess }) => {
   const { isRTL } = useLanguage();
+  const dialog = useDialogContext();
   const [formData, setFormData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -34,42 +35,42 @@ const ChangePasswordModal = ({ isOpen, onClose, onSuccess }) => {
 
   const validateForm = () => {
     if (!formData.currentPassword) {
-      toast.error(isRTL ? 'كلمة المرور الحالية مطلوبة' : 'Mot de passe actuel requis');
+      dialog.error(isRTL ? 'كلمة المرور الحالية مطلوبة' : 'Mot de passe actuel requis');
       return false;
     }
-    
+
     if (!formData.newPassword) {
-      toast.error(isRTL ? 'كلمة المرور الجديدة مطلوبة' : 'Nouveau mot de passe requis');
+      dialog.error(isRTL ? 'كلمة المرور الجديدة مطلوبة' : 'Nouveau mot de passe requis');
       return false;
     }
-    
+
     if (formData.newPassword.length < 6) {
-      toast.error(isRTL ? 'كلمة المرور يجب أن تحتوي على 6 أحرف على الأقل' : 'Le mot de passe doit contenir au moins 6 caractères');
+      dialog.error(isRTL ? 'كلمة المرور يجب أن تحتوي على 6 أحرف على الأقل' : 'Le mot de passe doit contenir au moins 6 caractères');
       return false;
     }
-    
+
     if (formData.newPassword !== formData.confirmPassword) {
-      toast.error(isRTL ? 'كلمات المرور الجديدة غير متطابقة' : 'Les nouveaux mots de passe ne correspondent pas');
+      dialog.error(isRTL ? 'كلمات المرور الجديدة غير متطابقة' : 'Les nouveaux mots de passe ne correspondent pas');
       return false;
     }
-    
+
     if (formData.currentPassword === formData.newPassword) {
-      toast.error(isRTL ? 'كلمة المرور الجديدة يجب أن تكون مختلفة عن الحالية' : 'Le nouveau mot de passe doit être différent de l\'actuel');
+      dialog.error(isRTL ? 'كلمة المرور الجديدة يجب أن تكون مختلفة عن الحالية' : 'Le nouveau mot de passe doit être différent de l\'actuel');
       return false;
     }
-    
+
     return true;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
-    
+
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      
+
       const response = await fetch('/api/profile/change-password', {
         method: 'PUT',
         headers: {
@@ -78,11 +79,11 @@ const ChangePasswordModal = ({ isOpen, onClose, onSuccess }) => {
         },
         body: JSON.stringify(formData)
       });
-      
+
       const result = await response.json();
-      
+
       if (result.success) {
-        toast.success(isRTL ? 'تم تغيير كلمة المرور بنجاح' : 'Mot de passe changé avec succès');
+        dialog.success(isRTL ? 'تم تغيير كلمة المرور بنجاح' : 'Mot de passe changé avec succès');
         setFormData({
           currentPassword: '',
           newPassword: '',
@@ -91,11 +92,11 @@ const ChangePasswordModal = ({ isOpen, onClose, onSuccess }) => {
         onSuccess && onSuccess();
         onClose();
       } else {
-        toast.error(result.error || (isRTL ? 'خطأ في تغيير كلمة المرور' : 'Erreur lors du changement de mot de passe'));
+        dialog.error(result.error || (isRTL ? 'خطأ في تغيير كلمة المرور' : 'Erreur lors du changement de mot de passe'));
       }
     } catch (error) {
       console.error('Erreur changement mot de passe:', error);
-      toast.error(isRTL ? 'خطأ في الاتصال بالخادم' : 'Erreur de connexion au serveur');
+      dialog.error(error.response?.data?.message || (isRTL ? 'خطأ في الاتصال بالخادم' : 'Erreur de connexion au serveur'));
     } finally {
       setLoading(false);
     }
@@ -237,8 +238,8 @@ const ChangePasswordModal = ({ isOpen, onClose, onSuccess }) => {
                 ) : (
                   <Save className="w-4 h-4" />
                 )}
-                {loading 
-                  ? (isRTL ? 'جاري التغيير...' : 'Changement...') 
+                {loading
+                  ? (isRTL ? 'جاري التغيير...' : 'Changement...')
                   : (isRTL ? 'تغيير كلمة المرور' : 'Changer le mot de passe')
                 }
               </button>

@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Calendar, AlertCircle, Save } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
-import toast from 'react-hot-toast';
+import { useDialogContext } from '../../contexts/DialogContext';
 
 const ReportAbsenceModal = ({ isOpen, onClose, onSuccess, children = [] }) => {
   const { isRTL } = useLanguage();
+  const dialog = useDialogContext();
   const [formData, setFormData] = useState({
     child_id: '',
     absence_date: '',
@@ -42,38 +43,38 @@ const ReportAbsenceModal = ({ isOpen, onClose, onSuccess, children = [] }) => {
 
   const validateForm = () => {
     if (!formData.child_id) {
-      toast.error(isRTL ? 'يرجى اختيار طفل' : 'Veuillez sélectionner un enfant');
+      dialog.error(isRTL ? 'يرجى اختيار طفل' : 'Veuillez sélectionner un enfant');
       return false;
     }
-    
+
     if (!formData.absence_date) {
-      toast.error(isRTL ? 'يرجى اختيار تاريخ الغياب' : 'Veuillez sélectionner la date d\'absence');
+      dialog.error(isRTL ? 'يرجى اختيار تاريخ الغياب' : 'Veuillez sélectionner la date d\'absence');
       return false;
     }
-    
+
     // Vérifier que la date n'est pas dans le passé (sauf aujourd'hui)
     const today = new Date();
     const selectedDate = new Date(formData.absence_date);
     today.setHours(0, 0, 0, 0);
     selectedDate.setHours(0, 0, 0, 0);
-    
+
     if (selectedDate < today) {
-      toast.error(isRTL ? 'لا يمكن الإبلاغ عن غياب في الماضي' : 'Impossible de signaler une absence dans le passé');
+      dialog.error(isRTL ? 'لا يمكن الإبلاغ عن غياب في الماضي' : 'Impossible de signaler une absence dans le passé');
       return false;
     }
-    
+
     return true;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
-    
+
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      
+
       const response = await fetch('/api/absences/report', {
         method: 'POST',
         headers: {
@@ -82,11 +83,11 @@ const ReportAbsenceModal = ({ isOpen, onClose, onSuccess, children = [] }) => {
         },
         body: JSON.stringify(formData)
       });
-      
+
       const result = await response.json();
-      
+
       if (result.success) {
-        toast.success(isRTL ? 'تم الإبلاغ عن الغياب بنجاح' : 'Absence signalée avec succès');
+        dialog.success(isRTL ? 'تم الإبلاغ عن الغياب بنجاح' : 'Absence signalée avec succès');
         setFormData({
           child_id: children.length > 0 ? children[0].id : '',
           absence_date: '',
@@ -96,11 +97,11 @@ const ReportAbsenceModal = ({ isOpen, onClose, onSuccess, children = [] }) => {
         onSuccess && onSuccess(result.absence);
         onClose();
       } else {
-        toast.error(result.error || (isRTL ? 'خطأ في الإبلاغ عن الغياب' : 'Erreur lors du signalement'));
+        dialog.error(result.error || (isRTL ? 'خطأ في الإبلاغ عن الغياب' : 'Erreur lors du signalement'));
       }
     } catch (error) {
       console.error('Erreur signalement absence:', error);
-      toast.error(isRTL ? 'خطأ في الاتصال بالخادم' : 'Erreur de connexion au serveur');
+      dialog.error(isRTL ? 'خطأ في الاتصال بالخادم' : 'Erreur de connexion au serveur');
     } finally {
       setLoading(false);
     }
@@ -232,8 +233,8 @@ const ReportAbsenceModal = ({ isOpen, onClose, onSuccess, children = [] }) => {
                 ) : (
                   <Save className="w-4 h-4" />
                 )}
-                {loading 
-                  ? (isRTL ? 'جاري الإبلاغ...' : 'Signalement...') 
+                {loading
+                  ? (isRTL ? 'جاري الإبلاغ...' : 'Signalement...')
                   : (isRTL ? 'إبلاغ عن الغياب' : 'Signaler l\'absence')
                 }
               </button>

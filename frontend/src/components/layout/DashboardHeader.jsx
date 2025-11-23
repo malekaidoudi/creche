@@ -90,11 +90,11 @@ const DashboardHeader = ({ onMenuClick }) => {
           </div>
 
           {/* Actions */}
-          <div className="flex items-center space-x-4 rtl:space-x-reverse">
+          <div className="flex items-center space-x-2 sm:space-x-4 rtl:space-x-reverse">
             {/* Lien retour au site */}
             <Link
               to="/"
-              className="flex items-center px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+              className="hidden sm:flex items-center px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
               title={isRTL ? 'العودة إلى الموقع' : 'Retour au site'}
             >
               <Home className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
@@ -102,11 +102,11 @@ const DashboardHeader = ({ onMenuClick }) => {
                 {isRTL ? 'الموقع' : 'Site'}
               </span>
             </Link>
-            {/* Notifications - Visible seulement pour admin/staff */}
+            {/* Notifications - Visible seulement pour admin/staff - Masqué sur mobile ≤1024px */}
             {(user?.role === 'admin' || user?.role === 'staff') && (
               <button
                 onClick={() => setNotificationOpen(true)}
-                className="p-2 text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 relative transition-colors"
+                className="hidden lg:block p-2 text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 relative transition-colors"
               >
                 <Bell className="w-6 h-6" />
                 {/* Badge de notification */}
@@ -126,14 +126,15 @@ const DashboardHeader = ({ onMenuClick }) => {
             <div className="relative" ref={userMenuRef}>
               <button
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
-                className="flex items-center space-x-3 rtl:space-x-reverse p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                className="flex items-center space-x-2 sm:space-x-3 rtl:space-x-reverse p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >
-                <div className="w-8 h-8 rounded-full overflow-hidden bg-primary-100 dark:bg-primary-900 flex items-center justify-center flex-shrink-0">
+                {/* Avatar optimisé pour mobile */}
+                <div className="w-8 h-8 rounded-full overflow-hidden bg-primary-100 dark:bg-primary-900 flex items-center justify-center flex-shrink-0 ring-2 ring-white dark:ring-gray-800">
                   {hasImage() ? (
                     <img
                       src={getImageUrl()}
                       alt="Photo de profil"
-                      className="w-8 h-8 object-cover"
+                      className="w-full h-full object-cover"
                       crossOrigin="anonymous"
                       onError={(e) => {
                         console.error('❌ Erreur chargement image header:', e.target.src);
@@ -142,12 +143,13 @@ const DashboardHeader = ({ onMenuClick }) => {
                       }}
                     />
                   ) : null}
-                  <div className={`w-8 h-8 flex items-center justify-center ${hasImage() ? 'hidden' : ''}`}>
-                    <User className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                  <div className={`w-full h-full flex items-center justify-center ${hasImage() ? 'hidden' : ''}`}>
+                    <User className="w-4 h-4 sm:w-5 sm:h-5 text-primary-600 dark:text-primary-400" />
                   </div>
                 </div>
-                <div className="hidden md:block text-left rtl:text-right">
-                  <div className="text-sm font-medium text-gray-900 dark:text-white">
+                {/* Infos utilisateur - cachées sur très petits écrans */}
+                <div className="hidden md:block text-left rtl:text-right min-w-0">
+                  <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
                     {user?.first_name} {user?.last_name}
                   </div>
                   <div className="flex items-center space-x-2 rtl:space-x-reverse">
@@ -156,25 +158,13 @@ const DashboardHeader = ({ onMenuClick }) => {
                     </span>
                   </div>
                 </div>
-                <ChevronDown className="w-4 h-4 text-gray-400" />
+                <ChevronDown className="hidden sm:block w-4 h-4 text-gray-400 flex-shrink-0" />
               </button>
 
               {/* Dropdown menu */}
               {userMenuOpen && (
                 <div className="absolute right-0 rtl:right-auto rtl:left-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg ring-1 ring-black ring-opacity-5 z-50">
                   <div className="py-1">
-                    {/* Informations utilisateur */}
-                    <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                      <div className="text-left rtl:text-right">
-                        <div className="text-sm font-medium text-gray-900 dark:text-white">
-                          {user?.first_name} {user?.last_name}
-                        </div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400 truncate">
-                          {user?.email}
-                        </div>
-                      </div>
-                    </div>
-
                     {/* Menu items */}
                     <Link
                       to="/profile"

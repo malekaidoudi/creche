@@ -2,41 +2,42 @@ import { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Upload, CheckCircle } from 'lucide-react';
-import { toast } from 'react-hot-toast';
-import api from '../../services/api';
 import { useLanguage } from '../../hooks/useLanguage';
+import api from '../../services/api';
+import { useDialogContext } from '../../contexts/DialogContext';
 
 export default function UploadDocumentsPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { isRTL } = useLanguage();
-  
+  const dialog = useDialogContext();
+
   const enrollmentId = searchParams.get('enrollment');
   const [files, setFiles] = useState({});
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    
+
     try {
       const formData = new FormData();
       Object.entries(files).forEach(([key, file]) => {
         if (file) formData.append(key, file);
       });
-      
+
       await api.post(`/api/enrollments/${enrollmentId}/documents`, formData);
       setSuccess(true);
-      toast.success('Documents téléchargés !');
+      dialog.success('Documents téléchargés !');
       setTimeout(() => navigate('/'), 3000);
     } catch (error) {
-      toast.error('Erreur lors du téléchargement');
+      dialog.error('Erreur lors du téléchargement');
     } finally {
       setLoading(false);
     }
   };
-  
+
   if (success) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -47,7 +48,7 @@ export default function UploadDocumentsPage() {
       </div>
     );
   }
-  
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 px-4">
       <div className="max-w-2xl mx-auto bg-white dark:bg-gray-800 rounded-xl p-8">
@@ -58,7 +59,7 @@ export default function UploadDocumentsPage() {
               <label className="block mb-2 font-medium">{key.replace('_', ' ')}</label>
               <input
                 type="file"
-                onChange={(e) => setFiles({...files, [key]: e.target.files[0]})}
+                onChange={(e) => setFiles({ ...files, [key]: e.target.files[0] })}
                 className="w-full"
               />
             </div>

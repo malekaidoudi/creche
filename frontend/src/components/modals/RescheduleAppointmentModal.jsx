@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Calendar, Clock } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useDialogContext } from '../../contexts/DialogContext';
 import api from '../../services/api';
-import toast from 'react-hot-toast';
+import DatePicker from '../ui/DatePicker';
+import { convertToISO, convertFromISO } from '../../utils/dateUtils';
 
 const RescheduleAppointmentModal = ({ isOpen, onClose, appointment, onSuccess }) => {
   const { isRTL } = useLanguage();
+  const dialog = useDialogContext();
   const [formData, setFormData] = useState({
     new_date: '',
     new_time: ''
@@ -20,7 +23,7 @@ const RescheduleAppointmentModal = ({ isOpen, onClose, appointment, onSuccess })
       const dateStr = date.toISOString().split('T')[0];
       const timeStr = date.toTimeString().slice(0, 5);
       setFormData({
-        new_date: dateStr,
+        new_date: convertFromISO(dateStr),
         new_time: timeStr
       });
     }
@@ -29,7 +32,7 @@ const RescheduleAppointmentModal = ({ isOpen, onClose, appointment, onSuccess })
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    
+
     if (!formData.new_date || !formData.new_time) {
       setError(isRTL ? 'يرجى ملء جميع الحقول' : 'Veuillez remplir tous les champs');
       return;
@@ -37,16 +40,17 @@ const RescheduleAppointmentModal = ({ isOpen, onClose, appointment, onSuccess })
 
     try {
       setLoading(true);
-      
+
       // Combiner date et heure
-      const newDateTime = `${formData.new_date}T${formData.new_time}:00`;
-      
+      const isoDate = convertToISO(formData.new_date);
+      const newDateTime = `${isoDate}T${formData.new_time}:00`;
+
       const response = await api.patch(`/api/appointments/${appointment.id}/reschedule`, {
         new_date: newDateTime
       });
 
       if (response.data.success) {
-        toast.success(isRTL ? 'تم إرسال الاقتراح بنجاح' : 'Nouvelle date proposée avec succès');
+        dialog.success(isRTL ? 'تم إرسال الاقتراح بنجاح' : 'Rendez-vous reporté avec succès');
         onSuccess?.();
         handleClose();
       } else {
@@ -54,7 +58,7 @@ const RescheduleAppointmentModal = ({ isOpen, onClose, appointment, onSuccess })
       }
     } catch (error) {
       console.error('Erreur proposition date:', error);
-      setError(error.response?.data?.error || (isRTL ? 'حدث خطأ' : 'Erreur lors de la proposition'));
+      dialog.error(isRTL ? 'حدث خطأ' : 'Erreur lors de la proposition');
     } finally {
       setLoading(false);
     }
@@ -72,7 +76,7 @@ const RescheduleAppointmentModal = ({ isOpen, onClose, appointment, onSuccess })
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
         {/* Overlay */}
-        <div 
+        <div
           className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-75"
           onClick={handleClose}
         ></div>
@@ -80,19 +84,19 @@ const RescheduleAppointmentModal = ({ isOpen, onClose, appointment, onSuccess })
         {/* Modal */}
         <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
           {/* Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-white/20 rounded-lg">
-                  <Calendar className="w-5 h-5 text-white" />
+          <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 sm:px-6 py-4">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                <div className="p-2 bg-white/20 rounded-lg shrink-0">
+                  <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                 </div>
-                <h3 className="text-lg font-semibold text-white">
+                <h3 className="text-sm sm:text-lg font-semibold text-white leading-tight break-words">
                   {isRTL ? 'اقتراح تاريخ آخر' : 'Proposer une autre date'}
                 </h3>
               </div>
               <button
                 onClick={handleClose}
-                className="text-white hover:bg-white/20 rounded-lg p-1 transition-colors"
+                className="text-white hover:bg-white/20 rounded-lg p-1 transition-colors shrink-0"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -130,20 +134,12 @@ const RescheduleAppointmentModal = ({ isOpen, onClose, appointment, onSuccess })
 
             <div className="space-y-4">
               {/* Nouvelle date */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  <Calendar className="w-4 h-4 inline mr-1" />
-                  {isRTL ? 'التاريخ الجديد' : 'Nouvelle date'} <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="date"
-                  value={formData.new_date}
-                  onChange={(e) => setFormData({ ...formData, new_date: e.target.value })}
-                  min={new Date().toISOString().split('T')[0]}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                  required
-                />
-              </div>
+              <DatePicker
+                label={isRTL ? 'التاريخ الجديد' : 'Nouvelle date'}
+                required
+                value={formData.new_date}
+                onChange={(value) => setFormData({ ...formData, new_date: value })}
+              />
 
               {/* Nouvelle heure */}
               <div>
@@ -162,7 +158,7 @@ const RescheduleAppointmentModal = ({ isOpen, onClose, appointment, onSuccess })
 
               <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
                 <p className="text-sm text-yellow-800 dark:text-yellow-300">
-                  {isRTL 
+                  {isRTL
                     ? 'سيتم إعلام الإدارة بالتاريخ الجديد المقترح وسيتم الرد عليك قريبًا.'
                     : 'L\'administration sera informée de votre proposition et vous répondra prochainement.'
                   }
@@ -171,7 +167,7 @@ const RescheduleAppointmentModal = ({ isOpen, onClose, appointment, onSuccess })
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
               <button
                 type="button"
                 onClick={handleClose}
@@ -183,17 +179,21 @@ const RescheduleAppointmentModal = ({ isOpen, onClose, appointment, onSuccess })
               <button
                 type="submit"
                 disabled={loading}
-                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-3 sm:px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>{isRTL ? 'جاري الإرسال...' : 'Envoi...'}</span>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0"></div>
+                    <span className="text-xs sm:text-base">
+                      {isRTL ? 'جاري الإرسال...' : 'Envoi...'}
+                    </span>
                   </>
                 ) : (
                   <>
-                    <Calendar className="w-4 h-4" />
-                    <span>{isRTL ? 'إرسال الاقتراح' : 'Envoyer la proposition'}</span>
+                    <Calendar className="w-4 h-4 shrink-0" />
+                    <span className="text-xs sm:text-base">
+                      {isRTL ? 'إرسال الاقتراح' : 'Envoyer la proposition'}
+                    </span>
                   </>
                 )}
               </button>

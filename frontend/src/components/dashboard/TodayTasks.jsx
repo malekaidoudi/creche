@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Calendar, 
-  Clock, 
+import {
+  Calendar,
+  Clock,
   Plus,
   CheckCircle2,
   Circle,
@@ -15,12 +15,14 @@ import {
   Flag,
   X
 } from 'lucide-react';
-import { toast } from 'react-hot-toast';
-import api from '../../services/api';
+import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
+import api from '../../services/api';
+import { useDialogContext } from '../../contexts/DialogContext';
 
 const TodayTasks = () => {
   const { isRTL } = useLanguage();
+  const dialog = useDialogContext();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -33,7 +35,7 @@ const TodayTasks = () => {
 
   useEffect(() => {
     fetchTasks();
-    
+
     // Rafraîchir toutes les 5 minutes
     const interval = setInterval(fetchTasks, 5 * 60 * 1000);
     return () => clearInterval(interval);
@@ -47,6 +49,7 @@ const TodayTasks = () => {
       }
     } catch (error) {
       console.error('Erreur chargement tâches:', error);
+      dialog.error(isRTL ? 'خطأ في تحميل المهام' : 'Erreur lors du chargement des tâches');
     } finally {
       setLoading(false);
     }
@@ -54,15 +57,15 @@ const TodayTasks = () => {
 
   const handleAddTask = async (e) => {
     e.preventDefault();
-    
+
     if (!newTask.title.trim()) {
-      toast.error(isRTL ? 'العنوان مطلوب' : 'Le titre est obligatoire');
+      dialog.error(isRTL ? 'يرجى إدخال عنوان المهمة' : 'Veuillez entrer un titre');
       return;
     }
 
     try {
       const today = new Date().toISOString().split('T')[0];
-      
+
       const response = await api.post('/api/tasks', {
         title: newTask.title,
         description: newTask.description,
@@ -72,51 +75,55 @@ const TodayTasks = () => {
       });
 
       if (response.data.success) {
-        toast.success(isRTL ? 'تمت إضافة المهمة' : 'Tâche ajoutée');
+        dialog.success(isRTL ? 'تم إضافة المهمة بنجاح' : 'Tâche ajoutée avec succès');
         setShowAddModal(false);
         setNewTask({ title: '', description: '', task_time: '', priority: 'normal' });
         fetchTasks();
       }
     } catch (error) {
       console.error('Erreur ajout tâche:', error);
-      toast.error(isRTL ? 'خطأ في الإضافة' : 'Erreur lors de l\'ajout');
+      dialog.error(isRTL ? 'خطأ في إضافة المهمة' : 'Erreur lors de l\'ajout');
     }
   };
 
   const handleToggleStatus = async (task) => {
     if (task.type === 'appointment') return; // Ne pas modifier les RDV
-    
+
     const newStatus = task.status === 'completed' ? 'pending' : 'completed';
-    
+
     try {
       const response = await api.patch(`/api/tasks/${task.id}/status`, {
         status: newStatus
       });
 
       if (response.data.success) {
-        toast.success(isRTL ? 'تم التحديث' : 'Statut mis à jour');
+        dialog.success(isRTL ? 'تم التحديث' : 'Statut mis à jour');
         fetchTasks();
       }
     } catch (error) {
       console.error('Erreur mise à jour:', error);
-      toast.error(isRTL ? 'خطأ في التحديث' : 'Erreur lors de la mise à jour');
+      dialog.error(isRTL ? 'خطأ في تحميل المهام' : 'Erreur lors du chargement des tâches');
     }
   };
 
   const handleDeleteTask = async (taskId) => {
-    if (!window.confirm(isRTL ? 'هل تريد حذف هذه المهمة؟' : 'Supprimer cette tâche ?')) {
-      return;
-    }
+    const confirmed = await dialog.confirm(
+      isRTL ? 'هل أنت متأكد من حذف هذه المهمة؟' : 'Êtes-vous sûr de vouloir supprimer cette tâche ?',
+      isRTL ? 'تأكيد الحذف' : 'Confirmer la suppression',
+      { type: 'danger', confirmText: isRTL ? 'حذف' : 'Supprimer', cancelText: isRTL ? 'إلغاء' : 'Annuler' }
+    );
+
+    if (!confirmed) return;
 
     try {
       const response = await api.delete(`/api/tasks/${taskId}`);
       if (response.data.success) {
-        toast.success(isRTL ? 'تم الحذف' : 'Tâche supprimée');
+        dialog.success(isRTL ? 'تم حذف المهمة' : 'Tâche supprimée');
         fetchTasks();
       }
     } catch (error) {
       console.error('Erreur suppression:', error);
-      toast.error(isRTL ? 'خطأ في الحذف' : 'Erreur lors de la suppression');
+      dialog.error(isRTL ? 'خطأ في الحذف' : 'Erreur lors de la suppression');
     }
   };
 
@@ -163,10 +170,10 @@ const TodayTasks = () => {
               {isRTL ? 'مهام اليوم' : 'Les tâches d\'aujourd\'hui'}
             </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              {new Date().toLocaleDateString('fr-FR', { 
-                weekday: 'long', 
-                day: 'numeric', 
-                month: 'long' 
+              {new Date().toLocaleDateString('fr-FR', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long'
               })}
             </p>
           </div>
@@ -180,7 +187,7 @@ const TodayTasks = () => {
           >
             <RefreshCw className="w-5 h-5 text-gray-600 dark:text-gray-400" />
           </button>
-          
+
           <button
             onClick={() => setShowAddModal(true)}
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg"
@@ -209,9 +216,8 @@ const TodayTasks = () => {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, x: -100 }}
                 transition={{ duration: 0.3, delay: index * 0.05 }}
-                className={`bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm hover:shadow-md transition-all ${
-                  task.status === 'completed' ? 'opacity-60' : ''
-                }`}
+                className={`bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm hover:shadow-md transition-all ${task.status === 'completed' ? 'opacity-60' : ''
+                  }`}
               >
                 <div className="flex items-start gap-4">
                   {/* Checkbox / Status */}
@@ -231,9 +237,8 @@ const TodayTasks = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div className="flex-1">
-                        <h3 className={`font-semibold text-gray-900 dark:text-white ${
-                          task.status === 'completed' ? 'line-through' : ''
-                        }`}>
+                        <h3 className={`font-semibold text-gray-900 dark:text-white ${task.status === 'completed' ? 'line-through' : ''
+                          }`}>
                           {task.title}
                         </h3>
                         {task.description && (
@@ -255,11 +260,10 @@ const TodayTasks = () => {
                     {/* Badges et actions */}
                     <div className="flex items-center gap-2 flex-wrap">
                       {/* Type */}
-                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                        task.type === 'appointment' 
-                          ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
-                          : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-                      }`}>
+                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${task.type === 'appointment'
+                        ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+                        : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                        }`}>
                         {task.type === 'appointment' ? (
                           <>
                             <User className="w-3 h-3" />

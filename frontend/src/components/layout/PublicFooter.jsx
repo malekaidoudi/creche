@@ -14,18 +14,16 @@ const PublicFooter = () => {
   useEffect(() => {
     const loadNurserySettings = async () => {
       try {
-        console.log('🏢 Footer: Chargement des paramètres crèche...');
         // Utiliser directement l'URL locale pour éviter les problèmes de cache
-        const apiUrl = window.location.hostname === 'localhost' || 
-                      window.location.hostname === '127.0.0.1' || 
-                      window.location.hostname === '192.168.1.60'
-          ? 'http://localhost:3003' 
+        const apiUrl = window.location.hostname === 'localhost' ||
+          window.location.hostname === '127.0.0.1' ||
+          window.location.hostname === '192.168.1.60'
+          ? 'http://localhost:3003'
           : 'https://creche-backend.onrender.com';
-        
-        const response = await fetch(`${apiUrl}/api/contact`);
+
+        const response = await fetch(`${apiUrl}/api/contact/info`);
         const data = await response.json();
-        console.log('📋 Footer: Réponse API:', data);
-        
+
         // Adapter au format de l'API contact
         if (data && data.success && data.contact) {
           const contactData = data.contact;
@@ -37,10 +35,8 @@ const PublicFooter = () => {
             hours_formatted: { value: contactData.hours, fr: contactData.hours } // Utiliser les horaires déjà formatés
           });
         }
-        
-        console.log('✅ Footer: Paramètres chargés');
+
       } catch (error) {
-        console.warn('⚠️ Footer: API non disponible, utilisation des données de fallback');
         // En cas d'erreur, utiliser les valeurs par défaut robustes
         setNurserySettings({
           nursery_name: { value: isRTL ? 'حضانة ميما الغالية' : 'Crèche Mima Elghalia' },
@@ -77,7 +73,7 @@ const PublicFooter = () => {
       // Récupérer les horaires de semaine
       const weekdaysRaw = getSettingValue('working_hours_weekdays', '{"start": "07:00", "end": "18:00"}');
       let weekdaysFormatted = '07:00-18:00';
-      
+
       try {
         const weekdaysObj = JSON.parse(weekdaysRaw);
         weekdaysFormatted = `${weekdaysObj.start}-${weekdaysObj.end}`;
@@ -88,7 +84,7 @@ const PublicFooter = () => {
 
       // Vérifier si le samedi est ouvert
       const saturdayOpen = getSettingValue('saturday_open', 'true') === 'true';
-      
+
       if (!saturdayOpen) {
         // Samedi fermé
         if (isRTL) {
@@ -101,7 +97,7 @@ const PublicFooter = () => {
       // Samedi ouvert - récupérer les horaires
       const saturdayRaw = getSettingValue('working_hours_saturday', '{"start": "08:00", "end": "14:00"}');
       let saturdayFormatted = '08:00-14:00';
-      
+
       try {
         const saturdayObj = JSON.parse(saturdayRaw);
         saturdayFormatted = `${saturdayObj.start}-${saturdayObj.end}`;

@@ -1,11 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, Calendar, Clock, User, AlertCircle, FileText } from 'lucide-react';
 import api from '../../services/api';
-import toast from 'react-hot-toast';
+import { useDialogContext } from '../../contexts/DialogContext';
+import DatePicker from '../ui/DatePicker';
+import { convertToISO, convertFromISO } from '../../utils/dateUtils';
 
 export default function TaskModal({ isOpen, onClose, onSuccess, task = null }) {
+  const dialog = useDialogContext();
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState([]);
+  const firstInputRef = useRef(null);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -27,8 +31,8 @@ export default function TaskModal({ isOpen, onClose, onSuccess, task = null }) {
           description: task.description || '',
           priority: task.priority || 'medium',
           assigned_to: task.assigned_to || '',
-          start_date: task.start_date ? task.start_date.split('T')[0] : '',
-          end_date: task.end_date ? task.end_date.split('T')[0] : ''
+          start_date: task.start_date ? convertFromISO(task.start_date.split('T')[0]) : '',
+          end_date: task.end_date ? convertFromISO(task.end_date.split('T')[0]) : ''
         });
       } else {
         // Réinitialiser en mode création
@@ -41,6 +45,7 @@ export default function TaskModal({ isOpen, onClose, onSuccess, task = null }) {
           end_date: ''
         });
       }
+      setTimeout(() => firstInputRef.current?.focus(), 100);
     }
   }, [isOpen, task]);
 
@@ -65,12 +70,12 @@ export default function TaskModal({ isOpen, onClose, onSuccess, task = null }) {
 
     // Validation
     if (!formData.title.trim()) {
-      toast.error('Le titre est requis');
+      dialog.error('Le titre est requis');
       return;
     }
 
     if (!formData.assigned_to) {
-      toast.error('Veuillez assigner la tâche à quelqu\'un');
+      dialog.error('Veuillez assigner la tâche à quelqu\'un');
       return;
     }
 
@@ -83,8 +88,8 @@ export default function TaskModal({ isOpen, onClose, onSuccess, task = null }) {
         type: 'task',
         priority: formData.priority,
         assigned_to: parseInt(formData.assigned_to),
-        start_date: formData.start_date ? `${formData.start_date}T00:00:00` : null,
-        end_date: formData.end_date ? `${formData.end_date}T23:59:59` : null,
+        start_date: formData.start_date ? `${convertToISO(formData.start_date)}T00:00:00` : null,
+        end_date: formData.end_date ? `${convertToISO(formData.end_date)}T23:59:59` : null,
         status: task?.status || 'pending'
       };
 
@@ -98,13 +103,13 @@ export default function TaskModal({ isOpen, onClose, onSuccess, task = null }) {
       }
 
       if (response.data.success) {
-        toast.success(isEditMode ? 'Tâche modifiée avec succès' : 'Tâche créée avec succès');
+        dialog.success(isEditMode ? 'Tâche modifiée avec succès' : 'Tâche créée avec succès');
         onSuccess?.();
         onClose();
       }
     } catch (error) {
       console.error('❌ Erreur:', error);
-      toast.error(error.response?.data?.error || 'Une erreur est survenue');
+      dialog.error(error.response?.data?.error || 'Une erreur est survenue');
     } finally {
       setLoading(false);
     }
@@ -137,10 +142,11 @@ export default function TaskModal({ isOpen, onClose, onSuccess, task = null }) {
               Titre *
             </label>
             <input
+              ref={firstInputRef}
               type="text"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              placeholder="Ex: Préparer la réunion parents"
+              placeholder="Ex: Préparer la réunion, Contacter les parents..."
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
             />
@@ -201,34 +207,16 @@ export default function TaskModal({ isOpen, onClose, onSuccess, task = null }) {
 
           {/* Dates */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Date début */}
-            <div>
-              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                <Calendar className="w-4 h-4" />
-                Date de début
-              </label>
-              <input
-                type="date"
-                value={formData.start_date}
-                onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
-            {/* Date échéance */}
-            <div>
-              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                <Clock className="w-4 h-4" />
-                Date d'échéance
-              </label>
-              <input
-                type="date"
-                value={formData.end_date}
-                onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                min={formData.start_date || undefined}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
+            <DatePicker
+              label="Date de début"
+              value={formData.start_date}
+              onChange={(value) => setFormData({ ...formData, start_date: value })}
+            />
+            <DatePicker
+              label="Date d'échéance"
+              value={formData.end_date}
+              onChange={(value) => setFormData({ ...formData, end_date: value })}
+            />
           </div>
 
           {/* Actions */}

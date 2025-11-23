@@ -8,10 +8,10 @@ import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { toast } from 'react-hot-toast';
 import enrollmentsService from '../../services/enrollmentsService';
 import ApproveEnrollmentModal from '../../components/modals/ApproveEnrollmentModal';
-import { 
-  Clock, 
-  CheckCircle, 
-  XCircle, 
+import {
+  Clock,
+  CheckCircle,
+  XCircle,
   Calendar,
   User,
   Phone,
@@ -32,7 +32,7 @@ const PendingEnrollmentsPage = () => {
   const { user } = useAuth();
   const isAdmin = () => user?.role === 'admin';
   const isStaff = () => user?.role === 'staff';
-  
+
   const [loading, setLoading] = useState(true);
   const [enrollments, setEnrollments] = useState([]);
   const [actionLoading, setActionLoading] = useState(false);
@@ -53,7 +53,7 @@ const PendingEnrollmentsPage = () => {
       // Nettoyer l'URL après avoir récupéré le paramètre
       window.history.replaceState({}, '', window.location.pathname);
     }
-    
+
     fetchPendingEnrollments();
   }, []);
 
@@ -72,15 +72,15 @@ const PendingEnrollmentsPage = () => {
   const fetchPendingEnrollments = async () => {
     try {
       setLoading(true);
-      
+
       // Essayer de récupérer les données réelles de la base de données
       try {
         const response = await enrollmentsService.getAllEnrollments({
           status: 'pending',
           limit: 100
         });
-        
-        
+
+
         if (response.enrollments) {
           // Utiliser les données de l'API même si la liste est vide
           setEnrollments(response.enrollments);
@@ -110,7 +110,7 @@ const PendingEnrollmentsPage = () => {
   const handleApprove = async (enrollmentId, appointmentDate) => {
     try {
       setActionLoading(true);
-      
+
       if (!usingDemoData) {
         // Utiliser l'API réelle avec la date de rendez-vous
         await enrollmentsService.approveEnrollment(enrollmentId, {
@@ -120,11 +120,11 @@ const PendingEnrollmentsPage = () => {
         // Simulation pour les données de démonstration
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
-      
+
       setEnrollments(prev => prev.filter(e => e.id !== enrollmentId));
       toast.success(isRTL ? 'تم قبول الطلب' : 'Dossier approuvé avec succès');
       setShowApproveModal(false);
-      
+
       // Rafraîchir la liste
       await fetchPendingEnrollments();
     } catch (error) {
@@ -150,7 +150,7 @@ const PendingEnrollmentsPage = () => {
 
     try {
       setActionLoading(true);
-      
+
       if (!usingDemoData) {
         // Utiliser l'API réelle
         await enrollmentsService.rejectEnrollment(selectedEnrollment.id, {
@@ -161,7 +161,7 @@ const PendingEnrollmentsPage = () => {
         // Simulation pour les données de démonstration
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
-      
+
       setEnrollments(prev => prev.filter(e => e.id !== selectedEnrollment.id));
       setShowRejectModal(false);
       toast.success(isRTL ? 'تم رفض الطلب' : 'Demande rejetée');
@@ -191,13 +191,13 @@ const PendingEnrollmentsPage = () => {
   const handleDownloadDocument = async (document) => {
     try {
       // Utiliser cloudinary_url si disponible, sinon fallback
-      const documentUrl = document.cloudinary_url || 
+      const documentUrl = document.cloudinary_url ||
         `${import.meta.env.VITE_API_URL || 'https://creche-backend.onrender.com'}/uploads/enrollments/${document.filename}`;
-      
+
       // Télécharger le fichier
       const response = await fetch(documentUrl);
       if (!response.ok) throw new Error('Fichier non trouvé');
-      
+
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -207,17 +207,17 @@ const PendingEnrollmentsPage = () => {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      
+
       toast.success(
-        isRTL 
-          ? `تم تحميل ${document.original_filename || document.filename}` 
+        isRTL
+          ? `تم تحميل ${document.original_filename || document.filename}`
           : `Téléchargement de ${document.original_filename || document.filename} réussi`
       );
     } catch (error) {
       console.error('Erreur téléchargement:', error);
       toast.error(
-        isRTL 
-          ? 'فشل التحميل' 
+        isRTL
+          ? 'فشل التحميل'
           : 'Erreur lors du téléchargement'
       );
     }
@@ -226,22 +226,22 @@ const PendingEnrollmentsPage = () => {
   const handleViewDocument = (document) => {
     try {
       // Utiliser cloudinary_url si disponible, sinon fallback
-      const documentUrl = document.cloudinary_url || 
+      const documentUrl = document.cloudinary_url ||
         `${import.meta.env.VITE_API_URL || 'https://creche-backend.onrender.com'}/uploads/enrollments/${document.filename}`;
-      
+
       // Ouvrir dans un nouvel onglet
       window.open(documentUrl, '_blank');
-      
+
       toast.success(
-        isRTL 
-          ? `فتح ${document.original_filename || document.filename}` 
+        isRTL
+          ? `فتح ${document.original_filename || document.filename}`
           : `Ouverture de ${document.original_filename || document.filename}`
       );
     } catch (error) {
       console.error('Erreur visualisation:', error);
       toast.error(
-        isRTL 
-          ? 'فشل فتح الملف' 
+        isRTL
+          ? 'فشل فتح الملف'
           : 'Erreur lors de l\'ouverture'
       );
     }
@@ -272,23 +272,23 @@ const PendingEnrollmentsPage = () => {
   const calculateAge = (birthDate) => {
     const today = new Date();
     const birth = new Date(birthDate);
-    
+
     let years = today.getFullYear() - birth.getFullYear();
     let months = today.getMonth() - birth.getMonth();
-    
+
     // Ajuster si l'anniversaire n'est pas encore passé cette année
     if (months < 0 || (months === 0 && today.getDate() < birth.getDate())) {
       years--;
       months += 12;
     }
-    
+
     // Ajuster les mois si le jour n'est pas encore passé ce mois
     if (today.getDate() < birth.getDate()) {
       months--;
     }
-    
+
     const totalMonths = years * 12 + months;
-    
+
     if (totalMonths < 12) {
       return `${totalMonths} ${isRTL ? 'شهر' : 'mois'}`;
     } else {
@@ -308,19 +308,8 @@ const PendingEnrollmentsPage = () => {
             {isRTL ? 'مراجعة وإدارة طلبات التسجيل الجديدة' : 'Examiner et gérer les nouvelles demandes d\'inscription'}
           </p>
         </div>
-        
-        <div className="flex items-center space-x-3 rtl:space-x-reverse">
-          <Button onClick={fetchPendingEnrollments} variant="outline" size="sm" disabled={loading}>
-            <RefreshCw className={`w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2 ${loading ? 'animate-spin' : ''}`} />
-            {isRTL ? 'تحديث' : 'Actualiser'}
-          </Button>
-          
-          <div className="bg-yellow-100 dark:bg-yellow-900/20 px-3 py-2 rounded-lg">
-            <span className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-              {enrollments.length} {isRTL ? 'طلب' : 'demande(s)'}
-            </span>
-          </div>
-        </div>
+
+
       </div>
 
 
@@ -352,13 +341,41 @@ const PendingEnrollmentsPage = () => {
               transition={{ duration: 0.3 }}
               data-enrollment-id={enrollment.id}
             >
-              <Card className={`hover:shadow-md transition-shadow ${
-                enrollment.id === highlightId ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20' : ''
-              }`}>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
+              <Card className={`hover:shadow-md transition-shadow ${enrollment.id === highlightId ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20' : ''
+                }`}>
+                <CardContent className="p-3 sm:p-4 md:p-6">
+                  {/* Mobile: Header avec bouton Docs à droite */}
+                  <div className="md:hidden flex items-start justify-between gap-3 mb-3">
                     <div className="flex-1">
-                      <div className="flex items-center space-x-4 rtl:space-x-reverse mb-3">
+                      <div className="flex flex-wrap items-center gap-2 mb-2">
+                        <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                          <Clock className="w-4 h-4 text-yellow-500" />
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-200">
+                            {isRTL ? 'في الانتظار' : 'En attente'}
+                          </span>
+                        </div>
+                        <span className="text-sm text-gray-500">
+                          {new Date(enrollment.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleViewDocuments(enrollment)}
+                      disabled={!enrollment.documents_count || parseInt(enrollment.documents_count) === 0}
+                      className="text-xs px-2 py-1.5 shrink-0"
+                    >
+                      <Eye className="w-3.5 h-3.5 mr-1 rtl:mr-0 rtl:ml-1" />
+                      Docs ({parseInt(enrollment.documents_count) || 0})
+                    </Button>
+                  </div>
+
+                  {/* Desktop/Tablette: Layout classique */}
+                  <div className="hidden md:flex md:items-center md:justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-4 mb-3">
                         <div className="flex items-center space-x-2 rtl:space-x-reverse">
                           <Clock className="w-4 h-4 text-yellow-500" />
                           <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-200">
@@ -370,9 +387,9 @@ const PendingEnrollmentsPage = () => {
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                         <div>
-                          <h3 className="font-semibold text-lg text-gray-900 dark:text-white mb-2">
+                          <h3 className="font-semibold text-base sm:text-lg text-gray-900 dark:text-white mb-2">
                             {enrollment.child_first_name} {enrollment.child_last_name}
                           </h3>
                           <div className="space-y-1 text-sm text-gray-600 dark:text-gray-300">
@@ -398,10 +415,10 @@ const PendingEnrollmentsPage = () => {
                         </div>
 
                         <div>
-                          <h4 className="font-medium text-gray-900 dark:text-white mb-2">
+                          <h4 className="font-medium text-sm sm:text-base text-gray-900 dark:text-white mb-2">
                             {isRTL ? 'معلومات الوالد' : 'Informations parent'}
                           </h4>
-                          <div className="space-y-1 text-sm text-gray-600 dark:text-gray-300">
+                          <div className="space-y-1.5 text-xs sm:text-sm text-gray-600 dark:text-gray-300">
                             <div className="flex items-center">
                               <User className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
                               {enrollment.parent_first_name} {enrollment.parent_last_name}
@@ -423,17 +440,19 @@ const PendingEnrollmentsPage = () => {
                       </div>
                     </div>
 
-                    <div className="flex flex-col space-y-2 ml-4 rtl:ml-0 rtl:mr-4">
+                    {/* Boutons Desktop/Tablette à droite */}
+                    <div className="flex flex-col gap-2 ml-4 rtl:ml-0 rtl:mr-4">
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => handleViewDocuments(enrollment)}
                         disabled={!enrollment.documents_count || parseInt(enrollment.documents_count) === 0}
+                        className="text-sm px-3 py-2"
                       >
                         <Eye className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
                         {isRTL ? 'الوثائق' : 'Documents'} ({parseInt(enrollment.documents_count) || 0})
                       </Button>
-                      
+
                       {(isAdmin() || isStaff()) && (
                         <>
                           <Button
@@ -445,7 +464,7 @@ const PendingEnrollmentsPage = () => {
                             <CheckCircle className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
                             {isRTL ? 'قبول' : 'Approuver'}
                           </Button>
-                          
+
                           <Button
                             size="sm"
                             variant="destructive"
@@ -458,6 +477,79 @@ const PendingEnrollmentsPage = () => {
                         </>
                       )}
                     </div>
+                  </div>
+
+                  {/* Contenu Mobile */}
+                  <div className="md:hidden">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <h3 className="font-semibold text-base text-gray-900 dark:text-white mb-2">
+                          {enrollment.child_first_name} {enrollment.child_last_name}
+                        </h3>
+                        <div className="space-y-1 text-sm text-gray-600 dark:text-gray-300">
+                          <div className="flex items-center">
+                            <Calendar className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                            {calculateAge(enrollment.child_birth_date)} ({enrollment.child_gender === 'M' ? (isRTL ? 'ذكر' : 'Garçon') : (isRTL ? 'أنثى' : 'Fille')})
+                          </div>
+                          {enrollment.medical_info && (
+                            <div className="flex items-center">
+                              <FileText className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                              {enrollment.medical_info}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 className="font-medium text-sm text-gray-900 dark:text-white mb-2">
+                          {isRTL ? 'معلومات الوالد' : 'Informations parent'}
+                        </h4>
+                        <div className="space-y-1.5 text-xs text-gray-600 dark:text-gray-300">
+                          <div className="flex items-center">
+                            <User className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                            {enrollment.parent_first_name} {enrollment.parent_last_name}
+                          </div>
+                          <div className="flex items-center">
+                            <Mail className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                            <a href={`mailto:${enrollment.parent_email}`} className="text-blue-600 hover:text-blue-800 truncate">
+                              {enrollment.parent_email}
+                            </a>
+                          </div>
+                          <div className="flex items-center">
+                            <Phone className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                            <a href={`tel:${enrollment.parent_phone || ''}`} className="text-blue-600 hover:text-blue-800" dir="ltr">
+                              {enrollment.parent_phone || 'N/A'}
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Boutons Mobile en bas */}
+                    {(isAdmin() || isStaff()) && (
+                      <div className="flex gap-2 mt-4 pt-3 border-t border-gray-100 dark:border-gray-700">
+                        <Button
+                          size="sm"
+                          onClick={() => handleApproveClick(enrollment)}
+                          disabled={actionLoading}
+                          className="bg-green-600 hover:bg-green-700 flex-1 text-xs px-2 py-2"
+                        >
+                          <CheckCircle className="w-3.5 h-3.5 mr-1 rtl:mr-0 rtl:ml-1" />
+                          {isRTL ? 'قبول' : 'Approuver'}
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleReject(enrollment)}
+                          disabled={actionLoading}
+                          className="flex-1 text-xs px-2 py-2"
+                        >
+                          <XCircle className="w-3.5 h-3.5 mr-1 rtl:mr-0 rtl:ml-1" />
+                          {isRTL ? 'رفض' : 'Rejeter'}
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -483,7 +575,7 @@ const PendingEnrollmentsPage = () => {
                   ✕
                 </Button>
               </div>
-              
+
               <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                 <h4 className="font-medium text-gray-900 dark:text-white">
                   {selectedEnrollment.child_first_name} {selectedEnrollment.child_last_name}
@@ -513,7 +605,7 @@ const PendingEnrollmentsPage = () => {
                             </div>
                           </div>
                         </div>
-                        
+
                         <div className="flex items-center space-x-2 rtl:space-x-reverse">
                           <Button
                             size="sm"
@@ -523,7 +615,7 @@ const PendingEnrollmentsPage = () => {
                             <Eye className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
                             {isRTL ? 'عرض' : 'Voir'}
                           </Button>
-                          
+
                           <Button
                             size="sm"
                             variant="outline"
@@ -545,7 +637,7 @@ const PendingEnrollmentsPage = () => {
                   </p>
                 </div>
               )}
-              
+
               <div className="flex justify-end mt-6">
                 <Button
                   variant="outline"
@@ -566,7 +658,7 @@ const PendingEnrollmentsPage = () => {
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
               {isRTL ? 'رفض الطلب' : 'Rejeter la demande'}
             </h3>
-            
+
             <div className="space-y-4">
               {/* Type de rejet */}
               <div>
@@ -575,7 +667,7 @@ const PendingEnrollmentsPage = () => {
                 </label>
                 <select
                   value={rejectData.rejection_type}
-                  onChange={(e) => setRejectData({...rejectData, rejection_type: e.target.value})}
+                  onChange={(e) => setRejectData({ ...rejectData, rejection_type: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 >
                   <option value="age_depasse">{isRTL ? 'تجاوز السن المطلوب' : 'Âge dépassé'}</option>
@@ -593,7 +685,7 @@ const PendingEnrollmentsPage = () => {
                 </label>
                 <textarea
                   value={rejectData.custom_reason}
-                  onChange={(e) => setRejectData({...rejectData, custom_reason: e.target.value})}
+                  onChange={(e) => setRejectData({ ...rejectData, custom_reason: e.target.value })}
                   rows={3}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   placeholder={isRTL ? 'أضف تفاصيل إضافية...' : 'Ajoutez des détails supplémentaires...'}

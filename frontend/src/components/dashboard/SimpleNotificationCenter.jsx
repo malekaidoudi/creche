@@ -5,12 +5,13 @@ import { Bell, X, Clock, Calendar, MessageCircle, Check, CheckCircle2 } from 'lu
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
 import { Button } from '../ui/Button';
-import toast from 'react-hot-toast';
+import { useDialogContext } from '../../contexts/DialogContext';
 import api from '../../services/api';
 
 const SimpleNotificationCenter = ({ isOpen, onClose }) => {
   const { user } = useAuth();
   const { isRTL } = useLanguage();
+  const dialog = useDialogContext();
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -26,7 +27,7 @@ const SimpleNotificationCenter = ({ isOpen, onClose }) => {
     try {
       setLoading(true);
       const response = await api.get('/api/notifications?is_read=false');
-      
+
       if (response.data && response.data.success) {
         // Afficher uniquement les notifications non lues
         setNotifications(response.data.notifications || []);
@@ -63,22 +64,22 @@ const SimpleNotificationCenter = ({ isOpen, onClose }) => {
   const markAsRead = async (notificationId, showToast = true) => {
     try {
       setProcessingId(notificationId);
-      
+
       const response = await api.put(`/api/notifications/${notificationId}/read`);
-      
+
       if (response.data.success) {
         // Retirer la notification de la liste (puisqu'elle est maintenant lue)
-        setNotifications(prev => 
+        setNotifications(prev =>
           prev.filter(notif => notif.id !== notificationId)
         );
         if (showToast) {
-          toast.success(isRTL ? 'تم تحديد الإشعار كمقروء' : 'Notification marquée comme lue');
+          dialog.success(isRTL ? 'تم تحديد الإشعار كمقروء' : 'Notification marquée comme lue');
         }
       }
     } catch (error) {
       console.error('Erreur marquage notification:', error);
       if (showToast) {
-        toast.error(isRTL ? 'خطأ في تحديث الإشعار' : 'Erreur lors de la mise à jour');
+        dialog.error(isRTL ? 'خطأ في تحديث الإشعار' : 'Erreur lors de la mise à jour');
       }
     } finally {
       setProcessingId(null);
@@ -89,15 +90,15 @@ const SimpleNotificationCenter = ({ isOpen, onClose }) => {
     try {
       // Marquer comme lue SANS afficher le toast
       await markAsRead(notification.id, false);
-      
+
       // Fermer le panneau de notifications
       onClose();
-      
+
       // Déterminer la route selon le rôle de l'utilisateur
       const isParent = user?.role === 'parent';
       const messagesRoute = isParent ? '/mon-espace/messages' : '/dashboard/messages';
       const announcementsRoute = isParent ? '/mon-espace/announcements' : '/dashboard';
-      
+
       // Rediriger selon le type de notification
       if (notification.type === 'staff_message') {
         // Notification de message - ouvrir la conversation avec le contact
@@ -148,20 +149,20 @@ const SimpleNotificationCenter = ({ isOpen, onClose }) => {
   const acknowledgeAbsenceRequest = async (notificationId, absenceRequestId) => {
     try {
       setProcessingId(notificationId);
-      
+
       const response = await api.put(`/api/absence-requests/${absenceRequestId}/acknowledge`, {
         admin_notes: 'Demande prise en compte par l\'administration'
       });
-      
+
       if (response.data.success) {
-        toast.success(isRTL ? 'تم إرسال إشعار الاستلام' : 'Demande validée');
-        
+        dialog.success(isRTL ? 'تم إرسال إشعار الاستلام' : 'Demande validée');
+
         // Supprimer la notification de la liste au lieu de la marquer comme lue
         setNotifications(prev => prev.filter(notif => notif.id !== notificationId));
       }
     } catch (error) {
       console.error('Erreur accusé de réception:', error);
-      toast.error(isRTL ? 'خطأ في إرسال إشعار الاستلام' : 'Erreur lors de la validation');
+      dialog.error(isRTL ? 'خطأ في إرسال إشعار الاستلام' : 'Erreur lors de la validation');
     } finally {
       setProcessingId(null);
     }
@@ -170,16 +171,16 @@ const SimpleNotificationCenter = ({ isOpen, onClose }) => {
   const markAllAsRead = async () => {
     try {
       const response = await api.put('/api/notifications/read-all');
-      
+
       if (response.data.success) {
-        setNotifications(prev => 
+        setNotifications(prev =>
           prev.map(notif => ({ ...notif, is_read: true }))
         );
-        toast.success(isRTL ? 'تم تحديد جميع الإشعارات كمقروءة' : 'Toutes les notifications marquées comme lues');
+        dialog.success(isRTL ? 'تم تحديد جميع الإشعارات كمقروءة' : 'Toutes les notifications marquées comme lues');
       }
     } catch (error) {
       console.error('Erreur marquage toutes notifications:', error);
-      toast.error(isRTL ? 'خطأ في تحديث الإشعارات' : 'Erreur lors de la mise à jour');
+      dialog.error(isRTL ? 'خطأ في تحديث الإشعارات' : 'Erreur lors de la mise à jour');
     }
   };
 
@@ -196,7 +197,7 @@ const SimpleNotificationCenter = ({ isOpen, onClose }) => {
       if (diffMins < 60) return isRTL ? `منذ ${diffMins} دقيقة` : `Il y a ${diffMins} min`;
       if (diffHours < 24) return isRTL ? `منذ ${diffHours} ساعة` : `Il y a ${diffHours}h`;
       if (diffDays < 7) return isRTL ? `منذ ${diffDays} يوم` : `Il y a ${diffDays}j`;
-      
+
       return date.toLocaleDateString(isRTL ? 'ar-TN' : 'fr-FR');
     } catch {
       return dateString;
@@ -261,20 +262,19 @@ const SimpleNotificationCenter = ({ isOpen, onClose }) => {
               <div className="divide-y divide-gray-200 dark:divide-gray-700">
                 {notifications.map((notification) => {
                   const isAbsenceRequest = notification.type === 'absence_request' && notification.related_id;
-                  
+
                   return (
                     <div
                       key={notification.id}
-                      className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer ${
-                        !notification.is_read ? 'bg-blue-50 dark:bg-blue-900/10' : ''
-                      }`}
+                      className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer ${!notification.is_read ? 'bg-blue-50 dark:bg-blue-900/10' : ''
+                        }`}
                       onClick={() => handleNotificationClick(notification)}
                     >
                       <div className="flex items-start space-x-3 rtl:space-x-reverse">
                         <div className="flex-shrink-0">
                           {getNotificationIcon(notification.type)}
                         </div>
-                        
+
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between">
                             <h3 className="text-sm font-medium text-gray-900 dark:text-white">
@@ -289,11 +289,11 @@ const SimpleNotificationCenter = ({ isOpen, onClose }) => {
                               </span>
                             </div>
                           </div>
-                          
+
                           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                             {notification.message}
                           </p>
-                          
+
                           {/* Actions pour les demandes d'absence */}
                           {isAbsenceRequest && (user?.role === 'admin' || user?.role === 'staff') && (
                             <div className="mt-3" onClick={(e) => e.stopPropagation()}>

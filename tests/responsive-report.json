@@ -1,0 +1,902 @@
+[
+  {
+    "viewport": "📱 Mobile (iPhone SE)",
+    "page": "Page d'accueil",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "📱 Mobile (iPhone SE)",
+    "page": "Page de connexion",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": true,
+      "clickableButtons": true,
+      "visibleContent": true,
+      "workingNavigation": false,
+      "properSpacing": true
+    },
+    "passed": 5,
+    "total": 6,
+    "percentage": 83
+  },
+  {
+    "viewport": "📱 Mobile (iPhone SE)",
+    "page": "Page d'inscription",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": false,
+      "workingNavigation": true,
+      "properSpacing": true
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "📱 Mobile (iPhone SE)",
+    "page": "Dashboard Home",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "📱 Mobile (iPhone SE)",
+    "page": "Gestion des enfants",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "📱 Mobile (iPhone SE)",
+    "page": "Demandes d'inscription",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "📱 Mobile (iPhone SE)",
+    "page": "Gestion du personnel",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "📱 Mobile (iPhone SE)",
+    "page": "Gestion des parents",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "📱 Mobile (iPhone SE)",
+    "page": "Présences",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "📱 Mobile (iPhone SE)",
+    "page": "Paramètres",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "📱 Mobile (iPhone SE)",
+    "page": "Profil utilisateur",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "📱 Mobile (iPhone SE)",
+    "page": "Mon Espace",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "📱 Mobile Large (iPhone 11)",
+    "page": "Page d'accueil",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "📱 Mobile Large (iPhone 11)",
+    "page": "Page de connexion",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": true,
+      "clickableButtons": true,
+      "visibleContent": true,
+      "workingNavigation": false,
+      "properSpacing": true
+    },
+    "passed": 5,
+    "total": 6,
+    "percentage": 83
+  },
+  {
+    "viewport": "📱 Mobile Large (iPhone 11)",
+    "page": "Page d'inscription",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": false,
+      "workingNavigation": true,
+      "properSpacing": true
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "📱 Mobile Large (iPhone 11)",
+    "page": "Dashboard Home",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "📱 Mobile Large (iPhone 11)",
+    "page": "Gestion des enfants",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "📱 Mobile Large (iPhone 11)",
+    "page": "Demandes d'inscription",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "📱 Mobile Large (iPhone 11)",
+    "page": "Gestion du personnel",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "📱 Mobile Large (iPhone 11)",
+    "page": "Gestion des parents",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "📱 Mobile Large (iPhone 11)",
+    "page": "Présences",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "📱 Mobile Large (iPhone 11)",
+    "page": "Paramètres",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "📱 Mobile Large (iPhone 11)",
+    "page": "Profil utilisateur",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "📱 Mobile Large (iPhone 11)",
+    "page": "Mon Espace",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "📱 Tablet (iPad)",
+    "page": "Page d'accueil",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "📱 Tablet (iPad)",
+    "page": "Page de connexion",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": true,
+      "clickableButtons": true,
+      "visibleContent": true,
+      "workingNavigation": false,
+      "properSpacing": true
+    },
+    "passed": 5,
+    "total": 6,
+    "percentage": 83
+  },
+  {
+    "viewport": "📱 Tablet (iPad)",
+    "page": "Page d'inscription",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": true
+    },
+    "passed": 4,
+    "total": 6,
+    "percentage": 67
+  },
+  {
+    "viewport": "📱 Tablet (iPad)",
+    "page": "Dashboard Home",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "📱 Tablet (iPad)",
+    "page": "Gestion des enfants",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "📱 Tablet (iPad)",
+    "page": "Demandes d'inscription",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "📱 Tablet (iPad)",
+    "page": "Gestion du personnel",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "📱 Tablet (iPad)",
+    "page": "Gestion des parents",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "📱 Tablet (iPad)",
+    "page": "Présences",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "📱 Tablet (iPad)",
+    "page": "Paramètres",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "📱 Tablet (iPad)",
+    "page": "Profil utilisateur",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "📱 Tablet (iPad)",
+    "page": "Mon Espace",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "💻 Desktop (Laptop)",
+    "page": "Page d'accueil",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "💻 Desktop (Laptop)",
+    "page": "Page de connexion",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": true,
+      "clickableButtons": true,
+      "visibleContent": true,
+      "workingNavigation": false,
+      "properSpacing": true
+    },
+    "passed": 5,
+    "total": 6,
+    "percentage": 83
+  },
+  {
+    "viewport": "💻 Desktop (Laptop)",
+    "page": "Page d'inscription",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": true
+    },
+    "passed": 4,
+    "total": 6,
+    "percentage": 67
+  },
+  {
+    "viewport": "💻 Desktop (Laptop)",
+    "page": "Dashboard Home",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "💻 Desktop (Laptop)",
+    "page": "Gestion des enfants",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "💻 Desktop (Laptop)",
+    "page": "Demandes d'inscription",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "💻 Desktop (Laptop)",
+    "page": "Gestion du personnel",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "💻 Desktop (Laptop)",
+    "page": "Gestion des parents",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "💻 Desktop (Laptop)",
+    "page": "Présences",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "💻 Desktop (Laptop)",
+    "page": "Paramètres",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "💻 Desktop (Laptop)",
+    "page": "Profil utilisateur",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "💻 Desktop (Laptop)",
+    "page": "Mon Espace",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "🖥️  Desktop Large (Full HD)",
+    "page": "Page d'accueil",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "🖥️  Desktop Large (Full HD)",
+    "page": "Page de connexion",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": true,
+      "clickableButtons": true,
+      "visibleContent": true,
+      "workingNavigation": false,
+      "properSpacing": true
+    },
+    "passed": 5,
+    "total": 6,
+    "percentage": 83
+  },
+  {
+    "viewport": "🖥️  Desktop Large (Full HD)",
+    "page": "Page d'inscription",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": true
+    },
+    "passed": 4,
+    "total": 6,
+    "percentage": 67
+  },
+  {
+    "viewport": "🖥️  Desktop Large (Full HD)",
+    "page": "Dashboard Home",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "🖥️  Desktop Large (Full HD)",
+    "page": "Gestion des enfants",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "🖥️  Desktop Large (Full HD)",
+    "page": "Demandes d'inscription",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "🖥️  Desktop Large (Full HD)",
+    "page": "Gestion du personnel",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "🖥️  Desktop Large (Full HD)",
+    "page": "Gestion des parents",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "🖥️  Desktop Large (Full HD)",
+    "page": "Présences",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "🖥️  Desktop Large (Full HD)",
+    "page": "Paramètres",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "🖥️  Desktop Large (Full HD)",
+    "page": "Profil utilisateur",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  },
+  {
+    "viewport": "🖥️  Desktop Large (Full HD)",
+    "page": "Mon Espace",
+    "tests": {
+      "noHorizontalScroll": true,
+      "readableText": false,
+      "clickableButtons": false,
+      "visibleContent": true,
+      "workingNavigation": true,
+      "properSpacing": false
+    },
+    "passed": 3,
+    "total": 6,
+    "percentage": 50
+  }
+]

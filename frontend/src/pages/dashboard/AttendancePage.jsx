@@ -1,17 +1,18 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useLocation, Link } from 'react-router-dom';
-import { 
-  Clock, 
-  Calendar, 
+import {
+  Clock,
+  Calendar,
   BarChart3,
   RefreshCw
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
-import { Button } from '../../components/ui/Button';
+import api from '../../services/api';
+import { useDialogContext } from '../../contexts/DialogContext';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import toast from 'react-hot-toast';
+import { Button } from '../../components/ui/Button';
 import attendanceService from '../../services/attendanceService';
 import childrenService from '../../services/childrenService';
 import TodaySection from '../../components/attendance/TodaySection';
@@ -21,9 +22,10 @@ import StatsSection from '../../components/attendance/StatsSection';
 const AttendancePage = () => {
   const { isAdmin, isStaff } = useAuth();
   const { isRTL } = useLanguage();
+  const dialog = useDialogContext();
   const location = useLocation();
   const [loading, setLoading] = useState(true);
-  
+
   // Déterminer la section active basée sur l'URL
   const getActiveSection = () => {
     const path = location.pathname;
@@ -32,7 +34,7 @@ const AttendancePage = () => {
     if (path.includes('/stats')) return 'stats';
     return 'today'; // Par défaut
   };
-  
+
   const [activeSection, setActiveSection] = useState(getActiveSection());
   const [attendanceData, setAttendanceData] = useState([]);
   const [stats, setStats] = useState(null);
@@ -69,7 +71,7 @@ const AttendancePage = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      
+
       switch (activeSection) {
         case 'today':
           await loadTodayData();
@@ -85,7 +87,7 @@ const AttendancePage = () => {
       }
     } catch (error) {
       console.error('Erreur chargement données:', error);
-      toast.error(isRTL ? 'خطأ في تحميل البيانات' : 'Erreur lors du chargement');
+      dialog.error(isRTL ? 'خطأ في تحميل البيانات' : 'Erreur lors du chargement');
     } finally {
       setLoading(false);
     }
@@ -101,11 +103,11 @@ const AttendancePage = () => {
         attendanceService.getCurrentlyPresent(),
         attendanceService.getAttendanceStats()
       ]);
-      
+
       // Mettre à jour TOUS les states en même temps
       const children = childrenResponse.success ? (childrenResponse.data.children || []) : [];
       console.log('🎯 AttendancePage - Enfants chargés:', children.length);
-      
+
       setAllChildren(children);
       setAttendanceData(attendanceResponse.attendance || []);
       setCurrentlyPresent(currentPresentResponse.children || []);
@@ -131,7 +133,7 @@ const AttendancePage = () => {
       attendanceService.getTodayAttendance(),
       attendanceService.getAttendanceStats()
     ]);
-    
+
     setAttendanceData(attendanceResponse.attendance || attendanceResponse.attendances || []);
     setStats(statsResponse);
   };
@@ -141,11 +143,11 @@ const AttendancePage = () => {
     try {
       setActionLoading(childId);
       await attendanceService.checkIn(childId);
-      toast.success(isRTL ? 'تم تسجيل الوصول بنجاح' : 'Arrivée enregistrée avec succès');
+      dialog.success(isRTL ? 'تم تسجيل الوصول بنجاح' : 'Arrivée enregistrée avec succès');
       await loadTodayData();
     } catch (error) {
       console.error('Erreur check-in:', error);
-      toast.error(error.response?.data?.error || (isRTL ? 'خطأ في تسجيل الوصول' : 'Erreur lors de l\'enregistrement'));
+      dialog.error(error.response?.data?.error || (isRTL ? 'خطأ في تسجيل الوصول' : 'Erreur lors de l\'enregistrement'));
     } finally {
       setActionLoading(null);
     }
@@ -156,11 +158,11 @@ const AttendancePage = () => {
     try {
       setActionLoading(childId);
       await attendanceService.checkOut(childId);
-      toast.success(isRTL ? 'تم تسجيل المغادرة بنجاح' : 'Départ enregistré avec succès');
+      dialog.success(isRTL ? 'تم تسجيل المغادرة بنجاح' : 'Départ enregistré avec succès');
       await loadTodayData();
     } catch (error) {
       console.error('Erreur check-out:', error);
-      toast.error(error.response?.data?.error || (isRTL ? 'خطأ في تسجيل المغادرة' : 'Erreur lors de l\'enregistrement'));
+      dialog.error(error.response?.data?.error || (isRTL ? 'خطأ في تسجيل المغادرة' : 'Erreur lors de l\'enregistrement'));
     } finally {
       setActionLoading(null);
     }
@@ -255,36 +257,27 @@ const AttendancePage = () => {
             {isRTL ? 'تتبع حضور وغياب الأطفال' : 'Suivi des présences et absences des enfants'}
           </p>
         </div>
-        
-        <Button 
-          onClick={handleRefresh}
-          variant="outline"
-          size="sm"
-          disabled={loading}
-        >
-          <RefreshCw className={`w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2 ${loading ? 'animate-spin' : ''}`} />
-          {isRTL ? 'تحديث' : 'Actualiser'}
-        </Button>
+
+
       </motion.div>
 
       {/* Onglets de navigation */}
-      <div className="border-b border-gray-200 dark:border-gray-700">
-        <nav className="-mb-px flex space-x-8 rtl:space-x-reverse">
+      <div className="border-b border-gray-200 dark:border-gray-700 overflow-x-auto scrollbar-hide relative z-10">
+        <nav className="-mb-px flex space-x-4 sm:space-x-8 rtl:space-x-reverse min-w-max">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeSection === tab.id;
-            
+
             return (
               <Link
                 key={tab.id}
                 to={tab.path}
-                className={`py-2 px-1 border-b-2 font-medium text-sm whitespace-nowrap flex items-center ${
-                  isActive
-                    ? 'border-primary-500 text-primary-600 dark:text-primary-400'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-                }`}
+                className={`py-2 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm whitespace-nowrap flex items-center ${isActive
+                  ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                  }`}
               >
-                <Icon className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 rtl:mr-0 rtl:ml-1.5 sm:rtl:ml-2" />
                 {tab.label}
               </Link>
             );

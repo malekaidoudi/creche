@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Download, 
-  Upload, 
-  FileText, 
-  Eye, 
-  Trash2, 
+import {
+  Download,
+  Upload,
+  FileText,
+  Eye,
+  Trash2,
   Search,
   Filter,
   Calendar,
@@ -17,12 +17,13 @@ import {
   Plus,
   Edit
 } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
-import { useLanguage } from '../../contexts/LanguageContext';
+import { useAuth } from '../../hooks/useAuth';
+import { useLanguage } from '../../hooks/useLanguage';
+import api from '../../services/api';
+import { useDialogContext } from '../../contexts/DialogContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import { toast } from 'react-hot-toast';
 import documentsService from '../../services/documentsService';
 
 const DocumentsPage = () => {
@@ -30,6 +31,7 @@ const DocumentsPage = () => {
   const isAdmin = () => user?.role === 'admin';
   const isStaff = () => user?.role === 'staff';
   const { isRTL } = useLanguage();
+  const dialog = useDialogContext();
   const [loading, setLoading] = useState(true);
   const [documents, setDocuments] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -74,8 +76,7 @@ const DocumentsPage = () => {
         }
       ]);
     } catch (error) {
-      console.error('Erreur lors du chargement des documents:', error);
-      toast.error('Erreur de connexion');
+      dialog.error(isRTL ? 'خطأ في تحميل الوثائق' : 'Erreur lors du chargement des documents');
     } finally {
       setLoading(false);
     }
@@ -93,7 +94,7 @@ const DocumentsPage = () => {
   // Fonction pour upload d'un document
   const handleUpload = async () => {
     if (!selectedFile || !uploadData.title) {
-      toast.error(isRTL ? 'يرجى ملء جميع الحقول المطلوبة' : 'Veuillez remplir tous les champs requis');
+      dialog.error(isRTL ? 'يرجى ملء جميع الحقول المطلوبة' : 'Veuillez remplir tous les champs requis');
       return;
     }
 
@@ -101,8 +102,8 @@ const DocumentsPage = () => {
       setUploadLoading(true);
       // Simuler l'upload pour l'instant
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      toast.success(isRTL ? 'تم رفع المستند بنجاح' : 'Document uploadé avec succès');
+
+      dialog.success(isRTL ? 'تم تحميل الوثيقة بنجاح' : 'Document téléversé avec succès');
       setShowUploadModal(false);
       setSelectedFile(null);
       setUploadData({
@@ -114,43 +115,46 @@ const DocumentsPage = () => {
       loadDocuments(); // Recharger la liste
     } catch (error) {
       console.error('Erreur upload:', error);
-      toast.error('Erreur lors de l\'upload');
+      dialog.error(error.response?.data?.message || (isRTL ? 'خطأ في تحميل الوثيقة' : 'Erreur lors du téléversement'));
     } finally {
       setUploadLoading(false);
     }
   };
 
   // Fonction pour supprimer un document
-  const handleDelete = async (id) => {
-    if (!window.confirm(isRTL ? 'هل أنت متأكد من حذف هذا المستند؟' : 'Êtes-vous sûr de vouloir supprimer ce document ?')) {
-      return;
-    }
+  const handleDelete = async (documentId) => {
+    const confirmed = await dialog.confirm(
+      isRTL ? 'هل أنت متأكد من حذف هذه الوثيقة؟' : 'Êtes-vous sûr de vouloir supprimer ce document ?',
+      isRTL ? 'تأكيد الحذف' : 'Confirmer la suppression',
+      { type: 'danger', confirmText: isRTL ? 'حذف' : 'Supprimer', cancelText: isRTL ? 'إلغاء' : 'Annuler' }
+    );
+
+    if (!confirmed) return;
 
     try {
       // Simuler la suppression
-      setDocuments(prev => prev.filter(doc => doc.id !== id));
-      toast.success(isRTL ? 'تم حذف المستند بنجاح' : 'Document supprimé avec succès');
+      setDocuments(prev => prev.filter(doc => doc.id !== documentId));
+      dialog.success(isRTL ? 'تم حذف الوثيقة بنجاح' : 'Document supprimé avec succès');
     } catch (error) {
       console.error('Erreur suppression:', error);
-      toast.error('Erreur lors de la suppression');
+      dialog.error(isRTL ? 'خطأ في حذف الوثيقة' : 'Erreur lors de la suppression');
     }
   };
 
   // Fonction pour télécharger un document
   const handleDownload = async (id, filename) => {
     try {
-      // Simuler le téléchargement
-      toast.success(isRTL ? 'تم تحميل المستند' : `Téléchargement de ${filename} démarré`);
+      // Simuler le téléchargement (silencieux)
     } catch (error) {
       console.error('Erreur téléchargement:', error);
-      toast.error('Erreur lors du téléchargement');
+      dialog.error('Erreur lors du téléchargement');
     }
   };
 
   // Filtrer les documents
   const filteredDocuments = documents.filter(doc => {
     const matchesSearch = doc.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         doc.description?.toLowerCase().includes(searchTerm.toLowerCase());
+      doc.description?.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesSearch;
   });
 
@@ -175,18 +179,10 @@ const DocumentsPage = () => {
             {isRTL ? 'إدارة المستندات الإدارية والملفات' : 'Gérer les documents administratifs et fichiers'}
           </p>
         </div>
-        
+
         <div className="flex gap-2">
-          <Button
-            onClick={handleRefresh}
-            variant="outline"
-            size="sm"
-            disabled={loading}
-          >
-            <RefreshCw className={`w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2 ${loading ? 'animate-spin' : ''}`} />
-            {isRTL ? 'تحديث' : 'Actualiser'}
-          </Button>
-          
+
+
           {(isAdmin() || isStaff()) && (
             <Button onClick={() => setShowUploadModal(true)}>
               <Plus className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
@@ -252,7 +248,7 @@ const DocumentsPage = () => {
                       </p>
                     </div>
                   </div>
-                  
+
                   {doc.is_public && (
                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300">
                       {isRTL ? 'عام' : 'Public'}
@@ -260,14 +256,14 @@ const DocumentsPage = () => {
                   )}
                 </div>
               </CardHeader>
-              
+
               <CardContent>
                 {doc.description && (
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                     {doc.description}
                   </p>
                 )}
-                
+
                 <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-4">
                   <span>
                     {new Date(doc.created_at).toLocaleDateString(isRTL ? 'ar' : 'fr')}
@@ -276,7 +272,7 @@ const DocumentsPage = () => {
                     {doc.uploaded_by_name} {doc.uploaded_by_lastname}
                   </span>
                 </div>
-                
+
                 <div className="flex gap-2">
                   <Button
                     size="sm"
@@ -287,7 +283,7 @@ const DocumentsPage = () => {
                     <Download className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
                     {isRTL ? 'تحميل' : 'Télécharger'}
                   </Button>
-                  
+
                   {(isAdmin() || isStaff()) && (
                     <Button
                       size="sm"
@@ -313,7 +309,7 @@ const DocumentsPage = () => {
             {isRTL ? 'لا توجد مستندات' : 'Aucun document trouvé'}
           </h3>
           <p className="text-gray-600 dark:text-gray-400">
-            {isRTL 
+            {isRTL
               ? 'لا توجد مستندات مطابقة لمعايير البحث'
               : 'Aucun document ne correspond aux critères de recherche'
             }
@@ -328,7 +324,7 @@ const DocumentsPage = () => {
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
               {isRTL ? 'رفع مستند جديد' : 'Ajouter un nouveau document'}
             </h3>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -337,32 +333,32 @@ const DocumentsPage = () => {
                 <input
                   type="text"
                   value={uploadData.title}
-                  onChange={(e) => setUploadData({...uploadData, title: e.target.value})}
+                  onChange={(e) => setUploadData({ ...uploadData, title: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   placeholder={isRTL ? 'عنوان المستند' : 'Titre du document'}
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   {isRTL ? 'الوصف' : 'Description'}
                 </label>
                 <textarea
                   value={uploadData.description}
-                  onChange={(e) => setUploadData({...uploadData, description: e.target.value})}
+                  onChange={(e) => setUploadData({ ...uploadData, description: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   placeholder={isRTL ? 'وصف المستند' : 'Description du document'}
                   rows={3}
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   {isRTL ? 'النوع' : 'Type'}
                 </label>
                 <select
                   value={uploadData.document_type}
-                  onChange={(e) => setUploadData({...uploadData, document_type: e.target.value})}
+                  onChange={(e) => setUploadData({ ...uploadData, document_type: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 >
                   <option value="reglement">{isRTL ? 'لائحة' : 'Règlement'}</option>
@@ -370,7 +366,7 @@ const DocumentsPage = () => {
                   <option value="general">{isRTL ? 'عام' : 'Général'}</option>
                 </select>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   {isRTL ? 'الملف' : 'Fichier'}
@@ -382,13 +378,13 @@ const DocumentsPage = () => {
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
               </div>
-              
+
               <div className="flex items-center">
                 <input
                   type="checkbox"
                   id="is_public"
                   checked={uploadData.is_public}
-                  onChange={(e) => setUploadData({...uploadData, is_public: e.target.checked})}
+                  onChange={(e) => setUploadData({ ...uploadData, is_public: e.target.checked })}
                   className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                 />
                 <label htmlFor="is_public" className="ml-2 rtl:ml-0 rtl:mr-2 block text-sm text-gray-900 dark:text-white">
@@ -396,7 +392,7 @@ const DocumentsPage = () => {
                 </label>
               </div>
             </div>
-            
+
             <div className="flex gap-3 mt-6">
               <Button
                 onClick={() => setShowUploadModal(false)}

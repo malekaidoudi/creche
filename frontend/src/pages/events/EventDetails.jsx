@@ -5,10 +5,10 @@ import {
   Edit, Trash2, MessageSquare, Send, ArrowLeft,
   CheckCircle, X, FileText
 } from 'lucide-react';
-import { useLanguage } from '../../contexts/LanguageContext';
-import { useAuth } from '../../hooks/useAuth';
+import { useLanguage } from '../../hooks/useLanguage';
 import api from '../../services/api';
-import { toast } from 'react-hot-toast';
+import { useDialogContext } from '../../contexts/DialogContext';
+import { useAuth } from '../../hooks/useAuth';
 
 const EVENT_TYPE_ICONS = {
   memo: '📝',
@@ -39,6 +39,7 @@ const PRIORITY_COLORS = {
 const EventDetails = () => {
   const { id } = useParams();
   const { isRTL } = useLanguage();
+  const dialog = useDialogContext();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -70,7 +71,7 @@ const EventDetails = () => {
     } catch (error) {
       console.error('❌ EventDetails - Erreur chargement événement:', error);
       console.error('❌ EventDetails - Détails:', error.response?.data);
-      toast.error(isRTL ? 'خطأ في تحميل الحدث' : 'Erreur lors du chargement');
+      dialog.error(isRTL ? 'خطأ في تحميل الحدث' : 'Erreur lors du chargement');
       // Rediriger selon le rôle
       navigate(isParent ? '/mon-espace/calendar' : '/dashboard/events/calendar');
     } finally {
@@ -86,11 +87,11 @@ const EventDetails = () => {
 
       if (response.data.success) {
         setEvent(prev => ({ ...prev, status: newStatus }));
-        toast.success(isRTL ? 'تم تحديث الحالة' : 'Statut mis à jour');
+        dialog.success(isRTL ? 'تم تحديث الحالة' : 'Statut mis à jour');
       }
     } catch (error) {
       console.error('Erreur mise à jour statut:', error);
-      toast.error(isRTL ? 'خطأ في تحديث الحالة' : 'Erreur lors de la mise à jour');
+      dialog.error(isRTL ? 'خطأ في تحديث الحالة' : 'Erreur lors de la mise à jour');
     }
   };
 
@@ -111,11 +112,11 @@ const EventDetails = () => {
           comments: [...(prev.comments || []), response.data.comment]
         }));
         setNewComment('');
-        toast.success(isRTL ? 'تم إضافة التعليق' : 'Commentaire ajouté');
+        dialog.success(isRTL ? 'تم إضافة التعليق' : 'Commentaire ajouté');
       }
     } catch (error) {
       console.error('Erreur ajout commentaire:', error);
-      toast.error(isRTL ? 'خطأ في إضافة التعليق' : 'Erreur lors de l\'ajout');
+      dialog.error(isRTL ? 'خطأ في إضافة التعليق' : 'Erreur lors de l\'ajout');
     } finally {
       setSendingComment(false);
     }
@@ -126,12 +127,12 @@ const EventDetails = () => {
       const response = await api.delete(`/api/events/${id}`);
 
       if (response.data.success) {
-        toast.success(isRTL ? 'تم حذف الحدث' : 'Événement supprimé');
+        dialog.success(isRTL ? 'تم حذف الحدث' : 'Événement supprimé');
         navigate('/dashboard/events/list');
       }
     } catch (error) {
       console.error('Erreur suppression événement:', error);
-      toast.error(isRTL ? 'خطأ في حذف الحدث' : 'Erreur lors de la suppression');
+      dialog.error(isRTL ? 'خطأ في حذف الحدث' : 'Erreur lors de la suppression');
     }
   };
 

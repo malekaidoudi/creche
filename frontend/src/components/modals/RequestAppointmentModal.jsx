@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { X, Calendar, Clock, MessageSquare } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import api from '../../services/api';
+import DatePicker from '../ui/DatePicker';
+import { convertToISO } from '../../utils/dateUtils';
 
 const RequestAppointmentModal = ({ isOpen, onClose, onSuccess }) => {
   const { isRTL } = useLanguage();
@@ -17,7 +19,7 @@ const RequestAppointmentModal = ({ isOpen, onClose, onSuccess }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    
+
     if (!formData.title || !formData.preferred_date || !formData.preferred_time) {
       setError(isRTL ? 'يرجى ملء جميع الحقول المطلوبة' : 'Veuillez remplir tous les champs requis');
       return;
@@ -25,10 +27,11 @@ const RequestAppointmentModal = ({ isOpen, onClose, onSuccess }) => {
 
     try {
       setLoading(true);
-      
+
       // Combiner date et heure
-      const proposedDate = `${formData.preferred_date}T${formData.preferred_time}:00`;
-      
+      const isoDate = convertToISO(formData.preferred_date);
+      const proposedDate = `${isoDate}T${formData.preferred_time}:00`;
+
       const response = await api.post('/api/appointments', {
         subject: formData.title,
         description: formData.description,
@@ -66,7 +69,7 @@ const RequestAppointmentModal = ({ isOpen, onClose, onSuccess }) => {
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
         {/* Overlay */}
-        <div 
+        <div
           className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-75"
           onClick={handleClose}
         ></div>
@@ -74,19 +77,19 @@ const RequestAppointmentModal = ({ isOpen, onClose, onSuccess }) => {
         {/* Modal */}
         <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
           {/* Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-white/20 rounded-lg">
-                  <Calendar className="w-5 h-5 text-white" />
+          <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 sm:px-6 py-4">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                <div className="p-2 bg-white/20 rounded-lg shrink-0">
+                  <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                 </div>
-                <h3 className="text-lg font-semibold text-white">
-                  {isRTL ? 'طلب موعد' : 'Demander un Rendez-vous'}
+                <h3 className="text-sm sm:text-lg font-semibold text-white leading-tight break-words">
+                  {isRTL ? 'طلب موعح' : 'Demander un Rendez-vous'}
                 </h3>
               </div>
               <button
                 onClick={handleClose}
-                className="text-white hover:bg-white/20 rounded-lg p-1 transition-colors"
+                className="text-white hover:bg-white/20 rounded-lg p-1 transition-colors shrink-0"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -118,20 +121,12 @@ const RequestAppointmentModal = ({ isOpen, onClose, onSuccess }) => {
               </div>
 
               {/* Date préférée */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  <Calendar className="w-4 h-4 inline mr-1" />
-                  {isRTL ? 'التاريخ المفضل' : 'Date souhaitée'} <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="date"
-                  value={formData.preferred_date}
-                  onChange={(e) => setFormData({ ...formData, preferred_date: e.target.value })}
-                  min={new Date().toISOString().split('T')[0]}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                  required
-                />
-              </div>
+              <DatePicker
+                label={isRTL ? 'التاريخ المفضل' : 'Date souhaitée'}
+                required
+                value={formData.preferred_date}
+                onChange={(value) => setFormData({ ...formData, preferred_date: value })}
+              />
 
               {/* Heure préférée */}
               <div>
@@ -165,7 +160,7 @@ const RequestAppointmentModal = ({ isOpen, onClose, onSuccess }) => {
 
               <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
                 <p className="text-sm text-blue-800 dark:text-blue-300">
-                  {isRTL 
+                  {isRTL
                     ? 'سيتم مراجعة طلبك من قبل الإدارة وسيتم إعلامك بالتأكيد.'
                     : 'Votre demande sera examinée par l\'administration et vous serez informé de la confirmation.'
                   }
@@ -174,7 +169,7 @@ const RequestAppointmentModal = ({ isOpen, onClose, onSuccess }) => {
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
               <button
                 type="button"
                 onClick={handleClose}
@@ -186,17 +181,21 @@ const RequestAppointmentModal = ({ isOpen, onClose, onSuccess }) => {
               <button
                 type="submit"
                 disabled={loading}
-                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-3 sm:px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>{isRTL ? 'جاري الإرسال...' : 'Envoi...'}</span>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0"></div>
+                    <span className="text-xs sm:text-base">
+                      {isRTL ? 'جاري الإرسال...' : 'Envoi...'}
+                    </span>
                   </>
                 ) : (
                   <>
-                    <Calendar className="w-4 h-4" />
-                    <span>{isRTL ? 'إرسال الطلب' : 'Envoyer la demande'}</span>
+                    <Calendar className="w-4 h-4 shrink-0" />
+                    <span className="text-xs sm:text-base">
+                      {isRTL ? 'إرسال الطلب' : 'Envoyer la demande'}
+                    </span>
                   </>
                 )}
               </button>

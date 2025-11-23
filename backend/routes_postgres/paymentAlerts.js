@@ -56,33 +56,21 @@ router.post('/', authenticateToken, async (req, res) => {
       });
     }
 
-    // Créer un rappel de paiement et une notification pour chaque parent
-    const reminders = [];
+    // Créer une notification pour chaque parent
     const notifications = [];
-
     for (const parentId of recipientIds) {
-      // Insérer dans payment_reminders
-      const reminderResult = await pool.query(`
-        INSERT INTO payment_reminders (parent_id, amount, due_date, message, status, sent_at, created_by)
-        VALUES ($1, $2, $3, $4, 'pending', NOW(), $5)
-        RETURNING *
-      `, [parentId, amount, due_date, message, createdBy]);
-
-      reminders.push(reminderResult.rows[0]);
-
-      // Créer aussi une notification
-      const title = '💰 Rappel de Paiement';
+      const title = '💰 Alerte de Paiement';
       const notificationMessage = message
         ? `Montant à payer: ${amount} TND avant le ${new Date(due_date).toLocaleDateString('fr-FR')}. ${message}`
         : `Vous avez un paiement de ${amount} TND à effectuer avant le ${new Date(due_date).toLocaleDateString('fr-FR')}.`;
 
-      const notifResult = await pool.query(`
+      const result = await pool.query(`
         INSERT INTO notifications (user_id, title, message, type, is_read, created_at)
         VALUES ($1, $2, $3, $4, false, NOW())
         RETURNING *
       `, [parentId, title, notificationMessage, 'payment_alert']);
 
-      notifications.push(notifResult.rows[0]);
+      notifications.push(result.rows[0]);
     }
 
     // Logger l'action dans la table logs
@@ -97,8 +85,7 @@ router.post('/', authenticateToken, async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: `Rappel de paiement envoyé à ${recipientIds.length} parent(s)`,
-      reminders_created: reminders.length,
+      message: `Alerte envoyée à ${recipientIds.length} parent(s)`,
       notifications_sent: notifications.length
     });
 

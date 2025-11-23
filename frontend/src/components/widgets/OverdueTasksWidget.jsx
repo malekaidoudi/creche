@@ -3,10 +3,11 @@ import { AlertCircle, CheckCircle, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../../contexts/LanguageContext';
 import api from '../../services/api';
-import { toast } from 'react-hot-toast';
+import { useDialogContext } from '../../contexts/DialogContext';
 
 const OverdueTasksWidget = () => {
   const { isRTL } = useLanguage();
+  const dialog = useDialogContext();
   const navigate = useNavigate();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,7 +21,7 @@ const OverdueTasksWidget = () => {
     try {
       setLoading(true);
       const response = await api.get('/api/events/views/overdue');
-      
+
       if (response.data.success) {
         setTasks(response.data.events || []);
       } else {
@@ -39,7 +40,7 @@ const OverdueTasksWidget = () => {
     const now = new Date();
     const diffTime = now - date;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0) {
       return isRTL ? 'اليوم' : 'Aujourd\'hui';
     } else if (diffDays === 1) {
@@ -52,18 +53,18 @@ const OverdueTasksWidget = () => {
   const markAsCompleted = async (taskId) => {
     try {
       setProcessingId(taskId);
-      
+
       const response = await api.patch(`/api/events/${taskId}/status`, {
         status: 'completed'
       });
-      
+
       if (response.data.success) {
-        toast.success(isRTL ? 'تم إكمال المهمة' : 'Tâche complétée');
+        dialog.success(isRTL ? 'تم إكمال المهمة' : 'Tâche complétée');
         setTasks(tasks.filter(t => t.id !== taskId));
       }
     } catch (error) {
       console.error('Erreur marquage tâche:', error);
-      toast.error(isRTL ? 'خطأ في تحديث المهمة' : 'Erreur lors de la mise à jour');
+      dialog.error(isRTL ? 'خطأ في تحديث المهمة' : 'Erreur lors de la mise à jour');
     } finally {
       setProcessingId(null);
     }
@@ -108,7 +109,7 @@ const OverdueTasksWidget = () => {
               )}
             </div>
           </div>
-          
+
           {tasks.length > 0 && (
             <button
               onClick={() => navigate('/dashboard/tasks/kanban')}
@@ -142,7 +143,7 @@ const OverdueTasksWidget = () => {
               >
                 {/* Warning stripe */}
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 to-orange-500"></div>
-                
+
                 <div className="flex items-start gap-3">
                   {/* Icon */}
                   <div className="flex-shrink-0 mt-1">
@@ -152,7 +153,7 @@ const OverdueTasksWidget = () => {
                   {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2 mb-2">
-                      <h4 
+                      <h4
                         className="font-medium text-gray-900 dark:text-white cursor-pointer hover:text-red-600 dark:hover:text-red-400"
                         onClick={() => navigate(`/dashboard/events/${task.id}`)}
                       >

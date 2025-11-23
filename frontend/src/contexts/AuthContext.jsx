@@ -69,8 +69,30 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const checkAuth = async () => {
       const token = localStorage.getItem('token');
-      
+
       if (token) {
+        // Si c'est un token mock pour les tests, utiliser directement les données du localStorage
+        if (token.startsWith('mock_token_')) {
+          const userStr = localStorage.getItem('user');
+          if (userStr) {
+            try {
+              const user = JSON.parse(userStr);
+              console.log('🧪 Mode test: Utilisation du token mock', user);
+              dispatch({
+                type: 'LOGIN_SUCCESS',
+                payload: {
+                  user,
+                  token
+                }
+              });
+              return;
+            } catch (e) {
+              console.error('Erreur parsing user mock:', e);
+            }
+          }
+        }
+
+        // Token normal, vérifier avec le backend
         try {
           const userData = await authService.verifyToken(token);
           dispatch({
@@ -83,6 +105,7 @@ export const AuthProvider = ({ children }) => {
         } catch (error) {
           console.error('Token invalide:', error);
           localStorage.removeItem('token');
+          localStorage.removeItem('user');
           dispatch({ type: 'LOGOUT' });
         }
       } else {
@@ -96,13 +119,13 @@ export const AuthProvider = ({ children }) => {
   // Fonction de connexion
   const login = async (email, password) => {
     dispatch({ type: 'LOGIN_START' });
-    
+
     try {
       const response = await authService.login(email, password);
-      
+
       // Sauvegarder le token
       localStorage.setItem('token', response.token);
-      
+
       dispatch({
         type: 'LOGIN_SUCCESS',
         payload: {
@@ -110,7 +133,7 @@ export const AuthProvider = ({ children }) => {
           token: response.token
         }
       });
-      
+
       return response;
     } catch (error) {
       const errorMessage = error.response?.data?.error || 'Erreur de connexion';
@@ -125,13 +148,13 @@ export const AuthProvider = ({ children }) => {
   // Fonction d'inscription
   const register = async (userData) => {
     dispatch({ type: 'LOGIN_START' });
-    
+
     try {
       const response = await authService.register(userData);
-      
+
       // Sauvegarder le token
       localStorage.setItem('token', response.token);
-      
+
       dispatch({
         type: 'LOGIN_SUCCESS',
         payload: {
@@ -139,7 +162,7 @@ export const AuthProvider = ({ children }) => {
           token: response.token
         }
       });
-      
+
       return response;
     } catch (error) {
       const errorMessage = error.response?.data?.error || 'Erreur lors de l\'inscription';

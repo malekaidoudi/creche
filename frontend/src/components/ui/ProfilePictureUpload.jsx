@@ -1,16 +1,20 @@
 import { useState, useRef, useEffect } from 'react'
 import { Camera, Upload, X, User } from 'lucide-react'
 import { useLanguage } from '../../hooks/useLanguage'
+import { useAuth } from '../../hooks/useAuth';
+import api from '../../services/api';
+import { useDialogContext } from '../../contexts/DialogContext';
 import LoadingSpinner from './LoadingSpinner'
-import toast from 'react-hot-toast'
 import { uploadService } from '../../services/uploadService'
 
-const ProfilePictureUpload = ({ 
-  currentImage, 
-  onImageChange, 
+const ProfilePictureUpload = ({
+  currentImage,
+  onImageChange,
   size = 'lg',
-  disabled = false 
+  disabled = false
 }) => {
+  const { user, updateUser } = useAuth();
+  const dialog = useDialogContext();
   const { isRTL } = useLanguage()
   const [isUploading, setIsUploading] = useState(false)
   const [previewImage, setPreviewImage] = useState(
@@ -36,12 +40,12 @@ const ProfilePictureUpload = ({
 
     // Validation du fichier
     if (!file.type.startsWith('image/')) {
-      toast.error(isRTL ? 'يرجى اختيار صورة صالحة' : 'Veuillez sélectionner une image valide')
+      dialog.error(isRTL ? 'يرجى اختيار صورة صالحة' : 'Veuillez sélectionner une image valide')
       return
     }
 
     if (file.size > 5 * 1024 * 1024) { // 5MB
-      toast.error(isRTL ? 'حجم الصورة يجب أن يكون أقل من 5 ميجابايت' : 'La taille de l\'image doit être inférieure à 5MB')
+      dialog.error(isRTL ? 'حجم الصورة يجب أن يكون أقل من 5 ميجابايت' : 'La taille de l\'image doit être inférieure à 5MB')
       return
     }
 
@@ -57,11 +61,11 @@ const ProfilePictureUpload = ({
       setIsUploading(true)
       onImageChange(file)
         .then(() => {
-          toast.success(isRTL ? 'تم تحديث الصورة بنجاح' : 'Photo mise à jour avec succès')
+          dialog.success(isRTL ? 'تم تحديث الصورة بنجاح' : 'Photo mise à jour avec succès')
         })
         .catch((error) => {
           console.error('Erreur upload:', error)
-          toast.error(isRTL ? 'خطأ في تحميل الصورة' : 'Erreur lors du téléchargement')
+          dialog.error(isRTL ? 'خطأ في تحميل الصورة' : 'Erreur lors du téléchargement')
           setPreviewImage(currentImage ? uploadService.getFileUrl(currentImage) : null) // Revenir à l'image précédente
         })
         .finally(() => {
@@ -161,7 +165,7 @@ const ProfilePictureUpload = ({
 
       {/* Instructions */}
       <p className="text-xs text-gray-500 text-center max-w-xs">
-        {isRTL 
+        {isRTL
           ? 'صيغ مدعومة: JPG, PNG, GIF. حد أقصى: 5 ميجابايت'
           : 'Formats supportés : JPG, PNG, GIF. Taille max : 5MB'
         }

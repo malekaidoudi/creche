@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, AlertCircle, Info, Megaphone } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { useLanguage } from '../../contexts/LanguageContext';
+import { Calendar, Clock, AlertCircle, Info, Megaphone, Plus, ExternalLink } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { useLanguage } from '../../hooks/useLanguage';
 import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3003/api';
@@ -26,7 +26,7 @@ const TYPE_COLORS = {
   celebration: 'bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-400'
 };
 
-const UpcomingEventsWidget = () => {
+const UpcomingEventsWidget = ({ onOpenEventModal, isMobileView = false }) => {
   const { isRTL } = useLanguage();
   const navigate = useNavigate();
   const [announcements, setAnnouncements] = useState([]);
@@ -43,14 +43,14 @@ const UpcomingEventsWidget = () => {
       const response = await axios.get(`${API_URL}/announcements/my`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       if (response.data.success) {
         // Filtrer les anniversaires (ils sont dans le widget Anniversaires)
         const filteredAnnouncements = (response.data.announcements || []).filter(
           ann => ann.event_type !== 'birthday' && ann.event_type !== 'anniversaire'
         );
-        // Limiter à 5 événements
-        setAnnouncements(filteredAnnouncements.slice(0, 5));
+        // Limiter à 2 événements pour le widget
+        setAnnouncements(filteredAnnouncements.slice(0, 2));
       } else {
         setAnnouncements([]);
       }
@@ -67,7 +67,7 @@ const UpcomingEventsWidget = () => {
     const now = new Date();
     const diffTime = date - now;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0) {
       return isRTL ? 'اليوم' : 'Aujourd\'hui';
     } else if (diffDays === 1) {
@@ -75,18 +75,18 @@ const UpcomingEventsWidget = () => {
     } else if (diffDays < 7) {
       return isRTL ? `في ${diffDays} أيام` : `Dans ${diffDays} jours`;
     } else {
-      return date.toLocaleDateString('fr-FR', { 
-        day: 'numeric', 
-        month: 'short' 
+      return date.toLocaleDateString('fr-FR', {
+        day: 'numeric',
+        month: 'short'
       });
     }
   };
 
   const formatTime = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleTimeString('fr-FR', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    return date.toLocaleTimeString('fr-FR', {
+      hour: '2-digit',
+      minute: '2-digit'
     });
   };
 
@@ -125,28 +125,39 @@ const UpcomingEventsWidget = () => {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow flex flex-col h-full max-h-[824px]">
-      {/* Header */}
-      <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-              <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow flex flex-col h-[400px]">
+      {/* Header - Masqué en mode mobile */}
+      {!isMobileView && (
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  {isRTL ? 'الأحداث القادمة' : 'Événements à Venir'}
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {isRTL ? 'هذا الشهر' : 'Ce mois-ci'}
+                </p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                {isRTL ? 'الأحداث القادمة' : 'Événements à Venir'}
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {isRTL ? 'هذا الشهر' : 'Ce mois-ci'}
-              </p>
-            </div>
+            {onOpenEventModal && (
+              <button
+                onClick={onOpenEventModal}
+                className="p-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                title={isRTL ? 'إضافة حدث' : 'Ajouter un événement'}
+              >
+                <Plus className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              </button>
+            )}
           </div>
         </div>
-      </div>
+      )}
 
       {/* Events List */}
-      <div className="p-6 flex-1 min-h-0 overflow-y-auto">
+      <div className={`p-4 flex-1 min-h-0 overflow-y-auto ${isMobileView ? 'p-3' : ''}`}>
         {announcements.length === 0 ? (
           <div className="text-center py-8">
             <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-3" />
@@ -155,7 +166,7 @@ const UpcomingEventsWidget = () => {
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {announcements.map((announcement) => (
               <div
                 key={announcement.id}
@@ -199,6 +210,17 @@ const UpcomingEventsWidget = () => {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Footer avec lien vers calendrier */}
+      <div className="p-3 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+        <Link
+          to="/dashboard/events/calendar?filter=events"
+          className="flex items-center justify-center gap-2 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium transition-colors"
+        >
+          <span>{isRTL ? 'عرض جميع الأحداث' : 'Voir tous les événements'}</span>
+          <ExternalLink className="w-4 h-4" />
+        </Link>
       </div>
     </div>
   );

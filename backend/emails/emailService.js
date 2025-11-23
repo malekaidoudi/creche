@@ -33,7 +33,7 @@ class EmailService {
    */
   replaceVariables(template, variables) {
     let result = template;
-    
+
     // Remplacer les variables simples {{variable}}
     Object.keys(variables).forEach(key => {
       const regex = new RegExp(`{{${key}}}`, 'g');
@@ -49,7 +49,7 @@ class EmailService {
     result = result.replace(/{{#each\s+(\w+)}}([\s\S]*?){{\/each}}/g, (match, varName, content) => {
       const array = variables[varName];
       if (!Array.isArray(array) || array.length === 0) return '';
-      
+
       return array.map(item => {
         let itemContent = content;
         if (typeof item === 'string') {
@@ -78,7 +78,7 @@ class EmailService {
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING id
       `;
-      
+
       const values = [
         emailData.type,
         emailData.to,
@@ -135,6 +135,9 @@ class EmailService {
       // Envoyer via Resend
       const response = await resend.emails.send(emailData);
 
+      // Extraire l'ID de la réponse (response.data.id dans Resend v6+)
+      const emailId = response.data?.id || response.id;
+
       // Enregistrer dans les logs
       await this.logEmail({
         type: config.type,
@@ -142,15 +145,15 @@ class EmailService {
         from: config.from,
         subject: emailData.subject,
         status: EMAIL_STATUS.SENT,
-        resendId: response.id,
+        resendId: emailId,
         metadata: variables
       });
 
-      console.log(`✅ Email envoyé avec succès (ID: ${response.id})`);
+      console.log(`✅ Email envoyé avec succès (ID: ${emailId})`);
 
       return {
         success: true,
-        messageId: response.id,
+        messageId: emailId,
         type: emailType
       };
 

@@ -298,11 +298,6 @@ console.log('  ✓ /api/staff-messages (messages staff) 🆕');
 app.use('/api/personal-memos', personalMemosRoutes);
 console.log('  ✓ /api/personal-memos (mémos personnels) 🆕');
 
-// Routes des rappels de paiement
-const paymentAlertsRoutes = require('./routes_postgres/paymentAlerts');
-app.use('/api/payment-alerts', paymentAlertsRoutes);
-console.log('  ✓ /api/payment-alerts (rappels paiement) 🆕');
-
 console.log('\n✅ Toutes les routes montées avec succès\n');
 
 // ═══════════════════════════════════════════════════════════════════════════

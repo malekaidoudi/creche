@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Bell, 
-  X, 
-  Check, 
-  Clock, 
-  User, 
+import {
+  Bell,
+  X,
+  Check,
+  Clock,
+  User,
   Calendar,
   MessageCircle,
   CheckCircle2
@@ -14,12 +14,13 @@ import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
 import { Button } from '../ui/Button';
-import toast from 'react-hot-toast';
+import { useDialogContext } from '../../contexts/DialogContext';
 import api from '../../services/api';
 
 const NotificationCenter = ({ isOpen, onClose }) => {
   const { user } = useAuth();
   const { isRTL } = useLanguage();
+  const dialog = useDialogContext();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -35,11 +36,11 @@ const NotificationCenter = ({ isOpen, onClose }) => {
     try {
       setLoading(true);
       console.log('🔄 Chargement notifications NotificationCenter...');
-      
+
       const response = await api.get('/api/notifications');
-      
+
       console.log('📨 Réponse NotificationCenter:', response.data);
-      
+
       if (response.data.success) {
         setNotifications(response.data.notifications || []);
         setUnreadCount(response.data.unread_count || 0);
@@ -63,13 +64,13 @@ const NotificationCenter = ({ isOpen, onClose }) => {
   const markAsRead = async (notificationId) => {
     try {
       setProcessingId(notificationId);
-      
+
       const response = await api.put(`/api/notifications/${notificationId}/read`);
-      
+
       if (response.data.success) {
-        setNotifications(prev => 
-          prev.map(notif => 
-            notif.id === notificationId 
+        setNotifications(prev =>
+          prev.map(notif =>
+            notif.id === notificationId
               ? { ...notif, is_read: true }
               : notif
           )
@@ -78,7 +79,7 @@ const NotificationCenter = ({ isOpen, onClose }) => {
       }
     } catch (error) {
       console.error('Erreur marquage notification:', error);
-      toast.error(isRTL ? 'خطأ في تحديث الإشعار' : 'Erreur lors de la mise à jour');
+      dialog.error(isRTL ? 'خطأ في تحديث الإشعار' : 'Erreur lors de la mise à jour');
     } finally {
       setProcessingId(null);
     }
@@ -87,40 +88,40 @@ const NotificationCenter = ({ isOpen, onClose }) => {
   const markAllAsRead = async () => {
     try {
       const response = await api.put('/api/notifications/read-all');
-      
+
       if (response.data.success) {
-        setNotifications(prev => 
+        setNotifications(prev =>
           prev.map(notif => ({ ...notif, is_read: true }))
         );
         setUnreadCount(0);
-        toast.success(isRTL ? 'تم تحديد جميع الإشعارات كمقروءة' : 'Toutes les notifications marquées comme lues');
+        // Marquage silencieux
       }
     } catch (error) {
       console.error('Erreur marquage toutes notifications:', error);
-      toast.error(isRTL ? 'خطأ في تحديث الإشعارات' : 'Erreur lors de la mise à jour');
+      dialog.error(isRTL ? 'خطأ في تحديث الإشعارات' : 'Erreur lors de la mise à jour');
     }
   };
 
   const acknowledgeAbsenceRequest = async (notificationId, absenceRequestId) => {
     try {
       setProcessingId(notificationId);
-      
+
       const response = await api.put(`/api/absence-requests/${absenceRequestId}/acknowledge`, {
         admin_notes: 'Demande prise en compte par l\'administration'
       });
-      
+
       if (response.data.success) {
-        toast.success(isRTL ? 'تم إرسال إشعار الاستلام' : 'Accusé de réception envoyé');
-        
+        dialog.success(isRTL ? 'تم إرسال إشعار الاستلام' : 'Accusé de réception envoyé');
+
         // Marquer la notification comme lue
         await markAsRead(notificationId);
-        
+
         // Recharger les notifications
         loadNotifications();
       }
     } catch (error) {
       console.error('Erreur accusé de réception:', error);
-      toast.error(isRTL ? 'خطأ في إرسال إشعار الاستلام' : 'Erreur lors de l\'accusé de réception');
+      dialog.error(isRTL ? 'خطأ في إرسال إشعار الاستلام' : 'Erreur lors de l\'accusé de réception');
     } finally {
       setProcessingId(null);
     }
@@ -149,7 +150,7 @@ const NotificationCenter = ({ isOpen, onClose }) => {
     if (diffMins < 60) return isRTL ? `منذ ${diffMins} دقيقة` : `Il y a ${diffMins} min`;
     if (diffHours < 24) return isRTL ? `منذ ${diffHours} ساعة` : `Il y a ${diffHours}h`;
     if (diffDays < 7) return isRTL ? `منذ ${diffDays} يوم` : `Il y a ${diffDays}j`;
-    
+
     return date.toLocaleDateString(isRTL ? 'ar-TN' : 'fr-FR');
   };
 
@@ -222,27 +223,26 @@ const NotificationCenter = ({ isOpen, onClose }) => {
                 {notifications.map((notification) => {
                   let data = {};
                   try {
-                    data = notification.data ? 
-                      (typeof notification.data === 'string' ? JSON.parse(notification.data) : notification.data) 
+                    data = notification.data ?
+                      (typeof notification.data === 'string' ? JSON.parse(notification.data) : notification.data)
                       : {};
                   } catch (error) {
                     console.error('Erreur parsing data notification:', error);
                     data = {};
                   }
                   const isAbsenceRequest = notification.type === 'absence_request' && data.absence_request_id;
-                  
+
                   return (
                     <div
                       key={notification.id}
-                      className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
-                        !notification.is_read ? 'bg-blue-50 dark:bg-blue-900/10' : ''
-                      }`}
+                      className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${!notification.is_read ? 'bg-blue-50 dark:bg-blue-900/10' : ''
+                        }`}
                     >
                       <div className="flex items-start space-x-3 rtl:space-x-reverse">
                         <div className="flex-shrink-0">
                           {getNotificationIcon(notification.type)}
                         </div>
-                        
+
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between">
                             <h3 className="text-sm font-medium text-gray-900 dark:text-white">
@@ -257,11 +257,11 @@ const NotificationCenter = ({ isOpen, onClose }) => {
                               </span>
                             </div>
                           </div>
-                          
+
                           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                             {notification.message}
                           </p>
-                          
+
                           {/* Actions pour les demandes d'absence */}
                           {isAbsenceRequest && (user.role === 'admin' || user.role === 'staff') && (
                             <div className="mt-3 flex space-x-2 rtl:space-x-reverse">
@@ -278,7 +278,7 @@ const NotificationCenter = ({ isOpen, onClose }) => {
                                 )}
                                 {isRTL ? 'تأكيد الاستلام' : 'Accusé de réception'}
                               </Button>
-                              
+
                               {!notification.is_read && (
                                 <Button
                                   variant="outline"
@@ -293,7 +293,7 @@ const NotificationCenter = ({ isOpen, onClose }) => {
                               )}
                             </div>
                           )}
-                          
+
                           {/* Action générale pour marquer comme lu */}
                           {!isAbsenceRequest && !notification.is_read && (
                             <div className="mt-2">

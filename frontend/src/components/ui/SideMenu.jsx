@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { MessageSquare, StickyNote, Calendar, CheckSquare, Bell, DollarSign, CalendarCheck, Settings, Mail, Megaphone, FileText } from 'lucide-react';
+import { MessageSquare, StickyNote, Calendar, CheckSquare, Bell, DollarSign, CalendarCheck, Settings, Mail, Megaphone, FileText, Zap, Clock, ChevronDown, ChevronUp, CalendarX } from 'lucide-react';
 import MemoModal from '../modals/MemoModal';
 import EventModal from '../modals/EventModal';
 import TaskModal from '../modals/TaskModal';
@@ -19,21 +19,7 @@ export default function SideMenu() {
   const [showAppointmentModal, setShowAppointmentModal] = useState(false);
   const [showRequestAppointmentModal, setShowRequestAppointmentModal] = useState(false);
   const [hoveredItem, setHoveredItem] = useState(null);
-  const [isScrolled, setIsScrolled] = useState(false);
-
-  // Détecter la largeur pour transformer en bouton flotant
-  useEffect(() => {
-    const handleResize = () => {
-      // Cacher le menu si la largeur est < 1310px (le menu cache le contenu)
-      setIsScrolled(window.innerWidth < 1310);
-    };
-
-    handleResize(); // Appel initial
-    window.addEventListener('resize', handleResize);
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
-  }, []);
+  const [showQuickActionsSubmenu, setShowQuickActionsSubmenu] = useState(false);
 
   // Permissions selon le rôle
   const canCreateMemo = user?.role === 'admin' || user?.role === 'staff';
@@ -47,93 +33,99 @@ export default function SideMenu() {
     return null;
   }
 
+  // Sous-menu Actions rapides
+  const quickActionsSubmenu = [
+    {
+      id: 'attendance-today',
+      icon: Clock,
+      label: 'Enregistrer présence',
+      onClick: () => navigate('/dashboard/attendance/today')
+    },
+    {
+      id: 'absence-management',
+      icon: Calendar,
+      label: 'Gestion absences',
+      onClick: () => navigate('/dashboard/absence-management')
+    },
+    {
+      id: 'pending-enrollments',
+      icon: FileText,
+      label: 'Réviser demandes',
+      onClick: () => navigate('/dashboard/pending-enrollments')
+    }
+  ];
+
   const menuItems = [
+    // Admin/Staff: Rendez-vous
+    {
+      id: 'create-appointment',
+      icon: CalendarCheck,
+      label: 'Rendez-vous',
+      color: 'from-blue-500 to-cyan-500',
+      hoverColor: 'hover:from-blue-600 hover:to-cyan-600',
+      show: user?.role === 'admin',
+      onClick: () => setShowAppointmentModal(true)
+    },
+    // Admin: Tâche
+    {
+      id: 'task',
+      icon: CheckSquare,
+      label: 'Tâche',
+      color: 'from-green-500 to-emerald-500',
+      hoverColor: 'hover:from-green-600 hover:to-emerald-600',
+      show: canCreateTask,
+      onClick: () => setShowTaskModal(true)
+    },
+    // Admin/Staff: Mémo
     {
       id: 'memo',
       icon: StickyNote,
-      label: 'Mémo Personnel',
-      color: 'from-yellow-500 to-amber-500',
-      hoverColor: 'hover:from-yellow-600 hover:to-amber-600',
+      label: 'Mémo',
+      color: 'from-purple-500 to-pink-500',
+      hoverColor: 'hover:from-purple-600 hover:to-pink-600',
       show: canCreateMemo,
       onClick: () => setShowMemoModal(true)
     },
-    // Admin: Bouton Événement
+    // Admin/Staff: Événement
     {
       id: 'event',
       icon: Calendar,
       label: 'Événement',
-      color: 'from-blue-500 to-cyan-500',
-      hoverColor: 'hover:from-blue-600 hover:to-cyan-600',
-      show: user?.role === 'admin' && canCreateEvent,
+      color: 'from-orange-500 to-amber-500',
+      hoverColor: 'hover:from-orange-600 hover:to-amber-600',
+      show: canCreateEvent,
       onClick: () => setShowEventModal(true)
     },
-    // Admin: Messages
-    {
-      id: 'admin-messages',
-      icon: Mail,
-      label: 'Messages',
-      color: 'from-blue-500 to-sky-500',
-      hoverColor: 'hover:from-blue-600 hover:to-sky-600',
-      show: user?.role === 'admin',
-      onClick: () => navigate('/dashboard/messages')
-    },
-    // Staff: Lien vers Messages
-    {
-      id: 'messages-link',
-      icon: Mail,
-      label: 'Messages',
-      color: 'from-blue-500 to-sky-500',
-      hoverColor: 'hover:from-blue-600 hover:to-sky-600',
-      show: user?.role === 'staff',
-      onClick: () => navigate('/dashboard/messages')
-    },
-    // Staff: Paramètres
-    {
-      id: 'staff-settings',
-      icon: Settings,
-      label: 'Paramètres',
-      color: 'from-gray-500 to-slate-600',
-      hoverColor: 'hover:from-gray-600 hover:to-slate-700',
-      show: user?.role === 'staff',
-      onClick: () => navigate('/dashboard/staff-settings')
-    },
-    // Admin: Créer un Rendez-vous
-    {
-      id: 'create-appointment',
-      icon: CalendarCheck,
-      label: 'Créer un RDV',
-      color: 'from-green-500 to-emerald-500',
-      hoverColor: 'hover:from-green-600 hover:to-emerald-600',
-      show: user?.role === 'admin',
-      onClick: () => setShowAppointmentModal(true)
-    },
-    {
-      id: 'task',
-      icon: CheckSquare,
-      label: 'Nouvelle Tâche',
-      color: 'from-purple-500 to-pink-500',
-      hoverColor: 'hover:from-purple-600 hover:to-pink-600',
-      show: canCreateTask,
-      onClick: () => setShowTaskModal(true)
-    },
+    // Admin: Alerte Paiement
     {
       id: 'payment',
       icon: DollarSign,
-      label: 'Rappel paiement',
-      color: 'from-red-500 to-pink-500',
-      hoverColor: 'hover:from-red-600 hover:to-pink-600',
+      label: 'Alerte Paiement',
+      color: 'from-red-500 to-rose-500',
+      hoverColor: 'hover:from-red-600 hover:to-rose-600',
       show: canCreatePaymentAlert,
       onClick: () => setShowPaymentModal(true)
     },
-    // Admin: Paramètres
+    // Admin/Staff: Actions rapides (avec sous-menu)
     {
-      id: 'admin-settings',
+      id: 'quick-actions',
+      icon: Zap,
+      label: 'Actions rapides',
+      color: 'from-indigo-500 to-purple-500',
+      hoverColor: 'hover:from-indigo-600 hover:to-purple-600',
+      show: user?.role === 'admin' || user?.role === 'staff',
+      hasSubmenu: true,
+      onClick: () => setShowQuickActionsSubmenu(!showQuickActionsSubmenu)
+    },
+    // Admin/Staff: Paramètres
+    {
+      id: 'settings',
       icon: Settings,
       label: 'Paramètres',
       color: 'from-gray-500 to-slate-600',
       hoverColor: 'hover:from-gray-600 hover:to-slate-700',
-      show: user?.role === 'admin',
-      onClick: () => navigate('/dashboard/settings')
+      show: user?.role === 'admin' || user?.role === 'staff',
+      onClick: () => navigate(user?.role === 'admin' ? '/dashboard/settings' : '/dashboard/staff-settings')
     },
     // Parent: Messages
     {
@@ -184,18 +176,23 @@ export default function SideMenu() {
       hoverColor: 'hover:from-orange-600 hover:to-red-600',
       show: isParent,
       onClick: () => setShowRequestAppointmentModal(true)
+    },
+    // Parent: Demande d'absence
+    {
+      id: 'parent-absence-request',
+      icon: CalendarX,
+      label: 'Demande d\'absence',
+      color: 'from-red-500 to-pink-500',
+      hoverColor: 'hover:from-red-600 hover:to-pink-600',
+      show: isParent,
+      onClick: () => navigate('/mon-espace/absence-request')
     }
   ].filter(item => item.show);
 
   return (
     <>
-      {/* Menu latéral moderne fixé à droite - Caché sur mobile et quand on scroll */}
-      <div className={`
-        fixed right-0 top-1/2 -translate-y-1/2 z-40 flex-col gap-2
-        hidden lg:flex
-        transition-all duration-300
-        ${isScrolled ? 'opacity-0 pointer-events-none translate-x-full' : 'opacity-100'}
-      `}>
+      {/* Menu latéral moderne fixé à droite */}
+      <div className="fixed right-0 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-2">
         {/* Conteneur avec effet de verre */}
         <div className="bg-white/10 backdrop-blur-md rounded-l-3xl p-3 shadow-2xl border-l-4 border-white/20 space-y-3">
           {menuItems.map((item, index) => {
@@ -221,7 +218,12 @@ export default function SideMenu() {
                     ${isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4 pointer-events-none'}
                   `}
                 >
-                  {item.label}
+                  <div className="flex items-center gap-2">
+                    {item.label}
+                    {item.hasSubmenu && (
+                      showQuickActionsSubmenu ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
+                    )}
+                  </div>
                   {/* Flèche moderne */}
                   <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full">
                     <div className={`w-0 h-0 border-t-[8px] border-t-transparent border-b-[8px] border-b-transparent border-l-[10px] bg-gradient-to-r ${item.color}`}
@@ -265,6 +267,30 @@ export default function SideMenu() {
                   transition-all duration-300
                   ${isHovered ? 'opacity-100 scale-y-100' : 'opacity-0 scale-y-50'}
                 `}></div>
+
+                {/* Sous-menu Actions rapides */}
+                {item.hasSubmenu && showQuickActionsSubmenu && (
+                  <div className="absolute right-full mr-16 top-0 bg-white dark:bg-gray-800 rounded-lg shadow-2xl p-2 min-w-[220px] border border-gray-200 dark:border-gray-700 animate-in slide-in-from-right-5 fade-in">
+                    {quickActionsSubmenu.map((subItem) => {
+                      const SubIcon = subItem.icon;
+                      return (
+                        <button
+                          key={subItem.id}
+                          onClick={() => {
+                            subItem.onClick();
+                            setShowQuickActionsSubmenu(false);
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left"
+                        >
+                          <SubIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">
+                            {subItem.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })}

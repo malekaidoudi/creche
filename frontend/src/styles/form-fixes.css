@@ -1,0 +1,196 @@
+/**
+ * Corrections globales pour les formulaires
+ * Applique des règles de responsivité pour tous les formulaires du projet
+ */
+
+/* Date pickers - Forcer la pleine largeur et corriger Safari */
+input[type="date"],
+input[type="datetime-local"],
+input[type="time"],
+input[type="month"],
+input[type="week"],
+input[datepicker],
+input[datepicker="true"],
+input[type="text"][datepicker],
+input[type="text"][datepicker="true"] {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  background-color: #ffffff !important;
+  background-image: none !important;
+  opacity: 1 !important;
+  color: rgb(17 24 39) !important;
+  /* gray-900 */
+}
+
+/* Mode sombre - Priorité maximale */
+html.dark input[type="date"],
+html.dark input[type="datetime-local"],
+html.dark input[type="time"],
+html.dark input[type="month"],
+html.dark input[type="week"],
+html.dark input[datepicker],
+html.dark input[datepicker="true"],
+html.dark input[type="text"][datepicker],
+html.dark input[type="text"][datepicker="true"],
+.dark input[type="date"],
+.dark input[type="datetime-local"],
+.dark input[type="time"],
+.dark input[type="month"],
+.dark input[type="week"],
+.dark input[datepicker],
+.dark input[datepicker="true"],
+.dark input[type="text"][datepicker],
+.dark input[type="text"][datepicker="true"] {
+  background-color: rgb(55 65 81) !important;
+  /* gray-700 */
+  background-image: none !important;
+  color: rgb(255 255 255) !important;
+  /* white */
+}
+
+/* Correction spécifique pour Safari */
+input[type="date"]::-webkit-date-and-time-value,
+input[type="datetime-local"]::-webkit-date-and-time-value,
+input[type="time"]::-webkit-date-and-time-value {
+  text-align: left;
+  width: 100%;
+}
+
+/* Correction pour le calendrier Safari */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 1;
+}
+
+/* S'assurer que les date pickers dans les grids prennent toute la largeur */
+.grid input[type="date"],
+.grid input[type="datetime-local"],
+.grid input[type="time"],
+.grid input[type="month"],
+.grid input[type="week"] {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Correction pour les conteneurs flex */
+.flex input[type="date"],
+.flex input[type="datetime-local"],
+.flex input[type="time"],
+.flex input[type="month"],
+.flex input[type="week"] {
+  flex: 1 1 0%;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Flowbite Datepicker Dropdown - FORCER LE FOND */
+.datepicker-dropdown,
+.datepicker-picker,
+.datepicker {
+  background-color: white !important;
+  background-image: none !important;
+  color: rgb(17 24 39) !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Mode sombre pour le calendrier Flowbite */
+html.dark .datepicker-dropdown,
+html.dark .datepicker-picker,
+html.dark .datepicker,
+.dark .datepicker-dropdown,
+.dark .datepicker-picker,
+.dark .datepicker {
+  background-color: rgb(31 41 55) !important;
+  /* gray-800 */
+  background-image: none !important;
+  color: rgb(243 244 246) !important;
+  /* gray-100 */
+  border: 1px solid rgb(55 65 81) !important;
+  /* gray-700 */
+}
+
+/* Cellules du calendrier */
+.datepicker-cell {
+  color: rgb(17 24 39) !important;
+}
+
+html.dark .datepicker-cell,
+.dark .datepicker-cell {
+  color: rgb(243 244 246) !important;
+}
+
+/* Cellule sélectionnée */
+.datepicker-cell.selected,
+.datepicker-cell.selected:hover {
+  background-color: rgb(59 130 246) !important;
+  /* blue-500 */
+  color: white !important;
+}
+
+/* Cellule aujourd'hui */
+.datepicker-cell.today {
+  background-color: rgb(219 234 254) !important;
+  /* blue-100 */
+  color: rgb(17 24 39) !important;
+}
+
+html.dark .datepicker-cell.today,
+.dark .datepicker-cell.today {
+  background-color: rgb(30 58 138) !important;
+  /* blue-900 */
+  color: rgb(243 244 246) !important;
+}
+
+/* Header du calendrier */
+.datepicker-header {
+  background-color: white !important;
+  background-image: none !important;
+}
+
+html.dark .datepicker-header,
+.dark .datepicker-header {
+  background-color: rgb(31 41 55) !important;
+  background-image: none !important;
+}
+
+/* Boutons du calendrier */
+.datepicker-controls button,
+.datepicker-view button {
+  color: rgb(17 24 39) !important;
+}
+
+html.dark .datepicker-controls button,
+html.dark .datepicker-view button,
+.dark .datepicker-controls button,
+.dark .datepicker-view button {
+  color: rgb(243 244 246) !important;
+}
+
+/* Responsive pour les petits écrans */
+@media (max-width: 640px) {
+
+  /* Date pickers sur mobile */
+  input[type="date"],
+  input[type="datetime-local"],
+  input[type="time"],
+  input[type="month"],
+  input[type="week"] {
+    font-size: 16px;
+    /* Évite le zoom automatique sur iOS */
+  }
+
+  /* Boutons de formulaire sur mobile */
+  button[type="submit"],
+  button[type="button"] {
+    min-height: 44px;
+    /* Taille minimale tactile */
+  }
+}

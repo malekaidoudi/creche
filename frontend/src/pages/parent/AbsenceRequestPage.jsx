@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Calendar, 
-  AlertCircle, 
-  Send, 
+import {
+  Calendar,
+  AlertCircle,
+  Send,
   Baby,
   Clock,
   FileText,
@@ -19,11 +19,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../..
 import { Button } from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import CalendarPicker from '../../components/ui/CalendarPicker';
-import toast from 'react-hot-toast';
+import { useDialogContext } from '../../contexts/DialogContext';
 import api from '../../services/api';
 
 const AbsenceRequestPage = () => {
   const { user } = useAuth();
+  const dialog = useDialogContext();
   const { isRTL } = useLanguage();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -50,11 +51,11 @@ const AbsenceRequestPage = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      
+
       // Charger les enfants du parent (seulement les approuvés)
       const childrenResponse = await api.get(`/api/children/parent/${user.id}`);
       console.log('👶 Réponse enfants:', childrenResponse.data);
-      
+
       if (childrenResponse.data.success) {
         setChildren(childrenResponse.data.children || []);
         console.log('✅ Enfants chargés:', childrenResponse.data.children?.length || 0);
@@ -73,7 +74,7 @@ const AbsenceRequestPage = () => {
       }
     } catch (error) {
       console.error('Erreur chargement données:', error);
-      toast.error(isRTL ? 'خطأ في تحميل البيانات' : 'Erreur lors du chargement des données');
+      dialog.error(isRTL ? 'خطأ في تحميل البيانات' : 'Erreur lors du chargement des données');
     } finally {
       setLoading(false);
     }
@@ -81,7 +82,7 @@ const AbsenceRequestPage = () => {
 
   const handleSubmit = async () => {
     if (!selectedChild || !selectedDate || !reason) {
-      toast.error(isRTL ? 'يرجى ملء جميع الحقول المطلوبة' : 'Veuillez remplir tous les champs requis');
+      dialog.error(isRTL ? 'يرجى ملء جميع الحقول المطلوبة' : 'Veuillez remplir tous les champs requis');
       return;
     }
 
@@ -102,7 +103,7 @@ const AbsenceRequestPage = () => {
       const response = await api.post('/api/absence-requests', requestData);
 
       if (response.data.success) {
-        toast.success(isRTL ? 'تم إرسال طلب الغياب بنجاح' : 'Demande d\'absence envoyée avec succès');
+        dialog.success(isRTL ? 'تم إرسال طلب الغياب بنجاح' : 'Demande d\'absence envoyée avec succès');
 
         // Réinitialiser le formulaire
         setSelectedDate(null);
@@ -113,13 +114,13 @@ const AbsenceRequestPage = () => {
         // Recharger les demandes
         loadData();
       } else {
-        toast.error(response.data.error || (isRTL ? 'خطأ في إرسال الطلب' : 'Erreur lors de l\'envoi de la demande'));
+        dialog.error(response.data.error || (isRTL ? 'خطأ في إرسال الطلب' : 'Erreur lors de l\'envoi de la demande'));
       }
 
     } catch (error) {
       console.error('❌ Erreur envoi demande:', error);
       const errorMessage = error.response?.data?.error || error.message;
-      toast.error(isRTL ? `خطأ: ${errorMessage}` : `Erreur: ${errorMessage}`);
+      dialog.error(isRTL ? `خطأ: ${errorMessage}` : `Erreur: ${errorMessage}`);
     } finally {
       setSubmitting(false);
     }
@@ -240,7 +241,7 @@ const AbsenceRequestPage = () => {
                   {isRTL ? 'تاريخ طلبات الغياب المرسلة' : 'Historique de vos demandes d\'absence'}
                 </CardDescription>
               </CardHeader>
-              
+
               <CardContent>
                 {absenceRequests.length === 0 ? (
                   <div className="text-center py-8">
@@ -282,7 +283,7 @@ const AbsenceRequestPage = () => {
                             </span>
                           </div>
                         </div>
-                        
+
                         <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
                           <div className="flex items-center">
                             <Calendar className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />

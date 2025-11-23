@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, Plus, CheckCircle, XCircle, AlertCircle, Check, X } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import api from '../../services/api';
-import toast from 'react-hot-toast';
+import { useDialogContext } from '../../contexts/DialogContext';
 
 const MyAppointmentsWidget = ({ onRequestAppointment, onRescheduleAppointment }) => {
   const { isRTL } = useLanguage();
+  const dialog = useDialogContext();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -17,23 +18,23 @@ const MyAppointmentsWidget = ({ onRequestAppointment, onRescheduleAppointment })
     try {
       setLoading(true);
       const response = await api.get('/api/appointments');
-      
+
       if (response.data.success) {
         const allAppointments = response.data.appointments || [];
-        
+
         // Filtrer: exclure les annulés ET les terminés
         const activeAppointments = allAppointments.filter(apt => {
           // Exclure les RDV annulés et terminés
           return apt.status !== 'cancelled' && apt.status !== 'completed';
         });
-        
+
         // Trier par date (plus proches en premier)
         const sorted = activeAppointments.sort((a, b) => {
           const dateA = new Date(a.confirmed_date || a.proposed_date);
           const dateB = new Date(b.confirmed_date || b.proposed_date);
           return dateA - dateB;
         });
-        
+
         // Limiter aux 5 prochains RDV
         setAppointments(sorted.slice(0, 5));
       } else {
@@ -69,12 +70,12 @@ const MyAppointmentsWidget = ({ onRequestAppointment, onRescheduleAppointment })
         confirmed_date: appointment.proposed_date
       });
       if (response.data.success) {
-        toast.success(isRTL ? 'تم تأكيد الموعد' : 'Rendez-vous confirmé avec succès');
+        dialog.success(isRTL ? 'تم تأكيد الموعد' : 'Rendez-vous confirmé avec succès');
         loadAppointments();
       }
     } catch (error) {
       console.error('Erreur confirmation RDV:', error);
-      toast.error(isRTL ? 'خطأ في التأكيد' : 'Erreur lors de la confirmation');
+      dialog.error(isRTL ? 'خطأ في التأكيد' : 'Erreur lors de la confirmation');
     }
   };
 
@@ -140,7 +141,7 @@ const MyAppointmentsWidget = ({ onRequestAppointment, onRescheduleAppointment })
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow h-full flex flex-col">
       {/* Header */}
       <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
               <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400" />
@@ -150,21 +151,24 @@ const MyAppointmentsWidget = ({ onRequestAppointment, onRescheduleAppointment })
                 {isRTL ? 'مواعيدي' : 'Mes Rendez-vous'}
               </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                {appointments.length > 0 
+                {appointments.length > 0
                   ? `${appointments.length} ${isRTL ? 'موعد' : 'rendez-vous'}`
                   : isRTL ? 'لا توجد مواعيد' : 'Aucun rendez-vous'
                 }
               </p>
             </div>
           </div>
-          
-          <button
-            onClick={onRequestAppointment}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
-          >
-            <Plus className="w-4 h-4" />
-            <span>{isRTL ? 'طلب موعد' : 'Demander un RDV'}</span>
-          </button>
+
+          {/* Bouton seulement si liste non-vide */}
+          {appointments.length > 0 && (
+            <button
+              onClick={onRequestAppointment}
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium w-full"
+            >
+              <Plus className="w-4 h-4 flex-shrink-0" />
+              <span>{isRTL ? 'طلب موعد' : 'Demander un rendez-vous'}</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -189,7 +193,7 @@ const MyAppointmentsWidget = ({ onRequestAppointment, onRescheduleAppointment })
             {appointments.map((appointment) => {
               const statusConfig = getStatusConfig(appointment.status);
               const StatusIcon = statusConfig.icon;
-              
+
               return (
                 <div
                   key={appointment.id}
@@ -203,17 +207,17 @@ const MyAppointmentsWidget = ({ onRequestAppointment, onRescheduleAppointment })
                           {statusConfig.label}
                         </span>
                       </div>
-                      
+
                       <h4 className="font-semibold text-gray-900 dark:text-white mb-1">
                         {appointment.subject || appointment.title || (isRTL ? 'موعد' : 'Rendez-vous')}
                       </h4>
-                      
+
                       {appointment.description && (
                         <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">
                           {appointment.description}
                         </p>
                       )}
-                      
+
                       <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400 mb-3">
                         <div className="flex items-center gap-1">
                           <Calendar className="w-4 h-4" />

@@ -2,13 +2,15 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { useLanguage } from '../../hooks/useLanguage'
+import { useDialogContext } from '../../contexts/DialogContext'
 import { Mail, Lock, Eye, EyeOff, LogIn, UserPlus, AlertCircle } from 'lucide-react'
 
 const LoginFormHero = () => {
   const { login } = useAuth()
   const { isRTL } = useLanguage()
+  const dialog = useDialogContext()
   const navigate = useNavigate()
-  
+
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -25,13 +27,13 @@ const LoginFormHero = () => {
     try {
       // Connexion
       const response = await login(formData.email, formData.password)
-      
+
       // Succès - arrêter le loading
       setLoading(false)
-      
+
       // Redirection selon le rôle
       const userRole = response?.user?.role
-      
+
       if (userRole === 'admin' || userRole === 'staff') {
         navigate('/dashboard', { replace: true })
       } else if (userRole === 'parent') {
@@ -40,14 +42,14 @@ const LoginFormHero = () => {
         // Visiteur ou autre rôle → Accueil
         navigate('/', { replace: true })
       }
-      
+
     } catch (err) {
       // Arrêter le loading
       setLoading(false)
-      
+
       // Définir le message d'erreur
       let errorMessage = ''
-      
+
       if (err.response?.status === 401) {
         errorMessage = isRTL ? 'بريد إلكتروني أو كلمة مرور خاطئة' : 'Email ou mot de passe incorrect'
       } else if (err.response?.status === 500) {
@@ -55,10 +57,19 @@ const LoginFormHero = () => {
       } else if (err.code === 'ERR_NETWORK') {
         errorMessage = isRTL ? 'لا يوجد اتصال بالخادم' : 'Impossible de se connecter au serveur'
       } else {
-        errorMessage = err.response?.data?.error || (isRTL ? 'خطأ في تسجيل الدخول' : 'Erreur de connexion')
+        errorMessage = err.response?.data?.message || err.message || (isRTL ? 'خطأ في تسجيل الدخول' : 'Erreur de connexion')
       }
-      
-      setError(errorMessage)
+
+      // Afficher l'erreur
+      if (errorMessage) {
+        dialog.error(errorMessage)
+      }
+    } finally {
+      // Réinitialiser les champs
+      setFormData({
+        email: '',
+        password: ''
+      })
     }
   }
 
@@ -141,9 +152,9 @@ const LoginFormHero = () => {
 
         {/* Message d'erreur */}
         {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 px-4 py-3 rounded-xl flex items-center">
-            <AlertCircle className="w-5 h-5 mr-3 rtl:mr-0 rtl:ml-3 flex-shrink-0" />
-            <span className="text-sm font-semibold">{error}</span>
+          <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 px-3 py-2 rounded-xl flex items-start">
+            <AlertCircle className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2 flex-shrink-0 mt-0.5" />
+            <span className="text-xs sm:text-sm font-medium leading-tight break-words">{error}</span>
           </div>
         )}
 
@@ -157,7 +168,7 @@ const LoginFormHero = () => {
             <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
           ) : (
             <>
-              <LogIn className={`w-5 h-5 ${isRTL ? 'mr-2' : 'ml-2'}`} />
+              <LogIn className={`w-5 h-5 ${isRTL ? 'ml-2' : 'mr-2'}`} />
               {isRTL ? 'تسجيل الدخول' : 'Se connecter'}
             </>
           )}
@@ -179,7 +190,7 @@ const LoginFormHero = () => {
       {/* Sign up link */}
       <Link
         to="/inscription"
-        className="w-full bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-2 border-gray-300 dark:border-gray-600 py-3 px-6 rounded-xl font-semibold text-lg shadow-md hover:shadow-lg transform hover:scale-[1.02] transition-all duration-300 flex items-center justify-center"
+        className="w-full bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-2 border-gray-300 dark:border-gray-600 py-3 px-6 rounded-xl font-semibold text-base sm:text-lg shadow-md hover:shadow-lg transform hover:scale-[1.02] transition-all duration-300 flex items-center justify-center whitespace-nowrap"
       >
         <UserPlus className={`w-5 h-5 ${isRTL ? 'ml-2' : 'mr-2'}`} />
         {isRTL ? 'انضم إلينا' : 'Rejoignez-nous'}

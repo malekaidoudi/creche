@@ -1,14 +1,17 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, CheckCircle, Clock, AlertCircle, ChevronRight, CalendarPlus } from 'lucide-react';
+import { Calendar, CheckCircle, Clock, AlertCircle, ChevronRight, CalendarPlus, Plus, FileText, StickyNote } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import toast from 'react-hot-toast';
+import { useDialogContext } from '../../contexts/DialogContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/Card';
-import LoadingSpinner from '../ui/LoadingSpinner';
+import { useLanguage } from '../../hooks/useLanguage';
 import api from '../../services/api';
 import CreateAppointmentModal from '../modals/CreateAppointmentModal';
+import LoadingSpinner from '../ui/LoadingSpinner';
 
-const TodayTasksWidget = () => {
+const TodayTasksWidget = ({ onOpenMemoModal, onOpenTaskModal, onOpenAppointmentModal, isMobileView = false }) => {
+  const { isRTL } = useLanguage();
+  const dialog = useDialogContext();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAppointmentModal, setShowAppointmentModal] = useState(false);
@@ -16,14 +19,14 @@ const TodayTasksWidget = () => {
 
   useEffect(() => {
     loadTodayTasks();
-    
+
     // Écouter les événements de mise à jour des tâches
     const handleTaskUpdate = () => {
       loadTodayTasks();
     };
-    
+
     window.addEventListener('taskUpdated', handleTaskUpdate);
-    
+
     return () => {
       window.removeEventListener('taskUpdated', handleTaskUpdate);
     };
@@ -33,7 +36,7 @@ const TodayTasksWidget = () => {
     try {
       setLoading(true);
       const today = new Date().toISOString().split('T')[0];
-      
+
       // Charger les tâches, mémos et événements
       // Note: Les mémos seront automatiquement filtrés par utilisateur côté backend
       const eventsResponse = await api.get('/api/events', {
@@ -56,12 +59,12 @@ const TodayTasksWidget = () => {
       if (eventsResponse.data.success) {
         const now = new Date();
         now.setHours(0, 0, 0, 0);
-        
+
         // Filtrer pour ne garder que les tâches, mémos et événements actifs
         const filtered = (eventsResponse.data.events || []).filter(event => {
           // Seulement tâches, mémos et événements
           if (!['task', 'memo', 'event', 'meeting'].includes(event.type)) return false;
-          
+
           // Exclure les messages du staff (ils vont dans le widget Messages Staff)
           if (event.metadata && typeof event.metadata === 'object') {
             if (event.metadata.from_staff === true) return false;
@@ -70,19 +73,19 @@ const TodayTasksWidget = () => {
             try {
               const meta = JSON.parse(event.metadata);
               if (meta.from_staff === true) return false;
-            } catch (e) {}
+            } catch (e) { }
           }
-          
+
           // Exclure les complétés et annulés
           if (event.status === 'completed' || event.status === 'cancelled') return false;
-          
+
           // Pour les mémos : toujours inclure (pas de date)
           if (event.type === 'memo') return true;
-          
+
           // Pour les autres : inclure UNIQUEMENT si c'est aujourd'hui (pas les retards)
           const eventDate = new Date(event.start_date);
           eventDate.setHours(0, 0, 0, 0);
-          
+
           return eventDate.getTime() === now.getTime();
         });
 
@@ -100,10 +103,10 @@ const TodayTasksWidget = () => {
             appointment_id: appt.id
           }
         }));
-        
+
         // Combiner tâches et RDV
         const combined = [...filtered, ...appointmentTasks];
-        
+
         // Trier par priorité puis date
         combined.sort((a, b) => {
           const priorityOrder = { high: 0, medium: 1, low: 2 };
@@ -111,7 +114,7 @@ const TodayTasksWidget = () => {
           if (priorityDiff !== 0) return priorityDiff;
           return new Date(a.start_date) - new Date(b.start_date);
         });
-        
+
         setTasks(combined.slice(0, 10)); // Limiter à 10
       }
     } catch (error) {
@@ -180,21 +183,50 @@ const TodayTasksWidget = () => {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center">
-            <Calendar className="w-5 h-5 mr-2" />
-            Tâches d'aujourd'hui
+      {/* Header masqué en mode mobile (géré par CollapsibleCard) */}
+      {!isMobileView && (
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between mb-2">
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="w-5 h-5" />
+              <span>Tâches d'aujourd'hui</span>
+              <span className="text-sm font-normal text-gray-500">
+                ({tasks.length})
+              </span>
+            </CardTitle>
+            <div className="flex items-center gap-1">
+              {onOpenMemoModal && (
+                <button
+                  onClick={onOpenMemoModal}
+                  className="flex flex-col items-center gap-0.5 px-2 py-1 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors"
+                >
+                  <StickyNote className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                  <span className="text-[10px] text-purple-600 dark:text-purple-400 font-medium">Mémo</span>
+                </button>
+              )}
+              {onOpenTaskModal && (
+                <button
+                  onClick={onOpenTaskModal}
+                  className="flex flex-col items-center gap-0.5 px-2 py-1 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                >
+                  <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <span className="text-[10px] text-blue-600 dark:text-blue-400 font-medium">Tâche</span>
+                </button>
+              )}
+              {onOpenAppointmentModal && (
+                <button
+                  onClick={onOpenAppointmentModal}
+                  className="flex flex-col items-center gap-0.5 px-2 py-1 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
+                >
+                  <CalendarPlus className="w-4 h-4 text-green-600 dark:text-green-400" />
+                  <span className="text-[10px] text-green-600 dark:text-green-400 font-medium">RDV</span>
+                </button>
+              )}
+            </div>
           </div>
-          <span className="text-sm font-normal text-gray-500">
-            {tasks.length} tâche{tasks.length > 1 ? 's' : ''}
-          </span>
-        </CardTitle>
-        <CardDescription>
-          Tâches et mémos planifiés pour aujourd'hui
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+        </CardHeader>
+      )}
+      <CardContent className={isMobileView ? 'p-0' : ''}>
         {tasks.length === 0 ? (
           <div className="text-center py-8">
             <Calendar className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
@@ -229,7 +261,7 @@ const TodayTasksWidget = () => {
                           🚨 URGENT
                         </span>
                       )}
-                      
+
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
                           <h4 className="font-medium text-gray-900 dark:text-white truncate">
@@ -241,7 +273,7 @@ const TodayTasksWidget = () => {
                             </p>
                           )}
                         </div>
-                        
+
                         {/* Bouton Terminer intégré pour mémos et tâches */}
                         {(task.type === 'memo' || task.type === 'task') && task.status === 'pending' && (
                           <button
@@ -249,14 +281,14 @@ const TodayTasksWidget = () => {
                               e.preventDefault();
                               e.stopPropagation();
                               try {
-                                await api.patch(`/api/events/${task.id}/status`, { 
-                                  status: 'completed' 
+                                await api.patch(`/api/events/${task.id}/status`, {
+                                  status: 'completed'
                                 });
-                                toast.success(task.type === 'memo' ? 'Mémo terminé' : 'Tâche terminée');
+                                dialog.success(task.type === 'memo' ? 'Mémo terminé' : 'Tâche terminée');
                                 loadTodayTasks();
                               } catch (error) {
                                 console.error('Erreur complète:', error);
-                                toast.error(error.response?.data?.error || 'Erreur lors de la mise à jour');
+                                dialog.error(error.response?.data?.error || 'Erreur lors de la mise à jour');
                               }
                             }}
                             className="flex-shrink-0 px-3 py-1.5 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white text-xs font-medium rounded-md transition-all hover:shadow-md flex items-center gap-1.5"
@@ -267,7 +299,7 @@ const TodayTasksWidget = () => {
                           </button>
                         )}
                       </div>
-                      
+
                       <div className="flex items-center space-x-3 mt-3">
                         {task.type === 'appointment' ? (
                           <>
@@ -297,7 +329,7 @@ const TodayTasksWidget = () => {
                           </>
                         )}
                       </div>
-                      
+
                       {/* Bouton Fixer une date pour tâches urgentes RDV */}
                       {task.metadata?.is_urgent_appointment && (
                         <button
@@ -318,10 +350,10 @@ const TodayTasksWidget = () => {
                 </Link>
               </motion.div>
             ))}
-            
+
             {tasks.length > 0 && (
               <Link
-                to="/dashboard/events/list"
+                to="/dashboard/events/calendar?filter=tasks"
                 className="block text-center text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 font-medium mt-4 py-2"
               >
                 Voir toutes les tâches →

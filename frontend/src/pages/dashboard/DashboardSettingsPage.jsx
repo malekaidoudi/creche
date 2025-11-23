@@ -29,12 +29,15 @@ import api from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import toast from 'react-hot-toast';
+import { useDialogContext } from '../../contexts/DialogContext';
+import DatePicker from '../../components/ui/DatePicker';
+import { convertToISO, convertFromISO } from '../../utils/dateUtils';
 
 const DashboardSettingsPage = () => {
   const { isRTL, currentLanguage, toggleLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
   const { user } = useAuth();
+  const dialog = useDialogContext();
   const [loading, setLoading] = useState(false);
   const [loadingHolidays, setLoadingHolidays] = useState(false);
   const [holidays, setHolidays] = useState([]);
@@ -146,8 +149,8 @@ const DashboardSettingsPage = () => {
               setSettings(prev => ({
                 ...prev,
                 annualVacationEnabled: vacationResponse.data.enabled || false,
-                annualVacationStartDate: vacationResponse.data.start_date || '',
-                annualVacationEndDate: vacationResponse.data.end_date || ''
+                annualVacationStartDate: convertFromISO(vacationResponse.data.start_date) || '',
+                annualVacationEndDate: convertFromISO(vacationResponse.data.end_date) || ''
               }));
             }
           } catch (vacationError) {
@@ -466,14 +469,14 @@ const DashboardSettingsPage = () => {
       }
 
       if (!token) {
-        toast.error(isRTL ? 'خطأ في المصادقة' : 'Erreur d\'authentification');
+        dialog.error(isRTL ? 'خطأ في المصادقة' : 'Erreur d\'authentification');
         return;
       }
 
       // Vérifier si l'utilisateur a les privilèges admin
       if (user?.role !== 'admin') {
         console.log('❌ Rôle insuffisant:', user?.role, 'attendu: admin');
-        toast.error(isRTL ? 'هذه الوظيفة متاحة للمديرين فقط' : 'Cette fonctionnalité est réservée aux administrateurs');
+        dialog.error(isRTL ? 'هذه الوظيفة متاحة للمديرين فقط' : 'Cette fonctionnalité est réservée aux administrateurs');
         return;
       }
 
@@ -503,7 +506,7 @@ const DashboardSettingsPage = () => {
           // Le jour férié est déjà activé, rien à faire
           console.log('⚠️ Jour férié déjà activé avec ID:', holiday.id);
           console.log('⏭️ Aucune action nécessaire');
-          toast.info(isRTL ? 'العطلة مفعلة بالفعل' : 'Jour férié déjà activé');
+          // Pas de notification pour "déjà activé" (silencieux)
           return;
         }
 
@@ -533,7 +536,7 @@ const DashboardSettingsPage = () => {
                 ? { ...h, id: response.data.holiday.id, is_active: true }
                 : h
             ));
-            toast.success(isRTL ? 'تم تفعيل العطلة - الحضانة ستكون مغلقة' : 'Jour férié activé');
+            dialog.success(isRTL ? 'تم تفعيل العطلة - الحضانة ستكون مغلقة' : 'Jour férié activé');
           }
         } catch (postError) {
           if (postError.response?.status === 409) {
@@ -551,7 +554,7 @@ const DashboardSettingsPage = () => {
                     ? { ...h, id: existingHoliday.id, is_active: true }
                     : h
                 ));
-                toast.success(isRTL ? 'تم تفعيل العطلة - الحضانة ستكون مغلقة' : 'Jour férié activé');
+                dialog.success(isRTL ? 'تم تفعيل العطلة - الحضانة ستكون مغلقة' : 'Jour férié activé');
               }
             }
           } else {
@@ -573,7 +576,7 @@ const DashboardSettingsPage = () => {
               : h
           ));
 
-          toast.success(isRTL ? 'تم إلغاء تفعيل العطلة - الحضانة ستكون مفتوحة' : 'Jour férié désactivé - La crèche sera ouverte');
+          dialog.success(isRTL ? 'تم إلغاء تفعيل العطلة - الحضانة ستكون مفتوحة' : 'Jour férié désactivé - La crèche sera ouverte');
         } else {
           console.warn('⚠️ Pas d\'ID pour supprimer le jour férié');
         }
@@ -585,7 +588,7 @@ const DashboardSettingsPage = () => {
         holiday: holiday?.name,
         isActive
       });
-      toast.error(isRTL ? 'خطأ في تحديث حالة العطلة' : `Erreur: ${error.message}`);
+      dialog.error(isRTL ? 'خطأ في تحديث حالة العطلة' : `Erreur: ${error.message}`);
     }
   };
 
@@ -609,11 +612,12 @@ const DashboardSettingsPage = () => {
 
       console.log('📡 Réponse POST:', postResponse.status);
       console.log('✅ POST fonctionne:', postResponse.data);
-      toast.success(isRTL ? 'POST API يعمل' : 'POST API fonctionne');
+      // Test API silencieux (pas de notification)
+      console.log('✅ Test API réussi');
 
     } catch (error) {
       console.error('❌ Erreur test API:', error);
-      toast.error(isRTL ? 'فشل في الاتصال بـ API' : 'Échec de connexion à l\'API');
+      dialog.error(isRTL ? 'فشل في الاتصال بـ API' : 'Échec de connexion à l\'API');
     }
   };
 
@@ -665,8 +669,8 @@ const DashboardSettingsPage = () => {
         try {
           const vacationResponse = await api.put('/api/nursery-settings/annual-vacation', {
             enabled: settings.annualVacationEnabled,
-            start_date: settings.annualVacationStartDate || null,
-            end_date: settings.annualVacationEndDate || null
+            start_date: convertToISO(settings.annualVacationStartDate) || null,
+            end_date: convertToISO(settings.annualVacationEndDate) || null
           });
           console.log('✅ Vacances annuelles sauvegardées:', vacationResponse.data);
         } catch (vacationError) {
@@ -676,11 +680,11 @@ const DashboardSettingsPage = () => {
         }
       }
 
-      toast.success(isRTL ? 'تم حفظ الإعدادات بنجاح' : 'Paramètres sauvegardés avec succès');
+      dialog.success(isRTL ? 'تم حفظ الإعدادات بنجاح' : 'Paramètres sauvegardés avec succès');
     } catch (error) {
       console.error('💥 Erreur lors de la sauvegarde:', error);
       const errorMessage = error.message || (isRTL ? 'خطأ في حفظ الإعدادات' : 'Erreur lors de la sauvegarde');
-      toast.error(errorMessage);
+      dialog.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -703,7 +707,7 @@ const DashboardSettingsPage = () => {
     linkElement.setAttribute('download', exportFileDefaultName);
     linkElement.click();
 
-    toast.success(isRTL ? 'تم تصدير النسخة الاحتياطية' : 'Sauvegarde exportée');
+    // Export silencieux (pas de notification)
   };
 
   if (loading) {
@@ -912,29 +916,18 @@ const DashboardSettingsPage = () => {
 
                   {settings.annualVacationEnabled && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          {isRTL ? 'تاريخ البداية' : 'Date de début'}
-                        </label>
-                        <input
-                          type="date"
-                          value={settings.annualVacationStartDate || ''}
-                          onChange={(e) => handleSettingChange('annualVacationStartDate', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          {isRTL ? 'تاريخ النهاية' : 'Date de fin'}
-                        </label>
-                        <input
-                          type="date"
-                          value={settings.annualVacationEndDate || ''}
-                          onChange={(e) => handleSettingChange('annualVacationEndDate', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                        />
-                      </div>
+                      <DatePicker
+                        label={isRTL ? 'تاريخ البداية' : 'Date de début'}
+                        title={isRTL ? 'تاريخ البداية' : 'Date de début des vacances'}
+                        value={settings.annualVacationStartDate || ''}
+                        onChange={(value) => handleSettingChange('annualVacationStartDate', value)}
+                      />
+                      <DatePicker
+                        label={isRTL ? 'تاريخ النهاية' : 'Date de fin'}
+                        title={isRTL ? 'تاريخ النهاية' : 'Date de fin des vacances'}
+                        value={settings.annualVacationEndDate || ''}
+                        onChange={(value) => handleSettingChange('annualVacationEndDate', value)}
+                      />
                     </div>
                   )}
                 </div>
@@ -1031,11 +1024,8 @@ const DashboardSettingsPage = () => {
                         const newType = menuType === 'side' ? 'floating' : 'side';
                         setMenuType(newType);
                         localStorage.setItem('menuType', newType);
-                        toast.success(
-                          isRTL
-                            ? 'تم حفظ التفضيل! جاري إعادة التحميل...'
-                            : 'Préférence enregistrée ! Rechargement...'
-                        );
+                        // Rechargement silencieux (pas de notification)
+                        console.log('✅ Préférence menu enregistrée:', newType);
                         setTimeout(() => window.location.reload(), 500);
                       }}
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${menuType === 'side' ? 'bg-primary-600' : 'bg-gray-200'
@@ -1386,7 +1376,7 @@ const DashboardSettingsPage = () => {
           </Card>
         </motion.div>
       </div>
-    </div>
+    </div >
   );
 };
 

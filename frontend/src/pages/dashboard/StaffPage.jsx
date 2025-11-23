@@ -1,30 +1,34 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { 
-  UserCheck, 
-  Search, 
-  Plus, 
-  Edit, 
-  Shield, 
-  Mail, 
-  Phone, 
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  UserCheck,
+  Search,
+  Plus,
+  Edit,
+  Shield,
+  Mail,
+  Phone,
   Calendar,
   Filter,
   Download,
   Eye,
   Clock,
   Award,
-  Users
+  Users,
+  ChevronDown,
+  BarChart3,
+  UserX
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useAuth } from '../../hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import toast from 'react-hot-toast';
+import { useDialogContext } from '../../contexts/DialogContext';
 
 const StaffPage = () => {
   const { isRTL } = useLanguage();
+  const dialog = useDialogContext();
   const { isAdmin } = useAuth();
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -32,6 +36,7 @@ const StaffPage = () => {
   const [filterRole, setFilterRole] = useState('all');
   const [selectedStaff, setSelectedStaff] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [statsExpanded, setStatsExpanded] = useState(false);
 
   // Données simulées pour le personnel
   useEffect(() => {
@@ -102,6 +107,7 @@ const StaffPage = () => {
       } catch (error) {
         console.error('Erreur chargement personnel:', error);
         setLoading(false);
+        dialog.error(isRTL ? 'خطأ في تحميل البيانات' : 'Erreur lors du chargement');
       }
     };
 
@@ -109,14 +115,14 @@ const StaffPage = () => {
   }, []);
 
   const filteredStaff = staff.filter(member => {
-    const matchesSearch = 
+    const matchesSearch =
       member.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       member.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       member.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       member.department.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesFilter = filterRole === 'all' || member.role === filterRole;
-    
+
     return matchesSearch && matchesFilter;
   });
 
@@ -136,17 +142,17 @@ const StaffPage = () => {
         color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
       }
     };
-    
+
     return roleConfig[role] || roleConfig.staff;
   };
 
   const exportStaff = () => {
-    const csvContent = "data:text/csv;charset=utf-8," + 
+    const csvContent = "data:text/csv;charset=utf-8," +
       "Nom,Email,Téléphone,Rôle,Département,Statut\n" +
-      filteredStaff.map(member => 
+      filteredStaff.map(member =>
         `${member.first_name} ${member.last_name},${member.email},${member.phone},${member.role},${member.department},${member.status}`
       ).join("\n");
-    
+
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -154,8 +160,8 @@ const StaffPage = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
-    toast.success(isRTL ? 'تم تصدير قائمة الموظفين' : 'Liste du personnel exportée');
+
+    dialog.success(isRTL ? 'تم تحميل البيانات بنجاح' : 'Données téléchargées avec succès');
   };
 
   if (loading) {
@@ -201,12 +207,12 @@ const StaffPage = () => {
         </div>
       </motion.div>
 
-      {/* Statistiques */}
+      {/* Statistiques - Desktop */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.1 }}
-        className="grid grid-cols-1 md:grid-cols-4 gap-4"
+        className="hidden md:grid grid-cols-1 md:grid-cols-4 gap-4"
       >
         <Card>
           <CardContent className="p-4">
@@ -281,6 +287,106 @@ const StaffPage = () => {
         </Card>
       </motion.div>
 
+      {/* Statistiques - Mobile Collapsible */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.1 }}
+        className="md:hidden bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden"
+        layout
+      >
+        <div
+          onClick={() => setStatsExpanded(!statsExpanded)}
+          className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+              <BarChart3 className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+                {isRTL ? 'الإحصائيات' : 'Statistiques'}
+              </h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {staff.length} {isRTL ? 'موظف' : 'personnel'}
+              </p>
+            </div>
+          </div>
+          <motion.div
+            animate={{ rotate: statsExpanded ? 180 : 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <ChevronDown className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          </motion.div>
+        </div>
+
+        <AnimatePresence>
+          {statsExpanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="overflow-hidden"
+            >
+              <div className="p-4 pt-0 space-y-3 border-t border-gray-100 dark:border-gray-700">
+                {/* Total Personnel */}
+                <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {isRTL ? 'إجمالي الموظفين' : 'Total Personnel'}
+                    </span>
+                  </div>
+                  <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                    {staff.length}
+                  </span>
+                </div>
+
+                {/* Administrateurs */}
+                <div className="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {isRTL ? 'المديرون' : 'Administrateurs'}
+                    </span>
+                  </div>
+                  <span className="text-lg font-bold text-purple-600 dark:text-purple-400">
+                    {staff.filter(s => s.role === 'admin').length}
+                  </span>
+                </div>
+
+                {/* Actifs */}
+                <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <UserCheck className="w-4 h-4 text-green-600 dark:text-green-400" />
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {isRTL ? 'نشط' : 'Actifs'}
+                    </span>
+                  </div>
+                  <span className="text-lg font-bold text-green-600 dark:text-green-400">
+                    {staff.filter(s => s.status === 'active').length}
+                  </span>
+                </div>
+
+                {/* Expérience Moyenne */}
+                <div className="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Award className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {isRTL ? 'متوسط الخبرة' : 'Expérience Moy.'}
+                    </span>
+                  </div>
+                  <span className="text-lg font-bold text-orange-600 dark:text-orange-400">
+                    {Math.round(staff.reduce((sum, s) => sum + s.experience_years, 0) / staff.length || 0)} {isRTL ? 'سنوات' : 'ans'}
+                  </span>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+
       {/* Filtres et recherche */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -334,7 +440,8 @@ const StaffPage = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            {/* Desktop: Tableau classique */}
+            <div className="hidden lg:block overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-200 dark:border-gray-700">
@@ -396,11 +503,10 @@ const StaffPage = () => {
                         </div>
                       </td>
                       <td className="py-3 px-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          member.status === 'active'
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-                            : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-                        }`}>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${member.status === 'active'
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                          : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                          }`}>
                           {member.status === 'active' ? (isRTL ? 'نشط' : 'Actif') : (isRTL ? 'غير نشط' : 'Inactif')}
                         </span>
                       </td>
@@ -428,17 +534,122 @@ const StaffPage = () => {
                 </tbody>
               </table>
             </div>
+
+            {/* Smartphone: Liste cliquable simple */}
+            <div className="md:hidden space-y-2">
+              {filteredStaff.map((member) => (
+                <div
+                  key={member.id}
+                  onClick={() => handleViewDetails(member)}
+                  className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-md transition-shadow cursor-pointer"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-base text-gray-900 dark:text-white">
+                        {member.first_name} {member.last_name}
+                      </h3>
+                      <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getRoleBadge(member.role).color}`}>
+                          <Shield className="w-3 h-3 mr-1" />
+                          {getRoleBadge(member.role).label}
+                        </span>
+                        <div className="flex items-center">
+                          <Clock className="w-3.5 h-3.5 mr-1" />
+                          {member.experience_years} {isRTL ? 'سنوات' : 'ans'}
+                        </div>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${member.status === 'active'
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                          : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                          }`}>
+                          {member.status === 'active' ? (isRTL ? 'نشط' : 'Actif') : (isRTL ? 'غير نشط' : 'Inactif')}
+                        </span>
+                      </div>
+                    </div>
+                    <Eye className="w-5 h-5 text-gray-400" />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Tablette: Liste avec 2 colonnes (Nom + Actions) */}
+            <div className="hidden md:block lg:hidden">
+              <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                {/* Header */}
+                <div className="bg-gray-50 dark:bg-gray-900 px-4 py-3 grid grid-cols-2 gap-4 border-b border-gray-200 dark:border-gray-700">
+                  <div className="font-medium text-gray-900 dark:text-white">
+                    {isRTL ? 'الاسم الكامل' : 'Nom complet'}
+                  </div>
+                  <div className="font-medium text-gray-900 dark:text-white text-right rtl:text-left">
+                    {isRTL ? 'الإجراءات' : 'Actions'}
+                  </div>
+                </div>
+
+                {/* Rows */}
+                {filteredStaff.map((member) => (
+                  <div
+                    key={member.id}
+                    className="px-4 py-3 grid grid-cols-2 gap-4 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    <div
+                      onClick={() => handleViewDetails(member)}
+                      className="cursor-pointer"
+                    >
+                      <h3 className="font-semibold text-sm text-gray-900 dark:text-white">
+                        {member.first_name} {member.last_name}
+                      </h3>
+                      <div className="flex items-center gap-2 mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium ${getRoleBadge(member.role).color}`}>
+                          <Shield className="w-3 h-3 mr-1" />
+                          {getRoleBadge(member.role).label}
+                        </span>
+                        <div className="flex items-center">
+                          <Clock className="w-3 h-3 mr-1" />
+                          {member.experience_years} {isRTL ? 'سنوات' : 'ans'}
+                        </div>
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium ${member.status === 'active'
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                          : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                          }`}>
+                          {member.status === 'active' ? (isRTL ? 'نشط' : 'Actif') : (isRTL ? 'غير نشط' : 'Inactif')}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleViewDetails(member)}
+                        className="h-8 px-2"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </Button>
+
+                      {isAdmin() && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 px-2"
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </CardContent>
         </Card>
       </motion.div>
 
       {/* Modal détails personnel */}
       {showDetails && selectedStaff && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md"
+            className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md my-8 max-h-[90vh] overflow-y-auto"
           >
             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
               {isRTL ? 'تفاصيل الموظف' : 'Détails du Personnel'}
@@ -499,7 +710,44 @@ const StaffPage = () => {
                 </p>
               </div>
             </div>
-            <div className="flex justify-end space-x-3 rtl:space-x-reverse mt-6">
+
+            {/* Actions */}
+            <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <label className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3 block">
+                {isRTL ? 'الإجراءات' : 'Actions'}
+              </label>
+              <div className="flex flex-col gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setShowDetails(false);
+                    // Logique pour voir les détails complets
+                  }}
+                  className="w-full justify-start"
+                >
+                  <Eye className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                  {isRTL ? 'عرض التفاصيل الكاملة' : 'Voir détails complets'}
+                </Button>
+
+                {isAdmin() && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setShowDetails(false);
+                      // Logique pour modifier
+                    }}
+                    className="w-full justify-start"
+                  >
+                    <Edit className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                    {isRTL ? 'تعديل' : 'Modifier'}
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end mt-6">
               <Button
                 variant="outline"
                 onClick={() => setShowDetails(false)}

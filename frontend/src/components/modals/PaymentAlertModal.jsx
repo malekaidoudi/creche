@@ -1,11 +1,17 @@
-import { useState, useEffect } from 'react';
-import { X, DollarSign, Users, User, Send } from 'lucide-react';
-import api from '../../services/api';
-import toast from 'react-hot-toast';
+import { useState, useEffect, useRef } from 'react';
+import { X, DollarSign, Users, User, Send, Calendar } from 'lucide-react';
+import axios from 'axios';
+import { useDialogContext } from '../../contexts/DialogContext';
+import DatePicker from '../ui/DatePicker';
+import { convertToISO, convertFromISO } from '../../utils/dateUtils';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3003/api';
 
 export default function PaymentAlertModal({ isOpen, onClose, onSuccess }) {
+  const dialog = useDialogContext();
   const [loading, setLoading] = useState(false);
   const [parents, setParents] = useState([]);
+  const firstInputRef = useRef(null);
   const [formData, setFormData] = useState({
     recipient_type: 'single', // single ou multiple
     parent_ids: [],
@@ -17,12 +23,15 @@ export default function PaymentAlertModal({ isOpen, onClose, onSuccess }) {
   useEffect(() => {
     if (isOpen) {
       loadParents();
+      setTimeout(() => firstInputRef.current?.focus(), 100);
     }
   }, [isOpen]);
 
   const loadParents = async () => {
     try {
-      const response = await api.get('/api/users', {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/users`, {
+        headers: { Authorization: `Bearer ${token}` },
         params: { role: 'parent' }
       });
 
@@ -31,7 +40,7 @@ export default function PaymentAlertModal({ isOpen, onClose, onSuccess }) {
       }
     } catch (error) {
       console.error('Erreur chargement parents:', error);
-      toast.error('Erreur lors du chargement des parents');
+      dialog.error('Erreur lors du chargement des parents');
     }
   };
 
@@ -40,17 +49,18 @@ export default function PaymentAlertModal({ isOpen, onClose, onSuccess }) {
 
     // Validation
     if (formData.recipient_type === 'single' && formData.parent_ids.length === 0) {
-      toast.error('Veuillez sélectionner au moins un parent');
+      dialog.error('Veuillez sélectionner au moins un parent');
       return;
     }
 
-    if (!formData.amount || !formData.due_date) {
-      toast.error('Le montant et la date d\'échéance sont requis');
+    if (!formData.amount || formData.amount <= 0) {
+      dialog.error('Le montant doit être supérieur à 0');
       return;
     }
 
     try {
       setLoading(true);
+      const token = localStorage.getItem('token');
 
       const payload = {
         recipient_type: formData.recipient_type,
@@ -60,16 +70,20 @@ export default function PaymentAlertModal({ isOpen, onClose, onSuccess }) {
         message: formData.message
       };
 
-      const response = await api.post('/api/payment-alerts', payload);
+      const response = await axios.post(
+        `${API_URL}/payment-alerts`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
       if (response.data.success) {
-        toast.success('Rappel de paiement envoyé avec succès');
+        dialog.success('Alerte de paiement envoyée avec succès');
         onSuccess?.();
         handleClose();
       }
     } catch (error) {
-      console.error('❌ Erreur:', error);
-      toast.error(error.response?.data?.error || 'Une erreur est survenue');
+      console.error('Erreur envoi alerte:', error);
+      dialog.error(error.response?.data?.message || 'Erreur lors de l\'envoi de l\'alerte');
     } finally {
       setLoading(false);
     }
@@ -113,12 +127,12 @@ export default function PaymentAlertModal({ isOpen, onClose, onSuccess }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between flex-shrink-0">
           <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
             <DollarSign className="w-5 h-5 text-red-600" />
-            Rappel de Paiement
+            Alerte de Paiement
           </h2>
           <button
             onClick={handleClose}
@@ -216,9 +230,8 @@ export default function PaymentAlertModal({ isOpen, onClose, onSuccess }) {
               Montant à payer (TND) *
             </label>
             <input
+              ref={firstInputRef}
               type="number"
-              step="0.01"
-              min="0"
               value={formData.amount}
               onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
               placeholder="Ex: 150.00"
@@ -228,20 +241,12 @@ export default function PaymentAlertModal({ isOpen, onClose, onSuccess }) {
           </div>
 
           {/* Date d'échéance */}
-          <div>
-            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-              <Send className="w-4 h-4" />
-              Date d'échéance *
-            </label>
-            <input
-              type="date"
-              value={formData.due_date}
-              onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
-              min={new Date().toISOString().split('T')[0]}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-red-500 focus:border-transparent"
-              required
-            />
-          </div>
+          <DatePicker
+            label="Date d'échéance"
+            required
+            value={formData.due_date}
+            onChange={(value) => setFormData({ ...formData, due_date: value })}
+          />
 
           {/* Message personnalisé */}
           <div>

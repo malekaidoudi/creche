@@ -5,7 +5,7 @@ import { useLanguage } from '../../hooks/useLanguage';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
 import api from '../../services/api';
 
-const TodayAbsences = () => {
+const TodayAbsences = ({ isMobileView = false }) => {
   const { isRTL } = useLanguage();
   const [absences, setAbsences] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -21,7 +21,7 @@ const TodayAbsences = () => {
     try {
       const today = new Date().toISOString().split('T')[0];
       const response = await api.get(`/api/absence-requests/today?date=${today}`);
-      
+
       if (response.data.success) {
         setAbsences(response.data.absences || []);
       }
@@ -47,14 +47,17 @@ const TodayAbsences = () => {
       transition={{ delay: 0.2 }}
     >
       <Card className="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 border-orange-200 dark:border-orange-800">
-        <CardHeader>
-          <CardTitle className="flex items-center text-orange-700 dark:text-orange-300">
-            <AlertCircle className="w-5 h-5 mr-2 rtl:mr-0 rtl:ml-2" />
-            {isRTL ? 'الغيابات اليوم' : 'Absences du jour'}
-          </CardTitle>
-        </CardHeader>
-        
-        <CardContent>
+        {/* Header - Masqué en mode mobile */}
+        {!isMobileView && (
+          <CardHeader>
+            <CardTitle className="flex items-center text-orange-700 dark:text-orange-300">
+              <AlertCircle className="w-5 h-5 mr-2 rtl:mr-0 rtl:ml-2" />
+              {isRTL ? 'الغيابات اليوم' : 'Absences du jour'}
+            </CardTitle>
+          </CardHeader>
+        )}
+
+        <CardContent className={isMobileView ? 'pt-3' : ''}>
           <div className="space-y-3">
             {absences.map((absence) => (
               <div
@@ -76,13 +79,13 @@ const TodayAbsences = () => {
                     {absence.reason === 'other' && (isRTL ? 'أخرى' : 'Autre')}
                   </span>
                 </div>
-                
+
                 {absence.notes && (
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
                     {absence.notes}
                   </p>
                 )}
-                
+
                 <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
                   <Calendar className="w-3 h-3" />
                   <span>
@@ -92,10 +95,10 @@ const TodayAbsences = () => {
               </div>
             ))}
           </div>
-          
+
           <div className="mt-4 pt-3 border-t border-orange-200 dark:border-orange-700">
             <p className="text-sm text-orange-700 dark:text-orange-300 text-center">
-              {isRTL 
+              {isRTL
                 ? `${absences.length} ${absences.length === 1 ? 'طفل غائب' : 'أطفال غائبون'} اليوم`
                 : `${absences.length} enfant${absences.length > 1 ? 's' : ''} absent${absences.length > 1 ? 's' : ''} aujourd'hui`
               }

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Lock, Eye, EyeOff, CheckCircle, AlertCircle } from 'lucide-react';
-import { toast } from 'react-hot-toast';
+import { useDialogContext } from '../../contexts/DialogContext';
 import api from '../../services/api';
 import { useLanguage } from '../../hooks/useLanguage';
 
@@ -10,17 +10,18 @@ export default function CreatePasswordPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { isRTL } = useLanguage();
-  
+  const dialog = useDialogContext();
+
   const token = searchParams.get('token');
   const email = searchParams.get('email');
-  
+
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
-  
+
   // Validation du mot de passe
   const validatePassword = (pwd) => {
     const validations = {
@@ -31,62 +32,62 @@ export default function CreatePasswordPage() {
     };
     return validations;
   };
-  
+
   const passwordValidations = validatePassword(password);
-  
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Réinitialiser les erreurs
     setErrors({});
-    
+
     // Validation
     const newErrors = {};
-    
+
     if (!token || !email) {
-      toast.error(isRTL ? 'رابط غير صالح' : 'Lien invalide');
+      dialog.error(isRTL ? 'رابط غير صالح' : 'Lien invalide');
       return;
     }
-    
+
     if (password.length < 6) {
       newErrors.password = isRTL ? 'كلمة المرور يجب أن تحتوي على 6 أحرف على الأقل' : 'Mot de passe minimum 6 caractères';
     }
-    
+
     if (password !== confirmPassword) {
       newErrors.confirmPassword = isRTL ? 'كلمات المرور غير متطابقة' : 'Les mots de passe ne correspondent pas';
     }
-    
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
-    
+
     setLoading(true);
-    
+
     try {
       const response = await api.post('/api/auth/create-password', {
         token,
         email,
         password
       });
-      
+
       // Sauvegarder le token JWT
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
-      
-      toast.success(isRTL ? 'تم إنشاء الحساب بنجاح!' : 'Compte créé avec succès !');
-      
+
+      dialog.success(isRTL ? 'تم إنشاء الحساب بنجاح!' : 'Compte créé avec succès !');
+
       // Redirection vers le dashboard parent
       setTimeout(() => navigate('/dashboard'), 2000);
-      
+
     } catch (error) {
       console.error('Erreur création mot de passe:', error);
-      toast.error(error.response?.data?.error || (isRTL ? 'حدث خطأ' : 'Une erreur est survenue'));
+      dialog.error(error.response?.data?.error || (isRTL ? 'حدث خطأ' : 'Une erreur est survenue'));
     } finally {
       setLoading(false);
     }
   };
-  
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-secondary-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
       <motion.div
@@ -114,7 +115,7 @@ export default function CreatePasswordPage() {
               </p>
             )}
           </div>
-          
+
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Mot de passe */}
@@ -127,9 +128,8 @@ export default function CreatePasswordPage() {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className={`w-full px-4 py-3 pr-12 border ${
-                    errors.password ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                  } rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
+                  className={`w-full px-4 py-3 pr-12 border ${errors.password ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    } rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
                   placeholder={isRTL ? 'أدخل كلمة المرور' : 'Entrez votre mot de passe'}
                   required
                 />
@@ -144,7 +144,7 @@ export default function CreatePasswordPage() {
               {errors.password && (
                 <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.password}</p>
               )}
-              
+
               {/* Indicateurs de force */}
               {password && (
                 <div className="mt-3 space-y-2">
@@ -181,7 +181,7 @@ export default function CreatePasswordPage() {
                 </div>
               )}
             </div>
-            
+
             {/* Confirmation mot de passe */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -192,9 +192,8 @@ export default function CreatePasswordPage() {
                   type={showConfirmPassword ? 'text' : 'password'}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className={`w-full px-4 py-3 pr-12 border ${
-                    errors.confirmPassword ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                  } rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
+                  className={`w-full px-4 py-3 pr-12 border ${errors.confirmPassword ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    } rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white`}
                   placeholder={isRTL ? 'أعد إدخال كلمة المرور' : 'Confirmez votre mot de passe'}
                   required
                 />
@@ -216,7 +215,7 @@ export default function CreatePasswordPage() {
                 </div>
               )}
             </div>
-            
+
             {/* Bouton submit */}
             <button
               type="submit"
@@ -236,7 +235,7 @@ export default function CreatePasswordPage() {
               )}
             </button>
           </form>
-          
+
           {/* Footer */}
           <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
             {isRTL ? 'بعد إنشاء كلمة المرور، سيتم توجيهك تلقائيًا إلى لوحة التحكم' : 'Après création, vous serez automatiquement connecté'}

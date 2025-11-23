@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useLocation } from 'react-router-dom';
 import {
   X,
@@ -16,6 +17,7 @@ import {
   Download,
   ChevronDown,
   ChevronRight,
+  ChevronLeft,
   User,
   MessageSquare
 } from 'lucide-react';
@@ -24,19 +26,32 @@ import { useLanguage } from '../../hooks/useLanguage';
 import { useHasChildren } from '../../hooks/useHasChildren';
 import { ImageWithFallback, defaultImages } from '../../utils/imageUtils.jsx';
 
-const DashboardSidebar = ({ isOpen, onClose }) => {
+const DashboardSidebar = ({ isOpen, onClose, onCollapsedChange }) => {
   const { user, isAdmin, isStaff } = useAuth();
   const { isRTL, currentLanguage } = useLanguage();
   const { hasChildren } = useHasChildren();
   const location = useLocation();
   const [expandedMenus, setExpandedMenus] = useState({});
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  const handleToggleCollapse = () => {
+    const newState = !isCollapsed;
+    setIsCollapsed(newState);
+    if (onCollapsedChange) {
+      onCollapsedChange(newState);
+    }
+  };
 
 
   const toggleMenu = (menuKey) => {
-    setExpandedMenus(prev => ({
-      ...prev,
-      [menuKey]: !prev[menuKey]
-    }));
+    setExpandedMenus(prev => {
+      const newState = {
+        ...prev,
+        [menuKey]: !prev[menuKey]
+      };
+      console.log('Toggle menu:', menuKey, 'isExpanded:', newState[menuKey], 'isCollapsed:', isCollapsed);
+      return newState;
+    });
   };
 
   const isActive = (path) => {
@@ -194,30 +209,86 @@ const DashboardSidebar = ({ isOpen, onClose }) => {
     const hasSubmenu = item.submenu && item.submenu.length > 0;
     const isExpanded = expandedMenus[item.key];
     const active = isActive(item.path);
+    const buttonRef = useRef(null);
+    const popupRef = useRef(null);
+    const [tooltipTop, setTooltipTop] = useState(0);
+
+    useEffect(() => {
+      if (isCollapsed && buttonRef.current) {
+        const updatePosition = () => {
+          const rect = buttonRef.current.getBoundingClientRect();
+          setTooltipTop(rect.top + rect.height / 2);
+        };
+        updatePosition();
+        window.addEventListener('scroll', updatePosition);
+        return () => window.removeEventListener('scroll', updatePosition);
+      }
+    }, [isCollapsed]);
+
+    // Fermer le popup quand on clique en dehors
+    useEffect(() => {
+      if (isExpanded && isCollapsed) {
+        const handleClickOutside = (event) => {
+          if (popupRef.current && !popupRef.current.contains(event.target) &&
+            buttonRef.current && !buttonRef.current.contains(event.target)) {
+            toggleMenu(item.key);
+          }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+      }
+    }, [isExpanded, isCollapsed, item.key]);
 
     if (hasSubmenu) {
       return (
-        <div>
+        <div className="relative group">
           <button
+            ref={buttonRef}
             onClick={() => toggleMenu(item.key)}
-            className={`w-full flex items-center justify-between px-4 py-3 text-sm font-medium rounded-lg transition-colors ${active
+            className={`w-full flex ${isCollapsed ? 'flex-col items-center gap-1' : 'flex-row items-center justify-between'} px-4 py-3 text-sm font-medium rounded-lg transition-colors ${active
               ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'
               : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
           >
             <div className="flex items-center">
-              <item.icon className="w-5 h-5 mr-3 rtl:mr-0 rtl:ml-3" />
-              {item.title}
+              <item.icon className={`w-5 h-5 ${!isCollapsed && 'mr-3 rtl:mr-0 rtl:ml-3'}`} />
+              {!isCollapsed && item.title}
             </div>
-            {isExpanded ? (
+            {isCollapsed ? (
+              <ChevronDown className="w-3 h-3" />
+            ) : (isExpanded ? (
               <ChevronDown className="w-4 h-4" />
             ) : (
               <ChevronRight className="w-4 h-4" />
-            )}
+            ))}
           </button>
 
+          {/* Tooltip avec Portal */}
+          {isCollapsed && createPortal(
+            <span className="fixed px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-sm rounded-md shadow-xl whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 pointer-events-none z-[9999]"
+              style={{
+                left: isRTL ? 'auto' : '5.5rem',
+                right: isRTL ? '5.5rem' : 'auto',
+                top: `${tooltipTop}px`,
+                transform: 'translateY(-50%)'
+              }}
+            >
+              {item.title}
+            </span>,
+            document.body
+          )}
+
           {isExpanded && (
-            <div className="ml-8 rtl:ml-0 rtl:mr-8 mt-2 space-y-1">
+            <div
+              ref={popupRef}
+              onMouseLeave={() => isCollapsed && toggleMenu(item.key)}
+              className={isCollapsed ? 'fixed bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-2 min-w-[200px] z-[9999]' : 'ml-8 rtl:ml-0 rtl:mr-8 mt-2 space-y-1'}
+              style={isCollapsed ? {
+                left: isRTL ? 'auto' : '6rem',
+                right: isRTL ? '6rem' : 'auto',
+                top: `${tooltipTop - 20}px`
+              } : {}}
+            >
               {item.submenu
                 .filter(subItem => hasAccess(subItem.roles))
                 .map((subItem, index) => (
@@ -240,17 +311,35 @@ const DashboardSidebar = ({ isOpen, onClose }) => {
     }
 
     return (
-      <Link
-        to={item.path}
-        onClick={onClose}
-        className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${active
-          ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'
-          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-          }`}
-      >
-        <item.icon className="w-5 h-5 mr-3 rtl:mr-0 rtl:ml-3" />
-        {item.title}
-      </Link>
+      <div className="relative group">
+        <Link
+          ref={buttonRef}
+          to={item.path}
+          onClick={onClose}
+          className={`flex items-center ${isCollapsed ? 'justify-center' : ''} px-4 py-3 text-sm font-medium rounded-lg transition-colors ${active
+            ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300'
+            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+            }`}
+        >
+          <item.icon className={`w-5 h-5 ${!isCollapsed && 'mr-3 rtl:mr-0 rtl:ml-3'}`} />
+          {!isCollapsed && item.title}
+        </Link>
+
+        {/* Tooltip avec Portal */}
+        {isCollapsed && createPortal(
+          <span className="fixed px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-sm rounded-md shadow-xl whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 pointer-events-none z-[9999]"
+            style={{
+              left: isRTL ? 'auto' : '5.5rem',
+              right: isRTL ? '5.5rem' : 'auto',
+              top: `${tooltipTop}px`,
+              transform: 'translateY(-50%)'
+            }}
+          >
+            {item.title}
+          </span>,
+          document.body
+        )}
+      </div>
     );
   };
 
@@ -258,14 +347,27 @@ const DashboardSidebar = ({ isOpen, onClose }) => {
     <>
       {/* Sidebar */}
       <div
-        className={`fixed inset-y-0 z-50 w-64 bg-white dark:bg-gray-800 shadow-lg transform transition-transform duration-300 ease-in-out ${isRTL
+        className={`fixed inset-y-0 z-50 ${isCollapsed ? 'w-20' : 'w-64'} bg-white dark:bg-gray-800 shadow-lg transform transition-all duration-300 ease-in-out ${isRTL
           ? `right-0 ${isOpen ? 'translate-x-0' : 'translate-x-full'} lg:translate-x-0`
           : `left-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`
           }`}
         style={{
-          direction: isRTL ? 'rtl' : 'ltr'
+          direction: isRTL ? 'rtl' : 'ltr',
+          overflow: 'visible'
         }}
       >
+        {/* Bouton toggle collapse - Desktop uniquement */}
+        <button
+          onClick={handleToggleCollapse}
+          className={`hidden lg:flex absolute top-20 ${isRTL ? 'left-0 -translate-x-1/2' : 'right-0 translate-x-1/2'} z-50 w-8 h-8 items-center justify-center bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-full shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-300`}
+          title={isCollapsed ? (isRTL ? 'إظهار القائمة' : 'Afficher le menu') : (isRTL ? 'إخفاء القائمة' : 'Masquer le menu')}
+        >
+          {isCollapsed ? (
+            isRTL ? <ChevronRight className="w-4 h-4 text-gray-600 dark:text-gray-300" /> : <ChevronLeft className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+          ) : (
+            isRTL ? <ChevronLeft className="w-4 h-4 text-gray-600 dark:text-gray-300" /> : <ChevronRight className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+          )}
+        </button>
 
         {/* Header */}
         <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200 dark:border-gray-700">
@@ -278,14 +380,16 @@ const DashboardSidebar = ({ isOpen, onClose }) => {
                 className="w-full h-full object-contain"
               />
             </div>
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Mima Elghalia
-              </h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                {isRTL ? 'لوحة التحكم' : 'Dashboard'}
-              </p>
-            </div>
+            {!isCollapsed && (
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Mima Elghalia
+                </h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {isRTL ? 'لوحة التحكم' : 'Dashboard'}
+                </p>
+              </div>
+            )}
           </Link>
 
           <button
@@ -297,30 +401,13 @@ const DashboardSidebar = ({ isOpen, onClose }) => {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+        <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto overflow-x-visible">
           {menuItems
             .filter(item => hasAccess(item.roles))
             .map((item) => (
               <SidebarLink key={item.key} item={item} />
             ))}
         </nav>
-
-        {/* Footer */}
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-          <div className="flex items-center space-x-3 rtl:space-x-reverse">
-            <div className="w-8 h-8 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center">
-              <UserCheck className="w-4 h-4 text-primary-600 dark:text-primary-400" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                {user?.first_name} {user?.last_name}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                {isRTL ? (user?.role === 'admin' ? 'مدير' : 'موظف') : (user?.role === 'admin' ? 'Admin' : 'Staff')}
-              </p>
-            </div>
-          </div>
-        </div>
       </div>
     </>
   );

@@ -4,7 +4,7 @@ export const demoAccounts = {
     id: 1,
     email: 'admin@mimaelghalia.tn',
     password: 'admin123',
-    first_name: 'Admin',
+    first_name: 'Directeur',
     last_name: 'Système',
     role: 'admin',
     phone: '+216 71 000 000',
@@ -13,7 +13,7 @@ export const demoAccounts = {
     email_verified: true,
     created_at: '2024-01-01T00:00:00Z'
   },
-  
+
   staff: {
     id: 2,
     email: 'staff@mimaelghalia.tn',
@@ -27,7 +27,7 @@ export const demoAccounts = {
     email_verified: true,
     created_at: '2024-01-01T00:00:00Z'
   },
-  
+
   parent: {
     id: 3,
     email: 'parent@mimaelghalia.tn',
@@ -107,18 +107,18 @@ export const authenticateDemo = (email, password) => {
   console.log('🔐 === DÉBUT AUTHENTIFICATION DÉMO ===')
   console.log('- Email reçu:', `"${email}"`, 'Type:', typeof email)
   console.log('- Password reçu:', `"${password}"`, 'Type:', typeof password)
-  
+
   // Vérifier que demoAccounts existe
   console.log('- demoAccounts existe:', !!demoAccounts)
   console.log('- Nombre de comptes:', Object.keys(demoAccounts).length)
-  
+
   // Afficher tous les comptes disponibles
   const accounts = Object.values(demoAccounts)
   console.log('- Comptes disponibles:')
   accounts.forEach((acc, index) => {
     console.log(`  ${index + 1}. Email: "${acc.email}" | Password: "${acc.password}" | Role: ${acc.role}`)
   })
-  
+
   // Recherche du compte
   console.log('- Recherche du compte...')
   const account = accounts.find(acc => {
@@ -127,15 +127,15 @@ export const authenticateDemo = (email, password) => {
     console.log(`  Test ${acc.role}: email=${emailMatch}, password=${passwordMatch}`)
     return emailMatch && passwordMatch
   })
-  
+
   console.log('- Compte trouvé:', account ? `OUI (${account.role})` : 'NON')
-  
+
   if (account) {
     const { password: _, ...userWithoutPassword } = account
     console.log('✅ AUTHENTIFICATION RÉUSSIE')
     console.log('- Utilisateur:', userWithoutPassword)
     console.log('- Token:', demoToken)
-    
+
     const result = {
       success: true,
       data: {
@@ -146,7 +146,7 @@ export const authenticateDemo = (email, password) => {
     console.log('- Résultat final:', result)
     return result
   }
-  
+
   console.log('❌ AUTHENTIFICATION ÉCHOUÉE')
   const errorResult = {
     success: false,

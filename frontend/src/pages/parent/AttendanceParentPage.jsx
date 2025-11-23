@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Calendar, 
-  Clock, 
+import {
+  Calendar,
+  Clock,
   ChevronLeft,
   ChevronRight,
   Baby,
@@ -18,15 +18,17 @@ import { useTheme } from '../../hooks/useTheme';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import api from '../../services/api';
-import toast from 'react-hot-toast';
+import { useDialogContext } from '../../contexts/DialogContext';
 
 const AttendanceParentPage = () => {
   const { user } = useAuth();
   const { isRTL } = useLanguage();
+  const dialog = useDialogContext();
   const { isDark } = useTheme();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [children, setChildren] = useState([]);
+  const [hoveredDay, setHoveredDay] = useState(null);
   const [attendanceData, setAttendanceData] = useState({});
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [nurserySettings, setNurserySettings] = useState({});
@@ -45,7 +47,7 @@ const AttendanceParentPage = () => {
       try {
         const year = currentMonth.getFullYear();
         const month = currentMonth.getMonth() + 1;
-        
+
         const closedDaysResponse = await api.get(`/api/schedule-settings/closed-days/${year}/${month}`);
         if (closedDaysResponse.data.success) {
           const closedDaysList = closedDaysResponse.data.closed_days.map(cd => cd.day);
@@ -63,14 +65,14 @@ const AttendanceParentPage = () => {
         console.log('⚠️ Erreur paramètres, utilisation des valeurs par défaut');
         const closedDaysList = calculateClosedDays(null, currentMonth);
         setClosedDays(closedDaysList);
-        toast.error(isRTL ? 'خطأ في تحميل إعدادات الحضانة' : 'Erreur chargement paramètres crèche');
+        dialog.error(isRTL ? 'خطأ في تحميل إعدادات الحضانة' : 'Erreur chargement paramètres crèche');
       }
 
       // Charger les enfants du parent
       const childrenResponse = await api.get('/api/user/children-summary');
       const childrenList = childrenResponse.data.children || [];
       setChildren(childrenList);
-      
+
       // Sélectionner le premier enfant par défaut
       if (childrenList.length > 0 && !selectedChild) {
         setSelectedChild(childrenList[0]);
@@ -97,11 +99,11 @@ const AttendanceParentPage = () => {
       attendanceResults.forEach(result => {
         attendanceMap[result.childId] = result.data;
       });
-      
+
       setAttendanceData(attendanceMap);
     } catch (error) {
       console.error('Erreur chargement données:', error);
-      toast.error(isRTL ? 'خطأ في تحميل البيانات' : 'Erreur de chargement des données');
+      dialog.error(isRTL ? 'خطأ في تحميل البيانات' : 'Erreur lors du chargement des données');
     } finally {
       setLoading(false);
     }
@@ -148,20 +150,20 @@ const AttendanceParentPage = () => {
 
   const formatTime = (timeString) => {
     if (!timeString) return '-';
-    
+
     if (timeString.match(/^\d{2}:\d{2}$/)) {
       return timeString;
     }
-    
+
     if (timeString.includes('T') || timeString.includes(' ')) {
       const date = new Date(timeString);
-      return date.toLocaleTimeString('fr-FR', { 
-        hour: '2-digit', 
+      return date.toLocaleTimeString('fr-FR', {
+        hour: '2-digit',
         minute: '2-digit',
-        hour12: false 
+        hour12: false
       });
     }
-    
+
     try {
       const [hours, minutes] = timeString.split(':');
       return `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}`;
@@ -171,9 +173,9 @@ const AttendanceParentPage = () => {
   };
 
   const getMonthName = (date) => {
-    return date.toLocaleDateString(isRTL ? 'ar-TN' : 'fr-FR', { 
-      month: 'long', 
-      year: 'numeric' 
+    return date.toLocaleDateString(isRTL ? 'ar-TN' : 'fr-FR', {
+      month: 'long',
+      year: 'numeric'
     });
   };
 
@@ -194,9 +196,9 @@ const AttendanceParentPage = () => {
 
   const getDayStatus = (day) => {
     if (!selectedChild) return 'closed';
-    
+
     const currentDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
-    
+
     // PRIORITÉ 1: Vérifier si c'est un jour de fermeture (crèche fermée)
     if (closedDays.includes(day)) {
       return 'closed';
@@ -210,7 +212,7 @@ const AttendanceParentPage = () => {
 
     // PRIORITÉ 3: Si pas de données de présence ET que la crèche est ouverte
     const today = new Date();
-    
+
     // Vérifier que c'est un jour ouvrable (pas dans closedDays) ET que la date est passée
     if (currentDate < today && !closedDays.includes(day)) {
       return 'absent';
@@ -225,9 +227,9 @@ const AttendanceParentPage = () => {
     const month = currentMonth.getMonth();
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    
+
     const days = [];
-    const dayNames = isRTL 
+    const dayNames = isRTL
       ? ['أح', 'إث', 'ث', 'أر', 'خ', 'ج', 'س']
       : ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
 
@@ -255,7 +257,7 @@ const AttendanceParentPage = () => {
     for (let day = 1; day <= daysInMonth; day++) {
       const status = getDayStatus(day);
       const attendance = getAttendanceForDate(selectedChild?.id, day);
-      
+
       let bgColor = 'bg-white';
       let borderColor = 'border-gray-200';
       let textColor = 'text-gray-900 dark:text-white';
@@ -286,31 +288,73 @@ const AttendanceParentPage = () => {
           textColor = 'text-gray-400 dark:text-gray-500';
       }
 
+      const dayKey = `${year}-${month}-${day}`;
+
       monthDays.push(
         <div
           key={day}
-          className={`${bgColor} ${borderColor} ${textColor} border-2 rounded-lg p-2 min-h-[80px] flex flex-col items-center justify-start transition-all hover:shadow-md`}
+          className={`${bgColor} ${borderColor} ${textColor} border-2 rounded-lg p-1.5 sm:p-2 min-h-[60px] sm:min-h-[80px] flex flex-col items-center justify-center transition-all hover:shadow-md relative cursor-pointer`}
+          onClick={() => {
+            if (status === 'present' && attendance) {
+              setHoveredDay(hoveredDay === dayKey ? null : dayKey);
+            }
+          }}
+          onMouseEnter={() => {
+            if (window.innerWidth >= 640 && status === 'present' && attendance) {
+              setHoveredDay(dayKey);
+            }
+          }}
+          onMouseLeave={() => {
+            if (window.innerWidth >= 640) {
+              setHoveredDay(null);
+            }
+          }}
         >
-          <div className="flex items-center justify-between w-full mb-1">
-            <span className="text-sm font-medium">{day}</span>
-            {icon}
+          <div className="flex items-center justify-between w-full mb-0.5 sm:mb-1">
+            <span className="text-xs sm:text-sm font-medium">{day}</span>
+            {icon && <div className="w-3 h-3 sm:w-4 sm:h-4">{icon}</div>}
           </div>
-          
+
+          {/* Desktop: Afficher les heures directement */}
           {status === 'present' && attendance && (
-            <div className="text-xs text-center w-full">
-              <div className="text-green-700 font-medium">
-                {isRTL ? 'وصول' : 'Arrivée'}: {formatTime(attendance.check_in_time)}
+            <div className="hidden sm:block text-xs text-center w-full">
+              <div className="text-green-700 font-medium truncate">
+                {isRTL ? 'وصول' : 'Arr'}: {formatTime(attendance.check_in_time)}
               </div>
               {attendance.check_out_time && (
-                <div className="text-green-600">
-                  {isRTL ? 'مغادرة' : 'Départ'}: {formatTime(attendance.check_out_time)}
+                <div className="text-green-600 truncate">
+                  {isRTL ? 'مغادرة' : 'Dép'}: {formatTime(attendance.check_out_time)}
                 </div>
               )}
             </div>
           )}
-          
+
+          {/* Mobile: Tooltip au clic */}
+          {status === 'present' && attendance && hoveredDay === dayKey && (
+            <div className="sm:hidden absolute z-10 bottom-full left-1/2 transform -translate-x-1/2 mb-2 bg-white dark:bg-gray-800 border-2 border-green-500 rounded-lg shadow-lg p-3 min-w-[160px]">
+              <div className="text-xs text-gray-900 dark:text-white space-y-1">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-3 h-3 text-green-600" />
+                  <span className="font-semibold">{isRTL ? 'وصول' : 'Arrivée'}:</span>
+                  <span>{formatTime(attendance.check_in_time)}</span>
+                </div>
+                {attendance.check_out_time && (
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-3 h-3 text-green-600" />
+                    <span className="font-semibold">{isRTL ? 'مغادرة' : 'Départ'}:</span>
+                    <span>{formatTime(attendance.check_out_time)}</span>
+                  </div>
+                )}
+              </div>
+              {/* Flèche pointant vers le bas */}
+              <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
+                <div className="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-green-500"></div>
+              </div>
+            </div>
+          )}
+
           {status === 'closed' && (
-            <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
+            <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 text-center">
               {isRTL ? 'مغلق' : 'Fermé'}
             </div>
           )}
@@ -348,18 +392,17 @@ const AttendanceParentPage = () => {
           <div className="flex items-center gap-4 mb-4">
             <button
               onClick={() => navigate('/mon-espace')}
-              className={`flex items-center gap-2 transition-colors ${
-                isDark 
-                  ? 'text-gray-400 hover:text-white' 
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+              className={`flex items-center gap-2 transition-colors ${isDark
+                ? 'text-gray-400 hover:text-white'
+                : 'text-gray-600 hover:text-gray-900'
+                }`}
             >
               <ArrowLeft className="w-4 h-4" />
               {isRTL ? 'رجوع إلى مساحتي' : 'Retour à Mon Espace'}
             </button>
           </div>
-          
-          <h1 className={`text-3xl font-bold mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+
+          <h1 className={`text-2xl sm:text-3xl font-bold mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
             {isRTL ? 'تقرير حضور الأطفال' : 'Calendrier de Présence'}
           </h1>
           <p className={`${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
@@ -376,22 +419,25 @@ const AttendanceParentPage = () => {
             className="mb-6"
           >
             <Card>
-              <CardContent className="p-4">
-                <div className="flex flex-wrap gap-2">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Baby className="w-5 h-5" />
+                  {isRTL ? 'أطفالي' : 'Mes Enfants'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="grid grid-cols-1 sm:flex sm:flex-wrap gap-2">
                   {children.map((child) => (
                     <button
                       key={child.id}
                       onClick={() => setSelectedChild(child)}
-                      className={`px-4 py-2 rounded-lg border-2 transition-all ${
-                        selectedChild?.id === child.id
-                          ? 'border-blue-500 bg-blue-50 text-blue-700'
-                          : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-500'
-                      }`}
+                      className={`flex items-center justify-start gap-2 px-4 py-3 rounded-lg border-2 transition-all min-h-[48px] ${selectedChild?.id === child.id
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                        : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-500'
+                        }`}
                     >
-                      <div className="flex items-center gap-2">
-                        <Baby className="w-4 h-4" />
-                        {child.first_name} {child.last_name}
-                      </div>
+                      <Baby className="w-5 h-5 shrink-0" />
+                      <span className="text-base font-medium">{child.first_name} {child.last_name}</span>
                     </button>
                   ))}
                 </div>
@@ -416,11 +462,11 @@ const AttendanceParentPage = () => {
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
-                
+
                 <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                   {getMonthName(currentMonth)}
                 </h2>
-                
+
                 <button
                   onClick={() => navigateMonth(1)}
                   className="p-2 rounded-lg hover:bg-gray-100 transition-colors"

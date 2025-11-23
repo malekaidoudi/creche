@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import frLocale from '@fullcalendar/core/locales/fr';
-import { Calendar, Filter, X, Plus } from 'lucide-react';
-import { useLanguage } from '../../contexts/LanguageContext';
+import { Calendar, Filter, X } from 'lucide-react';
+import { useLanguage } from '../../hooks/useLanguage';
 import api from '../../services/api';
-import { toast } from 'react-hot-toast';
+import { useDialogContext } from '../../contexts/DialogContext';
 import QuickEventModal from '../../components/modals/QuickEventModal';
 import EventModal from '../../components/modals/EventModal';
 import TaskModal from '../../components/modals/TaskModal';
@@ -24,12 +24,15 @@ const EVENT_TYPE_COLORS = {
 
 const EventsCalendar = () => {
   const { isRTL } = useLanguage();
+  const dialog = useDialogContext();
   const navigate = useNavigate();
   const calendarRef = useRef(null);
+  const [searchParams] = useSearchParams();
 
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedTypes, setSelectedTypes] = useState([]);
+  const [initialFilterApplied, setInitialFilterApplied] = useState(false);
   const [showQuickModal, setShowQuickModal] = useState(false);
   const [showEventModal, setShowEventModal] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
@@ -38,6 +41,7 @@ const EventsCalendar = () => {
   const [showDayEventsModal, setShowDayEventsModal] = useState(false);
   const [dayEvents, setDayEvents] = useState([]);
   const [selectedDayDate, setSelectedDayDate] = useState(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
 
   const loadEvents = useCallback(async () => {
     try {
@@ -197,7 +201,7 @@ const EventsCalendar = () => {
       }
     } catch (error) {
       console.error('Erreur chargement événements:', error);
-      toast.error(isRTL ? 'خطأ في تحميل الأحداث' : 'Erreur lors du chargement');
+      dialog.error(isRTL ? 'خطأ في تحميل الأحداث' : 'Erreur lors du chargement');
       setEvents([]);
     } finally {
       setLoading(false);
@@ -208,8 +212,30 @@ const EventsCalendar = () => {
     loadEvents();
   }, [loadEvents]);
 
+  // Appliquer le filtre initial depuis l'URL
+  useEffect(() => {
+    if (!initialFilterApplied) {
+      const filterParam = searchParams.get('filter');
+      if (filterParam === 'events') {
+        setSelectedTypes(['event', 'meeting']);
+      } else if (filterParam === 'tasks') {
+        setSelectedTypes(['task', 'memo']);
+      }
+      setInitialFilterApplied(true);
+    }
+  }, [searchParams, initialFilterApplied]);
+
+  // Détecter le changement de taille d'écran
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 1024);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const handleEventClick = (info) => {
-    // Sur mobile, ne pas naviguer directement, utiliser le modal
+    // Sur mobile, ne pas naviguer directement, utiliser le collapse panel
     const isMobile = window.innerWidth < 1024;
     if (isMobile) {
       return; // Ne rien faire, le dateClick gère l'affichage
@@ -224,17 +250,12 @@ const EventsCalendar = () => {
 
   const handleDateClick = (info) => {
     const isMobile = window.innerWidth < 1024;
-    const clickedDate = info.dateStr;
-    const today = new Date().toISOString().split('T')[0];
-
-    console.log('📅 ADMIN/STAFF - dateClick déclenché, date:', clickedDate, 'isMobile:', isMobile);
-
-    // Bloquer les jours passés pour la création
-    const isPastDate = clickedDate < today;
+    console.log('📅 ADMIN/STAFF - dateClick déclenché, date:', info.dateStr, 'isMobile:', isMobile);
 
     if (isMobile) {
       // Récupérer les événements directement depuis FullCalendar
       const calendarApi = info.view.calendar;
+      const clickedDate = info.dateStr;
       const startOfDay = new Date(clickedDate + 'T00:00:00');
       const endOfDay = new Date(clickedDate + 'T23:59:59');
 
@@ -262,17 +283,11 @@ const EventsCalendar = () => {
         setDayEvents(eventsOnDay);
         setSelectedDayDate(clickedDate);
         setShowDayEventsModal(true);
-      } else if (!isPastDate) {
-        // Pas d'événements et date future : ouvrir le modal de création
-        setSelectedDate(clickedDate);
-        setShowQuickModal(true);
       }
     } else {
-      // Sur desktop : ouvrir le modal de création seulement si date future
-      if (!isPastDate) {
-        setSelectedDate(info.dateStr);
-        setShowQuickModal(true);
-      }
+      // Sur desktop : ouvrir le modal de création
+      setSelectedDate(info.dateStr);
+      setShowQuickModal(true);
     }
   };
 
@@ -340,20 +355,20 @@ const EventsCalendar = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-3 sm:p-4">
         <div className="flex items-center gap-2 mb-3">
           <Filter className="w-4 h-4 text-gray-500" />
-          <h3 className="font-medium text-gray-900 dark:text-white">
+          <h3 className="text-sm sm:text-base font-medium text-gray-900 dark:text-white">
             {isRTL ? 'تصفية حسب النوع' : 'Filtrer par type'}
           </h3>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:flex md:flex-wrap gap-2">
           {eventTypes.map(type => (
             <button
               key={type.value}
               onClick={() => toggleTypeFilter(type.value)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all ${selectedTypes.includes(type.value)
+              className={`flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border-2 transition-all ${selectedTypes.includes(type.value)
                 ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
                 : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
                 }`}
@@ -363,8 +378,8 @@ const EventsCalendar = () => {
                   : {}
               }
             >
-              <span className="text-lg">{type.icon}</span>
-              <span className="text-sm font-medium">{type.label}</span>
+              <span className="text-base sm:text-lg">{type.icon}</span>
+              <span className="text-xs sm:text-sm font-medium whitespace-nowrap">{type.label}</span>
             </button>
           ))}
         </div>
@@ -382,12 +397,41 @@ const EventsCalendar = () => {
       {/* Calendar */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
         <style>{`
-          /* Forcer la visibilité des en-têtes de colonnes en mode dark */
-          .dark .fc-col-header-cell {
-            background-color: #1f2937 !important;
-          }
-          .dark .fc-col-header-cell-cushion {
-            color: #e5e7eb !important;
+          /* Header calendrier - Centrage et taille responsive */
+          @media (max-width: 1023px) {
+            .fc-toolbar {
+              display: flex !important;
+              align-items: center !important;
+              justify-content: space-between !important;
+              padding: 0.5rem 0 !important;
+            }
+            
+            .fc-toolbar-chunk {
+              display: flex !important;
+              align-items: center !important;
+            }
+            
+            /* Centrer le titre */
+            .fc-toolbar-title {
+              font-size: 1rem !important;
+              text-align: center !important;
+              margin: 0 !important;
+              flex: 1 !important;
+            }
+            
+            /* Boutons flèches */
+            .fc-button {
+              padding: 0.25rem 0.5rem !important;
+              font-size: 0.875rem !important;
+            }
+            
+            .fc-prev-button,
+            .fc-next-button {
+              min-width: 2rem !important;
+              display: flex !important;
+              align-items: center !important;
+              justify-content: center !important;
+            }
           }
           
           /* Masquer les bordures de grille sur mobile et tablette */
@@ -459,9 +503,9 @@ const EventsCalendar = () => {
             locale={frLocale}
             direction={isRTL ? 'rtl' : 'ltr'}
             headerToolbar={{
-              left: 'prev,next today',
+              left: 'prev',
               center: 'title',
-              right: ''
+              right: 'next'
             }}
             buttonText={{
               today: isRTL ? 'اليوم' : 'Aujourd\'hui',
@@ -484,24 +528,12 @@ const EventsCalendar = () => {
             nowIndicator={true}
             eventDidMount={(info) => {
               const isMobile = window.innerWidth < 1024;
-              const eventDate = info.event.start;
-              const today = new Date();
-              today.setHours(0, 0, 0, 0);
-              const isPast = eventDate < today;
-
               console.log('🎨 ADMIN/STAFF eventDidMount - isMobile:', isMobile, 'width:', window.innerWidth, 'event:', info.event.title);
-
-              // Afficher les événements passés en gris
-              if (isPast) {
-                info.el.style.opacity = '0.5';
-                info.el.style.filter = 'grayscale(70%)';
-              }
 
               // UNIQUEMENT sur mobile : remplacer par un point
               if (isMobile) {
                 console.log('📍 ADMIN/STAFF - Création point pour:', info.event.title);
-                const color = isPast ? '#9ca3af' : info.event.backgroundColor;
-                info.el.innerHTML = `<div style="width: 6px; height: 6px; border-radius: 50%; background-color: ${color};"></div>`;
+                info.el.innerHTML = `<div style="width: 6px; height: 6px; border-radius: 50%; background-color: ${info.event.backgroundColor};"></div>`;
                 info.el.style.cssText = 'background: transparent !important; border: none !important; padding: 0 !important; margin: 0 2px !important; pointer-events: none !important;';
               } else {
                 console.log('📝 ADMIN/STAFF - Desktop, affichage normal pour:', info.event.title);
@@ -566,7 +598,7 @@ const EventsCalendar = () => {
                 <X className="w-5 h-5 text-gray-600 dark:text-gray-400" />
               </button>
             </div>
-            <div className="p-4 space-y-3 overflow-y-auto max-h-[calc(80vh-160px)]">
+            <div className="p-4 space-y-3 overflow-y-auto max-h-[calc(80vh-80px)]">
               {dayEvents.map((event) => (
                 <div
                   key={event.id}
@@ -610,21 +642,6 @@ const EventsCalendar = () => {
                 </div>
               ))}
             </div>
-            {selectedDayDate && selectedDayDate >= new Date().toISOString().split('T')[0] && (
-              <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-                <button
-                  onClick={() => {
-                    setShowDayEventsModal(false);
-                    setSelectedDate(selectedDayDate);
-                    setShowQuickModal(true);
-                  }}
-                  className="w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium flex items-center justify-center gap-2"
-                >
-                  <Plus className="w-5 h-5" />
-                  {isRTL ? 'إضافة حدث جديد' : 'Ajouter un événement'}
-                </button>
-              </div>
-            )}
           </div>
         </div>
       )}

@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Calendar, Clock, User, Phone, Mail, RefreshCw, CheckCircle, FileText } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
-import toast from 'react-hot-toast';
+import api from '../../services/api';
+import { useDialogContext } from '../../contexts/DialogContext';
 
 const TodayAppointments = () => {
   const { isRTL } = useLanguage();
+  const dialog = useDialogContext();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -13,7 +15,7 @@ const TodayAppointments = () => {
   const fetchAppointments = async (showToast = false) => {
     try {
       if (showToast) setRefreshing(true);
-      
+
       const token = localStorage.getItem('token');
       const response = await fetch('/api/enrollments/appointments/today', {
         headers: {
@@ -26,17 +28,15 @@ const TodayAppointments = () => {
       }
 
       const data = await response.json();
-      
+
       if (data.success) {
         setAppointments(data.appointments || []);
-        if (showToast) {
-          toast.success(isRTL ? 'تم تحديث المواعيد' : 'Rendez-vous mis à jour');
-        }
+        // Rafraîchissement silencieux
       }
     } catch (error) {
       console.error('Erreur chargement RDV:', error);
       if (showToast) {
-        toast.error(isRTL ? 'خطأ في تحميل المواعيد' : 'Erreur de chargement');
+        dialog.error(isRTL ? 'خطأ في تحميل المواعيد' : 'Erreur de chargement');
       }
     } finally {
       setLoading(false);
@@ -46,7 +46,7 @@ const TodayAppointments = () => {
 
   useEffect(() => {
     fetchAppointments();
-    
+
     // Rafraîchir toutes les 5 minutes
     const interval = setInterval(() => {
       fetchAppointments();
@@ -163,11 +163,11 @@ const TodayAppointments = () => {
                     <User className="w-4 h-4 text-gray-400" />
                     <span className="font-medium">{apt.parent_name}</span>
                   </div>
-                  
+
                   {apt.parent_phone && (
                     <div className="flex items-center gap-2">
                       <Phone className="w-4 h-4 text-gray-400" />
-                      <a 
+                      <a
                         href={`tel:${apt.parent_phone}`}
                         className="hover:text-blue-600 transition-colors"
                       >
@@ -175,11 +175,11 @@ const TodayAppointments = () => {
                       </a>
                     </div>
                   )}
-                  
+
                   {apt.parent_email && (
                     <div className="flex items-center gap-2">
                       <Mail className="w-4 h-4 text-gray-400" />
-                      <a 
+                      <a
                         href={`mailto:${apt.parent_email}`}
                         className="hover:text-blue-600 transition-colors truncate"
                       >
@@ -206,7 +206,7 @@ const TodayAppointments = () => {
       {appointments.length > 0 && (
         <div className="mt-6 pt-4 border-t border-gray-200">
           <p className="text-xs text-gray-500 text-center">
-            {isRTL 
+            {isRTL
               ? `${appointments.length} موعد مجدول لهذا اليوم`
               : `${appointments.length} rendez-vous programmé${appointments.length > 1 ? 's' : ''} aujourd'hui`
             }

@@ -15,13 +15,14 @@ import { useLanguage } from '../../hooks/useLanguage'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
 import { Button } from '../../components/ui/Button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card'
-import toast from 'react-hot-toast'
+import { useDialogContext } from '../../contexts/DialogContext'
 import api from '../../services/api'
 
 const ContactPageDynamic = () => {
     // Hook pour la langue
     const { isRTL } = useLanguage()
-    
+    const dialog = useDialogContext();
+
     // États de base
     const [loading, setLoading] = useState(false)
     const [submitted, setSubmitted] = useState(false)
@@ -34,10 +35,9 @@ const ContactPageDynamic = () => {
             setIsLoading(true)
             try {
                 // Récupérer les données depuis l'API
-                const response = await api.get('/api/contact')
+                const response = await api.get('/api/contact/info')
                 const apiData = response.data
-                console.log('📋 Données contact API:', apiData)
-                
+
                 if (apiData.success && apiData.contact) {
                     const contactData = {
                         address: isRTL ? apiData.contact.address_ar : apiData.contact.address,
@@ -54,9 +54,8 @@ const ContactPageDynamic = () => {
                         latitude: '33.3407',
                         longitude: '10.4899'
                     }
-                    
+
                     setContactData(contactData)
-                    console.log('✅ Données contact chargées depuis l\'API')
                 } else {
                     throw new Error('Données API invalides')
                 }
@@ -78,9 +77,8 @@ const ContactPageDynamic = () => {
                     latitude: '33.3407',
                     longitude: '10.4899'
                 }
-                
+
                 setContactData(defaultData)
-                console.log('⚠️ Utilisation des données par défaut')
             } finally {
                 setIsLoading(false)
             }
@@ -96,13 +94,13 @@ const ContactPageDynamic = () => {
         try {
             await new Promise(resolve => setTimeout(resolve, 1000))
             setSubmitted(true)
-            toast.success(isRTL ? 'تم إرسال رسالتك بنجاح' : 'Message envoyé avec succès')
+            dialog.success(isRTL ? 'تم إرسال رسالتك بنجاح' : 'Message envoyé avec succès')
             setTimeout(() => {
                 setSubmitted(false)
                 e.target.reset()
             }, 3000)
         } catch (error) {
-            toast.error(isRTL ? 'خطأ في إرسال الرسالة' : 'Erreur lors de l\'envoi du message')
+            dialog.error(isRTL ? 'خطأ في إرسال الرسالة' : 'Erreur lors de l\'envoi du message')
         } finally {
             setLoading(false)
         }
@@ -357,7 +355,7 @@ const ContactPageDynamic = () => {
                                     title={isRTL ? 'موقع الحضانة على الخريطة' : 'Localisation de la crèche'}
                                     className="w-full h-full"
                                 ></iframe>
-                                
+
                                 {/* Marqueur personnalisé au centre */}
                                 <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none">
                                     <div className="relative">
@@ -380,12 +378,12 @@ const ContactPageDynamic = () => {
                                             {/* Pointe du pin */}
                                             <div className="w-0 h-0 border-l-[8px] border-r-[8px] border-t-[12px] border-l-transparent border-r-transparent border-t-red-500 -mt-1"></div>
                                         </div>
-                                        
+
                                         {/* Cercle d'animation */}
                                         <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-16 h-16 bg-red-500 bg-opacity-20 rounded-full animate-ping"></div>
                                     </div>
                                 </div>
-                                
+
                                 {/* Overlay avec informations */}
                                 <div className="absolute top-4 left-4 rtl:left-auto rtl:right-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 max-w-xs">
                                     <div className="flex items-start space-x-3 rtl:space-x-reverse">

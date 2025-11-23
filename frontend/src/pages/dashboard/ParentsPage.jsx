@@ -1,30 +1,33 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { 
-  Users, 
-  Search, 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Mail, 
-  Phone, 
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Users,
+  Search,
+  Plus,
+  Edit,
+  Trash2,
+  Mail,
+  Phone,
   Baby,
   Filter,
   Download,
   UserCheck,
   UserX,
-  Eye
+  Eye,
+  ChevronDown,
+  BarChart3
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useAuth } from '../../hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import toast from 'react-hot-toast';
+import { useDialogContext } from '../../contexts/DialogContext';
 import api from '../../services/api';
 
 const ParentsPage = () => {
   const { isRTL } = useLanguage();
+  const dialog = useDialogContext();
   const { isAdmin } = useAuth();
   const [parents, setParents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -32,6 +35,7 @@ const ParentsPage = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [selectedParent, setSelectedParent] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [statsExpanded, setStatsExpanded] = useState(false);
 
   // Données simulées pour les parents
   useEffect(() => {
@@ -102,13 +106,13 @@ const ParentsPage = () => {
   }, []);
 
   const filteredParents = parents.filter(parent => {
-    const matchesSearch = 
+    const matchesSearch =
       parent.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       parent.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       parent.email.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesFilter = filterStatus === 'all' || parent.status === filterStatus;
-    
+
     return matchesSearch && matchesFilter;
   });
 
@@ -118,22 +122,43 @@ const ParentsPage = () => {
   };
 
   const handleStatusToggle = (parentId) => {
-    setParents(prev => prev.map(parent => 
-      parent.id === parentId 
+    setParents(prev => prev.map(parent =>
+      parent.id === parentId
         ? { ...parent, status: parent.status === 'active' ? 'inactive' : 'active' }
         : parent
     ));
-    toast.success(isRTL ? 'تم تحديث حالة الولي' : 'Statut du parent mis à jour');
+    dialog.success(isRTL ? 'تم تحديث حالة الولي' : 'Statut du parent mis à jour');
+  };
+
+  const handleDelete = async (parentId) => {
+    const confirmed = await dialog.confirm(
+      isRTL ? 'هل أنت متأكد من حذف هذا الولي؟' : 'Êtes-vous sûr de vouloir supprimer ce parent ?',
+      isRTL ? 'تأكيد الحذف' : 'Confirmer la suppression',
+      { type: 'danger', confirmText: isRTL ? 'حذف' : 'Supprimer', cancelText: isRTL ? 'إلغاء' : 'Annuler' }
+    );
+
+    if (!confirmed) return;
+
+    try {
+      // Simulation d'appel API
+      setTimeout(() => {
+        setParents(prev => prev.filter(parent => parent.id !== parentId));
+        dialog.success(isRTL ? 'تم حذف الولي بنجاح' : 'Parent supprimé avec succès');
+      }, 1000);
+    } catch (error) {
+      console.error('Erreur suppression:', error);
+      dialog.error(isRTL ? 'خطأ في الحذف' : 'Erreur lors de la suppression');
+    }
   };
 
   const exportParents = () => {
     // Simulation d'export CSV
-    const csvContent = "data:text/csv;charset=utf-8," + 
+    const csvContent = "data:text/csv;charset=utf-8," +
       "Nom,Email,Téléphone,Enfants,Statut\n" +
-      filteredParents.map(parent => 
+      filteredParents.map(parent =>
         `${parent.first_name} ${parent.last_name},${parent.email},${parent.phone},${parent.children_count},${parent.status}`
       ).join("\n");
-    
+
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -141,8 +166,8 @@ const ParentsPage = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
-    toast.success(isRTL ? 'تم تصدير قائمة الأولياء' : 'Liste des parents exportée');
+
+    dialog.success(isRTL ? 'تم تصدير قائمة الأولياء' : 'Liste des parents exportée');
   };
 
   if (loading) {
@@ -188,12 +213,12 @@ const ParentsPage = () => {
         </div>
       </motion.div>
 
-      {/* Statistiques */}
+      {/* Statistiques - Desktop */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.1 }}
-        className="grid grid-cols-1 md:grid-cols-4 gap-4"
+        className="hidden md:grid grid-cols-1 md:grid-cols-4 gap-4"
       >
         <Card>
           <CardContent className="p-4">
@@ -268,6 +293,106 @@ const ParentsPage = () => {
         </Card>
       </motion.div>
 
+      {/* Statistiques - Mobile Collapsible */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.1 }}
+        className="md:hidden bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden"
+        layout
+      >
+        <div
+          onClick={() => setStatsExpanded(!statsExpanded)}
+          className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+              <BarChart3 className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+                {isRTL ? 'الإحصائيات' : 'Statistiques'}
+              </h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {parents.length} {isRTL ? 'ولي' : 'parents'}
+              </p>
+            </div>
+          </div>
+          <motion.div
+            animate={{ rotate: statsExpanded ? 180 : 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <ChevronDown className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          </motion.div>
+        </div>
+
+        <AnimatePresence>
+          {statsExpanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="overflow-hidden"
+            >
+              <div className="p-4 pt-0 space-y-3 border-t border-gray-100 dark:border-gray-700">
+                {/* Total Parents */}
+                <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {isRTL ? 'إجمالي الأولياء' : 'Total Parents'}
+                    </span>
+                  </div>
+                  <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                    {parents.length}
+                  </span>
+                </div>
+
+                {/* Actifs */}
+                <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <UserCheck className="w-4 h-4 text-green-600 dark:text-green-400" />
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {isRTL ? 'نشط' : 'Actifs'}
+                    </span>
+                  </div>
+                  <span className="text-lg font-bold text-green-600 dark:text-green-400">
+                    {parents.filter(p => p.status === 'active').length}
+                  </span>
+                </div>
+
+                {/* Inactifs */}
+                <div className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <UserX className="w-4 h-4 text-red-600 dark:text-red-400" />
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {isRTL ? 'غير نشط' : 'Inactifs'}
+                    </span>
+                  </div>
+                  <span className="text-lg font-bold text-red-600 dark:text-red-400">
+                    {parents.filter(p => p.status === 'inactive').length}
+                  </span>
+                </div>
+
+                {/* Total Enfants */}
+                <div className="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Baby className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {isRTL ? 'إجمالي الأطفال' : 'Total Enfants'}
+                    </span>
+                  </div>
+                  <span className="text-lg font-bold text-purple-600 dark:text-purple-400">
+                    {parents.reduce((sum, p) => sum + p.children_count, 0)}
+                  </span>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+
       {/* Filtres et recherche */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -321,7 +446,8 @@ const ParentsPage = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            {/* Desktop: Tableau classique */}
+            <div className="hidden lg:block overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-200 dark:border-gray-700">
@@ -375,11 +501,10 @@ const ParentsPage = () => {
                         </div>
                       </td>
                       <td className="py-3 px-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          parent.status === 'active'
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-                            : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-                        }`}>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${parent.status === 'active'
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                          : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                          }`}>
                           {parent.status === 'active' ? (isRTL ? 'نشط' : 'Actif') : (isRTL ? 'غير نشط' : 'Inactif')}
                         </span>
                       </td>
@@ -404,8 +529,9 @@ const ParentsPage = () => {
                               <Button
                                 size="sm"
                                 variant="outline"
+                                onClick={() => handleDelete(parent.id)}
                               >
-                                <Edit className="w-4 h-4" />
+                                <Trash2 className="w-4 h-4" />
                               </Button>
                             </>
                           )}
@@ -416,17 +542,130 @@ const ParentsPage = () => {
                 </tbody>
               </table>
             </div>
+
+            {/* Smartphone: Liste cliquable simple */}
+            <div className="md:hidden space-y-2">
+              {filteredParents.map((parent) => (
+                <div
+                  key={parent.id}
+                  onClick={() => handleViewDetails(parent)}
+                  className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-md transition-shadow cursor-pointer"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-base text-gray-900 dark:text-white">
+                        {parent.first_name} {parent.last_name}
+                      </h3>
+                      <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        <div className="flex items-center">
+                          <Baby className="w-3.5 h-3.5 mr-1" />
+                          {parent.children_count} {isRTL ? 'طفل' : 'enfant(s)'}
+                        </div>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${parent.status === 'active'
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                          : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                          }`}>
+                          {parent.status === 'active' ? (isRTL ? 'نشط' : 'Actif') : (isRTL ? 'غير نشط' : 'Inactif')}
+                        </span>
+                      </div>
+                    </div>
+                    <Eye className="w-5 h-5 text-gray-400" />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Tablette: Liste avec 2 colonnes (Nom + Actions) */}
+            <div className="hidden md:block lg:hidden">
+              <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                {/* Header */}
+                <div className="bg-gray-50 dark:bg-gray-900 px-4 py-3 grid grid-cols-2 gap-4 border-b border-gray-200 dark:border-gray-700">
+                  <div className="font-medium text-gray-900 dark:text-white">
+                    {isRTL ? 'الاسم الكامل' : 'Nom complet'}
+                  </div>
+                  <div className="font-medium text-gray-900 dark:text-white text-right rtl:text-left">
+                    {isRTL ? 'الإجراءات' : 'Actions'}
+                  </div>
+                </div>
+
+                {/* Rows */}
+                {filteredParents.map((parent) => (
+                  <div
+                    key={parent.id}
+                    className="px-4 py-3 grid grid-cols-2 gap-4 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    <div
+                      onClick={() => handleViewDetails(parent)}
+                      className="cursor-pointer"
+                    >
+                      <h3 className="font-semibold text-sm text-gray-900 dark:text-white">
+                        {parent.first_name} {parent.last_name}
+                      </h3>
+                      <div className="flex items-center gap-2 mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        <div className="flex items-center">
+                          <Baby className="w-3 h-3 mr-1" />
+                          {parent.children_count}
+                        </div>
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium ${parent.status === 'active'
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                          : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                          }`}>
+                          {parent.status === 'active' ? (isRTL ? 'نشط' : 'Actif') : (isRTL ? 'غير نشط' : 'Inactif')}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleViewDetails(parent)}
+                        className="h-8 px-2"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </Button>
+
+                      {isAdmin() && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleStatusToggle(parent.id)}
+                            className="h-8 px-2"
+                          >
+                            {parent.status === 'active' ? (
+                              <UserX className="w-3.5 h-3.5" />
+                            ) : (
+                              <UserCheck className="w-3.5 h-3.5" />
+                            )}
+                          </Button>
+
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleDelete(parent.id)}
+                            className="h-8 px-2"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </CardContent>
         </Card>
       </motion.div>
 
       {/* Modal détails parent */}
       {showDetails && selectedParent && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md"
+            className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md my-8 max-h-[90vh] overflow-y-auto"
           >
             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
               {isRTL ? 'تفاصيل الولي' : 'Détails du Parent'}
@@ -474,7 +713,58 @@ const ParentsPage = () => {
                 </p>
               </div>
             </div>
-            <div className="flex justify-end space-x-3 rtl:space-x-reverse mt-6">
+
+            {/* Actions */}
+            <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <label className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3 block">
+                {isRTL ? 'الإجراءات' : 'Actions'}
+              </label>
+              <div className="flex flex-col gap-2">
+
+                {isAdmin() && (
+                  <>
+
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        handleStatusToggle(selectedParent.id);
+                        setShowDetails(false);
+                      }}
+                      className="w-full justify-start"
+                    >
+                      {selectedParent.status === 'active' ? (
+                        <>
+                          <UserX className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                          {isRTL ? 'تعطيل' : 'Désactiver'}
+                        </>
+                      ) : (
+                        <>
+                          <UserCheck className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                          {isRTL ? 'تفعيل' : 'Activer'}
+                        </>
+                      )}
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => {
+                        handleDelete(selectedParent.id);
+                        setShowDetails(false);
+                      }}
+                      className="w-full justify-start"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                      {isRTL ? 'حذف' : 'Supprimer'}
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end mt-6">
               <Button
                 variant="outline"
                 onClick={() => setShowDetails(false)}

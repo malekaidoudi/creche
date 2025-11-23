@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  BarChart3, 
-  TrendingUp, 
+import {
+  BarChart3,
+  TrendingUp,
   TrendingDown,
-  Users, 
-  Baby, 
-  Clock, 
+  Users,
+  Baby,
+  Clock,
   Calendar,
   Download,
   Filter,
@@ -20,10 +20,11 @@ import { useLanguage } from '../../hooks/useLanguage';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import toast from 'react-hot-toast';
+import { useDialogContext } from '../../contexts/DialogContext';
 
 const GeneralStatsPage = () => {
   const { isRTL } = useLanguage();
+  const dialog = useDialogContext();
   const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState('month');
   const [stats, setStats] = useState(null);
@@ -73,7 +74,7 @@ const GeneralStatsPage = () => {
           setLoading(false);
         }, 1000);
       } catch (error) {
-        console.error('Erreur chargement statistiques:', error);
+        dialog.error('Erreur chargement statistiques:', error);
         setLoading(false);
       }
     };
@@ -83,14 +84,14 @@ const GeneralStatsPage = () => {
 
   const exportStats = () => {
     // Simulation d'export
-    const csvContent = "data:text/csv;charset=utf-8," + 
+    const csvContent = "data:text/csv;charset=utf-8," +
       "Métrique,Valeur\n" +
       `Total Enfants,${stats.overview.totalChildren}\n` +
       `Total Parents,${stats.overview.totalParents}\n` +
       `Personnel,${stats.overview.totalStaff}\n` +
       `Taux d'occupation,${stats.overview.occupancyRate}%\n` +
       `Présence moyenne,${stats.overview.averageAttendance}%`;
-    
+
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -98,15 +99,15 @@ const GeneralStatsPage = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
-    toast.success(isRTL ? 'تم تصدير الإحصائيات' : 'Statistiques exportées');
+
+    dialog.success(isRTL ? 'تم تصدير الإحصائيات' : 'Statistiques exportées');
   };
 
   const refreshStats = () => {
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      toast.success(isRTL ? 'تم تحديث الإحصائيات' : 'Statistiques mises à jour');
+      dialog.success(isRTL ? 'تم تحديث الإحصائيات' : 'Statistiques mises à jour');
     }, 1000);
   };
 
@@ -136,14 +137,6 @@ const GeneralStatsPage = () => {
           </p>
         </div>
         <div className="flex space-x-3 rtl:space-x-reverse mt-4 sm:mt-0">
-          <Button
-            onClick={refreshStats}
-            variant="outline"
-            className="flex items-center"
-          >
-            <RefreshCw className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
-            {isRTL ? 'تحديث' : 'Actualiser'}
-          </Button>
           <Button
             onClick={exportStats}
             variant="outline"
@@ -290,7 +283,7 @@ const GeneralStatsPage = () => {
               <div className="h-64 flex items-end justify-between space-x-2 rtl:space-x-reverse">
                 {stats.monthly.enrollments.map((value, index) => (
                   <div key={index} className="flex flex-col items-center flex-1">
-                    <div 
+                    <div
                       className="bg-primary-500 rounded-t w-full transition-all hover:bg-primary-600"
                       style={{ height: `${(value / Math.max(...stats.monthly.enrollments)) * 200}px` }}
                     ></div>
@@ -332,11 +325,10 @@ const GeneralStatsPage = () => {
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                    <div 
-                      className={`h-2 rounded-full ${
-                        index === 0 ? 'bg-blue-500' : 
+                    <div
+                      className={`h-2 rounded-full ${index === 0 ? 'bg-blue-500' :
                         index === 1 ? 'bg-green-500' : 'bg-purple-500'
-                      }`}
+                        }`}
                       style={{ width: `${dept.percentage}%` }}
                     ></div>
                   </div>
@@ -366,10 +358,9 @@ const GeneralStatsPage = () => {
                 {stats.topPerformers.map((performer, index) => (
                   <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                     <div className="flex items-center space-x-3 rtl:space-x-reverse">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${
-                        index === 0 ? 'bg-yellow-500' : 
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${index === 0 ? 'bg-yellow-500' :
                         index === 1 ? 'bg-gray-400' : 'bg-orange-500'
-                      }`}>
+                        }`}>
                         {index + 1}
                       </div>
                       <div>
@@ -409,20 +400,18 @@ const GeneralStatsPage = () => {
             <CardContent>
               <div className="space-y-3">
                 {stats.alerts.map((alert, index) => (
-                  <div key={index} className={`p-3 rounded-lg border-l-4 rtl:border-l-0 rtl:border-r-4 ${
-                    alert.type === 'warning' ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-400' :
+                  <div key={index} className={`p-3 rounded-lg border-l-4 rtl:border-l-0 rtl:border-r-4 ${alert.type === 'warning' ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-400' :
                     alert.type === 'info' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-400' :
-                    'bg-green-50 dark:bg-green-900/20 border-green-400'
-                  }`}>
+                      'bg-green-50 dark:bg-green-900/20 border-green-400'
+                    }`}>
                     <div className="flex items-start space-x-3 rtl:space-x-reverse">
                       {alert.type === 'warning' && <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />}
                       {alert.type === 'info' && <Clock className="w-5 h-5 text-blue-600 mt-0.5" />}
                       {alert.type === 'success' && <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />}
-                      <p className={`text-sm ${
-                        alert.type === 'warning' ? 'text-yellow-800 dark:text-yellow-200' :
+                      <p className={`text-sm ${alert.type === 'warning' ? 'text-yellow-800 dark:text-yellow-200' :
                         alert.type === 'info' ? 'text-blue-800 dark:text-blue-200' :
-                        'text-green-800 dark:text-green-200'
-                      }`}>
+                          'text-green-800 dark:text-green-200'
+                        }`}>
                         {alert.message}
                       </p>
                     </div>

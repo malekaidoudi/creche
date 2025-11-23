@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Responsivité - Mima El Ghalia</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+
+    h1 {
+      color: #667eea;
+      margin-bottom: 10px;
+      font-size: 2.5rem;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+      font-size: 1.1rem;
+    }
+
+    .viewport-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 30px;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 10px;
+    }
+
+    .viewport-btn {
+      padding: 12px 24px;
+      border: 2px solid #667eea;
+      background: white;
+      color: #667eea;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s;
+      font-size: 14px;
+    }
+
+    .viewport-btn:hover {
+      background: #667eea;
+      color: white;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+
+    .viewport-btn.active {
+      background: #667eea;
+      color: white;
+    }
+
+    .iframe-container {
+      border: 3px solid #667eea;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      transition: all 0.3s;
+    }
+
+    iframe {
+      border: none;
+      display: block;
+      margin: 0 auto;
+      background: white;
+    }
+
+    .info {
+      text-align: center;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .info strong {
+      color: #667eea;
+      font-size: 1.2rem;
+    }
+
+    .pages-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 10px;
+      margin-bottom: 30px;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 10px;
+    }
+
+    .page-btn {
+      padding: 12px;
+      border: 2px solid #764ba2;
+      background: white;
+      color: #764ba2;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s;
+      font-size: 13px;
+      text-align: center;
+    }
+
+    .page-btn:hover {
+      background: #764ba2;
+      color: white;
+      transform: translateY(-2px);
+    }
+
+    .page-btn.active {
+      background: #764ba2;
+      color: white;
+    }
+
+    .checklist {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 10px;
+      margin-top: 20px;
+    }
+
+    .checklist h3 {
+      color: #667eea;
+      margin-bottom: 15px;
+    }
+
+    .checklist-item {
+      padding: 10px;
+      margin-bottom: 8px;
+      background: white;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .checklist-item input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+    }
+
+    .checklist-item label {
+      cursor: pointer;
+      flex: 1;
+    }
+
+    .score {
+      text-align: center;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 10px;
+      margin-top: 20px;
+      font-size: 1.5rem;
+      font-weight: bold;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        padding: 15px;
+      }
+
+      h1 {
+        font-size: 1.8rem;
+      }
+
+      .viewport-buttons {
+        gap: 5px;
+      }
+
+      .viewport-btn {
+        padding: 8px 16px;
+        font-size: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎨 Test de Responsivité</h1>
+    <p class="subtitle">Mima El Ghalia - Crèche Management System</p>
+
+    <div class="info">
+      <strong id="current-size">Sélectionnez une taille d'écran</strong>
+      <div style="margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap;">
+        <button onclick="loginAs('admin')" style="padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+          🔐 Admin
+        </button>
+        <button onclick="loginAs('staff')" style="padding: 8px 16px; background: #38ef7d; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+          👥 Staff
+        </button>
+        <button onclick="loginAs('parent')" style="padding: 8px 16px; background: #f093fb; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+          👨‍👩‍👧 Parent
+        </button>
+        <button onclick="logout()" style="padding: 8px 16px; background: #ff6b6b; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+          🔓 Déconnexion
+        </button>
+        <span id="auth-status" style="padding: 8px 16px; background: #f8f9fa; border-radius: 6px; font-weight: 600; color: #495057;">
+          Non connecté
+        </span>
+      </div>
+    </div>
+
+    <div class="viewport-buttons">
+      <button class="viewport-btn" onclick="setViewport(375, 667, 'Mobile (iPhone SE)', event)">
+        📱 iPhone SE<br><small>375x667</small>
+      </button>
+      <button class="viewport-btn" onclick="setViewport(390, 844, 'Mobile (iPhone 12/13)', event)">
+        📱 iPhone 12/13<br><small>390x844</small>
+      </button>
+      <button class="viewport-btn" onclick="setViewport(414, 896, 'Mobile (iPhone 11)', event)">
+        📱 iPhone 11<br><small>414x896</small>
+      </button>
+      <button class="viewport-btn" onclick="setViewport(768, 1024, 'Tablet (iPad)', event)">
+        📱 Tablet<br><small>768x1024</small>
+      </button>
+      <button class="viewport-btn" onclick="setViewport(1024, 768, 'Tablet Landscape', event)">
+        📱 Tablet Landscape<br><small>1024x768</small>
+      </button>
+      <button class="viewport-btn" onclick="setViewport(1366, 768, 'Desktop (Laptop)', event)">
+        💻 Desktop<br><small>1366x768</small>
+      </button>
+      <button class="viewport-btn" onclick="setViewport(1920, 1080, 'Desktop Large (Full HD)', event)">
+        🖥️ Desktop Large<br><small>1920x1080</small>
+      </button>
+    </div>
+
+    <h3 style="margin: 20px 0 10px 0; color: #667eea; font-size: 18px;">📄 Pages Publiques</h3>
+    <div class="pages-grid">
+      <button class="page-btn" onclick="setPage('/', 'Accueil')">🏠 Accueil</button>
+      <button class="page-btn" onclick="setPage('/articles', 'Articles')">📰 Articles</button>
+      <button class="page-btn" onclick="setPage('/inscription', 'Inscription')">📝 Inscription</button>
+      <button class="page-btn" onclick="setPage('/contact', 'Contact')">📧 Contact</button>
+      <button class="page-btn" onclick="setPage('/visite-virtuelle', 'Visite Virtuelle')">🏛️ Visite</button>
+    </div>
+
+    <h3 style="margin: 20px 0 10px 0; color: #667eea; font-size: 18px;">🔐 Pages Authentifiées</h3>
+    <div class="pages-grid">
+      <button class="page-btn" onclick="setPage('/profile', 'Profil')">👤 Profil</button>
+      <button class="page-btn" onclick="setPage('/mon-espace', 'Mon Espace')">👨‍👩‍👧‍👦 Mon Espace</button>
+      <button class="page-btn" onclick="setPage('/mon-espace/messages', 'Messages Parent')">💬 Messages</button>
+      <button class="page-btn" onclick="setPage('/mon-espace/announcements', 'Annonces')">📢 Annonces</button>
+      <button class="page-btn" onclick="setPage('/mon-espace/calendar', 'Calendrier Parent')">📅 Calendrier</button>
+      <button class="page-btn" onclick="setPage('/mon-espace/attendance-report', 'Présences Parent')">📊 Présences</button>
+    </div>
+
+    <h3 style="margin: 20px 0 10px 0; color: #667eea; font-size: 18px;">📊 Dashboard Admin/Staff</h3>
+    <div class="pages-grid">
+      <button class="page-btn" onclick="setPage('/dashboard', 'Dashboard Home')">🏠 Dashboard</button>
+      <button class="page-btn" onclick="setPage('/dashboard/children', 'Enfants')">👶 Enfants</button>
+      <button class="page-btn" onclick="setPage('/dashboard/children/add', 'Ajouter Enfant')">➕ Ajouter</button>
+      <button class="page-btn" onclick="setPage('/dashboard/enrollments', 'Demandes')">📋 Demandes</button>
+      <button class="page-btn" onclick="setPage('/dashboard/pending-enrollments', 'En Attente')">⏳ En Attente</button>
+      <button class="page-btn" onclick="setPage('/dashboard/attendance', 'Présences')">✅ Présences</button>
+      <button class="page-btn" onclick="setPage('/dashboard/documents', 'Documents')">📄 Documents</button>
+      <button class="page-btn" onclick="setPage('/dashboard/absence-management', 'Absences')">🚫 Absences</button>
+      <button class="page-btn" onclick="setPage('/dashboard/staff', 'Personnel')">👥 Personnel</button>
+      <button class="page-btn" onclick="setPage('/dashboard/parents', 'Parents')">👨‍👩‍👧 Parents</button>
+      <button class="page-btn" onclick="setPage('/dashboard/messages', 'Messages')">💬 Messages</button>
+      <button class="page-btn" onclick="setPage('/dashboard/tasks', 'Tâches')">✓ Tâches</button>
+      <button class="page-btn" onclick="setPage('/dashboard/events/calendar', 'Calendrier')">📅 Événements</button>
+      <button class="page-btn" onclick="setPage('/dashboard/general-stats', 'Statistiques')">📈 Stats</button>
+      <button class="page-btn" onclick="setPage('/dashboard/settings', 'Paramètres')">⚙️ Paramètres</button>
+    </div>
+
+    <div class="iframe-container">
+      <iframe id="preview" src="http://localhost:5173/" width="375" height="667"></iframe>
+    </div>
+
+    <div class="checklist">
+      <h3>✅ Critères de Responsivité</h3>
+      <div class="checklist-item">
+        <input type="checkbox" id="check1" onchange="updateScore()">
+        <label for="check1">Pas de scroll horizontal</label>
+      </div>
+      <div class="checklist-item">
+        <input type="checkbox" id="check2" onchange="updateScore()">
+        <label for="check2">Texte lisible (min 14px)</label>
+      </div>
+      <div class="checklist-item">
+        <input type="checkbox" id="check3" onchange="updateScore()">
+        <label for="check3">Boutons cliquables (min 44x44px)</label>
+      </div>
+      <div class="checklist-item">
+        <input type="checkbox" id="check4" onchange="updateScore()">
+        <label for="check4">Contenu visible sans débordement</label>
+      </div>
+      <div class="checklist-item">
+        <input type="checkbox" id="check5" onchange="updateScore()">
+        <label for="check5">Navigation fonctionnelle</label>
+      </div>
+      <div class="checklist-item">
+        <input type="checkbox" id="check6" onchange="updateScore()">
+        <label for="check6">Espacement approprié</label>
+      </div>
+    </div>
+
+    <div class="score" id="score">
+      Score: 0/6 (0%)
+    </div>
+  </div>
+
+  <script>
+    let currentPage = '/';
+    let currentViewport = 'Mobile (iPhone SE)';
+    let currentUser = null;
+
+    // Comptes de test
+    const testAccounts = {
+      admin: {
+        email: 'crechemimaelghalia@gmail.com',
+        password: 'password',
+        role: 'admin',
+        first_name: 'Admin',
+        last_name: 'Système',
+        id: 1
+      },
+      staff: {
+        email: 'staff@mimaelghalia.tn',
+        password: 'password',
+        role: 'staff',
+        first_name: 'Staff',
+        last_name: 'Membre',
+        id: 2
+      },
+      parent: {
+        email: 'parent1@example.com',
+        password: 'password',
+        role: 'parent',
+        first_name: 'Parent',
+        last_name: 'Test',
+        id: 3
+      }
+    };
+
+    function loginAs(role) {
+      const iframe = document.getElementById('preview');
+      const statusEl = document.getElementById('auth-status');
+      const user = testAccounts[role];
+      
+      if (!user) {
+        console.error('❌ Rôle inconnu:', role);
+        return;
+      }
+
+      console.log('🔐 Connexion en tant que:', role, user);
+      currentUser = user;
+      
+      // Attendre que l'iframe soit chargée
+      if (!iframe.contentWindow) {
+        console.error('❌ Iframe non chargée');
+        alert('Erreur: L\'iframe n\'est pas chargée. Rafraîchissez la page.');
+        return;
+      }
+      
+      // Injecter le token dans l'iframe
+      const message = {
+        type: 'SET_AUTH',
+        token: `mock_token_${role}`,
+        user: user
+      };
+      
+      console.log('📤 Envoi du message:', message);
+      iframe.contentWindow.postMessage(message, '*');
+      
+      // Mettre à jour le statut
+      const roleLabels = {
+        admin: '🔐 Admin',
+        staff: '👥 Staff',
+        parent: '👨‍👩‍👧 Parent'
+      };
+      
+      statusEl.textContent = `Connecté: ${roleLabels[role]}`;
+      statusEl.style.background = '#d4edda';
+      statusEl.style.color = '#155724';
+      
+      console.log('✅ Statut mis à jour');
+      
+      // Recharger la page après un court délai
+      setTimeout(() => {
+        console.log('🔄 Rechargement de l\'iframe...');
+        iframe.src = iframe.src;
+      }, 500);
+    }
+
+    function logout() {
+      const iframe = document.getElementById('preview');
+      const statusEl = document.getElementById('auth-status');
+      
+      currentUser = null;
+      
+      // Supprimer le token de l'iframe
+      iframe.contentWindow.postMessage({
+        type: 'CLEAR_AUTH'
+      }, '*');
+      
+      // Mettre à jour le statut
+      statusEl.textContent = 'Non connecté';
+      statusEl.style.background = '#f8f9fa';
+      statusEl.style.color = '#495057';
+      
+      // Recharger la page
+      setTimeout(() => {
+        iframe.src = iframe.src;
+      }, 100);
+    }
+
+    function setViewport(width, height, name, event) {
+      const iframe = document.getElementById('preview');
+      iframe.width = width;
+      iframe.height = height;
+      currentViewport = name;
+      updateInfo();
+      
+      // Highlight active button
+      if (event && event.target) {
+        document.querySelectorAll('.viewport-btn').forEach(btn => btn.classList.remove('active'));
+        event.target.closest('.viewport-btn').classList.add('active');
+      }
+      
+      resetChecklist();
+    }
+
+    function setPage(url, name) {
+      const iframe = document.getElementById('preview');
+      iframe.src = `http://localhost:5173${url}`;
+      currentPage = name;
+      updateInfo();
+      
+      // Highlight active button
+      document.querySelectorAll('.page-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+      
+      resetChecklist();
+    }
+
+    function updateInfo() {
+      const info = document.getElementById('current-size');
+      info.innerHTML = `<strong>${currentViewport}</strong> - Page: <strong>${currentPage}</strong>`;
+    }
+
+    function resetChecklist() {
+      for (let i = 1; i <= 6; i++) {
+        document.getElementById(`check${i}`).checked = false;
+      }
+      updateScore();
+    }
+
+    function updateScore() {
+      let checked = 0;
+      for (let i = 1; i <= 6; i++) {
+        if (document.getElementById(`check${i}`).checked) checked++;
+      }
+      const percentage = Math.round((checked / 6) * 100);
+      const scoreEl = document.getElementById('score');
+      scoreEl.textContent = `Score: ${checked}/6 (${percentage}%)`;
+      
+      if (percentage === 100) {
+        scoreEl.style.background = 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)';
+      } else if (percentage >= 80) {
+        scoreEl.style.background = 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)';
+      } else {
+        scoreEl.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+      }
+    }
+
+    // Initialize
+    setViewport(375, 667, 'Mobile (iPhone SE)');
+    setPage('/', 'Accueil');
+  </script>
+</body>
+</html>

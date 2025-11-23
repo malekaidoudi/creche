@@ -22,9 +22,9 @@ router.get('/simple', auth.authenticateToken, async (req, res) => {
       WHERE c.is_active = true
       ORDER BY c.first_name, c.last_name
     `;
-    
+
     const result = await pool.query(sql);
-    
+
     res.json({
       success: true,
       children: result.rows,
@@ -32,9 +32,9 @@ router.get('/simple', auth.authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Erreur récupération enfants simple:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la récupération des enfants' 
+      error: 'Erreur lors de la récupération des enfants'
     });
   }
 });
@@ -52,18 +52,18 @@ router.get('/available', async (req, res) => {
       WHERE c.is_active = true AND (e.id IS NULL OR e.status != 'approved')
       ORDER BY c.created_at DESC
     `;
-    
+
     const result = await pool.query(sql);
-    
+
     res.json({
       success: true,
       children: result.rows
     });
   } catch (error) {
     console.error('Erreur enfants disponibles:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la récupération des enfants disponibles' 
+      error: 'Erreur lors de la récupération des enfants disponibles'
     });
   }
 });
@@ -81,18 +81,18 @@ router.get('/orphans', async (req, res) => {
       WHERE c.is_active = true AND e.id IS NULL
       ORDER BY c.created_at DESC
     `;
-    
+
     const result = await pool.query(sql);
-    
+
     res.json({
       success: true,
       children: result.rows
     });
   } catch (error) {
     console.error('Erreur enfants orphelins:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la récupération des enfants orphelins' 
+      error: 'Erreur lors de la récupération des enfants orphelins'
     });
   }
 });
@@ -101,7 +101,7 @@ router.get('/orphans', async (req, res) => {
 router.get('/parent/:parentId', async (req, res) => {
   try {
     const { parentId } = req.params;
-    
+
     const sql = `
       SELECT c.id, c.first_name, c.last_name, c.birth_date, c.gender, 
              c.medical_info, c.emergency_contact_name, c.emergency_contact_phone, 
@@ -113,18 +113,18 @@ router.get('/parent/:parentId', async (req, res) => {
       WHERE e.parent_id = $1 AND c.is_active = true
       ORDER BY c.created_at DESC
     `;
-    
+
     const result = await pool.query(sql, [parentId]);
-    
+
     res.json({
       success: true,
       children: result.rows
     });
   } catch (error) {
     console.error('Erreur enfants du parent:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la récupération des enfants du parent' 
+      error: 'Erreur lors de la récupération des enfants du parent'
     });
   }
 });
@@ -141,10 +141,10 @@ router.get('/stats', async (req, res) => {
         AVG(EXTRACT(YEAR FROM AGE(birth_date))) as average_age
       FROM children
     `;
-    
+
     const result = await pool.query(statsQuery);
     const stats = result.rows[0];
-    
+
     res.json({
       success: true,
       stats: {
@@ -157,9 +157,9 @@ router.get('/stats', async (req, res) => {
     });
   } catch (error) {
     console.error('Erreur statistiques enfants:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la récupération des statistiques' 
+      error: 'Erreur lors de la récupération des statistiques'
     });
   }
 });
@@ -169,7 +169,7 @@ router.put('/:id/associate-parent', async (req, res) => {
   try {
     const { id } = req.params;
     const { parentId } = req.body;
-    
+
     // Créer ou mettre à jour l'inscription
     const sql = `
       INSERT INTO enrollments (child_id, parent_id, status, created_at)
@@ -178,9 +178,9 @@ router.put('/:id/associate-parent', async (req, res) => {
       DO UPDATE SET parent_id = $2, status = 'approved', updated_at = NOW()
       RETURNING *
     `;
-    
+
     const result = await pool.query(sql, [id, parentId]);
-    
+
     res.json({
       success: true,
       enrollment: result.rows[0],
@@ -188,9 +188,9 @@ router.put('/:id/associate-parent', async (req, res) => {
     });
   } catch (error) {
     console.error('Erreur association enfant-parent:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de l\'association enfant-parent' 
+      error: 'Erreur lors de l\'association enfant-parent'
     });
   }
 });
@@ -199,7 +199,7 @@ router.put('/:id/associate-parent', async (req, res) => {
 router.put('/:id/deactivate-parent', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // Désactiver l'inscription
     const sql = `
       UPDATE enrollments 
@@ -207,18 +207,18 @@ router.put('/:id/deactivate-parent', async (req, res) => {
       WHERE child_id = $1
       RETURNING *
     `;
-    
+
     const result = await pool.query(sql, [id]);
-    
+
     res.json({
       success: true,
       message: 'Compte parent désactivé avec succès'
     });
   } catch (error) {
     console.error('Erreur désactivation parent:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la désactivation du parent' 
+      error: 'Erreur lors de la désactivation du parent'
     });
   }
 });
@@ -233,9 +233,9 @@ router.get('/unassociated', async (req, res) => {
     });
   } catch (error) {
     console.error('Erreur enfants non associés:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la récupération des enfants non associés' 
+      error: 'Erreur lors de la récupération des enfants non associés'
     });
   }
 });
@@ -243,8 +243,9 @@ router.get('/unassociated', async (req, res) => {
 // GET /api/children - Récupérer tous les enfants avec leurs parents
 router.get('/', auth.authenticateToken, async (req, res) => {
   try {
-    const { status = 'active', search, gender, age_min, age_max, page = 1, limit = 50 } = req.query;
-    
+    const { status = 'active', search, gender, age, age_min, age_max, page = 1, limit = 50 } = req.query;
+    console.log('📊 Paramètres reçus:', { status, search, gender, age, age_min, age_max, page, limit });
+
     let sql = `
       SELECT 
         c.id, c.first_name, c.last_name, c.birth_date, c.gender, c.medical_info, 
@@ -267,7 +268,7 @@ router.get('/', auth.authenticateToken, async (req, res) => {
     `;
     const params = [];
     let paramCount = 0;
-    
+
     // Filtres
     if (status === 'active' || status === 'approved') {
       paramCount++;
@@ -278,33 +279,51 @@ router.get('/', auth.authenticateToken, async (req, res) => {
       sql += ` AND c.is_active = $${paramCount}`;
       params.push(false);
     }
-    
+
     if (search) {
       paramCount++;
-      sql += ` AND (c.first_name ILIKE $${paramCount} OR c.last_name ILIKE $${paramCount} OR u.first_name ILIKE $${paramCount} OR u.last_name ILIKE $${paramCount})`;
-      params.push(`%${search}%`);
+      sql += ` AND (c.first_name ILIKE $${paramCount} OR c.last_name ILIKE $${paramCount})`;
+      params.push(`${search}%`); // Recherche au début du nom seulement
     }
-    
+
     if (gender) {
       paramCount++;
-      sql += ` AND gender = $${paramCount}`;
+      sql += ` AND c.gender = $${paramCount}`;
       params.push(gender);
     }
-    
+
+    // Filtre par tranche d'âge
+    if (age && age !== 'all') {
+      if (age === 'infant') {
+        // 2-11 mois
+        sql += ` AND c.birth_date >= CURRENT_DATE - INTERVAL '1 year' AND c.birth_date <= CURRENT_DATE - INTERVAL '2 months'`;
+      } else if (age === 'toddler') {
+        // 1-2 ans
+        sql += ` AND c.birth_date >= CURRENT_DATE - INTERVAL '2 years' AND c.birth_date < CURRENT_DATE - INTERVAL '1 year'`;
+      } else if (age === 'young') {
+        // 2-3 ans
+        sql += ` AND c.birth_date >= CURRENT_DATE - INTERVAL '3 years' AND c.birth_date < CURRENT_DATE - INTERVAL '2 years'`;
+      }
+    }
+
     if (age_min) {
       paramCount++;
-      sql += ` AND EXTRACT(YEAR FROM AGE(birth_date)) >= $${paramCount}`;
+      sql += ` AND EXTRACT(YEAR FROM AGE(c.birth_date)) >= $${paramCount}`;
       params.push(parseInt(age_min));
     }
-    
+
     if (age_max) {
       paramCount++;
-      sql += ` AND EXTRACT(YEAR FROM AGE(birth_date)) <= $${paramCount}`;
+      sql += ` AND EXTRACT(YEAR FROM AGE(c.birth_date)) <= $${paramCount}`;
       params.push(parseInt(age_max));
     }
-    
+
     // GROUP BY et ORDER BY
-    sql += ` GROUP BY c.id, u.id, e.enrollment_date, e.new_status`;
+    sql += ` GROUP BY c.id, c.first_name, c.last_name, c.birth_date, c.gender, c.medical_info, 
+             c.emergency_contact_name, c.emergency_contact_phone, c.photo_url, 
+             c.is_active, c.created_at, c.updated_at, c.parent_id,
+             u.id, u.first_name, u.last_name, u.email, u.phone,
+             e.enrollment_date, e.new_status`;
     sql += ` ORDER BY c.created_at DESC`;
     const offset = (page - 1) * limit;
     paramCount++;
@@ -313,14 +332,14 @@ router.get('/', auth.authenticateToken, async (req, res) => {
     paramCount++;
     sql += ` OFFSET $${paramCount}`;
     params.push(offset);
-    
+
     const result = await pool.query(sql, params);
-    
+
     // Compter le total
     let countSql = 'SELECT COUNT(DISTINCT c.id) as total FROM children c LEFT JOIN users u ON c.parent_id = u.id WHERE 1=1';
     const countParams = [];
     let countParamCount = 0;
-    
+
     if (status === 'active' || status === 'approved') {
       countParamCount++;
       countSql += ` AND c.is_active = $${countParamCount}`;
@@ -330,33 +349,44 @@ router.get('/', auth.authenticateToken, async (req, res) => {
       countSql += ` AND c.is_active = $${countParamCount}`;
       countParams.push(false);
     }
-    
+
     if (search) {
       countParamCount++;
-      countSql += ` AND (first_name ILIKE $${countParamCount} OR last_name ILIKE $${countParamCount})`;
-      countParams.push(`%${search}%`);
+      countSql += ` AND (c.first_name ILIKE $${countParamCount} OR c.last_name ILIKE $${countParamCount})`;
+      countParams.push(`${search}%`); // Recherche au début du nom seulement
     }
-    
+
     if (gender) {
       countParamCount++;
-      countSql += ` AND gender = $${countParamCount}`;
+      countSql += ` AND c.gender = $${countParamCount}`;
       countParams.push(gender);
     }
-    
+
+    // Filtre par tranche d'âge dans COUNT
+    if (age && age !== 'all') {
+      if (age === 'infant') {
+        countSql += ` AND c.birth_date >= CURRENT_DATE - INTERVAL '1 year' AND c.birth_date <= CURRENT_DATE - INTERVAL '2 months'`;
+      } else if (age === 'toddler') {
+        countSql += ` AND c.birth_date >= CURRENT_DATE - INTERVAL '2 years' AND c.birth_date < CURRENT_DATE - INTERVAL '1 year'`;
+      } else if (age === 'young') {
+        countSql += ` AND c.birth_date >= CURRENT_DATE - INTERVAL '3 years' AND c.birth_date < CURRENT_DATE - INTERVAL '2 years'`;
+      }
+    }
+
     if (age_min) {
       countParamCount++;
-      countSql += ` AND EXTRACT(YEAR FROM AGE(birth_date)) >= $${countParamCount}`;
+      countSql += ` AND EXTRACT(YEAR FROM AGE(c.birth_date)) >= $${countParamCount}`;
       countParams.push(parseInt(age_min));
     }
-    
+
     if (age_max) {
       countParamCount++;
-      countSql += ` AND EXTRACT(YEAR FROM AGE(birth_date)) <= $${countParamCount}`;
+      countSql += ` AND EXTRACT(YEAR FROM AGE(c.birth_date)) <= $${countParamCount}`;
       countParams.push(parseInt(age_max));
     }
-    
+
     const countResult = await pool.query(countSql, countParams);
-    
+
     res.json({
       success: true,
       data: {
@@ -369,12 +399,12 @@ router.get('/', auth.authenticateToken, async (req, res) => {
         }
       }
     });
-    
+
   } catch (error) {
     console.error('Erreur récupération enfants:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Erreur lors de la récupération des enfants' 
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération des enfants'
     });
   }
 });
@@ -383,7 +413,7 @@ router.get('/', auth.authenticateToken, async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const result = await pool.query(
       `SELECT id, first_name, last_name, birth_date, gender, medical_info, 
               emergency_contact_name, emergency_contact_phone, photo_url, 
@@ -392,14 +422,14 @@ router.get('/:id', async (req, res) => {
        FROM children WHERE id = $1`,
       [id]
     );
-    
+
     if (result.rows.length === 0) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'Enfant non trouvé' 
+      return res.status(404).json({
+        success: false,
+        error: 'Enfant non trouvé'
       });
     }
-    
+
     // Récupérer les inscriptions de cet enfant
     const enrollments = await pool.query(
       `SELECT e.*, u.first_name as parent_first_name, u.last_name as parent_last_name, u.email as parent_email
@@ -409,7 +439,7 @@ router.get('/:id', async (req, res) => {
        ORDER BY e.created_at DESC`,
       [id]
     );
-    
+
     // Récupérer les présences récentes
     const attendance = await pool.query(
       `SELECT date, check_in_time, check_out_time, notes
@@ -419,7 +449,7 @@ router.get('/:id', async (req, res) => {
        LIMIT 10`,
       [id]
     );
-    
+
     res.json({
       success: true,
       child: {
@@ -428,12 +458,12 @@ router.get('/:id', async (req, res) => {
         recent_attendance: attendance.rows
       }
     });
-    
+
   } catch (error) {
     console.error('Erreur récupération enfant:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Erreur lors de la récupération de l\'enfant' 
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération de l\'enfant'
     });
   }
 });
@@ -448,24 +478,24 @@ router.post('/', [
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        error: 'Données invalides', 
-        details: errors.array() 
+        error: 'Données invalides',
+        details: errors.array()
       });
     }
-    
-    const { 
-      first_name, 
-      last_name, 
-      birth_date, 
-      gender, 
-      medical_info, 
-      emergency_contact_name, 
-      emergency_contact_phone, 
-      photo_url 
+
+    const {
+      first_name,
+      last_name,
+      birth_date,
+      gender,
+      medical_info,
+      emergency_contact_name,
+      emergency_contact_phone,
+      photo_url
     } = req.body;
-    
+
     // Insérer le nouvel enfant
     const result = await pool.query(
       `INSERT INTO children (first_name, last_name, birth_date, gender, medical_info, 
@@ -474,21 +504,21 @@ router.post('/', [
        RETURNING id, first_name, last_name, birth_date, gender, medical_info, 
                  emergency_contact_name, emergency_contact_phone, photo_url, 
                  is_active, created_at`,
-      [first_name, last_name, birth_date, gender, medical_info, 
-       emergency_contact_name, emergency_contact_phone, photo_url, true]
+      [first_name, last_name, birth_date, gender, medical_info,
+        emergency_contact_name, emergency_contact_phone, photo_url, true]
     );
-    
+
     res.status(201).json({
       success: true,
       message: 'Enfant créé avec succès',
       child: result.rows[0]
     });
-    
+
   } catch (error) {
     console.error('Erreur création enfant:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la création de l\'enfant' 
+      error: 'Erreur lors de la création de l\'enfant'
     });
   }
 });
@@ -503,110 +533,110 @@ router.put('/:id', [
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        error: 'Données invalides', 
-        details: errors.array() 
+        error: 'Données invalides',
+        details: errors.array()
       });
     }
-    
+
     const { id } = req.params;
-    const { 
-      first_name, 
-      last_name, 
-      birth_date, 
-      gender, 
-      medical_info, 
-      emergency_contact_name, 
-      emergency_contact_phone, 
-      photo_url, 
-      is_active 
+    const {
+      first_name,
+      last_name,
+      birth_date,
+      gender,
+      medical_info,
+      emergency_contact_name,
+      emergency_contact_phone,
+      photo_url,
+      is_active
     } = req.body;
-    
+
     // Vérifier si l'enfant existe
     const existingChild = await pool.query('SELECT id FROM children WHERE id = $1', [id]);
     if (existingChild.rows.length === 0) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        error: 'Enfant non trouvé' 
+        error: 'Enfant non trouvé'
       });
     }
-    
+
     // Construire la requête de mise à jour dynamiquement
     const updates = [];
     const params = [];
     let paramCount = 0;
-    
+
     if (first_name !== undefined) {
       paramCount++;
       updates.push(`first_name = $${paramCount}`);
       params.push(first_name);
     }
-    
+
     if (last_name !== undefined) {
       paramCount++;
       updates.push(`last_name = $${paramCount}`);
       params.push(last_name);
     }
-    
+
     if (birth_date !== undefined) {
       paramCount++;
       updates.push(`birth_date = $${paramCount}`);
       params.push(birth_date);
     }
-    
+
     if (gender !== undefined) {
       paramCount++;
       updates.push(`gender = $${paramCount}`);
       params.push(gender);
     }
-    
+
     if (medical_info !== undefined) {
       paramCount++;
       updates.push(`medical_info = $${paramCount}`);
       params.push(medical_info);
     }
-    
+
     if (emergency_contact_name !== undefined) {
       paramCount++;
       updates.push(`emergency_contact_name = $${paramCount}`);
       params.push(emergency_contact_name);
     }
-    
+
     if (emergency_contact_phone !== undefined) {
       paramCount++;
       updates.push(`emergency_contact_phone = $${paramCount}`);
       params.push(emergency_contact_phone);
     }
-    
+
     if (photo_url !== undefined) {
       paramCount++;
       updates.push(`photo_url = $${paramCount}`);
       params.push(photo_url);
     }
-    
+
     if (is_active !== undefined) {
       paramCount++;
       updates.push(`is_active = $${paramCount}`);
       params.push(is_active);
     }
-    
+
     if (updates.length === 0) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        error: 'Aucune donnée à mettre à jour' 
+        error: 'Aucune donnée à mettre à jour'
       });
     }
-    
+
     // Ajouter updated_at
     paramCount++;
     updates.push(`updated_at = $${paramCount}`);
     params.push(new Date());
-    
+
     // Ajouter l'ID pour la clause WHERE
     paramCount++;
     params.push(id);
-    
+
     const sql = `
       UPDATE children 
       SET ${updates.join(', ')} 
@@ -615,20 +645,20 @@ router.put('/:id', [
                 emergency_contact_name, emergency_contact_phone, photo_url, 
                 is_active, updated_at
     `;
-    
+
     const result = await pool.query(sql, params);
-    
+
     res.json({
       success: true,
       message: 'Enfant mis à jour avec succès',
       child: result.rows[0]
     });
-    
+
   } catch (error) {
     console.error('Erreur mise à jour enfant:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la mise à jour de l\'enfant' 
+      error: 'Erreur lors de la mise à jour de l\'enfant'
     });
   }
 });
@@ -637,32 +667,32 @@ router.put('/:id', [
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // Vérifier si l'enfant existe
     const existingChild = await pool.query('SELECT id, first_name, last_name FROM children WHERE id = $1', [id]);
     if (existingChild.rows.length === 0) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        error: 'Enfant non trouvé' 
+        error: 'Enfant non trouvé'
       });
     }
-    
+
     // Soft delete - désactiver l'enfant
     await pool.query(
       'UPDATE children SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = $1',
       [id]
     );
-    
+
     res.json({
       success: true,
       message: 'Enfant désactivé avec succès'
     });
-    
+
   } catch (error) {
     console.error('Erreur suppression enfant:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la suppression de l\'enfant' 
+      error: 'Erreur lors de la suppression de l\'enfant'
     });
   }
 });
@@ -681,17 +711,17 @@ router.get('/stats/overview', async (req, res) => {
         COUNT(*) FILTER (WHERE EXTRACT(YEAR FROM AGE(birth_date)) > 3) as preschoolers
       FROM children
     `);
-    
+
     res.json({
       success: true,
       stats: stats.rows[0]
     });
-    
+
   } catch (error) {
     console.error('Erreur statistiques enfants:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la récupération des statistiques' 
+      error: 'Erreur lors de la récupération des statistiques'
     });
   }
 });

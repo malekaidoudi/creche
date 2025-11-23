@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Calendar, Clock, AlertCircle, Send } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useDialogContext } from '../../contexts/DialogContext';
 import api from '../../services/api';
-import toast from 'react-hot-toast';
 
 const RejectWithProposalModal = ({ isOpen, onClose, appointment, onSuccess }) => {
   const { isRTL } = useLanguage();
+  const dialog = useDialogContext();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     proposed_date: '',
@@ -18,7 +19,7 @@ const RejectWithProposalModal = ({ isOpen, onClose, appointment, onSuccess }) =>
     e.preventDefault();
 
     if (!formData.proposed_date || !formData.proposed_time) {
-      toast.error(isRTL ? 'يرجى ملء جميع الحقول' : 'Veuillez remplir tous les champs');
+      dialog.error(isRTL ? 'يرجى ملء جميع الحقول' : 'Veuillez remplir tous les champs');
       return;
     }
 
@@ -35,13 +36,13 @@ const RejectWithProposalModal = ({ isOpen, onClose, appointment, onSuccess }) =>
       });
 
       if (response.data.success) {
-        toast.success(isRTL ? 'تم رفض الموعد وإرسال تاريخ بديل' : 'RDV refusé et nouvelle date proposée');
+        dialog.success(isRTL ? 'تم رفض الموعد وإرسال تاريخ بديل' : 'RDV refusé et nouvelle date proposée');
         onSuccess?.();
         onClose();
       }
     } catch (error) {
       console.error('Erreur refus avec proposition:', error);
-      toast.error(isRTL ? 'خطأ في العملية' : 'Erreur lors de l\'opération');
+      dialog.error(isRTL ? 'خطأ في العملية' : 'Erreur lors de l\'opération');
     } finally {
       setLoading(false);
     }

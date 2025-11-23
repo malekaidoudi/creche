@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, User, CheckCircle, XCircle, AlertCircle, ArrowRight } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import api from '../../services/api';
-import toast from 'react-hot-toast';
+import { useDialogContext } from '../../contexts/DialogContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import RejectWithProposalModal from '../modals/RejectWithProposalModal';
 
 const PendingAppointmentsWidget = ({ onUpdate }) => {
   const { isRTL } = useLanguage();
+  const dialog = useDialogContext();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -55,13 +56,13 @@ const PendingAppointmentsWidget = ({ onUpdate }) => {
       });
 
       if (response.data.success) {
-        toast.success(isRTL ? 'تم تأكيد الموعد' : 'Rendez-vous confirmé');
+        dialog.success(isRTL ? 'تم تأكيد الموعد' : 'Rendez-vous confirmé');
         setAppointments(prev => prev.filter(a => a.id !== appointment.id));
         onUpdate?.();
       }
     } catch (error) {
       console.error('Erreur validation RDV:', error);
-      toast.error(isRTL ? 'خطأ في التأكيد' : 'Erreur lors de la validation');
+      dialog.error(isRTL ? 'خطأ في التأكيد' : 'Erreur lors de la validation');
     }
   };
 

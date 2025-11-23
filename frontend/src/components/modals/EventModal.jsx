@@ -1,10 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, Calendar, Clock, FileText, Users, Megaphone } from 'lucide-react';
 import api from '../../services/api';
-import toast from 'react-hot-toast';
+import { useDialogContext } from '../../contexts/DialogContext';
+import DatePicker from '../ui/DatePicker';
+import { convertToISO, convertFromISO } from '../../utils/dateUtils';
 
 export default function EventModal({ isOpen, onClose, onSuccess }) {
+  const dialog = useDialogContext();
   const [loading, setLoading] = useState(false);
+  const firstInputRef = useRef(null);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -14,24 +18,31 @@ export default function EventModal({ isOpen, onClose, onSuccess }) {
     event_time: '09:00'
   });
 
+  useEffect(() => {
+    if (isOpen && firstInputRef.current) {
+      setTimeout(() => firstInputRef.current?.focus(), 100);
+    }
+  }, [isOpen]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     // Validation
     if (!formData.title.trim()) {
-      toast.error('Le titre est requis');
+      dialog.error('Le titre est requis');
       return;
     }
 
     if (!formData.event_date || !formData.event_time) {
-      toast.error('La date et l\'heure sont requises');
+      dialog.error('La date et l\'heure sont requises');
       return;
     }
 
     try {
       setLoading(true);
 
-      const eventDateTime = `${formData.event_date}T${formData.event_time}:00`;
+      const isoDate = convertToISO(formData.event_date);
+      const eventDateTime = `${isoDate}T${formData.event_time}:00`;
 
       const eventData = {
         title: formData.title.trim(),
@@ -48,13 +59,13 @@ export default function EventModal({ isOpen, onClose, onSuccess }) {
       const response = await api.post('/api/events', eventData);
 
       if (response.data.success) {
-        toast.success('Événement créé avec succès');
+        dialog.success('Événement créé avec succès');
         onSuccess?.();
         handleClose();
       }
     } catch (error) {
-      console.error('❌ Erreur:', error);
-      toast.error(error.response?.data?.error || 'Une erreur est survenue');
+      console.error('Erreur création événement:', error);
+      dialog.error(error.response?.data?.message || 'Erreur lors de la création de l\'événement');
     } finally {
       setLoading(false);
     }
@@ -76,22 +87,23 @@ export default function EventModal({ isOpen, onClose, onSuccess }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-            📢 Nouvel Événement
+        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between flex-shrink-0">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <Megaphone className="w-5 h-5 text-orange-600" />
+            Nouvel Événement
           </h2>
           <button
             onClick={handleClose}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors text-gray-900 dark:text-white"
+            className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors text-gray-900 dark:text-white"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 space-y-4">
           {/* Type d'événement */}
           <div>
             <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -132,10 +144,11 @@ export default function EventModal({ isOpen, onClose, onSuccess }) {
               Titre *
             </label>
             <input
+              ref={firstInputRef}
               type="text"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              placeholder="Ex: Réunion parents de fin d'année"
+              placeholder="Ex: Réunion parents, Fête de fin d'année..."
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               required
             />
@@ -160,19 +173,12 @@ export default function EventModal({ isOpen, onClose, onSuccess }) {
           {/* Date et Heure */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Date */}
-            <div>
-              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                <Calendar className="w-4 h-4" />
-                Date *
-              </label>
-              <input
-                type="date"
-                value={formData.event_date}
-                onChange={(e) => setFormData({ ...formData, event_date: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                required
-              />
-            </div>
+            <DatePicker
+              label="Date d'événement"
+              required
+              value={formData.event_date}
+              onChange={(value) => setFormData({ ...formData, event_date: value })}
+            />
 
             {/* Heure de début */}
             <div>
@@ -189,32 +195,33 @@ export default function EventModal({ isOpen, onClose, onSuccess }) {
               />
             </div>
           </div>
-
-          {/* Actions */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <button
-              type="button"
-              onClick={handleClose}
-              className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-            >
-              Annuler
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-6 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              {loading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  Création...
-                </>
-              ) : (
-                'Créer l\'événement'
-              )}
-            </button>
-          </div>
         </form>
+
+        {/* Actions */}
+        <div className="flex items-center justify-end gap-3 px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex-shrink-0">
+          <button
+            type="button"
+            onClick={handleClose}
+            className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+          >
+            Annuler
+          </button>
+          <button
+            type="submit"
+            onClick={handleSubmit}
+            disabled={loading}
+            className="px-6 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {loading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Création...
+              </>
+            ) : (
+              'Créer l\'événement'
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );
