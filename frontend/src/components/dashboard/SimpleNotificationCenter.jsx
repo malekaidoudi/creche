@@ -7,6 +7,7 @@ import { useLanguage } from '../../hooks/useLanguage';
 import { Button } from '../ui/Button';
 import { useDialogContext } from '../../contexts/DialogContext';
 import api from '../../services/api';
+import AppointmentDetailsModal from '../modals/AppointmentDetailsModal';
 
 const SimpleNotificationCenter = ({ isOpen, onClose }) => {
   const { user } = useAuth();
@@ -16,6 +17,8 @@ const SimpleNotificationCenter = ({ isOpen, onClose }) => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
   const [processingId, setProcessingId] = useState(null);
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
+  const [showAppointmentModal, setShowAppointmentModal] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -86,6 +89,25 @@ const SimpleNotificationCenter = ({ isOpen, onClose }) => {
     }
   };
 
+  const loadAppointmentDetails = async (appointmentId) => {
+    try {
+      console.log('📅 Chargement détails RDV:', appointmentId);
+      const response = await api.get(`/api/appointments/${appointmentId}`);
+      console.log('📅 Réponse API:', response.data);
+
+      if (response.data.success && response.data.appointment) {
+        console.log('✅ RDV chargé, ouverture modal');
+        setSelectedAppointment(response.data.appointment);
+        setShowAppointmentModal(true);
+      } else {
+        console.warn('⚠️ Pas de données RDV dans la réponse');
+      }
+    } catch (error) {
+      console.error('❌ Erreur chargement détails RDV:', error);
+      dialog.error(isRTL ? 'خطأ في تحميل تفاصيل الموعد' : 'Erreur lors du chargement des détails');
+    }
+  };
+
   const handleNotificationClick = async (notification) => {
     try {
       // Marquer comme lue SANS afficher le toast
@@ -133,10 +155,11 @@ const SimpleNotificationCenter = ({ isOpen, onClose }) => {
         } else {
           navigate('/dashboard/tasks');
         }
-      } else if (notification.type === 'appointment') {
-        // Notification de rendez-vous
+      } else if (notification.type === 'appointment' || notification.type === 'appointment_proposed' || notification.type?.startsWith('appointment_')) {
+        // Notification de rendez-vous - Charger les détails et ouvrir le modal
+        console.log('🔔 Notification RDV cliquée:', notification);
         if (notification.related_id) {
-          navigate(`/dashboard/appointments?appointmentId=${notification.related_id}`);
+          await loadAppointmentDetails(notification.related_id);
         } else {
           navigate('/dashboard/appointments');
         }
@@ -204,128 +227,146 @@ const SimpleNotificationCenter = ({ isOpen, onClose }) => {
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-end p-4"
-        onClick={onClose}
-      >
-        <motion.div
-          initial={{ x: 400, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          exit={{ x: 400, opacity: 0 }}
-          className={`bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden ${isRTL ? 'rtl' : 'ltr'}`}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* En-tête */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-            <div className="flex items-center">
-              <Bell className="w-5 h-5 mr-2 rtl:mr-0 rtl:ml-2 text-gray-600 dark:text-gray-400" />
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                {isRTL ? 'الإشعارات' : 'Notifications'}
-              </h2>
-              {notifications.filter(n => !n.is_read).length > 0 && (
-                <span className="ml-2 rtl:ml-0 rtl:mr-2 px-2 py-1 text-xs bg-red-500 text-white rounded-full">
-                  {notifications.filter(n => !n.is_read).length}
-                </span>
-              )}
-            </div>
-            <div className="flex items-center space-x-2 rtl:space-x-reverse">
-              <button
-                onClick={onClose}
-                className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
+    <>
+      {/* Modal détails rendez-vous - TOUJOURS rendu pour rester visible après fermeture notifications */}
+      <AppointmentDetailsModal
+        isOpen={showAppointmentModal}
+        onClose={() => {
+          setShowAppointmentModal(false);
+          setSelectedAppointment(null);
+        }}
+        appointment={selectedAppointment}
+        onSuccess={() => {
+          setShowAppointmentModal(false);
+          setSelectedAppointment(null);
+          loadNotifications(); // Recharger les notifications
+        }}
+      />
 
-          {/* Contenu */}
-          <div className="overflow-y-auto max-h-[calc(90vh-80px)]">
-            {loading ? (
-              <div className="flex justify-center items-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
+      {!isOpen && null}
+      {isOpen && (
+        <AnimatePresence>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-start justify-end p-4"
+            onClick={onClose}
+          >
+            <motion.div
+              initial={{ x: 400, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 400, opacity: 0 }}
+              className={`bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden ${isRTL ? 'rtl' : 'ltr'}`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* En-tête */}
+              <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+                <div className="flex items-center">
+                  <Bell className="w-5 h-5 mr-2 rtl:mr-0 rtl:ml-2 text-gray-600 dark:text-gray-400" />
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {isRTL ? 'الإشعارات' : 'Notifications'}
+                  </h2>
+                  {notifications.filter(n => !n.is_read).length > 0 && (
+                    <span className="ml-2 rtl:ml-0 rtl:mr-2 px-2 py-1 text-xs bg-red-500 text-white rounded-full">
+                      {notifications.filter(n => !n.is_read).length}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                  <button
+                    onClick={onClose}
+                    className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
-            ) : notifications.length === 0 ? (
-              <div className="text-center py-8">
-                <Bell className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                <p className="text-gray-500">
-                  {isRTL ? 'لا توجد إشعارات' : 'Aucune notification'}
-                </p>
-              </div>
-            ) : (
-              <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                {notifications.map((notification) => {
-                  const isAbsenceRequest = notification.type === 'absence_request' && notification.related_id;
 
-                  return (
-                    <div
-                      key={notification.id}
-                      className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer ${!notification.is_read ? 'bg-blue-50 dark:bg-blue-900/10' : ''
-                        }`}
-                      onClick={() => handleNotificationClick(notification)}
-                    >
-                      <div className="flex items-start space-x-3 rtl:space-x-reverse">
-                        <div className="flex-shrink-0">
-                          {getNotificationIcon(notification.type)}
-                        </div>
+              {/* Contenu */}
+              <div className="overflow-y-auto max-h-[calc(90vh-80px)]">
+                {loading ? (
+                  <div className="flex justify-center items-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
+                  </div>
+                ) : notifications.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Bell className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+                    <p className="text-gray-500">
+                      {isRTL ? 'لا توجد إشعارات' : 'Aucune notification'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {notifications.map((notification) => {
+                      const isAbsenceRequest = notification.type === 'absence_request' && notification.related_id;
 
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-                              {notification.title}
-                            </h3>
-                            <div className="flex items-center space-x-1 rtl:space-x-reverse">
-                              {!notification.is_read && (
-                                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      return (
+                        <div
+                          key={notification.id}
+                          className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer ${!notification.is_read ? 'bg-blue-50 dark:bg-blue-900/10' : ''
+                            }`}
+                          onClick={() => handleNotificationClick(notification)}
+                        >
+                          <div className="flex items-start space-x-3 rtl:space-x-reverse">
+                            <div className="flex-shrink-0">
+                              {getNotificationIcon(notification.type)}
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between">
+                                <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+                                  {notification.title}
+                                </h3>
+                                <div className="flex items-center space-x-1 rtl:space-x-reverse">
+                                  {!notification.is_read && (
+                                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                  )}
+                                  <span className="text-xs text-gray-500">
+                                    {formatDate(notification.created_at)}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                {notification.message}
+                              </p>
+
+                              {/* Actions pour les demandes d'absence */}
+                              {isAbsenceRequest && (user?.role === 'admin' || user?.role === 'staff') && (
+                                <div className="mt-3" onClick={(e) => e.stopPropagation()}>
+                                  <Button
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      acknowledgeAbsenceRequest(notification.id, notification.related_id);
+                                    }}
+                                    disabled={processingId === notification.id}
+                                    className="text-xs"
+                                  >
+                                    {processingId === notification.id ? (
+                                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1 rtl:mr-0 rtl:ml-1"></div>
+                                    ) : (
+                                      <CheckCircle2 className="w-3 h-3 mr-1 rtl:mr-0 rtl:ml-1" />
+                                    )}
+                                    {isRTL ? 'تأكيد الاستلام' : 'Valider'}
+                                  </Button>
+                                </div>
                               )}
-                              <span className="text-xs text-gray-500">
-                                {formatDate(notification.created_at)}
-                              </span>
                             </div>
                           </div>
-
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                            {notification.message}
-                          </p>
-
-                          {/* Actions pour les demandes d'absence */}
-                          {isAbsenceRequest && (user?.role === 'admin' || user?.role === 'staff') && (
-                            <div className="mt-3" onClick={(e) => e.stopPropagation()}>
-                              <Button
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  acknowledgeAbsenceRequest(notification.id, notification.related_id);
-                                }}
-                                disabled={processingId === notification.id}
-                                className="text-xs"
-                              >
-                                {processingId === notification.id ? (
-                                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1 rtl:mr-0 rtl:ml-1"></div>
-                                ) : (
-                                  <CheckCircle2 className="w-3 h-3 mr-1 rtl:mr-0 rtl:ml-1" />
-                                )}
-                                {isRTL ? 'تأكيد الاستلام' : 'Valider'}
-                              </Button>
-                            </div>
-                          )}
                         </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
+            </motion.div>
+          </motion.div>
+        </AnimatePresence>
+      )}
+    </>
   );
 };
 

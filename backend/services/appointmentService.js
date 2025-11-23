@@ -10,31 +10,31 @@ const { pool } = require('../config/db_postgres');
  */
 async function createAppointment(appointmentData, creatorId) {
   const client = await pool.connect();
-  
+
   try {
     await client.query('BEGIN');
-    
-    const { 
-      parent_id, 
-      child_id, 
-      subject, 
-      description, 
+
+    const {
+      parent_id,
+      child_id,
+      subject,
+      description,
       proposed_date,
       location = 'Crèche'
     } = appointmentData;
-    
+
     const result = await client.query(`
       INSERT INTO appointments 
       (parent_id, child_id, created_by, subject, description, proposed_date, location, status)
       VALUES ($1, $2, $3, $4, $5, $6, $7, 'proposed')
       RETURNING *
     `, [parent_id, child_id, creatorId, subject, description, proposed_date, location]);
-    
+
     const appointment = result.rows[0];
-    
+
     // Notifier le parent
     const creator = await getUserById(creatorId);
-    
+
     await client.query(`
       INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
       VALUES ($1, $2, $3, 'appointment_proposed', $4, false)
@@ -44,7 +44,7 @@ async function createAppointment(appointmentData, creatorId) {
       `${creator.first_name} ${creator.last_name} vous propose un rendez-vous : "${subject}"`,
       appointment.id
     ]);
-    
+
     // Marquer comme complétées toutes les tâches urgentes de RDV pour ce parent
     await client.query(`
       UPDATE events 
@@ -53,14 +53,14 @@ async function createAppointment(appointmentData, creatorId) {
       AND status = 'pending'
       AND metadata::jsonb @> $1::jsonb
     `, [JSON.stringify({ is_urgent_appointment: true, parent_id: parent_id })]);
-    
+
     await client.query('COMMIT');
-    
+
     console.log(`✅ RDV créé: ${subject} avec parent ${parent_id}`);
     console.log(`✅ Tâches urgentes RDV pour parent ${parent_id} marquées comme complétées`);
-    
+
     return { success: true, appointment };
-    
+
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('❌ Erreur createAppointment:', error);
@@ -76,7 +76,7 @@ async function createAppointment(appointmentData, creatorId) {
 async function getAppointments(userId, role, filters = {}) {
   try {
     const { status } = filters;
-    
+
     let query = `
       SELECT 
         a.*,
@@ -87,29 +87,29 @@ async function getAppointments(userId, role, filters = {}) {
       LEFT JOIN children c ON a.child_id = c.id
       WHERE 1=1
     `;
-    
+
     const params = [];
     let paramCount = 0;
-    
+
     // Filtrer selon le rôle
     if (role === 'parent') {
       paramCount++;
       query += ` AND a.parent_id = $${paramCount}`;
       params.push(userId);
     }
-    
+
     if (status) {
       paramCount++;
       query += ` AND a.status = $${paramCount}`;
       params.push(status);
     }
-    
+
     query += ` ORDER BY COALESCE(a.confirmed_date, a.proposed_date) DESC`;
-    
+
     const result = await pool.query(query, params);
-    
+
     return { success: true, appointments: result.rows };
-    
+
   } catch (error) {
     console.error('❌ Erreur getAppointments:', error);
     throw error;
@@ -133,9 +133,9 @@ async function getTodayAppointments() {
         AND a.status IN ('confirmed', 'proposed')
       ORDER BY COALESCE(a.confirmed_date, a.proposed_date) ASC
     `);
-    
+
     return { success: true, appointments: result.rows };
-    
+
   } catch (error) {
     console.error('❌ Erreur getTodayAppointments:', error);
     throw error;
@@ -147,10 +147,10 @@ async function getTodayAppointments() {
  */
 async function confirmAppointment(appointmentId, confirmedDate, userId, userRole = 'parent') {
   const client = await pool.connect();
-  
+
   try {
     await client.query('BEGIN');
-    
+
     // Si admin, pas de vérification parent_id
     let query, params;
     if (userRole === 'admin' || userRole === 'staff') {
@@ -170,16 +170,16 @@ async function confirmAppointment(appointmentId, confirmedDate, userId, userRole
       `;
       params = [confirmedDate, appointmentId, userId];
     }
-    
+
     const result = await client.query(query, params);
-    
+
     if (result.rows.length === 0) {
       await client.query('ROLLBACK');
       return { success: false, error: 'Rendez-vous non trouvé' };
     }
-    
+
     const appointment = result.rows[0];
-    
+
     // Notifier selon qui confirme
     if (userRole === 'admin' || userRole === 'staff') {
       // Admin confirme → notifier le parent
@@ -205,13 +205,13 @@ async function confirmAppointment(appointmentId, confirmedDate, userId, userRole
         appointment.id
       ]);
     }
-    
+
     await client.query('COMMIT');
-    
+
     console.log(`✅ RDV ${appointmentId} confirmé par ${userRole}`);
-    
+
     return { success: true, appointment };
-    
+
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('❌ Erreur confirmAppointment:', error);
@@ -226,27 +226,27 @@ async function confirmAppointment(appointmentId, confirmedDate, userId, userRole
  */
 async function rescheduleAppointment(appointmentId, newDate, userId) {
   const client = await pool.connect();
-  
+
   try {
     await client.query('BEGIN');
-    
+
     const result = await client.query(`
       UPDATE appointments
       SET proposed_date = $1, status = 'rescheduled', updated_at = NOW()
       WHERE id = $2 AND parent_id = $3
       RETURNING *
     `, [newDate, appointmentId, userId]);
-    
+
     if (result.rows.length === 0) {
       await client.query('ROLLBACK');
       return { success: false, error: 'Rendez-vous non trouvé' };
     }
-    
+
     const appointment = result.rows[0];
-    
+
     // Notifier l'admin
     const parent = await getUserById(userId);
-    
+
     await client.query(`
       INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
       VALUES ($1, $2, $3, 'appointment_rescheduled', $4, false)
@@ -256,13 +256,13 @@ async function rescheduleAppointment(appointmentId, newDate, userId) {
       `${parent.first_name} ${parent.last_name} propose une nouvelle date pour : "${appointment.subject}"`,
       appointment.id
     ]);
-    
+
     await client.query('COMMIT');
-    
+
     console.log(`✅ RDV ${appointmentId} replanifié`);
-    
+
     return { success: true, appointment };
-    
+
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('❌ Erreur rescheduleAppointment:', error);
@@ -283,15 +283,15 @@ async function completeAppointment(appointmentId, notes) {
       WHERE id = $2
       RETURNING *
     `, [notes, appointmentId]);
-    
+
     if (result.rows.length === 0) {
       return { success: false, error: 'Rendez-vous non trouvé' };
     }
-    
+
     console.log(`✅ RDV ${appointmentId} complété`);
-    
+
     return { success: true, appointment: result.rows[0] };
-    
+
   } catch (error) {
     console.error('❌ Erreur completeAppointment:', error);
     throw error;
@@ -309,15 +309,15 @@ async function cancelAppointment(appointmentId) {
       WHERE id = $1
       RETURNING *
     `, [appointmentId]);
-    
+
     if (result.rows.length === 0) {
       return { success: false, error: 'Rendez-vous non trouvé' };
     }
-    
+
     console.log(`✅ RDV ${appointmentId} annulé`);
-    
+
     return { success: true, appointment: result.rows[0] };
-    
+
   } catch (error) {
     console.error('❌ Erreur cancelAppointment:', error);
     throw error;
@@ -330,36 +330,36 @@ async function cancelAppointment(appointmentId) {
  */
 async function rejectWithProposal(appointmentId, proposedDate, reason, adminId) {
   const client = await pool.connect();
-  
+
   try {
     await client.query('BEGIN');
-    
+
     // 1. Récupérer le RDV
     const apptResult = await client.query(
       'SELECT * FROM appointments WHERE id = $1',
       [appointmentId]
     );
-    
+
     if (apptResult.rows.length === 0) {
       await client.query('ROLLBACK');
       return { success: false, error: 'Rendez-vous non trouvé' };
     }
-    
+
     const appointment = apptResult.rows[0];
-    
+
     // 2. Annuler le RDV actuel
     await client.query(
       'UPDATE appointments SET status = $1, updated_at = NOW() WHERE id = $2',
       ['cancelled', appointmentId]
     );
-    
+
     // 3. Récupérer infos parent
     const parentResult = await client.query(
       'SELECT first_name, last_name FROM users WHERE id = $1',
       [appointment.parent_id]
     );
     const parent = parentResult.rows[0];
-    
+
     // 4. Créer notification pour le parent
     await client.query(`
       INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
@@ -370,7 +370,7 @@ async function rejectWithProposal(appointmentId, proposedDate, reason, adminId) 
       `Votre rendez-vous du ${new Date(appointment.proposed_date).toLocaleDateString('fr-FR')} a été refusé. Nouvelle date proposée : ${new Date(proposedDate).toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}. ${reason ? `Raison: ${reason}` : ''}`,
       appointmentId
     ]);
-    
+
     // 5. Créer tâche urgente pour l'admin (reste jusqu'à envoi du RDV)
     const taskResult = await client.query(`
       INSERT INTO events (
@@ -401,18 +401,18 @@ async function rejectWithProposal(appointmentId, proposedDate, reason, adminId) 
         is_urgent_appointment: true
       })
     ]);
-    
+
     await client.query('COMMIT');
-    
+
     console.log(`✅ RDV ${appointmentId} refusé avec proposition. Tâche urgente créée: ${taskResult.rows[0].id}`);
-    
-    return { 
-      success: true, 
+
+    return {
+      success: true,
       appointment: appointment,
       task: taskResult.rows[0],
       message: 'RDV refusé, nouvelle date proposée au parent et tâche urgente créée'
     };
-    
+
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('❌ Erreur rejectWithProposal:', error);
@@ -438,9 +438,57 @@ async function getUserById(userId) {
   }
 }
 
+/**
+ * Récupérer un rendez-vous par ID
+ */
+async function getAppointmentById(appointmentId, userId, role) {
+  try {
+    const query = `
+      SELECT 
+        a.*,
+        u.first_name || ' ' || u.last_name as parent_name,
+        u.email as parent_email,
+        c.first_name || ' ' || c.last_name as child_name
+      FROM appointments a
+      LEFT JOIN users u ON a.parent_id = u.id
+      LEFT JOIN children c ON a.child_id = c.id
+      WHERE a.id = $1
+    `;
+
+    const result = await pool.query(query, [appointmentId]);
+
+    if (result.rows.length === 0) {
+      return {
+        success: false,
+        error: 'Rendez-vous non trouvé'
+      };
+    }
+
+    const appointment = result.rows[0];
+
+    // Vérifier les permissions
+    if (role === 'parent' && appointment.parent_id !== userId) {
+      return {
+        success: false,
+        error: 'Accès non autorisé'
+      };
+    }
+
+    return {
+      success: true,
+      appointment
+    };
+
+  } catch (error) {
+    console.error('❌ Erreur getAppointmentById:', error);
+    throw error;
+  }
+}
+
 module.exports = {
   createAppointment,
   getAppointments,
+  getAppointmentById,
   getTodayAppointments,
   confirmAppointment,
   rescheduleAppointment,

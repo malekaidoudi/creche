@@ -18,20 +18,20 @@ router.post('/', auth.authenticateToken, async (req, res) => {
       req.body.status = 'pending';
       req.body.parent_id = req.user.userId;
     }
-    
+
     const result = await appointmentService.createAppointment(req.body, req.user.userId);
-    
+
     if (result.success) {
       res.status(201).json(result);
     } else {
       res.status(400).json(result);
     }
-    
+
   } catch (error) {
     console.error('❌ Erreur POST /api/appointments:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la création du rendez-vous' 
+      error: 'Erreur lors de la création du rendez-vous'
     });
   }
 });
@@ -47,14 +47,14 @@ router.get('/', auth.authenticateToken, async (req, res) => {
       req.user.role,
       { status }
     );
-    
+
     res.json(result);
-    
+
   } catch (error) {
     console.error('❌ Erreur GET /api/appointments:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la récupération des rendez-vous' 
+      error: 'Erreur lors de la récupération des rendez-vous'
     });
   }
 });
@@ -65,14 +65,37 @@ router.get('/', auth.authenticateToken, async (req, res) => {
 router.get('/today', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
   try {
     const result = await appointmentService.getTodayAppointments();
-    
+
     res.json(result);
-    
+
   } catch (error) {
     console.error('❌ Erreur GET /api/appointments/today:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la récupération des rendez-vous' 
+      error: 'Erreur lors de la récupération des rendez-vous'
+    });
+  }
+});
+
+/**
+ * GET /api/appointments/:id - Récupérer un RDV spécifique
+ */
+router.get('/:id', auth.authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await appointmentService.getAppointmentById(id, req.user.userId, req.user.role);
+
+    if (result.success) {
+      res.json(result);
+    } else {
+      res.status(404).json(result);
+    }
+
+  } catch (error) {
+    console.error('❌ Erreur GET /api/appointments/:id:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération du rendez-vous'
     });
   }
 });
@@ -89,18 +112,18 @@ router.patch('/:id/confirm', auth.authenticateToken, async (req, res) => {
       req.user.userId,
       req.user.role
     );
-    
+
     if (result.success) {
       res.json(result);
     } else {
       res.status(404).json(result);
     }
-    
+
   } catch (error) {
     console.error('❌ Erreur PATCH /api/appointments/:id/confirm:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la confirmation' 
+      error: 'Erreur lors de la confirmation'
     });
   }
 });
@@ -116,18 +139,18 @@ router.patch('/:id/reschedule', auth.authenticateToken, auth.requireRole('parent
       new_date,
       req.user.userId
     );
-    
+
     if (result.success) {
       res.json(result);
     } else {
       res.status(404).json(result);
     }
-    
+
   } catch (error) {
     console.error('❌ Erreur PATCH /api/appointments/:id/reschedule:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la replanification' 
+      error: 'Erreur lors de la replanification'
     });
   }
 });
@@ -142,18 +165,18 @@ router.patch('/:id/complete', auth.authenticateToken, auth.requireRole('admin'),
       parseInt(req.params.id),
       notes
     );
-    
+
     if (result.success) {
       res.json(result);
     } else {
       res.status(404).json(result);
     }
-    
+
   } catch (error) {
     console.error('❌ Erreur PATCH /api/appointments/:id/complete:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la complétion' 
+      error: 'Erreur lors de la complétion'
     });
   }
 });
@@ -164,18 +187,18 @@ router.patch('/:id/complete', auth.authenticateToken, auth.requireRole('admin'),
 router.patch('/:id/cancel', auth.authenticateToken, async (req, res) => {
   try {
     const result = await appointmentService.cancelAppointment(parseInt(req.params.id));
-    
+
     if (result.success) {
       res.json(result);
     } else {
       res.status(404).json(result);
     }
-    
+
   } catch (error) {
     console.error('❌ Erreur PATCH /api/appointments/:id/cancel:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de l\'annulation' 
+      error: 'Erreur lors de l\'annulation'
     });
   }
 });
@@ -192,18 +215,18 @@ router.post('/:id/reject-with-proposal', auth.authenticateToken, auth.requireRol
       reason,
       req.user.userId
     );
-    
+
     if (result.success) {
       res.json(result);
     } else {
       res.status(404).json(result);
     }
-    
+
   } catch (error) {
     console.error('❌ Erreur POST /api/appointments/:id/reject-with-proposal:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors du refus avec proposition' 
+      error: 'Erreur lors du refus avec proposition'
     });
   }
 });
