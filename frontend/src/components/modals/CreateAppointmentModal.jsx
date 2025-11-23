@@ -68,8 +68,24 @@ const CreateAppointmentModal = ({ isOpen, onClose, onSuccess, prefilledParentId,
     try {
       setLoading(true);
 
-      // Combiner date et heure
-      const proposedDateTime = `${formData.proposed_date}T${formData.proposed_time}:00`;
+      // Convertir la date dd/mm/yyyy en yyyy-mm-dd
+      const isoDate = convertToISO(formData.proposed_date);
+
+      if (!isoDate) {
+        setError(isRTL ? 'تنسيق التاريخ غير صحيح' : 'Format de date invalide');
+        setLoading(false);
+        return;
+      }
+
+      // Combiner date ISO et heure
+      const proposedDateTime = `${isoDate}T${formData.proposed_time}:00`;
+
+      console.log('📅 Création RDV:', {
+        dateOriginal: formData.proposed_date,
+        dateISO: isoDate,
+        heure: formData.proposed_time,
+        dateTimeComplete: proposedDateTime
+      });
 
       const response = await api.post('/api/appointments', {
         parent_id: parseInt(formData.parent_id),
