@@ -13,8 +13,9 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Send, MessageSquare, X, Info, Shield, Users as UsersIcon, User, ArrowLeft } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../../hooks/useAuth';
+import API_CONFIG from '../../config/api';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3003/api';
+const API_URL = `${API_CONFIG.BASE_URL}/api`;
 
 export default function MessagesPage() {
   const navigate = useNavigate();
