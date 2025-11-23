@@ -45,6 +45,17 @@ api.interceptors.response.use(
       console.error('Network Error:', error.message);
     }
 
+    // Gestion du rate limit (429)
+    if (error.response?.status === 429) {
+      const retryAfter = error.response.headers['retry-after'] || 60;
+      const minutes = Math.ceil(retryAfter / 60);
+      dialogHelper.error(
+        `Trop de requêtes. Veuillez patienter ${minutes} minute${minutes > 1 ? 's' : ''} avant de réessayer.`
+      );
+      console.warn('⚠️ Rate limit atteint. Retry après:', retryAfter, 'secondes');
+      return Promise.reject(error);
+    }
+
     // Gestion des erreurs d'authentification
     if (error.response?.status === 401) {
       // Ne pas intercepter les erreurs de login
