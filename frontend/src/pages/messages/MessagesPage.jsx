@@ -41,6 +41,18 @@ export default function MessagesPage() {
   // FONCTIONS UTILITAIRES
   // ============================================================================
 
+  // Fonction pour fermer la conversation (compatible mobile)
+  const handleCloseConversation = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    console.log('🔙 Fermeture conversation mobile');
+    setSelectedContact(null);
+    setConversation([]);
+    setReplyContent('');
+  };
+
   function loadCacheFromStorage() {
     try {
       const cached = localStorage.getItem('messagesCache');
@@ -637,17 +649,19 @@ export default function MessagesPage() {
           /* Fullscreen overlay pour mobile */
           <div className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-gray-800 lg:relative lg:col-span-2 lg:h-[650px] lg:rounded-lg lg:shadow-sm lg:border lg:border-gray-200 lg:dark:border-gray-700">
             {/* Header conversation */}
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 shrink-0">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 shrink-0 relative z-10">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   {/* Bouton retour mobile */}
                   <button
-                    onClick={() => setSelectedContact(null)}
-                    className="lg:hidden p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                    onClick={handleCloseConversation}
+                    onTouchEnd={handleCloseConversation}
+                    className="lg:hidden p-3 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors active:scale-95 touch-manipulation cursor-pointer"
                     aria-label="Retour aux contacts"
                     type="button"
+                    style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
                   >
-                    <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                    <ArrowLeft className="w-6 h-6 text-gray-700 dark:text-gray-200" />
                   </button>
                   {getRoleIcon(selectedContact.role)}
                   <div>
@@ -660,12 +674,14 @@ export default function MessagesPage() {
                   </div>
                 </div>
                 <button
-                  onClick={() => setSelectedContact(null)}
-                  className="lg:hidden p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                  onClick={handleCloseConversation}
+                  onTouchEnd={handleCloseConversation}
+                  className="lg:hidden p-3 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors active:scale-95 touch-manipulation cursor-pointer"
                   aria-label="Fermer la conversation"
                   type="button"
+                  style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
                 >
-                  <X className="w-6 h-6 text-gray-600 dark:text-gray-300" />
+                  <X className="w-7 h-7 text-gray-700 dark:text-gray-200" />
                 </button>
               </div>
             </div>
