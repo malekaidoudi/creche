@@ -1,6 +1,16 @@
+/**
+ * MessagesPage - Version Fullscreen Overlay Mobile
+ * 
+ * Changements appliqués :
+ * 1. Conversation en fullscreen overlay (fixed inset-0 z-50) quand contact sélectionné
+ * 2. scrollToBottomAndFocus() robuste avec multi-délais (80ms, 200ms, 500ms)
+ * 3. Structure flex optimisée : header shrink-0, messages flex-1, input shrink-0
+ * 4. Compatible iOS/Android - input reste visible avec clavier
+ */
+
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Send, MessageSquare, X, Info, Shield, Users as UsersIcon, User, ArrowLeft, Home } from 'lucide-react';
+import { Send, MessageSquare, X, Info, Shield, Users as UsersIcon, User, ArrowLeft } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -10,267 +20,241 @@ export default function MessagesPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
+
+  // États
   const [contacts, setContacts] = useState([]);
   const [children, setChildren] = useState([]);
   const [selectedContact, setSelectedContact] = useState(null);
   const [conversation, setConversation] = useState([]);
-  const [conversationCache, setConversationCache] = useState(() => {
-    // Charger le cache depuis localStorage au démarrage
+  const [conversationCache, setConversationCache] = useState(() => loadCacheFromStorage());
+  const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [showChildInfo, setShowChildInfo] = useState(null);
+  const [replyContent, setReplyContent] = useState('');
+
+  // Refs
+  const messagesContainerRef = useRef(null);
+  const messageInputRef = useRef(null);
+
+  // ============================================================================
+  // FONCTIONS UTILITAIRES
+  // ============================================================================
+
+  function loadCacheFromStorage() {
     try {
       const cached = localStorage.getItem('messagesCache');
       if (cached) {
         const parsed = JSON.parse(cached);
-        // Vérifier si le cache n'est pas expiré (24h)
         const now = Date.now();
-        const isValid = Object.values(parsed).every(item => 
+        const isValid = Object.values(parsed).every(item =>
           item.timestamp && (now - item.timestamp < 24 * 60 * 60 * 1000)
         );
-        if (isValid) {
-          console.log('📦 Cache chargé depuis localStorage:', Object.keys(parsed).length, 'conversations');
-          return parsed;
-        }
+        if (isValid) return parsed;
       }
     } catch (error) {
       console.error('Erreur chargement cache:', error);
     }
     return {};
-  });
-  const [loading, setLoading] = useState(true);
-  const [currentUser, setCurrentUser] = useState(null);
-  const [showChildInfo, setShowChildInfo] = useState(null);
-  const [replyContent, setReplyContent] = useState('');
-  const messagesEndRef = useRef(null);
+  }
 
-  useEffect(() => {
-    const initData = async () => {
-      const user = await loadCurrentUser();
-      await loadContacts(user);
-      await loadChildren();
-    };
-    initData();
-  }, []);
-
-  // Sauvegarder le cache dans localStorage à chaque modification
-  useEffect(() => {
-    if (Object.keys(conversationCache).length > 0) {
-      try {
-        localStorage.setItem('messagesCache', JSON.stringify(conversationCache));
-        console.log('💾 Cache sauvegardé dans localStorage:', Object.keys(conversationCache).length, 'conversations');
-      } catch (error) {
-        console.error('Erreur sauvegarde cache:', error);
-      }
-    }
-  }, [conversationCache]);
-
-  // Vider le cache si le token n'existe plus
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      localStorage.removeItem('messagesCache');
-      setConversationCache({});
-      console.log('🗑️ Cache vidé (pas de token)');
-    }
-  }, []);
-
-  // Auto-scroll vers le bas quand la conversation change
-  useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [conversation]);
-
-  // Rafraîchir la conversation toutes les 10 secondes si un contact est sélectionné
-  useEffect(() => {
-    if (!selectedContact) return;
-    
-    const interval = setInterval(async () => {
-      console.log('🔄 Rafraîchissement automatique conversation pour:', selectedContact.first_name);
-      await loadConversation(selectedContact.id);
-    }, 10000); // 10 secondes
-    
-    return () => clearInterval(interval);
-  }, [selectedContact]);
-
-  // Ouvrir automatiquement la conversation depuis une notification
-  useEffect(() => {
-    const messageId = searchParams.get('messageId');
-    if (messageId && contacts.length > 0 && !selectedContact) {
-      openConversationFromMessage(parseInt(messageId));
-    }
-  }, [searchParams, contacts, selectedContact]);
-
-  const openConversationFromMessage = async (messageId) => {
-    try {
-      console.log('🔔 Ouverture conversation depuis message ID:', messageId);
-      const token = localStorage.getItem('token');
-      
-      // Récupérer le message pour obtenir le sender_id
-      const response = await axios.get(`${API_URL}/staff-messages/${messageId}/conversation`, {
-        headers: { Authorization: `Bearer ${token}` }
+  function scrollToBottomAndFocus() {
+    // Scroll immédiat
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior: "smooth"
       });
-      
-      if (response.data.success && response.data.conversation.length > 0) {
-        const firstMessage = response.data.conversation[0];
-        const currentUserId = currentUser?.userId || currentUser?.id;
-        
-        // Déterminer qui est le contact (l'autre personne)
-        const contactId = firstMessage.sender_id === currentUserId 
-          ? firstMessage.recipient_id 
-          : firstMessage.sender_id;
-        
-        console.log('👤 Contact ID trouvé:', contactId);
-        
-        // Trouver le contact dans la liste
-        const contact = contacts.find(c => c.id === contactId);
-        if (contact) {
-          console.log('✅ Contact trouvé:', contact.first_name, contact.last_name);
-          await handleSelectContact(contact);
-        } else {
-          console.warn('⚠️ Contact non trouvé dans la liste');
-        }
-      }
-    } catch (error) {
-      console.error('❌ Erreur ouverture conversation:', error);
     }
-  };
 
-  const loadCurrentUser = async () => {
+    // Focus input
+    if (messageInputRef.current) {
+      messageInputRef.current.focus();
+    }
+
+    // Re-scroll multi-délais pour compenser le clavier mobile
+    setTimeout(() => {
+      if (messagesContainerRef.current) {
+        messagesContainerRef.current.scrollTo({
+          top: messagesContainerRef.current.scrollHeight,
+          behavior: "smooth"
+        });
+      }
+    }, 80);
+
+    setTimeout(() => {
+      if (messagesContainerRef.current) {
+        messagesContainerRef.current.scrollTo({
+          top: messagesContainerRef.current.scrollHeight,
+          behavior: "smooth"
+        });
+      }
+    }, 200);
+
+    setTimeout(() => {
+      if (messagesContainerRef.current) {
+        messagesContainerRef.current.scrollTo({
+          top: messagesContainerRef.current.scrollHeight,
+          behavior: "smooth"
+        });
+      }
+    }, 500);
+  }
+
+  function formatMessageDate(dateString) {
+    const msgDate = new Date(dateString);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const msgDay = new Date(msgDate.getFullYear(), msgDate.getMonth(), msgDate.getDate());
+
+    const time = msgDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+    if (msgDay.getTime() === today.getTime()) return time;
+    if (msgDay.getTime() === yesterday.getTime()) return `Hier ${time}`;
+
+    const day = msgDate.getDate();
+    const month = msgDate.toLocaleDateString('fr-FR', { month: 'short' });
+
+    if (msgDate.getFullYear() === now.getFullYear()) {
+      return `${day} ${month} ${time}`;
+    }
+
+    return `${day} ${month} ${msgDate.getFullYear()} ${time}`;
+  }
+
+  function groupContactsByRole() {
+    return {
+      admin: contacts.filter(c => c.role === 'admin' && c.is_active),
+      staff: contacts.filter(c => c.role === 'staff' && c.is_active),
+      parent: contacts.filter(c => c.role === 'parent' && c.is_active)
+    };
+  }
+
+  function getRoleLabel(role) {
+    const labels = { admin: 'Directeur', staff: 'Personnel', parent: 'Parents' };
+    return labels[role] || role;
+  }
+
+  function getRoleIcon(role) {
+    if (role === 'admin') return <Shield className="w-4 h-4 text-blue-600" />;
+    if (role === 'staff') return <UsersIcon className="w-4 h-4 text-green-600" />;
+    return <User className="w-4 h-4 text-purple-600" />;
+  }
+
+  function getRoleColor(role) {
+    if (role === 'admin') return 'bg-blue-600';
+    if (role === 'staff') return 'bg-green-600';
+    return 'bg-purple-600';
+  }
+
+  function getChildrenForParent(parentId) {
+    const parentIdNum = Number(parentId);
+    return children.filter(c => {
+      const childParentId = Number(c.parent_id);
+      const childParentUserId = Number(c.parent_user_id);
+      return childParentId === parentIdNum || childParentUserId === parentIdNum;
+    });
+  }
+
+  // ============================================================================
+  // API CALLS
+  // ============================================================================
+
+  async function loadCurrentUser() {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(`${API_URL}/auth/me`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
-      console.log('📦 Réponse /auth/me:', response.data);
-      
-      // Accepter différentes structures de réponse
+
       let user = null;
       if (response.data.success && response.data.user) {
         user = response.data.user;
       } else if (response.data.user) {
         user = response.data.user;
       } else if (response.data.id) {
-        // La réponse est directement l'utilisateur
         user = response.data;
       }
-      
+
       if (user && user.id) {
-        console.log('👤 loadCurrentUser depuis API:', user);
         setCurrentUser(user);
         return user;
       }
     } catch (error) {
-      console.error('❌ Erreur chargement utilisateur:', error);
+      console.error('Erreur chargement utilisateur:', error);
     }
-    
-    // Fallback sur localStorage
+
     const user = JSON.parse(localStorage.getItem('user') || '{}');
-    console.log('👤 loadCurrentUser depuis localStorage:', user);
     setCurrentUser(user);
     return user;
-  };
+  }
 
-  const loadContacts = async (user) => {
+  async function loadContacts(user) {
     try {
       const token = localStorage.getItem('token');
-      console.log('🔍 Chargement contacts...');
       const response = await axios.get(`${API_URL}/users?limit=100`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
-      console.log('📦 Réponse users:', response.data);
-      console.log('🔍 Success?', response.data.success);
-      console.log('🔍 Users array?', Array.isArray(response.data.users));
-      
+
       if (response.data.success && response.data.users) {
-        console.log('👤 Utilisateur actuel:', { userId: user.userId, id: user.id, email: user.email, role: user.role });
-        console.log('📋 Tous contacts AVANT filtrage:', response.data.users.map(u => ({ id: u.id, name: u.first_name + ' ' + u.last_name, email: u.email, role: u.role })));
-        
-        // Exclure l'utilisateur actuel + si parent, exclure les autres parents
         const filtered = response.data.users.filter(u => {
           const isCurrentUser = u.id === user.userId || u.id === user.id || u.email === user.email;
-          if (isCurrentUser) {
-            console.log('🚫 Exclu utilisateur actuel:', u.first_name, u.last_name, u.email, 'ID:', u.id);
-            return false;
-          }
-          
-          // Si l'utilisateur actuel est un parent, exclure les autres parents
-          if (user.role === 'parent' && u.role === 'parent') {
-            console.log('🚫 Exclu parent (parent ne peut pas contacter parent):', u.first_name, u.last_name);
-            return false;
-          }
-          
+          if (isCurrentUser) return false;
+
+          if (user.role === 'parent' && u.role === 'parent') return false;
+
           return u.is_active;
         });
-        
-        console.log('✅ Contacts filtrés:', filtered.length, '(exclu utilisateur actuel + autres parents si parent)');
-        console.log('📋 Contacts APRÈS filtrage:', filtered.map(u => ({ id: u.id, name: u.first_name + ' ' + u.last_name, email: u.email, role: u.role })));
+
         setContacts(filtered);
-      } else {
-        console.error('❌ Problème avec la réponse users:', response.data);
       }
     } catch (error) {
-      console.error('❌ Erreur chargement contacts:', error);
-      console.error('Détails:', error.response?.data);
+      console.error('Erreur chargement contacts:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const loadChildren = async () => {
+  async function loadChildren() {
     try {
       const token = localStorage.getItem('token');
-      console.log('🔍 Chargement enfants...');
       const response = await axios.get(`${API_URL}/children/simple`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
-      console.log('📦 Réponse children:', response.data);
-      
+
       if (response.data.success) {
-        const childrenData = response.data.children || [];
-        setChildren(childrenData);
-        console.log('✅ Enfants chargés:', childrenData.length);
-        console.log('📋 Exemple enfant:', childrenData[0]);
-        console.log('👨‍👩‍👧 parent_ids:', childrenData.map(c => ({ id: c.id, name: c.first_name, parent_id: c.parent_id, parent_user_id: c.parent_user_id })));
+        setChildren(response.data.children || []);
       }
     } catch (error) {
-      console.error('❌ Erreur chargement enfants:', error);
-      console.error('Détails:', error.response?.data);
+      console.error('Erreur chargement enfants:', error);
     }
-  };
+  }
 
-  const loadConversation = async (contactId) => {
+  async function loadConversation(contactId) {
     try {
-      console.log('🔄 loadConversation pour contactId:', contactId, 'utilisateur actuel:', currentUser?.userId || currentUser?.id);
       const token = localStorage.getItem('token');
       const currentUserId = currentUser?.userId || currentUser?.id;
-      
+
       const response = await axios.get(`${API_URL}/staff-messages`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       if (response.data.success) {
         const messages = response.data.messages || [];
-        console.log('📨 Messages totaux:', messages.length);
-        
-        // Filtrer UNIQUEMENT les messages entre l'utilisateur actuel ET le contact sélectionné
-        const filtered = messages.filter(m => 
+
+        const filtered = messages.filter(m =>
           (m.sender_id === currentUserId && m.recipient_id === contactId) ||
           (m.sender_id === contactId && m.recipient_id === currentUserId)
         );
-        console.log('📨 Messages filtrés entre utilisateur', currentUserId, 'et contact', contactId, ':', filtered.length);
-        
+
         const allConversations = [];
         for (const msg of filtered) {
-          console.log('🔍 Chargement conversation pour message ID:', msg.id, 'entre', msg.sender_id, '→', msg.recipient_id);
           const convResponse = await axios.get(
             `${API_URL}/staff-messages/${msg.id}/conversation`,
             { headers: { Authorization: `Bearer ${token}` } }
           );
           if (convResponse.data.success) {
-            console.log('💬 Messages dans conversation:', convResponse.data.conversation.length);
-            // Filtrer encore une fois les messages de la conversation
             const filteredConv = convResponse.data.conversation.filter(cm =>
               (cm.sender_id === currentUserId && cm.recipient_id === contactId) ||
               (cm.sender_id === contactId && cm.recipient_id === currentUserId)
@@ -278,20 +262,13 @@ export default function MessagesPage() {
             allConversations.push(...filteredConv);
           }
         }
-        
+
         const unique = Array.from(new Map(allConversations.map(m => [m.id, m])).values());
         unique.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-        
-        console.log('✅ Conversation finale entre utilisateur', currentUserId, 'et contact', contactId, ':', unique.length, 'messages');
-        console.log('📋 Détails messages:', unique.map(m => ({
-          id: m.id,
-          from: m.sender_id,
-          to: m.recipient_id,
-          content: m.content.substring(0, 30) + '...'
-        })));
+
         setConversation(unique);
-        
-        // Mettre à jour le cache avec la conversation fraîche
+
+        // Mise à jour du cache
         const contact = contacts.find(c => c.id === contactId);
         if (contact) {
           const cacheKey = `contact_${contactId}`;
@@ -309,15 +286,41 @@ export default function MessagesPage() {
     } catch (error) {
       console.error('Erreur chargement conversation:', error);
     }
-  };
+  }
 
-  const handleSelectContact = async (contact) => {
-    console.log('🎯 Sélection contact:', contact.first_name, contact.last_name, 'ID:', contact.id, 'Type:', typeof contact.id);
-    
+  async function openConversationFromMessage(messageId) {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/staff-messages/${messageId}/conversation`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.data.success && response.data.conversation.length > 0) {
+        const firstMessage = response.data.conversation[0];
+        const currentUserId = currentUser?.userId || currentUser?.id;
+
+        const contactId = firstMessage.sender_id === currentUserId
+          ? firstMessage.recipient_id
+          : firstMessage.sender_id;
+
+        const contact = contacts.find(c => c.id === contactId);
+        if (contact) {
+          await handleSelectContact(contact);
+        }
+      }
+    } catch (error) {
+      console.error('Erreur ouverture conversation:', error);
+    }
+  }
+
+  // ============================================================================
+  // HANDLERS
+  // ============================================================================
+
+  async function handleSelectContact(contact) {
     // Sauvegarder la conversation actuelle dans le cache
     if (selectedContact && conversation.length > 0) {
       const cacheKey = `contact_${selectedContact.id}`;
-      console.log('💾 Sauvegarde conversation pour:', selectedContact.first_name, 'ID:', selectedContact.id, 'CacheKey:', cacheKey, 'Messages:', conversation.length);
       setConversationCache(prev => ({
         ...prev,
         [cacheKey]: {
@@ -328,29 +331,25 @@ export default function MessagesPage() {
         }
       }));
     }
-    
-    // Vider la conversation AVANT de charger la nouvelle
+
     setConversation([]);
     setSelectedContact(contact);
-    
-    // Charger depuis le cache ou depuis l'API
+
+    // Charger depuis le cache ou l'API
     const cacheKey = `contact_${contact.id}`;
     if (conversationCache[cacheKey]) {
-      const cached = conversationCache[cacheKey];
-      console.log('📋 Chargement conversation depuis cache pour:', contact.first_name, 'ID:', contact.id, 'CacheKey:', cacheKey);
-      console.log('📋 Cache info:', { contactId: cached.contactId, contactName: cached.contactName, messages: cached.messages.length });
-      setConversation(cached.messages);
+      setConversation(conversationCache[cacheKey].messages);
+      setTimeout(scrollToBottomAndFocus, 40);
     } else {
-      console.log('🔍 Chargement conversation depuis API pour:', contact.first_name, 'ID:', contact.id, 'CacheKey:', cacheKey);
       await loadConversation(contact.id);
+      setTimeout(scrollToBottomAndFocus, 40);
     }
-  };
+  }
 
-  const handleSendMessage = async (e) => {
+  async function handleSendMessage(e) {
     e.preventDefault();
-    
     if (!replyContent.trim() || !selectedContact) return;
-    
+
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(
@@ -361,9 +360,8 @@ export default function MessagesPage() {
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
+
       if (response.data.success) {
-        // Ajouter le message immédiatement à la conversation
         const newMessage = {
           id: response.data.message?.id || Date.now(),
           sender_id: currentUser?.userId || currentUser?.id,
@@ -372,12 +370,12 @@ export default function MessagesPage() {
           created_at: new Date().toISOString(),
           is_read: false
         };
-        
+
         const updatedConversation = [...conversation, newMessage];
         setConversation(updatedConversation);
         setReplyContent('');
-        
-        // Mettre à jour le cache avec la nouvelle conversation
+
+        // Mise à jour du cache
         const cacheKey = `contact_${selectedContact.id}`;
         setConversationCache(prev => ({
           ...prev,
@@ -388,73 +386,87 @@ export default function MessagesPage() {
             timestamp: Date.now()
           }
         }));
+
+        // Auto-scroll après envoi
+        setTimeout(() => {
+          if (messagesContainerRef.current) {
+            messagesContainerRef.current.scrollTo({
+              top: messagesContainerRef.current.scrollHeight,
+              behavior: "smooth"
+            });
+          }
+        }, 50);
       }
     } catch (error) {
       console.error('Erreur envoi message:', error);
     }
-  };
+  }
 
-  const getChildrenForParent = (parentId) => {
-    // Convertir en nombre pour comparaison
-    const parentIdNum = Number(parentId);
-    
-    // Filtrer les enfants par parent_id ou parent_user_id
-    const parentChildren = children.filter(c => {
-      const childParentId = Number(c.parent_id);
-      const childParentUserId = Number(c.parent_user_id);
-      
-      const match = childParentId === parentIdNum || childParentUserId === parentIdNum;
-      
-      if (match) {
-        console.log(`✅ Match trouvé pour parent ${parentId}:`, c.first_name, c.last_name, '(parent_id:', c.parent_id, ', parent_user_id:', c.parent_user_id, ')');
+  // ============================================================================
+  // EFFECTS
+  // ============================================================================
+
+  useEffect(() => {
+    const initData = async () => {
+      const user = await loadCurrentUser();
+      await loadContacts(user);
+      await loadChildren();
+    };
+    initData();
+  }, []);
+
+  useEffect(() => {
+    if (Object.keys(conversationCache).length > 0) {
+      try {
+        localStorage.setItem('messagesCache', JSON.stringify(conversationCache));
+      } catch (error) {
+        console.error('Erreur sauvegarde cache:', error);
       }
-      return match;
-    });
-    
-    console.log(`👶 Recherche enfants pour parent ID ${parentId} (type: ${typeof parentId})`);
-    console.log(`👶 Total enfants trouvés:`, parentChildren.length);
-    
-    if (parentChildren.length === 0) {
-      console.log(`⚠️ Aucun enfant trouvé pour parent ${parentId}.`);
-      console.log(`📋 Tous les enfants disponibles:`, children.map(c => ({ 
-        id: c.id, 
-        name: c.first_name, 
-        parent_id: c.parent_id + ' (type: ' + typeof c.parent_id + ')', 
-        parent_user_id: c.parent_user_id + ' (type: ' + typeof c.parent_user_id + ')'
-      })));
     }
-    
-    return parentChildren;
-  };
+  }, [conversationCache]);
 
-  const groupContactsByRole = () => {
-    return {
-      admin: contacts.filter(c => c.role === 'admin' && c.is_active),
-      staff: contacts.filter(c => c.role === 'staff' && c.is_active),
-      parent: contacts.filter(c => c.role === 'parent' && c.is_active)
-    };
-  };
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      localStorage.removeItem('messagesCache');
+      setConversationCache({});
+    }
+  }, []);
 
-  const getRoleLabel = (role) => {
-    const labels = {
-      admin: 'Directeur',
-      staff: 'Personnel',
-      parent: 'Parents'
-    };
-    return labels[role] || role;
-  };
+  useEffect(() => {
+    if (!selectedContact) return;
 
-  const getRoleIcon = (role) => {
-    if (role === 'admin') return <Shield className="w-4 h-4 text-blue-600" />;
-    if (role === 'staff') return <UsersIcon className="w-4 h-4 text-green-600" />;
-    return <User className="w-4 h-4 text-purple-600" />;
-  };
+    requestAnimationFrame(() => {
+      scrollToBottomAndFocus();
+    });
+  }, [conversation]);
 
-  const getRoleColor = (role) => {
-    if (role === 'admin') return 'bg-blue-600';
-    if (role === 'staff') return 'bg-green-600';
-    return 'bg-purple-600';
-  };
+  useEffect(() => {
+    if (selectedContact && !searchParams.get('messageId')) {
+      loadConversation(selectedContact.id);
+    }
+  }, [selectedContact]);
+
+  useEffect(() => {
+    if (!selectedContact) return;
+
+    const interval = setInterval(async () => {
+      await loadConversation(selectedContact.id);
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [selectedContact]);
+
+  useEffect(() => {
+    const messageId = searchParams.get('messageId');
+    if (messageId && contacts.length > 0 && !selectedContact) {
+      openConversationFromMessage(parseInt(messageId));
+    }
+  }, [searchParams, contacts, selectedContact]);
+
+  // ============================================================================
+  // RENDER
+  // ============================================================================
 
   if (loading) {
     return (
@@ -467,10 +479,9 @@ export default function MessagesPage() {
   const grouped = groupContactsByRole();
 
   return (
-    <div className="min-h-screen max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="h-screen flex flex-col max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
       {/* Header */}
-      <div className="mb-6">
-        {/* Bouton retour pour les parents */}
+      <div className="mb-4 shrink-0">
         {user?.role === 'parent' && (
           <button
             onClick={() => navigate('/mon-espace')}
@@ -480,43 +491,42 @@ export default function MessagesPage() {
             <span>Retour à Mon Espace</span>
           </button>
         )}
-        
+
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Messages</h1>
         <p className="text-gray-600 mt-1">Communiquez avec l'équipe et les parents</p>
       </div>
 
       {/* Layout responsive */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0">
         {/* Section Contacts */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="p-4 border-b border-gray-200 bg-gray-50">
-            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col min-h-0 h-full lg:h-[650px]">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 shrink-0">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
               <UsersIcon className="w-5 h-5" />
               Contacts
             </h2>
           </div>
-          <div className="max-h-[600px] overflow-y-auto">
+          <div className="flex-1 overflow-y-auto min-h-0">
             {/* Directeur */}
             {grouped.admin.length > 0 && (
-              <div className="border-b border-gray-200">
-                <div className="p-3 bg-blue-50 flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-blue-600" />
-                  <span className="text-sm font-semibold text-blue-900">Directeur</span>
+              <div className="border-b border-gray-200 dark:border-gray-700">
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <span className="text-sm font-semibold text-blue-900 dark:text-blue-300">Directeur</span>
                 </div>
                 {grouped.admin.map((contact) => (
                   <button
                     key={contact.id}
                     onClick={() => handleSelectContact(contact)}
-                    className={`w-full p-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 ${
-                      selectedContact?.id === contact.id ? 'bg-blue-50 border-l-4 border-blue-600' : ''
-                    }`}
+                    className={`w-full p-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-b border-gray-100 dark:border-gray-700 ${selectedContact?.id === contact.id ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-600' : ''
+                      }`}
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="font-medium text-gray-900">
+                        <p className="font-medium text-gray-900 dark:text-white">
                           {contact.first_name} {contact.last_name}
                         </p>
-                        <p className="text-xs text-gray-500">{contact.email}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{contact.email}</p>
                       </div>
                     </div>
                   </button>
@@ -526,25 +536,24 @@ export default function MessagesPage() {
 
             {/* Personnel */}
             {grouped.staff.length > 0 && (
-              <div className="border-b border-gray-200">
-                <div className="p-3 bg-green-50 flex items-center gap-2">
-                  <UsersIcon className="w-4 h-4 text-green-600" />
-                  <span className="text-sm font-semibold text-green-900">Personnel</span>
+              <div className="border-b border-gray-200 dark:border-gray-700">
+                <div className="p-3 bg-green-50 dark:bg-green-900/20 flex items-center gap-2">
+                  <UsersIcon className="w-4 h-4 text-green-600 dark:text-green-400" />
+                  <span className="text-sm font-semibold text-green-900 dark:text-green-300">Personnel</span>
                 </div>
                 {grouped.staff.map((contact) => (
                   <button
                     key={contact.id}
                     onClick={() => handleSelectContact(contact)}
-                    className={`w-full p-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 ${
-                      selectedContact?.id === contact.id ? 'bg-blue-50 border-l-4 border-blue-600' : ''
-                    }`}
+                    className={`w-full p-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-b border-gray-100 dark:border-gray-700 ${selectedContact?.id === contact.id ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-600' : ''
+                      }`}
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="font-medium text-gray-900">
+                        <p className="font-medium text-gray-900 dark:text-white">
                           {contact.first_name} {contact.last_name}
                         </p>
-                        <p className="text-xs text-gray-500">{contact.email}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{contact.email}</p>
                       </div>
                     </div>
                   </button>
@@ -555,57 +564,53 @@ export default function MessagesPage() {
             {/* Parents */}
             {grouped.parent.length > 0 && (
               <div>
-                <div className="p-3 bg-purple-50 flex items-center gap-2">
-                  <User className="w-4 h-4 text-purple-600" />
-                  <span className="text-sm font-semibold text-purple-900">Parents</span>
+                <div className="p-3 bg-purple-50 dark:bg-purple-900/20 flex items-center gap-2">
+                  <User className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                  <span className="text-sm font-semibold text-purple-900 dark:text-purple-300">Parents</span>
                 </div>
                 {grouped.parent.map((contact, index) => {
                   const contactChildren = getChildrenForParent(contact.id);
-                  const isLastTwo = index >= grouped.parent.length - 2; // Les 2 derniers
-                  console.log(`👤 Contact parent ${contact.id} (${contact.first_name}):`, contactChildren.length, 'enfants');
-                  
+                  const isLastTwo = index >= grouped.parent.length - 2;
+
                   return (
                     <button
                       key={contact.id}
                       onClick={() => handleSelectContact(contact)}
-                      className={`w-full p-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 ${
-                        selectedContact?.id === contact.id ? 'bg-blue-50 border-l-4 border-blue-600' : ''
-                      }`}
+                      className={`w-full p-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-b border-gray-100 dark:border-gray-700 ${selectedContact?.id === contact.id ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-600' : ''
+                        }`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <p className="font-medium text-gray-900">
+                          <p className="font-medium text-gray-900 dark:text-white">
                             {contact.first_name} {contact.last_name}
                           </p>
-                          <p className="text-xs text-gray-500">{contact.email}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{contact.email}</p>
                         </div>
-                        
-                        {/* Toujours afficher l'icône info pour les parents */}
+
                         <div className="relative">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               setShowChildInfo(showChildInfo === contact.id ? null : contact.id);
                             }}
-                            className="p-1 hover:bg-gray-200 rounded-full transition-colors"
+                            className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full transition-colors"
                             title={contactChildren.length > 0 ? `${contactChildren.length} enfant(s)` : 'Aucun enfant'}
                           >
                             <Info className="w-4 h-4 text-purple-600" />
                           </button>
-                          
+
                           {showChildInfo === contact.id && (
-                            <div className={`absolute right-0 z-10 bg-white border border-gray-200 rounded-lg shadow-lg p-3 min-w-[200px] ${
-                              isLastTwo ? 'bottom-8' : 'top-8'
-                            }`}>
-                              <p className="text-xs font-semibold text-gray-700 mb-2">Enfants:</p>
+                            <div className={`absolute right-0 z-10 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3 min-w-[200px] ${isLastTwo ? 'bottom-8' : 'top-8'
+                              }`}>
+                              <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Enfants:</p>
                               {contactChildren.length > 0 ? (
                                 contactChildren.map((child) => (
-                                  <p key={child.id} className="text-xs text-gray-600">
+                                  <p key={child.id} className="text-xs text-gray-600 dark:text-gray-400">
                                     • {child.first_name} {child.last_name}
                                   </p>
                                 ))
                               ) : (
-                                <p className="text-xs text-gray-500 italic">Aucun enfant associé</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 italic">Aucun enfant associé</p>
                               )}
                             </div>
                           )}
@@ -627,96 +632,89 @@ export default function MessagesPage() {
         </div>
 
         {/* Section Conversation */}
-        <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col h-[600px]">
-          {selectedContact ? (
-            <>
-              {/* Header conversation */}
-              <div className="p-4 border-b border-gray-200 bg-gray-50">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    {getRoleIcon(selectedContact.role)}
-                    <div>
-                      <h3 className="font-semibold text-gray-900">
-                        {selectedContact.first_name} {selectedContact.last_name}
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        {getRoleLabel(selectedContact.role)}
+        {selectedContact ? (
+          /* Fullscreen overlay pour mobile */
+          <div className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-gray-800 lg:relative lg:col-span-2 lg:h-[650px] lg:rounded-lg lg:shadow-sm lg:border lg:border-gray-200 lg:dark:border-gray-700">
+            {/* Header conversation */}
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 shrink-0">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {getRoleIcon(selectedContact.role)}
+                  <div>
+                    <h3 className="font-semibold text-gray-900 dark:text-white">
+                      {selectedContact.first_name} {selectedContact.last_name}
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      {getRoleLabel(selectedContact.role)}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedContact(null)}
+                  className="lg:hidden p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Messages */}
+            <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 min-h-0 space-y-3">
+              {conversation.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-gray-500">
+                  <div className="text-center">
+                    <MessageSquare className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+                    <p>Aucun message</p>
+                    <p className="text-sm mt-1">Commencez la conversation</p>
+                  </div>
+                </div>
+              ) : (
+                conversation.map((msg) => {
+                  const isMe = msg.sender_id === currentUser?.id || msg.sender_id === currentUser?.userId;
+                  const contactRole = selectedContact?.role;
+                  const bgColor = isMe ? getRoleColor(contactRole) : 'bg-gray-100';
+                  const textColor = isMe ? 'text-white' : 'text-gray-900';
+
+                  return (
+                    <div
+                      key={msg.id}
+                      className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
+                    >
+                      <p className="text-xs text-gray-500 mb-1 px-1">
+                        {formatMessageDate(msg.created_at)}
                       </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setSelectedContact(null)}
-                    className="lg:hidden p-2 hover:bg-gray-200 rounded-lg"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                {conversation.length === 0 ? (
-                  <div className="flex items-center justify-center h-full text-gray-500">
-                    <div className="text-center">
-                      <MessageSquare className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-                      <p>Aucun message</p>
-                      <p className="text-sm mt-1">Commencez la conversation</p>
-                    </div>
-                  </div>
-                ) : (
-                  conversation.map((msg) => {
-                    const isMe = msg.sender_id === currentUser?.id || msg.sender_id === currentUser?.userId;
-                    // Couleur selon le rôle du contact sélectionné
-                    const contactRole = selectedContact?.role;
-                    const bgColor = isMe ? getRoleColor(contactRole) : 'bg-gray-100';
-                    const textColor = isMe ? 'text-white' : 'text-gray-900';
-                    
-                    return (
-                      <div
-                        key={msg.id}
-                        className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
-                      >
-                        {/* Heure au-dessus */}
-                        <p className="text-xs text-gray-500 mb-1 px-1">
-                          {new Date(msg.created_at).toLocaleTimeString('fr-FR', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </p>
-                        
-                        {/* Message */}
-                        <div className={`max-w-[80%] sm:max-w-[70%] rounded-lg px-4 py-2 ${bgColor} ${textColor}`}>
-                          <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
-                        </div>
+                      <div className={`max-w-[80%] sm:max-w-[70%] rounded-lg px-4 py-2 ${bgColor} ${textColor}`}>
+                        <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
                       </div>
-                    );
-                  })
-                )}
-                {/* Référence pour auto-scroll */}
-                <div ref={messagesEndRef} />
-              </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
 
-              {/* Formulaire envoi */}
-              <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-200">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={replyContent}
-                    onChange={(e) => setReplyContent(e.target.value)}
-                    placeholder="Écrivez votre message..."
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!replyContent.trim()}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <Send className="w-5 h-5" />
-                  </button>
-                </div>
-              </form>
-            </>
-          ) : (
+            {/* Formulaire envoi */}
+            <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shrink-0">
+              <div className="flex gap-2">
+                <input
+                  ref={messageInputRef}
+                  type="text"
+                  value={replyContent}
+                  onChange={(e) => setReplyContent(e.target.value)}
+                  placeholder="Écrivez votre message..."
+                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                />
+                <button
+                  type="submit"
+                  disabled={!replyContent.trim()}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <Send className="w-5 h-5" />
+                </button>
+              </div>
+            </form>
+          </div>
+        ) : (
+          <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col lg:h-[650px] min-h-0">
             <div className="flex-1 flex items-center justify-center text-gray-500">
               <div className="text-center">
                 <MessageSquare className="w-16 h-16 mx-auto mb-4 text-gray-400" />
@@ -724,8 +722,8 @@ export default function MessagesPage() {
                 <p className="text-sm mt-1">Choisissez un contact pour commencer à discuter</p>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
