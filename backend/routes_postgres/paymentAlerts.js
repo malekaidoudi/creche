@@ -5,24 +5,13 @@
 const express = require('express');
 const router = express.Router();
 const { pool } = require('../config/db_postgres');
-
-// Middleware d'authentification
-const authenticateToken = (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1];
-
-  if (!token) {
-    return res.status(401).json({ success: false, error: 'Token manquant' });
-  }
-
-  req.user = { id: req.headers['x-user-id'] || 1 };
-  next();
-};
+const auth = require('../middleware/auth');
 
 /**
  * POST /api/payment-alerts
- * Envoyer une alerte de paiement
+ * Envoyer une alerte de paiement (admin/staff uniquement)
  */
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', auth.authenticateToken, auth.requireRole('admin', 'staff'), async (req, res) => {
   try {
     const { recipient_type, parent_ids, amount, due_date, message } = req.body;
     const createdBy = req.user.id;
@@ -100,9 +89,9 @@ router.post('/', authenticateToken, async (req, res) => {
 
 /**
  * GET /api/payment-alerts/history
- * Historique des alertes envoyées
+ * Historique des alertes envoyées (admin/staff uniquement)
  */
-router.get('/history', authenticateToken, async (req, res) => {
+router.get('/history', auth.authenticateToken, auth.requireRole('admin', 'staff'), async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT 
