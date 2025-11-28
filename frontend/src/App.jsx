@@ -57,6 +57,9 @@ import AttendanceReportPage from './pages/dashboard/AttendanceReportPage'
 import DashboardSettingsPage from './pages/dashboard/DashboardSettingsPage'
 import StaffSettingsPage from './pages/dashboard/StaffSettingsPage'
 
+// Page Activités
+import ActivitiesPage from './pages/activities/ActivitiesPage'
+
 // Composants
 import ProtectedRoute from './components/auth/ProtectedRoute'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -159,6 +162,14 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="mon-espace/activities"
+          element={
+            <ProtectedRoute roles={['parent']}>
+              <ActivitiesPage />
+            </ProtectedRoute>
+          }
+        />
       </Route>
 
       {/* Routes dashboard (protégées) */}
@@ -202,6 +213,9 @@ function App() {
 
         {/* Route tâches (staff/admin) */}
         <Route path="tasks" element={<TasksPage />} />
+
+        {/* Route activités (tous les rôles) */}
+        <Route path="activities" element={<ActivitiesPage />} />
 
         {/* Pages placeholder pour fonctionnalités non implémentées */}
         <Route path="parents" element={<ParentsPage />} />

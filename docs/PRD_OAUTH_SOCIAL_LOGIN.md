@@ -118,6 +118,22 @@ CREATE TABLE IF NOT EXISTS oauth_providers (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(provider, provider_user_id)
+);
+
+-- 2. Modifier users
+ALTER TABLE users ALTER COLUMN password DROP NOT NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_provider VARCHAR(20) DEFAULT 'email';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_image_oauth VARCHAR(500);
+
+-- 3. Marquer les utilisateurs existants
+UPDATE users SET auth_provider = 'email', email_verified = TRUE WHERE auth_provider IS NULL;
+```
+
+---
+
+## 🔧 Backend - Implémentation
+
 
 ### 2. Variables d'environnement (.env)
 ```env

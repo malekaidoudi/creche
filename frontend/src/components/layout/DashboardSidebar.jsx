@@ -19,7 +19,8 @@ import {
   ChevronRight,
   ChevronLeft,
   User,
-  MessageSquare
+  MessageSquare,
+  Image
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -103,6 +104,13 @@ const DashboardSidebar = ({ isOpen, onClose, onCollapsedChange }) => {
           roles: ['admin', 'staff']
         }
       ]
+    },
+    {
+      key: 'activities',
+      title: isRTL ? 'الأنشطة' : 'Activités',
+      icon: Image,
+      path: '/dashboard/activities',
+      roles: ['admin', 'staff', 'parent']
     },
     {
       key: 'calendar',
