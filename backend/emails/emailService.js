@@ -272,6 +272,27 @@ class EmailService {
   }
 
   /**
+   * Envoyer un e-mail de confirmation de rendez-vous
+   */
+  async sendAppointmentConfirmation(enrollmentData, appointmentDate) {
+    // Formater la date
+    const formattedDate = new Date(appointmentDate).toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    return this.sendEmail('APPOINTMENT_CONFIRMATION', enrollmentData.applicant_email, {
+      applicant_first_name: enrollmentData.applicant_first_name,
+      child_first_name: enrollmentData.child_first_name,
+      appointment_date: formattedDate
+    });
+  }
+
+  /**
    * Envoyer un e-mail générique
    */
   async sendGenericEmail(recipient, subject, htmlContent) {

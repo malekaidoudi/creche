@@ -262,38 +262,26 @@ router.post('/upload', upload.single('image'), auth.authenticateToken, async (re
     
     console.log('✅ userId:', userId);
     
-    // Récupérer l'ancienne image pour la supprimer de Cloudinary
-    let oldCloudinaryId = null;
-    try {
-      const userResult = await db.query('SELECT profile_image, cloudinary_public_id FROM users WHERE id = $1', [userId]);
-      oldCloudinaryId = userResult.rows[0]?.cloudinary_public_id;
-    } catch (err) {
-      // Si la colonne cloudinary_public_id n'existe pas, continuer sans erreur
-      console.log('⚠️ Colonne cloudinary_public_id non trouvée, migration nécessaire');
-    }
-    
-    // Upload vers Cloudinary
-    const cloudinaryResult = await cloudinaryService.uploadFile(
+    // Upload vers Cloudinary avec OVERWRITE
+    // Utilise un public_id fixe par utilisateur pour écraser l'ancienne photo automatiquement
+    const fixedPublicId = `profile_${userId}`;
+
+    const cloudinaryResult = await cloudinaryService.uploadFileWithOverwrite(
       req.file.path,
       'profiles',
-      `profile_${userId}_${Date.now()}`
+      fixedPublicId
     );
-    
+
     // Supprimer le fichier temporaire local
     if (fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
     }
-    
+
     if (!cloudinaryResult.success) {
-      return res.status(500).json({ 
+      return res.status(500).json({
         success: false,
-        error: 'Erreur lors de l\'upload sur Cloudinary' 
+        error: 'Erreur lors de l\'upload sur Cloudinary'
       });
-    }
-    
-    // Supprimer l'ancienne image de Cloudinary si elle existe
-    if (oldCloudinaryId) {
-      await cloudinaryService.deleteFile(oldCloudinaryId);
     }
     
     // Mettre à jour l'URL de l'image dans la base de données

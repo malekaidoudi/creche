@@ -43,6 +43,10 @@ const PublicHeader = () => {
     ] : [
       // Pas d'Inscription dans le menu pour les visiteurs
     ]),
+    // Activités pour les utilisateurs connectés (parents, admin, staff)
+    ...(isAuthenticated ? [
+      { name: isRTL ? 'الأنشطة' : 'Activités', href: user?.role === 'parent' ? '/activites' : '/dashboard/activities' }
+    ] : []),
     // Contact seulement pour visiteurs et parents (pas admin/staff)
     ...(!isAuthenticated || user?.role === 'parent' ? [
       { name: t('nav.contact'), href: '/contact' }
@@ -223,8 +227,8 @@ const PublicHeader = () => {
                         {user?.first_name} {user?.last_name}
                       </p>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {user?.role === 'admin' ? (isRTL ? 'مدير' : 'Admin') :
-                         user?.role === 'staff' ? (isRTL ? 'موظف' : 'Staff') :
+                        {user?.role === 'admin' ? (isRTL ? 'المدير' : 'Directeur') :
+                         user?.role === 'staff' ? (isRTL ? 'موظف' : 'Personnel') :
                          (isRTL ? 'ولي أمر' : 'Parent')}
                       </p>
                     </div>

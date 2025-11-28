@@ -27,12 +27,16 @@ const PublicFooter = () => {
         // Adapter au format de l'API contact
         if (data && data.success && data.contact) {
           const contactData = data.contact;
+          // Utiliser les horaires selon la langue (hours pour FR, hours_ar pour AR)
+          const hoursValue = isRTL ? (contactData.hours_ar || contactData.hours) : contactData.hours;
+          const addressValue = isRTL ? (contactData.address_ar || contactData.address) : contactData.address;
+
           setNurserySettings({
-            nursery_name: { value: 'Crèche Mima Elghalia', fr: 'Crèche Mima Elghalia' },
-            address: { value: contactData.address, fr: contactData.address },
-            phone: { value: contactData.phone, fr: contactData.phone },
-            email: { value: contactData.email, fr: contactData.email },
-            hours_formatted: { value: contactData.hours, fr: contactData.hours } // Utiliser les horaires déjà formatés
+            nursery_name: { value: isRTL ? 'حضانة ميما الغالية' : 'Crèche Mima Elghalia' },
+            address: { value: addressValue },
+            phone: { value: contactData.phone },
+            email: { value: contactData.email },
+            hours_formatted: { value: hoursValue } // Utiliser les horaires selon la langue
           });
         }
 

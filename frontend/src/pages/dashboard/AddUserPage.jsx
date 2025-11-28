@@ -94,8 +94,8 @@ const AddUserPage = () => {
   if (isAdmin()) {
     roleOptions.push({
       value: 'admin',
-      label: isRTL ? 'مدير' : 'Administrateur',
-      description: isRTL ? 'حساب مدير مع صلاحيات كاملة' : 'Compte administrateur avec accès complet',
+      label: isRTL ? 'المدير' : 'Directeur',
+      description: isRTL ? 'حساب مدير مع صلاحيات كاملة' : 'Compte directeur avec accès complet',
       icon: Shield,
       color: 'text-purple-600',
       bgColor: 'bg-purple-100 dark:bg-purple-900/20'

@@ -64,6 +64,57 @@ const cloudinaryService = {
   },
 
   /**
+   * Uploader un fichier vers Cloudinary avec écrasement (overwrite)
+   * Utilisé pour les photos de profil - un seul fichier par utilisateur
+   * @param {string} filePath - Chemin local du fichier
+   * @param {string} folder - Dossier dans Cloudinary
+   * @param {string} publicId - ID public fixe (obligatoire pour overwrite)
+   * @returns {Promise<Object>} - Résultat de l'upload avec URL
+   */
+  uploadFileWithOverwrite: async (filePath, folder, publicId) => {
+    try {
+      if (!process.env.CLOUDINARY_CLOUD_NAME) {
+        console.warn('⚠️  Cloudinary non configuré, fichier non uploadé');
+        return { success: false, error: 'Cloudinary non configuré' };
+      }
+
+      if (!publicId) {
+        return { success: false, error: 'publicId requis pour overwrite' };
+      }
+
+      const options = {
+        folder: folder,
+        public_id: publicId,
+        overwrite: true, // Écrase le fichier existant avec le même public_id
+        invalidate: true, // Invalide le cache CDN pour voir la nouvelle image immédiatement
+        resource_type: 'image'
+      };
+
+      console.log('☁️  Upload avec overwrite vers Cloudinary:', filePath, `(${folder}/${publicId})`);
+
+      const result = await cloudinary.uploader.upload(filePath, options);
+
+      console.log('✅ Fichier uploadé/écrasé sur Cloudinary:', result.secure_url);
+
+      return {
+        success: true,
+        url: result.secure_url,
+        publicId: result.public_id,
+        format: result.format,
+        resourceType: result.resource_type,
+        bytes: result.bytes
+      };
+
+    } catch (error) {
+      console.error('❌ Erreur upload Cloudinary (overwrite):', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  },
+
+  /**
    * Supprimer un fichier de Cloudinary
    * @param {string} publicId - ID public du fichier
    * @returns {Promise<Object>} - Résultat de la suppression

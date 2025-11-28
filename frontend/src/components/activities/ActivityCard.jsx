@@ -4,7 +4,8 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FiMoreVertical, FiTrash2, FiEdit2, FiPin, FiMessageCircle, FiEye, FiUser, FiPlay } from 'react-icons/fi';
+import { FiMoreVertical, FiTrash2, FiEdit2, FiMessageCircle, FiEye, FiUser, FiPlay } from 'react-icons/fi';
+import { BsPin, BsPinFill } from 'react-icons/bs';
 import ReactionBar from './ReactionBar';
 import CommentSection from './CommentSection';
 import { useAuth } from '../../contexts/AuthContext';
@@ -30,8 +31,8 @@ const ActivityCard = ({ activity, onReact, onDelete, onEdit, isRTL = false }) =>
 
   const getRoleBadge = (role) => {
     const badges = {
-      admin: { label: isRTL ? 'مدير' : 'Admin', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
-      staff: { label: isRTL ? 'موظف' : 'Staff', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
+      admin: { label: isRTL ? 'المدير' : 'Directeur', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
+      staff: { label: isRTL ? 'موظف' : 'Personnel', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
       parent: { label: isRTL ? 'ولي' : 'Parent', color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' }
     };
     return badges[role] || badges.parent;
@@ -67,7 +68,7 @@ const ActivityCard = ({ activity, onReact, onDelete, onEdit, isRTL = false }) =>
                 {badge.label}
               </span>
               {activity.isPinned && (
-                <FiPin className="text-yellow-500" size={14} />
+                <BsPinFill className="text-yellow-500" size={14} />
               )}
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400">

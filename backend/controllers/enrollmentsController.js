@@ -168,6 +168,43 @@ const enrollmentsController = {
         }
       }).catch(err => console.error('❌ Erreur envoi email approbation:', err));
       
+      // Supprimer les documents d'inscription de Cloudinary (après approbation, ils ne sont plus nécessaires)
+      // Cette opération est effectuée de manière asynchrone pour ne pas bloquer la réponse
+      (async () => {
+        try {
+          // Récupérer tous les documents avec cloudinary_public_id
+          const documentsResult = await db.query(`
+            SELECT id, cloudinary_public_id, original_filename
+            FROM enrollment_documents
+            WHERE enrollment_id = $1 AND cloudinary_public_id IS NOT NULL
+          `, [id]);
+
+          if (documentsResult.rows.length > 0) {
+            console.log(`🗑️  Suppression de ${documentsResult.rows.length} document(s) Cloudinary pour le dossier #${id}`);
+
+            for (const doc of documentsResult.rows) {
+              const deleteResult = await cloudinaryService.deleteFile(doc.cloudinary_public_id);
+              if (deleteResult.success) {
+                console.log(`   ✅ Document supprimé: ${doc.original_filename}`);
+                // Mettre à jour la base pour indiquer que le fichier Cloudinary a été supprimé
+                await db.query(`
+                  UPDATE enrollment_documents
+                  SET cloudinary_url = NULL, cloudinary_public_id = NULL
+                  WHERE id = $1
+                `, [doc.id]);
+              } else {
+                console.warn(`   ⚠️ Échec suppression: ${doc.original_filename}`, deleteResult.error);
+              }
+            }
+
+            console.log(`✅ Nettoyage Cloudinary terminé pour dossier #${id}`);
+          }
+        } catch (cleanupError) {
+          console.error('❌ Erreur nettoyage Cloudinary:', cleanupError);
+          // On ne fait pas échouer l'approbation si le nettoyage échoue
+        }
+      })();
+
       res.json({
         success: true,
         message: 'Dossier approuvé avec succès',
@@ -312,105 +349,60 @@ const enrollmentsController = {
     try {
       const { id } = req.params;
       const { appointment_date } = req.body;
-      
+
       if (!appointment_date) {
-        return res.status(400).json({ 
-          success: false, 
-          error: 'Date de rendez-vous requise' 
+        return res.status(400).json({
+          success: false,
+          error: 'Date de rendez-vous requise'
         });
       }
-      
+
       // Mettre à jour le dossier
       const result = await db.query(`
-        UPDATE enrollments 
+        UPDATE enrollments
         SET parent_chose_rdv = true,
             parent_rdv_choice_date = NOW(),
             appointment_date = $1
         WHERE id = $2
         RETURNING *
       `, [appointment_date, id]);
-      
+
       const enrollment = result.rows[0];
-      
+
       // Récupérer les infos de la personne qui a traité le dossier
       const processorResult = await db.query(`
         SELECT u.first_name, u.last_name, u.email, u.role
         FROM users u
         WHERE u.id = $1
       `, [enrollment.processed_by]);
-      
+
       const processor = processorResult.rows[0];
-      
+
       // Envoyer notification à l'admin/staff
       // TODO: Implémenter système de notifications
       console.log('📅 Notification RDV:', {
         parent: `${enrollment.applicant_first_name} ${enrollment.applicant_last_name}`,
         date: appointment_date,
-        traite_par: `${processor.first_name} ${processor.last_name}`
+        traite_par: processor ? `${processor.first_name} ${processor.last_name}` : 'N/A'
       });
-      
-      // Envoyer email de confirmation au parent
-      const crypto = require('crypto');
-      const transporter = require('nodemailer').createTransport({
-        host: process.env.SMTP_HOST,
-        port: process.env.SMTP_PORT,
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASSWORD
-        }
-      });
-      
-      const rdvDate = new Date(appointment_date).toLocaleDateString('fr-FR', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-      
-      await transporter.sendMail({
-        from: process.env.EMAIL_FROM,
-        to: enrollment.applicant_email,
-        subject: 'Confirmation de rendez-vous - Crèche Mima Elghalia',
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #4f46e5;">Rendez-vous confirmé</h2>
-            
-            <p>Bonjour ${enrollment.applicant_first_name},</p>
-            
-            <p>Votre rendez-vous pour compléter le dossier de <strong>${enrollment.child_first_name}</strong> est confirmé.</p>
-            
-            <div style="background-color: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
-              <p style="margin: 0; color: #92400e;"><strong>📅 Date du rendez-vous :</strong></p>
-              <p style="margin: 10px 0 0 0; color: #92400e; font-size: 18px;"><strong>${rdvDate}</strong></p>
-            </div>
-            
-            <p><strong>Documents à apporter :</strong></p>
-            <ul>
-              <li>📋 Carnet de santé de l'enfant</li>
-              <li>📄 Acte de naissance</li>
-              <li>🩺 Certificat médical récent</li>
-            </ul>
-            
-            <p>À bientôt !</p>
-            
-            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
-            
-            <p style="color: #6b7280; font-size: 14px;">
-              Crèche Mima Elghalia<br>
-              Email: ${process.env.EMAIL_FROM}
-            </p>
-          </div>
-        `
-      });
-      
+
+      // Envoyer email de confirmation au parent via Resend
+      emailService.sendAppointmentConfirmation(enrollment, appointment_date)
+        .then(result => {
+          if (result.success) {
+            console.log(`✅ E-mail de confirmation RDV envoyé à ${enrollment.applicant_email}`);
+          } else {
+            console.error(`❌ Échec envoi e-mail RDV à ${enrollment.applicant_email}:`, result.error);
+          }
+        })
+        .catch(err => console.error('❌ Erreur envoi email confirmation RDV:', err));
+
       res.json({
         success: true,
         message: 'Rendez-vous confirmé',
         enrollment: enrollment
       });
-      
+
     } catch (error) {
       console.error('Erreur choix RDV:', error);
       res.status(500).json({ success: false, error: error.message });

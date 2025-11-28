@@ -351,7 +351,7 @@ const arTranslations = {
     passwordsNotMatch: 'كلمات المرور غير متطابقة'
   },
   roles: {
-    admin: 'مدير',
+    admin: 'المدير',
     staff: 'موظف',
     parent: 'والد'
   },

@@ -205,9 +205,10 @@ router.get('/:id',
       `;
       
       const documentsQuery = `
-        SELECT id, filename, original_filename, document_type, 
-               file_size, uploaded_at, is_verified
-        FROM enrollment_documents 
+        SELECT id, filename, original_filename, document_type,
+               file_size, mime_type, cloudinary_url, cloudinary_public_id,
+               uploaded_at, is_verified
+        FROM enrollment_documents
         WHERE enrollment_id = $1
         ORDER BY uploaded_at DESC
       `;

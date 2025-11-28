@@ -59,7 +59,7 @@ async function testEmailSystem() {
         child_first_name: 'Sara'
       },
       '2025-01-15T10:00:00',
-      'https://malekaidoudi.github.io/creche/create-password?token=test123'
+      'https://mima-elghalia.com/create-password?token=test123'
     );
     
     results.total++;
@@ -91,7 +91,7 @@ async function testEmailSystem() {
       },
       ['Carnet de santé', 'Acte de naissance', 'Certificat médical'],
       '2025-01-15T10:00:00',
-      'https://malekaidoudi.github.io/creche/upload-documents?token=test123'
+      'https://mima-elghalia.com/upload-documents?token=test123'
     );
     
     results.total++;

@@ -32,6 +32,7 @@ import { Button } from '../../components/ui/Button';
 import { useDialogContext } from '../../contexts/DialogContext';
 import DatePicker from '../../components/ui/DatePicker';
 import { convertToISO, convertFromISO } from '../../utils/dateUtils';
+import ToggleSwitch from '../../components/ui/ToggleSwitch';
 
 const DashboardSettingsPage = () => {
   const { isRTL, currentLanguage, toggleLanguage } = useLanguage();
@@ -852,12 +853,11 @@ const DashboardSettingsPage = () => {
                         {isRTL ? 'تفعيل العمل يوم السبت' : 'Activer l\'ouverture le samedi'}
                       </p>
                     </div>
-                    <button
-                      onClick={() => handleSettingChange('saturdayOpen', !settings.saturdayOpen)}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.saturdayOpen ? 'bg-primary-600' : 'bg-gray-200'}`}
-                    >
-                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.saturdayOpen ? 'translate-x-6 rtl:-translate-x-6' : 'translate-x-1 rtl:-translate-x-1'}`} />
-                    </button>
+                    <ToggleSwitch
+                      checked={settings.saturdayOpen}
+                      onChange={(value) => handleSettingChange('saturdayOpen', value)}
+                      ariaLabel={isRTL ? 'فتح يوم السبت' : 'Ouvert le samedi'}
+                    />
                   </div>
 
                   {settings.saturdayOpen && (
@@ -906,12 +906,11 @@ const DashboardSettingsPage = () => {
                         {isRTL ? 'تحديد فترة إغلاق الحضانة' : 'Définir la période de fermeture de la crèche'}
                       </p>
                     </div>
-                    <button
-                      onClick={() => handleSettingChange('annualVacationEnabled', !settings.annualVacationEnabled)}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.annualVacationEnabled ? 'bg-primary-600' : 'bg-gray-200'}`}
-                    >
-                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.annualVacationEnabled ? 'translate-x-6 rtl:-translate-x-6' : 'translate-x-1 rtl:-translate-x-1'}`} />
-                    </button>
+                    <ToggleSwitch
+                      checked={settings.annualVacationEnabled}
+                      onChange={(value) => handleSettingChange('annualVacationEnabled', value)}
+                      ariaLabel={isRTL ? 'تفعيل العطلة السنوية' : 'Activer les vacances annuelles'}
+                    />
                   </div>
 
                   {settings.annualVacationEnabled && (
@@ -975,17 +974,11 @@ const DashboardSettingsPage = () => {
                       {isRTL ? 'تفعيل المظهر المظلم للواجهة' : 'Activer le thème sombre'}
                     </p>
                   </div>
-                  <button
-                    onClick={toggleTheme}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${theme === 'dark' ? 'bg-primary-600' : 'bg-gray-200'}`}
-                  >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${theme === 'dark' ? 'translate-x-6 rtl:-translate-x-6' : 'translate-x-1 rtl:-translate-x-1'}`} />
-                    {theme === 'dark' ? (
-                      <Moon className="absolute left-1 rtl:left-auto rtl:right-1 w-3 h-3 text-white" />
-                    ) : (
-                      <Sun className="absolute right-1 rtl:right-auto rtl:left-1 w-3 h-3 text-gray-400" />
-                    )}
-                  </button>
+                  <ToggleSwitch
+                    checked={theme === 'dark'}
+                    onChange={toggleTheme}
+                    ariaLabel={isRTL ? 'المظهر المظلم' : 'Mode sombre'}
+                  />
                 </div>
 
                 <div className="flex items-center justify-between">
@@ -1019,21 +1012,17 @@ const DashboardSettingsPage = () => {
                         {isRTL ? 'عرض القائمة الجانبية بدلاً من الزر العائم' : 'Afficher le menu latéral au lieu du bouton flottant'}
                       </p>
                     </div>
-                    <button
-                      onClick={() => {
+                    <ToggleSwitch
+                      checked={menuType === 'side'}
+                      onChange={() => {
                         const newType = menuType === 'side' ? 'floating' : 'side';
                         setMenuType(newType);
                         localStorage.setItem('menuType', newType);
-                        // Rechargement silencieux (pas de notification)
                         console.log('✅ Préférence menu enregistrée:', newType);
                         setTimeout(() => window.location.reload(), 500);
                       }}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${menuType === 'side' ? 'bg-primary-600' : 'bg-gray-200'
-                        }`}
-                    >
-                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${menuType === 'side' ? 'translate-x-6 rtl:-translate-x-6' : 'translate-x-1 rtl:-translate-x-1'
-                        }`} />
-                    </button>
+                      ariaLabel={isRTL ? 'القائمة الجانبية' : 'Menu Latéral'}
+                    />
                   </div>
                 )}
               </CardContent>
@@ -1057,12 +1046,11 @@ const DashboardSettingsPage = () => {
                       {isRTL ? 'تلقي الإشعارات عبر البريد الإلكتروني' : 'Recevoir les notifications par email'}
                     </p>
                   </div>
-                  <button
-                    onClick={() => handleSettingChange('emailNotifications', !settings.emailNotifications)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.emailNotifications ? 'bg-primary-600' : 'bg-gray-200'}`}
-                  >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.emailNotifications ? 'translate-x-6 rtl:-translate-x-6' : 'translate-x-1 rtl:-translate-x-1'}`} />
-                  </button>
+                  <ToggleSwitch
+                    checked={settings.emailNotifications}
+                    onChange={(value) => handleSettingChange('emailNotifications', value)}
+                    ariaLabel={isRTL ? 'إشعارات البريد الإلكتروني' : 'Notifications Email'}
+                  />
                 </div>
 
                 <div className="flex items-center justify-between">
@@ -1074,12 +1062,11 @@ const DashboardSettingsPage = () => {
                       {isRTL ? 'تنبيهات عند وصول أو مغادرة الأطفال' : 'Alertes lors des arrivées/départs'}
                     </p>
                   </div>
-                  <button
-                    onClick={() => handleSettingChange('attendanceAlerts', !settings.attendanceAlerts)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.attendanceAlerts ? 'bg-primary-600' : 'bg-gray-200'}`}
-                  >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.attendanceAlerts ? 'translate-x-6 rtl:-translate-x-6' : 'translate-x-1 rtl:-translate-x-1'}`} />
-                  </button>
+                  <ToggleSwitch
+                    checked={settings.attendanceAlerts}
+                    onChange={(value) => handleSettingChange('attendanceAlerts', value)}
+                    ariaLabel={isRTL ? 'تنبيهات الحضور' : 'Alertes Présence'}
+                  />
                 </div>
 
                 <div className="flex items-center justify-between">
@@ -1091,12 +1078,11 @@ const DashboardSettingsPage = () => {
                       {isRTL ? 'تنبيهات عند طلبات التسجيل الجديدة' : 'Alertes pour nouvelles inscriptions'}
                     </p>
                   </div>
-                  <button
-                    onClick={() => handleSettingChange('enrollmentAlerts', !settings.enrollmentAlerts)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.enrollmentAlerts ? 'bg-primary-600' : 'bg-gray-200'}`}
-                  >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.enrollmentAlerts ? 'translate-x-6 rtl:-translate-x-6' : 'translate-x-1 rtl:-translate-x-1'}`} />
-                  </button>
+                  <ToggleSwitch
+                    checked={settings.enrollmentAlerts}
+                    onChange={(value) => handleSettingChange('enrollmentAlerts', value)}
+                    ariaLabel={isRTL ? 'تنبيهات التسجيل' : 'Alertes Inscription'}
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -1151,12 +1137,11 @@ const DashboardSettingsPage = () => {
                       {isRTL ? 'تفعيل الأمان الإضافي' : 'Activer la sécurité renforcée'}
                     </p>
                   </div>
-                  <button
-                    onClick={() => handleSettingChange('twoFactorAuth', !settings.twoFactorAuth)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.twoFactorAuth ? 'bg-primary-600' : 'bg-gray-200'}`}
-                  >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.twoFactorAuth ? 'translate-x-6 rtl:-translate-x-6' : 'translate-x-1 rtl:-translate-x-1'}`} />
-                  </button>
+                  <ToggleSwitch
+                    checked={settings.twoFactorAuth}
+                    onChange={(value) => handleSettingChange('twoFactorAuth', value)}
+                    ariaLabel={isRTL ? 'المصادقة الثنائية' : 'Authentification 2FA'}
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -1171,30 +1156,22 @@ const DashboardSettingsPage = () => {
         >
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center">
-                  <Calendar className="w-5 h-5 mr-2 rtl:mr-0 rtl:ml-2" />
-                  {isRTL ? 'إدارة الأعياد والعطل' : 'Gestion des Jours Fériés'}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <CardTitle className="flex items-center text-base sm:text-lg">
+                  <Calendar className="w-5 h-5 mr-2 rtl:mr-0 rtl:ml-2 flex-shrink-0" />
+                  <span className="truncate">{isRTL ? 'إدارة الأعياد والعطل' : 'Gestion des Jours Fériés'}</span>
                 </CardTitle>
 
                 {/* Compteur de jours fériés selon le filtre */}
-                <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                  <div className="px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-full">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {holidayFilter === 'national' ? (
-                        isRTL ? `${holidays.filter(h => h.type === 'national').length} أيام وطنية` : `${holidays.filter(h => h.type === 'national').length} jours nationaux`
-                      ) : holidayFilter === 'religious' ? (
-                        isRTL ? `${holidays.filter(h => h.type === 'religious').length} أيام دينية` : `${holidays.filter(h => h.type === 'religious').length} jours religieux`
-                      ) : holidayFilter === 'school' ? (
-                        isRTL ? `${holidays.filter(h => h.type === 'school').length} عطل مدرسية` : `${holidays.filter(h => h.type === 'school').length} vacances scolaires`
-                      ) : (
-                        isRTL ? `${holidays.filter(h => h.type === 'custom').length} أيام مخصصة` : `${holidays.filter(h => h.type === 'custom').length} jours personnalisés`
-                      )}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="px-2 sm:px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-full">
+                    <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                      {holidays.filter(h => h.type === holidayFilter).length} {isRTL ? 'عطلة' : 'jours'}
                     </span>
                   </div>
-                  <div className="px-3 py-1 bg-green-100 dark:bg-green-900/20 rounded-full">
-                    <span className="text-sm font-medium text-green-700 dark:text-green-300">
-                      {isRTL ? `${holidays.filter(h => h.type === holidayFilter).filter(h => h.is_active).length} مفعل` : `${holidays.filter(h => h.type === holidayFilter).filter(h => h.is_active).length} activés`}
+                  <div className="px-2 sm:px-3 py-1 bg-green-100 dark:bg-green-900/20 rounded-full">
+                    <span className="text-xs sm:text-sm font-medium text-green-700 dark:text-green-300 whitespace-nowrap">
+                      {holidays.filter(h => h.type === holidayFilter).filter(h => h.is_active).length} {isRTL ? 'مفعل' : 'activés'}
                     </span>
                   </div>
                 </div>
@@ -1239,16 +1216,13 @@ const DashboardSettingsPage = () => {
 
               {/* Liste des jours fériés */}
               <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="font-medium text-gray-900 dark:text-white">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                  <h4 className="font-medium text-gray-900 dark:text-white text-sm sm:text-base">
                     {isRTL ? 'قائمة الأعياد والعطل' : 'Liste des Jours Fériés'}
-                    <span className="text-sm text-gray-500 dark:text-gray-400 ml-2 rtl:ml-0 rtl:mr-2">
-                      ({holidays.filter(h => h.type === holidayFilter).length} {isRTL ? 'عطلة' : 'jours'})
-                    </span>
                   </h4>
 
                   {/* Filtres par type */}
-                  <div className="flex gap-2">
+                  <div className="flex gap-1 sm:gap-2 flex-wrap">
                     {[
                       { key: 'national', label: isRTL ? 'وطني' : 'National', color: 'bg-blue-500' },
                       { key: 'religious', label: isRTL ? 'ديني' : 'Religieux', color: 'bg-green-500' },
@@ -1257,7 +1231,7 @@ const DashboardSettingsPage = () => {
                       <button
                         key={filter.key}
                         onClick={() => setHolidayFilter(filter.key)}
-                        className={`px-3 py-1 text-xs rounded-full transition-colors ${holidayFilter === filter.key
+                        className={`px-2 sm:px-3 py-1 text-xs rounded-full transition-colors ${holidayFilter === filter.key
                           ? `${filter.color} text-white`
                           : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
                           }`}
@@ -1270,70 +1244,71 @@ const DashboardSettingsPage = () => {
 
                 {/* Liste des jours fériés */}
                 {holidays.length > 0 && (
-                  <div className="space-y-3">
+                  <div className="space-y-2 sm:space-y-3">
                     {holidays
                       .filter(holiday => holiday.type === holidayFilter)
                       .sort((a, b) => new Date(a.date) - new Date(b.date))
                       .map(holiday => (
-                        <div key={holiday.external_id || holiday.id} className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-3 rtl:space-x-reverse">
-                              <div className={`w-3 h-3 rounded-full ${holiday.type === 'national' ? 'bg-blue-500' :
+                        <div key={holiday.external_id || holiday.id} className="p-3 sm:p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          {/* Layout mobile: empilé, desktop: en ligne */}
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
+                            {/* Info du jour férié */}
+                            <div className="flex items-start sm:items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                              <div className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full flex-shrink-0 mt-1 sm:mt-0 ${
+                                holiday.type === 'national' ? 'bg-blue-500' :
                                 holiday.type === 'religious' ? 'bg-green-500' :
-                                  holiday.type === 'school' ? 'bg-orange-500' :
-                                    'bg-purple-500'
-                                }`}></div>
-                              <div>
-                                <h5 className="font-medium text-gray-900 dark:text-white">{holiday.name}</h5>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                holiday.type === 'school' ? 'bg-orange-500' : 'bg-purple-500'
+                              }`}></div>
+                              <div className="min-w-0 flex-1">
+                                <h5 className="font-medium text-gray-900 dark:text-white text-sm sm:text-base truncate">
+                                  {holiday.name}
+                                </h5>
+                                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                                   {new Date(holiday.date).toLocaleDateString(isRTL ? 'ar-TN' : 'fr-FR', {
-                                    weekday: 'long',
-                                    year: 'numeric',
-                                    month: 'long',
-                                    day: 'numeric'
+                                    weekday: 'short',
+                                    day: 'numeric',
+                                    month: 'short',
+                                    year: 'numeric'
                                   })}
                                 </p>
                               </div>
                             </div>
-                          </div>
-                          <div className="flex items-center space-x-3 rtl:space-x-reverse">
-                            <span className={`px-2 py-1 text-xs rounded-full ${holiday.type === 'national' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300' :
-                              holiday.type === 'religious' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300' :
-                                holiday.type === 'school' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-300' :
-                                  'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300'
-                              }`}>
-                              {holiday.type === 'national' ? (isRTL ? 'وطني' : 'National') :
-                                holiday.type === 'religious' ? (isRTL ? 'ديني' : 'Religieux') :
-                                  holiday.type === 'school' ? (isRTL ? 'عطلة مدرسية' : 'Vacances scolaires') :
-                                    (isRTL ? 'مخصص' : 'Personnalisé')}
-                            </span>
 
-                            {/* Toggle pour activer/désactiver le jour férié (admin seulement) */}
-                            {user?.role === 'admin' ? (
-                              <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                                <span className={`text-xs font-medium ${holiday.is_active ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                            {/* Badge type + Toggle */}
+                            <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 mt-1 sm:mt-0">
+                              {/* Badge type - caché sur très petit écran */}
+                              <span className={`hidden xs:inline-flex px-2 py-0.5 text-xs rounded-full flex-shrink-0 ${
+                                holiday.type === 'national' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300' :
+                                holiday.type === 'religious' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300' :
+                                holiday.type === 'school' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-300' :
+                                'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300'
+                              }`}>
+                                {holiday.type === 'national' ? (isRTL ? 'وطني' : 'National') :
+                                  holiday.type === 'religious' ? (isRTL ? 'ديني' : 'Religieux') :
+                                  holiday.type === 'school' ? (isRTL ? 'مدرسي' : 'Scolaire') :
+                                  (isRTL ? 'مخصص' : 'Perso')}
+                              </span>
+
+                              {/* Toggle pour activer/désactiver le jour férié */}
+                              <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+                                <span className={`text-xs font-medium whitespace-nowrap ${holiday.is_active ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'}`}>
                                   {holiday.is_active ? (isRTL ? 'مفعل' : 'Activé') : (isRTL ? 'غير مفعل' : 'Désactivé')}
                                 </span>
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                  <input
-                                    type="checkbox"
-                                    className="sr-only peer"
+                                {user?.role === 'admin' ? (
+                                  <ToggleSwitch
                                     checked={holiday.is_active || false}
-                                    onChange={(e) => toggleHolidayStatus(holiday, e.target.checked)}
+                                    onChange={(value) => toggleHolidayStatus(holiday, value)}
+                                    size="sm"
+                                    activeColor="bg-red-600"
+                                    ariaLabel={isRTL ? 'تفعيل العطلة' : 'Activer le jour férié'}
                                   />
-                                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-red-600"></div>
-                                </label>
+                                ) : (
+                                  <span className="text-xs text-gray-400 dark:text-gray-500 hidden sm:inline">
+                                    {isRTL ? '(مدير)' : '(Admin)'}
+                                  </span>
+                                )}
                               </div>
-                            ) : (
-                              <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                                <span className={`text-xs font-medium ${holiday.is_active ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'}`}>
-                                  {holiday.is_active ? (isRTL ? 'مفعل' : 'Activé') : (isRTL ? 'غير مفعل' : 'Désactivé')}
-                                </span>
-                                <span className="text-xs text-gray-400 dark:text-gray-500">
-                                  {isRTL ? '(للمدير فقط)' : '(Admin seulement)'}
-                                </span>
-                              </div>
-                            )}
+                            </div>
                           </div>
                         </div>
                       ))}

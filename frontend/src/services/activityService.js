@@ -10,7 +10,7 @@ const activityService = {
    */
   async getActivities(page = 1, limit = 10) {
     try {
-      const response = await api.get('/activities', { params: { page, limit } });
+      const response = await api.get('/api/activities', { params: { page, limit } });
       return response.data;
     } catch (error) {
       console.error('Erreur getActivities:', error);
@@ -23,7 +23,7 @@ const activityService = {
    */
   async getActivityById(id) {
     try {
-      const response = await api.get(`/activities/${id}`);
+      const response = await api.get(`/api/activities/${id}`);
       return response.data;
     } catch (error) {
       console.error('Erreur getActivityById:', error);
@@ -36,7 +36,7 @@ const activityService = {
    */
   async createActivity(formData) {
     try {
-      const response = await api.post('/activities', formData, {
+      const response = await api.post('/api/activities', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       return response.data;
@@ -51,7 +51,7 @@ const activityService = {
    */
   async updateActivity(id, data) {
     try {
-      const response = await api.put(`/activities/${id}`, data);
+      const response = await api.put(`/api/activities/${id}`, data);
       return response.data;
     } catch (error) {
       console.error('Erreur updateActivity:', error);
@@ -64,7 +64,7 @@ const activityService = {
    */
   async deleteActivity(id) {
     try {
-      const response = await api.delete(`/activities/${id}`);
+      const response = await api.delete(`/api/activities/${id}`);
       return response.data;
     } catch (error) {
       console.error('Erreur deleteActivity:', error);
@@ -77,7 +77,7 @@ const activityService = {
    */
   async toggleReaction(activityId, reactionType) {
     try {
-      const response = await api.post(`/activities/${activityId}/reactions`, { reactionType });
+      const response = await api.post(`/api/activities/${activityId}/reactions`, { reactionType });
       return response.data;
     } catch (error) {
       console.error('Erreur toggleReaction:', error);
@@ -90,7 +90,7 @@ const activityService = {
    */
   async getComments(activityId, page = 1, limit = 20) {
     try {
-      const response = await api.get(`/activities/${activityId}/comments`, { params: { page, limit } });
+      const response = await api.get(`/api/activities/${activityId}/comments`, { params: { page, limit } });
       return response.data;
     } catch (error) {
       console.error('Erreur getComments:', error);
@@ -103,7 +103,7 @@ const activityService = {
    */
   async addComment(activityId, content, parentCommentId = null) {
     try {
-      const response = await api.post(`/activities/${activityId}/comments`, { content, parentCommentId });
+      const response = await api.post(`/api/activities/${activityId}/comments`, { content, parentCommentId });
       return response.data;
     } catch (error) {
       console.error('Erreur addComment:', error);
@@ -116,7 +116,7 @@ const activityService = {
    */
   async deleteComment(activityId, commentId) {
     try {
-      const response = await api.delete(`/activities/${activityId}/comments/${commentId}`);
+      const response = await api.delete(`/api/activities/${activityId}/comments/${commentId}`);
       return response.data;
     } catch (error) {
       console.error('Erreur deleteComment:', error);

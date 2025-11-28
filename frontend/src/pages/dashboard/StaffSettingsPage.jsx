@@ -14,6 +14,7 @@ import { useTheme } from '../../hooks/useTheme';
 import { useAuth } from '../../hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { useDialogContext } from '../../contexts/DialogContext';
+import ToggleSwitch from '../../components/ui/ToggleSwitch';
 
 const StaffSettingsPage = () => {
     const { isRTL, currentLanguage, toggleLanguage } = useLanguage();
@@ -93,19 +94,11 @@ const StaffSettingsPage = () => {
                                         {isRTL ? 'تفعيل المظهر المظلم للواجهة' : 'Activer le thème sombre'}
                                     </p>
                                 </div>
-                                <button
-                                    onClick={toggleTheme}
-                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${theme === 'dark' ? 'bg-primary-600' : 'bg-gray-200'
-                                        }`}
-                                >
-                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${theme === 'dark' ? 'translate-x-6 rtl:-translate-x-6' : 'translate-x-1 rtl:-translate-x-1'
-                                        }`} />
-                                    {theme === 'dark' ? (
-                                        <Moon className="absolute left-1 rtl:left-auto rtl:right-1 w-3 h-3 text-white" />
-                                    ) : (
-                                        <Sun className="absolute right-1 rtl:right-auto rtl:left-1 w-3 h-3 text-gray-400" />
-                                    )}
-                                </button>
+                                <ToggleSwitch
+                                    checked={theme === 'dark'}
+                                    onChange={toggleTheme}
+                                    ariaLabel={isRTL ? 'المظهر المظلم' : 'Mode sombre'}
+                                />
                             </div>
 
                             {/* Langue */}
@@ -139,8 +132,9 @@ const StaffSettingsPage = () => {
                                         {isRTL ? 'عرض القائمة الجانبية بدلاً من الزر العائم' : 'Afficher le menu latéral au lieu du bouton flottant'}
                                     </p>
                                 </div>
-                                <button
-                                    onClick={() => {
+                                <ToggleSwitch
+                                    checked={menuType === 'side'}
+                                    onChange={() => {
                                         const newType = menuType === 'side' ? 'floating' : 'side';
                                         setMenuType(newType);
                                         localStorage.setItem('menuType', newType);
@@ -151,12 +145,8 @@ const StaffSettingsPage = () => {
                                         );
                                         setTimeout(() => window.location.reload(), 500);
                                     }}
-                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${menuType === 'side' ? 'bg-primary-600' : 'bg-gray-200'
-                                        }`}
-                                >
-                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${menuType === 'side' ? 'translate-x-6 rtl:-translate-x-6' : 'translate-x-1 rtl:-translate-x-1'
-                                        }`} />
-                                </button>
+                                    ariaLabel={isRTL ? 'القائمة الجانبية' : 'Menu Latéral'}
+                                />
                             </div>
                         </CardContent>
                     </Card>
@@ -186,14 +176,11 @@ const StaffSettingsPage = () => {
                                         {isRTL ? 'تلقي الإشعارات عبر البريد الإلكتروني' : 'Recevoir les notifications par email'}
                                     </p>
                                 </div>
-                                <button
-                                    onClick={() => handleSettingChange('emailNotifications', !settings.emailNotifications)}
-                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.emailNotifications ? 'bg-primary-600' : 'bg-gray-200'
-                                        }`}
-                                >
-                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.emailNotifications ? 'translate-x-6 rtl:-translate-x-6' : 'translate-x-1 rtl:-translate-x-1'
-                                        }`} />
-                                </button>
+                                <ToggleSwitch
+                                    checked={settings.emailNotifications}
+                                    onChange={(value) => handleSettingChange('emailNotifications', value)}
+                                    ariaLabel={isRTL ? 'إشعارات البريد الإلكتروني' : 'Notifications Email'}
+                                />
                             </div>
 
                             {/* Push */}
@@ -206,14 +193,11 @@ const StaffSettingsPage = () => {
                                         {isRTL ? 'تلقي الإشعارات الفورية في المتصفح' : 'Recevoir les notifications push dans le navigateur'}
                                     </p>
                                 </div>
-                                <button
-                                    onClick={() => handleSettingChange('pushNotifications', !settings.pushNotifications)}
-                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.pushNotifications ? 'bg-primary-600' : 'bg-gray-200'
-                                        }`}
-                                >
-                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.pushNotifications ? 'translate-x-6 rtl:-translate-x-6' : 'translate-x-1 rtl:-translate-x-1'
-                                        }`} />
-                                </button>
+                                <ToggleSwitch
+                                    checked={settings.pushNotifications}
+                                    onChange={(value) => handleSettingChange('pushNotifications', value)}
+                                    ariaLabel={isRTL ? 'الإشعارات الفورية' : 'Notifications Push'}
+                                />
                             </div>
 
                             {/* Messages */}
@@ -226,14 +210,11 @@ const StaffSettingsPage = () => {
                                         {isRTL ? 'إشعار عند استلام رسالة جديدة' : 'Notifier lors de la réception d\'un nouveau message'}
                                     </p>
                                 </div>
-                                <button
-                                    onClick={() => handleSettingChange('notifyMessages', !settings.notifyMessages)}
-                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.notifyMessages ? 'bg-primary-600' : 'bg-gray-200'
-                                        }`}
-                                >
-                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.notifyMessages ? 'translate-x-6 rtl:-translate-x-6' : 'translate-x-1 rtl:-translate-x-1'
-                                        }`} />
-                                </button>
+                                <ToggleSwitch
+                                    checked={settings.notifyMessages}
+                                    onChange={(value) => handleSettingChange('notifyMessages', value)}
+                                    ariaLabel={isRTL ? 'إشعارات الرسائل' : 'Notifications Messages'}
+                                />
                             </div>
 
                             {/* Tâches */}
@@ -246,14 +227,11 @@ const StaffSettingsPage = () => {
                                         {isRTL ? 'إشعار عند تعيين مهمة جديدة' : 'Notifier lors de l\'assignation d\'une nouvelle tâche'}
                                     </p>
                                 </div>
-                                <button
-                                    onClick={() => handleSettingChange('notifyTasks', !settings.notifyTasks)}
-                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.notifyTasks ? 'bg-primary-600' : 'bg-gray-200'
-                                        }`}
-                                >
-                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.notifyTasks ? 'translate-x-6 rtl:-translate-x-6' : 'translate-x-1 rtl:-translate-x-1'
-                                        }`} />
-                                </button>
+                                <ToggleSwitch
+                                    checked={settings.notifyTasks}
+                                    onChange={(value) => handleSettingChange('notifyTasks', value)}
+                                    ariaLabel={isRTL ? 'إشعارات المهام' : 'Notifications Tâches'}
+                                />
                             </div>
                         </CardContent>
                     </Card>
@@ -283,14 +261,11 @@ const StaffSettingsPage = () => {
                                         {isRTL ? 'تفعيل طبقة أمان إضافية' : 'Activer une couche de sécurité supplémentaire'}
                                     </p>
                                 </div>
-                                <button
-                                    onClick={() => handleSettingChange('twoFactorAuth', !settings.twoFactorAuth)}
-                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${settings.twoFactorAuth ? 'bg-primary-600' : 'bg-gray-200'
-                                        }`}
-                                >
-                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${settings.twoFactorAuth ? 'translate-x-6 rtl:-translate-x-6' : 'translate-x-1 rtl:-translate-x-1'
-                                        }`} />
-                                </button>
+                                <ToggleSwitch
+                                    checked={settings.twoFactorAuth}
+                                    onChange={(value) => handleSettingChange('twoFactorAuth', value)}
+                                    ariaLabel={isRTL ? 'المصادقة الثنائية' : 'Authentification à deux facteurs'}
+                                />
                             </div>
 
                             {/* Session Timeout */}

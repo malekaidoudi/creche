@@ -11,6 +11,7 @@ import { Button } from '../../components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card'
 import DocumentUpload from '../../components/ui/DocumentUpload'
 import DatePicker from '../../components/ui/DatePicker'
+import ToggleSwitch from '../../components/ui/ToggleSwitch'
 import api from '../../services/api'
 import { convertToISO } from '../../utils/dateUtils'
 
@@ -509,26 +510,11 @@ const EnrollmentPage = () => {
                       </label>
 
                       {/* Toggle Switch */}
-                      <div className="relative">
-                        <input
-                          type="checkbox"
-                          id="differentContact"
-                          checked={hasDifferentEmergencyContact}
-                          onChange={(e) => setHasDifferentEmergencyContact(e.target.checked)}
-                          className="sr-only"
-                        />
-                        <label
-                          htmlFor="differentContact"
-                          className={`flex items-center cursor-pointer transition-colors duration-200 ${hasDifferentEmergencyContact ? 'text-primary-600' : 'text-gray-400'
-                            }`}
-                        >
-                          <div className={`relative w-12 h-6 rounded-full transition-colors duration-200 ${hasDifferentEmergencyContact ? 'bg-primary-600' : 'bg-gray-300 dark:bg-gray-600'
-                            }`}>
-                            <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-200 ${hasDifferentEmergencyContact ? 'translate-x-6' : 'translate-x-0'
-                              }`}></div>
-                          </div>
-                        </label>
-                      </div>
+                      <ToggleSwitch
+                        checked={hasDifferentEmergencyContact}
+                        onChange={setHasDifferentEmergencyContact}
+                        ariaLabel={isRTL ? 'شخص مختلف عن الوالد' : 'Personne différente du parent'}
+                      />
                     </div>
 
                     {!hasDifferentEmergencyContact && (

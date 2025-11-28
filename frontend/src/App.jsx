@@ -85,6 +85,9 @@ function App() {
         <Route path="contact" element={<ContactPageDynamic />} />
         <Route path="visite-virtuelle" element={<VirtualTourPage />} />
 
+        {/* Activités (accessible à tous les utilisateurs connectés) */}
+        <Route path="activites" element={<ActivitiesPage />} />
+
         {/* Mon Espace (protégé - parents + admin/staff avec enfants) */}
         <Route
           path="mon-espace"

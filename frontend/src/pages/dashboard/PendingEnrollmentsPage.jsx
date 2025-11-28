@@ -188,11 +188,11 @@ const PendingEnrollmentsPage = () => {
     }
   };
 
-  const handleDownloadDocument = async (document) => {
+  const handleDownloadDocument = async (doc) => {
     try {
       // Utiliser cloudinary_url si disponible, sinon fallback
-      const documentUrl = document.cloudinary_url ||
-        `${import.meta.env.VITE_API_URL || 'https://creche-backend.onrender.com'}/uploads/enrollments/${document.filename}`;
+      const documentUrl = doc.cloudinary_url ||
+        `${import.meta.env.VITE_API_URL || 'https://creche-backend.onrender.com'}/uploads/enrollments/${doc.filename}`;
 
       // Télécharger le fichier
       const response = await fetch(documentUrl);
@@ -200,18 +200,18 @@ const PendingEnrollmentsPage = () => {
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = window.document.createElement('a');
       a.href = url;
-      a.download = document.original_filename || document.filename;
-      document.body.appendChild(a);
+      a.download = doc.original_filename || doc.filename;
+      window.document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      window.document.body.removeChild(a);
 
       toast.success(
         isRTL
-          ? `تم تحميل ${document.original_filename || document.filename}`
-          : `Téléchargement de ${document.original_filename || document.filename} réussi`
+          ? `تم تحميل ${doc.original_filename || doc.filename}`
+          : `Téléchargement de ${doc.original_filename || doc.filename} réussi`
       );
     } catch (error) {
       console.error('Erreur téléchargement:', error);
@@ -223,19 +223,19 @@ const PendingEnrollmentsPage = () => {
     }
   };
 
-  const handleViewDocument = (document) => {
+  const handleViewDocument = (doc) => {
     try {
       // Utiliser cloudinary_url si disponible, sinon fallback
-      const documentUrl = document.cloudinary_url ||
-        `${import.meta.env.VITE_API_URL || 'https://creche-backend.onrender.com'}/uploads/enrollments/${document.filename}`;
+      const documentUrl = doc.cloudinary_url ||
+        `${import.meta.env.VITE_API_URL || 'https://creche-backend.onrender.com'}/uploads/enrollments/${doc.filename}`;
 
       // Ouvrir dans un nouvel onglet
       window.open(documentUrl, '_blank');
 
       toast.success(
         isRTL
-          ? `فتح ${document.original_filename || document.filename}`
-          : `Ouverture de ${document.original_filename || document.filename}`
+          ? `فتح ${doc.original_filename || doc.filename}`
+          : `Ouverture de ${doc.original_filename || doc.filename}`
       );
     } catch (error) {
       console.error('Erreur visualisation:', error);
@@ -596,12 +596,12 @@ const PendingEnrollmentsPage = () => {
                           </div>
                           <div>
                             <h5 className="font-medium text-gray-900 dark:text-white">
-                              {document.original_name || document.filename}
+                              {document.original_filename || document.original_name || document.filename}
                             </h5>
                             <div className="flex items-center space-x-4 rtl:space-x-reverse text-sm text-gray-500">
-                              <span>{document.filename}</span>
-                              <span>{Math.round(document.file_size / 1024)} KB</span>
-                              <span>{document.mime_type}</span>
+                              <span>{document.document_type || document.filename}</span>
+                              <span>{document.file_size ? `${Math.round(document.file_size / 1024)} KB` : ''}</span>
+                              <span>{document.mime_type || ''}</span>
                             </div>
                           </div>
                         </div>

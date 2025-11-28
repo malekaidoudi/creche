@@ -237,7 +237,7 @@ const UnifiedProfilePage = () => {
               <div className="flex items-center justify-center gap-2 mt-2">
                 <Shield className="w-4 h-4 text-blue-600" />
                 <span className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                  {user?.role === 'admin' ? (isRTL ? 'مدير' : 'Administrateur') :
+                  {user?.role === 'admin' ? (isRTL ? 'المدير' : 'Directeur') :
                     user?.role === 'staff' ? (isRTL ? 'موظف' : 'Personnel') :
                       (isRTL ? 'ولي أمر' : 'Parent')}
                 </span>

@@ -43,7 +43,7 @@ const DashboardHeader = ({ onMenuClick }) => {
   const getRoleLabel = (role) => {
     switch (role) {
       case 'admin':
-        return isRTL ? 'مدير' : 'Administrateur';
+        return isRTL ? 'المدير' : 'Directeur';
       case 'staff':
         return isRTL ? 'موظف' : 'Personnel';
       case 'parent':

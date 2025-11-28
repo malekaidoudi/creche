@@ -142,7 +142,6 @@ const corsOptions = {
       'http://localhost:5173',
       'http://localhost:3000',
       'http://127.0.0.1:5173',
-      'https://malekaidoudi.github.io',
       'https://creche-mima-elghalia.netlify.app',
       'https://mimaelghalia.tn',
       'https://www.mimaelghalia.tn',

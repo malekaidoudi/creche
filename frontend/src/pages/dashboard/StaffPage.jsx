@@ -240,7 +240,7 @@ const StaffPage = () => {
               </div>
               <div className="ml-3 rtl:ml-0 rtl:mr-3">
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                  {isRTL ? 'المديرون' : 'Administrateurs'}
+                  {isRTL ? 'المديرون' : 'Directeurs'}
                 </p>
                 <p className="text-xl font-bold text-gray-900 dark:text-white">
                   {staff.filter(s => s.role === 'admin').length}
@@ -343,12 +343,12 @@ const StaffPage = () => {
                   </span>
                 </div>
 
-                {/* Administrateurs */}
+                {/* Directeurs */}
                 <div className="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
                   <div className="flex items-center gap-2">
                     <Shield className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {isRTL ? 'المديرون' : 'Administrateurs'}
+                      {isRTL ? 'المديرون' : 'Directeurs'}
                     </span>
                   </div>
                   <span className="text-lg font-bold text-purple-600 dark:text-purple-400">
@@ -414,7 +414,7 @@ const StaffPage = () => {
                   className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 >
                   <option value="all">{isRTL ? 'جميع الأدوار' : 'Tous les rôles'}</option>
-                  <option value="admin">{isRTL ? 'مدير' : 'Administrateur'}</option>
+                  <option value="admin">{isRTL ? 'المدير' : 'Directeur'}</option>
                   <option value="staff">{isRTL ? 'موظف' : 'Personnel'}</option>
                 </select>
               </div>
