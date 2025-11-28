@@ -4,6 +4,7 @@ const { body, validationResult } = require('express-validator');
 const router = express.Router();
 const db = require('../config/db_postgres');
 const auth = require('../middleware/auth');
+const logger = require('../utils/logger');
 
 // GET /api/user/children-summary - Résumé des enfants de l'utilisateur connecté
 router.get('/children-summary', auth.authenticateToken, async (req, res) => {
@@ -536,25 +537,21 @@ router.put('/profile', auth.authenticateToken, [
   body('phone').optional().isString().withMessage('Téléphone invalide')
 ], async (req, res) => {
   try {
-    console.log('📝 Données reçues pour mise à jour profil:', req.body);
-    console.log('🔍 Type de chaque champ:', {
-      first_name: typeof req.body.first_name,
-      last_name: typeof req.body.last_name,
-      email: typeof req.body.email,
-      phone: typeof req.body.phone
+    // Log sensible uniquement en dev
+    logger.sensitive('📝 Données reçues pour mise à jour profil:', {
+      fields: Object.keys(req.body)
     });
-    
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      console.log('❌ Erreurs de validation profil:', errors.array());
-      console.log('❌ Détail des erreurs:', JSON.stringify(errors.array(), null, 2));
-      return res.status(400).json({ 
+      logger.debug('❌ Erreurs de validation profil:', errors.array());
+      return res.status(400).json({
         success: false,
-        error: 'Données invalides', 
-        details: errors.array() 
+        error: 'Données invalides',
+        details: errors.array()
       });
     }
-    
+
     const userId = req.user.id;
     const { first_name, last_name, email, phone } = req.body;
     

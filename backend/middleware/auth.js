@@ -1,8 +1,9 @@
 const jwt = require('jsonwebtoken');
 const db = require('../config/db_postgres');
+const logger = require('../utils/logger');
 
 const auth = {
-  
+
   // Middleware d'authentification JWT
   authenticateToken: (req, res, next) => {
     const authHeader = req.headers['authorization'];
@@ -18,7 +19,7 @@ const auth = {
 
     jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
       if (err) {
-        console.log('❌ Erreur vérification token:', err.message);
+        logger.security('TOKEN_VERIFICATION_FAILED', { error: err.message });
         return res.status(403).json({
           success: false,
           error: 'Token invalide ou expiré',
@@ -26,13 +27,14 @@ const auth = {
         });
       }
 
-      console.log('🔐 Token décodé - user:', user);
-      
+      // Log sensible uniquement en dev
+      logger.sensitive('🔐 Token décodé - user:', { id: user.id, role: user.role });
+
       // 🔧 Normaliser userId → id pour compatibilité
       if (user.userId && !user.id) {
         user.id = user.userId;
       }
-      
+
       req.user = user;
       next();
     });
@@ -50,7 +52,11 @@ const auth = {
       }
 
       if (!allowedRoles.includes(req.user.role)) {
-        console.log(`🔐 Accès refusé - Rôle requis: ${allowedRoles.join('|')}, Rôle utilisateur: ${req.user.role}`);
+        logger.security('ACCESS_DENIED', {
+          userId: req.user.id,
+          role: req.user.role,
+          requiredRoles: allowedRoles
+        });
         return res.status(403).json({
           success: false,
           error: 'Privilèges insuffisants',
@@ -134,7 +140,7 @@ const auth = {
         });
         
       } catch (error) {
-        console.error('❌ Erreur vérification propriété:', error);
+        logger.error('❌ Erreur vérification propriété:', error.message);
         return res.status(500).json({
           success: false,
           error: 'Erreur lors de la vérification des permissions'
@@ -190,7 +196,7 @@ const auth = {
       });
       
     } catch (error) {
-      console.error('❌ Erreur vérification accès document:', error);
+      logger.error('❌ Erreur vérification accès document:', error.message);
       return res.status(500).json({
         success: false,
         error: 'Erreur lors de la vérification des permissions'

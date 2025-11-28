@@ -3,6 +3,8 @@ const { body, validationResult } = require('express-validator');
 const router = express.Router();
 const { pool } = require('../config/db_postgres');
 const auth = require('../middleware/auth');
+const logger = require('../utils/logger');
+const apiResponse = require('../utils/apiResponse');
 
 // GET /api/children/simple - Liste simple des enfants avec parent_id (pour messages)
 router.get('/simple', auth.authenticateToken, async (req, res) => {
@@ -25,17 +27,13 @@ router.get('/simple', auth.authenticateToken, async (req, res) => {
 
     const result = await pool.query(sql);
 
-    res.json({
-      success: true,
+    return apiResponse.success(res, {
       children: result.rows,
       count: result.rows.length
     });
   } catch (error) {
-    console.error('❌ Erreur récupération enfants simple:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Erreur lors de la récupération des enfants'
-    });
+    logger.error('❌ Erreur récupération enfants simple:', error.message);
+    return apiResponse.serverError(res, error, 'Erreur lors de la récupération des enfants');
   }
 });
 
