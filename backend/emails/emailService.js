@@ -6,6 +6,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const { EMAIL_TYPES, EMAIL_STATUS } = require('./emailTypes');
 const db = require('../config/db_postgres');
+const SettingsService = require('../services/SettingsService');
 
 // Initialiser Resend
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -100,6 +101,29 @@ class EmailService {
   }
 
   /**
+   * Récupérer les données de contact depuis nursery_settings
+   */
+  async getContactData() {
+    try {
+      const { settings } = await SettingsService.getAllSettings();
+      return {
+        contact_email: settings.email?.fr || 'crechemimaelghalia@gmail.com',
+        contact_phone: settings.phone?.fr || '+216 25 95 35 32',
+        nursery_name: settings.nursery_name?.fr || 'Crèche Mima Elghalia',
+        address: settings.address?.fr || 'Tunisie'
+      };
+    } catch (error) {
+      console.warn('⚠️ Impossible de récupérer les données de contact, utilisation des valeurs par défaut:', error.message);
+      return {
+        contact_email: 'crechemimaelghalia@gmail.com',
+        contact_phone: '+216 25 95 35 32',
+        nursery_name: 'Crèche Mima Elghalia',
+        address: 'Tunisie'
+      };
+    }
+  }
+
+  /**
    * Envoyer un e-mail
    */
   async sendEmail(emailType, recipient, variables = {}) {
@@ -113,11 +137,20 @@ class EmailService {
         throw new Error(`Type d'email inconnu: ${emailType}`);
       }
 
+      // Récupérer les données de contact dynamiques
+      const contactData = await this.getContactData();
+
+      // Fusionner les variables avec les données de contact
+      const allVariables = {
+        ...contactData,
+        ...variables
+      };
+
       // Charger et préparer le template
       let htmlContent;
       if (config.template) {
         const template = await this.loadTemplate(config.template);
-        htmlContent = this.replaceVariables(template, variables);
+        htmlContent = this.replaceVariables(template, allVariables);
       } else {
         htmlContent = variables.html || '<p>Contenu de l\'email</p>';
       }
@@ -194,15 +227,29 @@ class EmailService {
    * Envoyer un e-mail d'acceptation avec date de RDV
    */
   async sendAcceptedEmail(enrollmentData, appointmentDate, passwordLink) {
-    // Formater la date
-    const formattedDate = new Date(appointmentDate).toLocaleDateString('fr-FR', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    // La date peut déjà être formatée ou être un objet Date/string ISO
+    let formattedDate;
+
+    if (typeof appointmentDate === 'string' && appointmentDate.includes(' ')) {
+      // Date déjà formatée (ex: "samedi 29 novembre 2025 à 10:00")
+      formattedDate = appointmentDate;
+    } else {
+      // Date brute, on la formate
+      const dateObj = new Date(appointmentDate);
+      if (isNaN(dateObj.getTime())) {
+        console.warn('⚠️ Date de RDV invalide:', appointmentDate);
+        formattedDate = 'Date à confirmer';
+      } else {
+        formattedDate = dateObj.toLocaleDateString('fr-FR', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      }
+    }
 
     return this.sendEmail('ENROLLMENT_ACCEPTED', enrollmentData.applicant_email, {
       applicant_first_name: enrollmentData.applicant_first_name,
@@ -224,14 +271,26 @@ class EmailService {
     };
 
     if (appointmentDate) {
-      variables.appointment_date = new Date(appointmentDate).toLocaleDateString('fr-FR', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
+      // La date peut déjà être formatée ou être un objet Date/string ISO
+      if (typeof appointmentDate === 'string' && appointmentDate.includes(' ')) {
+        // Date déjà formatée
+        variables.appointment_date = appointmentDate;
+      } else {
+        // Date brute, on la formate
+        const dateObj = new Date(appointmentDate);
+        if (!isNaN(dateObj.getTime())) {
+          variables.appointment_date = dateObj.toLocaleDateString('fr-FR', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+        } else {
+          console.warn('⚠️ Date de RDV invalide pour missing docs:', appointmentDate);
+        }
+      }
     }
 
     return this.sendEmail('ENROLLMENT_MISSING_DOCS', enrollmentData.applicant_email, variables);
