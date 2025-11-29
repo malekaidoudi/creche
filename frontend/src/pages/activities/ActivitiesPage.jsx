@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiRefreshCw, FiPlus, FiX, FiLoader, FiImage } from 'react-icons/fi';
+import { FiPlus, FiLoader, FiImage, FiCheck } from 'react-icons/fi';
 import ActivityCard from '../../components/activities/ActivityCard';
 import ActivityForm from '../../components/activities/ActivityForm';
 import useActivities from '../../hooks/useActivities';
@@ -14,6 +14,8 @@ const ActivitiesPage = () => {
   const { user } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [isRTL, setIsRTL] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
   const observerRef = useRef(null);
   const loadMoreRef = useRef(null);
 
@@ -66,10 +68,16 @@ const ActivitiesPage = () => {
 
   const handleCreate = async (formData) => {
     try {
+      setIsCreating(true);
       await createActivity(formData);
       setShowForm(false);
+      // Afficher le message de succès
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
     } catch (err) {
       throw err;
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -97,21 +105,62 @@ const ActivitiesPage = () => {
 
   return (
     <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 ${isRTL ? 'rtl' : 'ltr'}`} dir={isRTL ? 'rtl' : 'ltr'}>
-      {/* Header */}
+      {/* Notification de succès */}
+      <AnimatePresence>
+        {showSuccess && (
+          <motion.div
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -50 }}
+            className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-green-500 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-2"
+          >
+            <FiCheck size={20} />
+            <span>{isRTL ? 'تم نشر النشاط بنجاح!' : 'Activité publiée avec succès!'}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Loader de création en overlay */}
+      <AnimatePresence>
+        {isCreating && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center"
+          >
+            <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 flex flex-col items-center gap-4 shadow-2xl">
+              <div className="relative">
+                <div className="w-16 h-16 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
+              </div>
+              <p className="text-gray-700 dark:text-gray-300 font-medium">
+                {isRTL ? 'جاري النشر...' : 'Publication en cours...'}
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Header - sans bouton refresh */}
       <div className="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 text-white">
         <div className="max-w-2xl mx-auto px-4 py-8">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold">{t.title}</h1>
               <p className="text-white/80 mt-1">{t.subtitle}</p>
+              {total > 0 && (
+                <p className="text-white/60 text-sm mt-1">
+                  {total} {isRTL ? 'نشاط' : 'publication(s)'}
+                </p>
+              )}
             </div>
-            <button
-              onClick={refresh}
-              disabled={loading}
-              className="p-3 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
-            >
-              <FiRefreshCw className={loading ? 'animate-spin' : ''} size={20} />
-            </button>
+            {/* Badge nombre d'activités */}
+            {activities.length > 0 && (
+              <div className="hidden sm:flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full">
+                <FiImage size={18} />
+                <span className="font-semibold">{activities.length}</span>
+              </div>
+            )}
           </div>
         </div>
       </div>

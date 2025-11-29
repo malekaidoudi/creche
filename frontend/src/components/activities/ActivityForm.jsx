@@ -4,7 +4,7 @@
 
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiImage, FiVideo, FiX, FiSend, FiLoader, FiCamera } from 'react-icons/fi';
+import { FiImage, FiVideo, FiX, FiSend, FiLoader, FiCamera, FiPlay, FiVolume2 } from 'react-icons/fi';
 import { useAuth } from '../../contexts/AuthContext';
 
 const ActivityForm = ({ onSubmit, isRTL = false, onClose }) => {
@@ -17,7 +17,9 @@ const ActivityForm = ({ onSubmit, isRTL = false, onClose }) => {
   const [isPinned, setIsPinned] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [videoPlaying, setVideoPlaying] = useState(false);
   const fileInputRef = useRef(null);
+  const videoRef = useRef(null);
 
   const t = {
     title: isRTL ? 'عنوان النشاط' : 'Titre de l\'activité',
@@ -121,27 +123,81 @@ const ActivityForm = ({ onSubmit, isRTL = false, onClose }) => {
           disabled={loading}
         />
 
-        {/* Prévisualisation média */}
+        {/* Prévisualisation média améliorée */}
         <AnimatePresence>
           {mediaPreview && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
+              initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="relative mt-3 rounded-xl overflow-hidden"
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative mt-4 rounded-2xl overflow-hidden bg-gray-900 shadow-lg"
             >
               {mediaType === 'image' ? (
-                <img src={mediaPreview} alt="Preview" className="w-full max-h-64 object-cover" />
+                <img
+                  src={mediaPreview}
+                  alt="Preview"
+                  className="w-full max-h-80 object-contain bg-gray-900"
+                />
               ) : (
-                <video src={mediaPreview} controls className="w-full max-h-64" />
+                <div className="relative">
+                  <video
+                    ref={videoRef}
+                    src={mediaPreview}
+                    className="w-full max-h-80 object-contain bg-gray-900"
+                    playsInline
+                    muted={false}
+                    onClick={() => {
+                      if (videoRef.current) {
+                        if (videoRef.current.paused) {
+                          videoRef.current.play();
+                          setVideoPlaying(true);
+                        } else {
+                          videoRef.current.pause();
+                          setVideoPlaying(false);
+                        }
+                      }
+                    }}
+                  />
+                  {/* Overlay de lecture */}
+                  {!videoPlaying && (
+                    <div
+                      className="absolute inset-0 flex items-center justify-center bg-black/30 cursor-pointer"
+                      onClick={() => {
+                        if (videoRef.current) {
+                          videoRef.current.play();
+                          setVideoPlaying(true);
+                        }
+                      }}
+                    >
+                      <div className="w-16 h-16 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
+                        <FiPlay className="text-gray-900 ml-1" size={28} />
+                      </div>
+                    </div>
+                  )}
+                  {/* Indicateur audio */}
+                  <div className="absolute bottom-3 left-3 flex items-center gap-1 px-2 py-1 bg-black/60 rounded-full text-white text-xs">
+                    <FiVolume2 size={12} />
+                    <span>{isRTL ? 'مع صوت' : 'Avec son'}</span>
+                  </div>
+                </div>
               )}
+              {/* Badge type de fichier */}
+              <div className="absolute top-3 left-3 rtl:left-auto rtl:right-3 px-2 py-1 bg-black/60 rounded-full text-white text-xs font-medium flex items-center gap-1">
+                {mediaType === 'image' ? <FiImage size={12} /> : <FiVideo size={12} />}
+                {media?.name?.split('.').pop()?.toUpperCase()}
+              </div>
+              {/* Bouton supprimer */}
               <button
                 type="button"
                 onClick={removeMedia}
-                className="absolute top-2 right-2 rtl:left-2 rtl:right-auto p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors"
+                className="absolute top-3 right-3 rtl:left-3 rtl:right-auto p-2 bg-red-500/80 hover:bg-red-600 rounded-full text-white transition-colors shadow-lg"
               >
                 <FiX size={18} />
               </button>
+              {/* Taille du fichier */}
+              <div className="absolute bottom-3 right-3 rtl:left-3 rtl:right-auto px-2 py-1 bg-black/60 rounded-full text-white text-xs">
+                {media && (media.size / (1024 * 1024)).toFixed(1)} MB
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

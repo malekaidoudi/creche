@@ -21,7 +21,7 @@ const cloudinaryService = {
    * @param {string} publicId - ID public personnalisé (optionnel)
    * @returns {Promise<Object>} - Résultat de l'upload avec URL
    */
-  uploadFile: async (filePath, folder = 'enrollments', publicId = null) => {
+  uploadFile: async (filePath, folder = 'enrollments', publicId = null, isVideo = false) => {
     try {
       if (!process.env.CLOUDINARY_CLOUD_NAME) {
         console.warn('⚠️  Cloudinary non configuré, fichier non uploadé');
@@ -35,23 +35,35 @@ const cloudinaryService = {
         unique_filename: true
       };
 
+      // Options spécifiques pour les vidéos - qualité maximale
+      if (isVideo) {
+        options.resource_type = 'video';
+        options.eager = [
+          { quality: 'auto:best', fetch_format: 'auto' }
+        ];
+        options.eager_async = true;
+        // Ne pas appliquer de compression agressive
+        options.quality = 'auto:best';
+      }
+
       if (publicId) {
         options.public_id = publicId;
       }
 
-      console.log('☁️  Upload vers Cloudinary:', filePath);
-      
+      console.log('☁️  Upload vers Cloudinary:', filePath, isVideo ? '(vidéo)' : '');
+
       const result = await cloudinary.uploader.upload(filePath, options);
-      
+
       console.log('✅ Fichier uploadé sur Cloudinary:', result.secure_url);
-      
+
       return {
         success: true,
         url: result.secure_url,
         publicId: result.public_id,
         format: result.format,
         resourceType: result.resource_type,
-        bytes: result.bytes
+        bytes: result.bytes,
+        duration: result.duration || null
       };
 
     } catch (error) {

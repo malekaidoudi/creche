@@ -105,20 +105,22 @@ router.post('/',
       if (req.file) {
         const isVideo = req.file.mimetype.startsWith('video/');
 
-        // Upload vers Cloudinary
+        // Upload vers Cloudinary avec qualité optimisée pour les vidéos
         const uploadResult = await cloudinaryService.uploadFile(
           req.file.path,
           'activities',
-          null
+          null,
+          isVideo // Passer le flag isVideo pour qualité maximale
         );
 
         if (uploadResult.success) {
           mediaData = {
             mediaType: isVideo ? 'video' : 'image',
             mediaUrl: uploadResult.url,
+            // Thumbnail de meilleure qualité
             mediaThumbnailUrl: isVideo
-              ? uploadResult.url.replace('/upload/', '/upload/so_0,w_400,h_300,c_fill/')
-              : uploadResult.url.replace('/upload/', '/upload/w_400,h_300,c_fill/'),
+              ? uploadResult.url.replace('/upload/', '/upload/so_0,w_800,h_450,c_fill,q_auto:best/')
+              : uploadResult.url.replace('/upload/', '/upload/w_800,h_450,c_fill,q_auto:best/'),
             cloudinaryPublicId: uploadResult.publicId
           };
         }

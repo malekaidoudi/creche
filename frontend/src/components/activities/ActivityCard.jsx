@@ -2,9 +2,9 @@
  * Carte d'activité pour le fil d'actualités
  */
 
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { FiMoreVertical, FiTrash2, FiEdit2, FiMessageCircle, FiEye, FiUser, FiPlay } from 'react-icons/fi';
+import React, { useState, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FiMoreVertical, FiTrash2, FiEdit2, FiMessageCircle, FiEye, FiUser, FiPlay, FiX, FiMaximize2, FiVolume2, FiVolumeX } from 'react-icons/fi';
 import { BsPin, BsPinFill } from 'react-icons/bs';
 import ReactionBar from './ReactionBar';
 import CommentSection from './CommentSection';
@@ -14,6 +14,10 @@ const ActivityCard = ({ activity, onReact, onDelete, onEdit, isRTL = false }) =>
   const { user } = useAuth();
   const [showMenu, setShowMenu] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
+  const [showFullscreen, setShowFullscreen] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const videoRef = useRef(null);
+  const fullscreenVideoRef = useRef(null);
 
   const canModify = user?.role === 'admin' || user?.id === activity.author?.id;
 
@@ -121,38 +125,65 @@ const ActivityCard = ({ activity, onReact, onDelete, onEdit, isRTL = false }) =>
         )}
       </div>
 
-      {/* Média */}
+      {/* Média - cliquable pour plein écran */}
       {activity.mediaType !== 'none' && activity.mediaUrl && (
-        <div className="relative">
+        <div className="relative group cursor-pointer" onClick={() => setShowFullscreen(true)}>
           {activity.mediaType === 'image' ? (
-            <img
-              src={activity.mediaUrl}
-              alt={activity.title}
-              className="w-full max-h-[500px] object-cover"
-              loading="lazy"
-            />
+            <>
+              <img
+                src={activity.mediaUrl}
+                alt={activity.title}
+                className="w-full max-h-[500px] object-cover"
+                loading="lazy"
+              />
+              {/* Overlay pour agrandir */}
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                <div className="p-3 bg-white/90 rounded-full shadow-lg">
+                  <FiMaximize2 size={24} className="text-gray-900" />
+                </div>
+              </div>
+            </>
           ) : activity.mediaType === 'video' && (
             <div className="relative">
               {!showVideo ? (
-                <div className="relative cursor-pointer" onClick={() => setShowVideo(true)}>
+                <div className="relative" onClick={(e) => { e.stopPropagation(); setShowVideo(true); }}>
                   <img
                     src={activity.mediaThumbnailUrl || activity.mediaUrl.replace('/upload/', '/upload/so_0,w_800,h_450,c_fill/')}
                     alt={activity.title}
                     className="w-full max-h-[400px] object-cover"
                   />
                   <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                    <div className="w-16 h-16 rounded-full bg-white/90 flex items-center justify-center">
+                    <div className="w-16 h-16 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
                       <FiPlay className="text-gray-900 ml-1" size={28} />
                     </div>
                   </div>
+                  {/* Bouton plein écran */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setShowFullscreen(true); }}
+                    className="absolute top-3 right-3 p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors"
+                  >
+                    <FiMaximize2 size={18} />
+                  </button>
                 </div>
               ) : (
-                <video
-                  src={activity.mediaUrl}
-                  controls
-                  autoPlay
-                  className="w-full max-h-[500px]"
-                />
+                <div className="relative" onClick={(e) => e.stopPropagation()}>
+                  <video
+                    ref={videoRef}
+                    src={activity.mediaUrl}
+                    controls
+                    autoPlay
+                    playsInline
+                    muted={isMuted}
+                    className="w-full max-h-[500px] bg-black"
+                  />
+                  {/* Bouton plein écran */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setShowFullscreen(true); }}
+                    className="absolute top-3 right-3 p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors"
+                  >
+                    <FiMaximize2 size={18} />
+                  </button>
+                </div>
               )}
             </div>
           )}
@@ -195,6 +226,97 @@ const ActivityCard = ({ activity, onReact, onDelete, onEdit, isRTL = false }) =>
           isRTL={isRTL}
         />
       </div>
+
+      {/* Modal plein écran */}
+      <AnimatePresence>
+        {showFullscreen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/95 flex"
+            onClick={() => setShowFullscreen(false)}
+          >
+            {/* Bouton fermer */}
+            <button
+              onClick={() => setShowFullscreen(false)}
+              className="absolute top-4 right-4 rtl:left-4 rtl:right-auto z-50 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
+            >
+              <FiX size={24} />
+            </button>
+
+            {/* Container principal */}
+            <div className="flex flex-col lg:flex-row w-full h-full" onClick={(e) => e.stopPropagation()}>
+              {/* Zone média (gauche/haut) */}
+              <div className="flex-1 flex items-center justify-center p-4 lg:p-8 min-h-0">
+                {activity.mediaType === 'image' ? (
+                  <img
+                    src={activity.mediaUrl}
+                    alt={activity.title}
+                    className="max-w-full max-h-full object-contain rounded-lg"
+                  />
+                ) : (
+                  <div className="relative w-full h-full flex items-center justify-center">
+                    <video
+                      ref={fullscreenVideoRef}
+                      src={activity.mediaUrl}
+                      controls
+                      autoPlay
+                      playsInline
+                      className="max-w-full max-h-full object-contain rounded-lg"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Zone commentaires (droite/bas) */}
+              <div className="w-full lg:w-96 bg-white dark:bg-gray-900 flex flex-col max-h-[40vh] lg:max-h-full overflow-hidden">
+                {/* En-tête */}
+                <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white overflow-hidden">
+                      {activity.author?.profileImage ? (
+                        <img src={activity.author.profileImage} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <FiUser size={18} />
+                      )}
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-gray-900 dark:text-white text-sm">
+                        {activity.author?.firstName} {activity.author?.lastName}
+                      </h4>
+                      <p className="text-xs text-gray-500">{formatDate(activity.createdAt)}</p>
+                    </div>
+                  </div>
+                  <h3 className="mt-3 font-bold text-gray-900 dark:text-white">{activity.title}</h3>
+                  {activity.description && (
+                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400 line-clamp-3">{activity.description}</p>
+                  )}
+                </div>
+
+                {/* Commentaires scrollables */}
+                <div className="flex-1 overflow-y-auto p-4">
+                  <CommentSection
+                    activityId={activity.id}
+                    commentsCount={activity.commentsCount}
+                    isRTL={isRTL}
+                    isFullscreen={true}
+                  />
+                </div>
+
+                {/* Réactions en bas */}
+                <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+                  <ReactionBar
+                    reactions={activity.reactions}
+                    onReact={(type) => onReact?.(activity.id, type)}
+                    isRTL={isRTL}
+                  />
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };

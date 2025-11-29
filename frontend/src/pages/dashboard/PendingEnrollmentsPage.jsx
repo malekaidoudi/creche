@@ -558,25 +558,26 @@ const PendingEnrollmentsPage = () => {
         </div>
       )}
 
-      {/* Modal des documents */}
+      {/* Modal des documents - Responsive */}
       {showDocumentsModal && selectedEnrollment && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-xl w-full sm:max-w-2xl max-h-[90vh] sm:max-h-[85vh] overflow-hidden flex flex-col">
+            {/* Header sticky */}
+            <div className="sticky top-0 bg-white dark:bg-gray-800 p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+              <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                   {isRTL ? 'وثائق الطلب' : 'Documents de la demande'}
                 </h3>
-                <Button
-                  variant="outline"
-                  size="sm"
+                <button
                   onClick={() => setShowDocumentsModal(false)}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
                 >
-                  ✕
-                </Button>
+                  <span className="text-gray-500 text-xl">✕</span>
+                </button>
               </div>
 
-              <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+              {/* Info enfant */}
+              <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                 <h4 className="font-medium text-gray-900 dark:text-white">
                   {selectedEnrollment.child_first_name} {selectedEnrollment.child_last_name}
                 </h4>
@@ -584,33 +585,42 @@ const PendingEnrollmentsPage = () => {
                   {isRTL ? 'الوالد:' : 'Parent:'} {selectedEnrollment.parent_first_name} {selectedEnrollment.parent_last_name}
                 </p>
               </div>
+            </div>
 
+            {/* Contenu scrollable */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
               {selectedEnrollment.files && selectedEnrollment.files.length > 0 ? (
                 <div className="space-y-3">
                   {selectedEnrollment.files.map((document) => (
-                    <div key={document.id} className="border border-gray-200 dark:border-gray-600 rounded-lg p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3 rtl:space-x-reverse">
-                          <div className="text-blue-600">
+                    <div key={document.id} className="border border-gray-200 dark:border-gray-600 rounded-xl p-3 sm:p-4">
+                      {/* Layout mobile: empilé / Desktop: côte à côte */}
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
+                        <div className="flex items-start sm:items-center space-x-3 rtl:space-x-reverse">
+                          <div className="text-blue-600 flex-shrink-0 mt-0.5 sm:mt-0">
                             {getDocumentIcon(getDocumentTypeFromFilename(document.filename))}
                           </div>
-                          <div>
-                            <h5 className="font-medium text-gray-900 dark:text-white">
+                          <div className="min-w-0 flex-1">
+                            <h5 className="font-medium text-gray-900 dark:text-white text-sm sm:text-base truncate">
                               {document.original_filename || document.original_name || document.filename}
                             </h5>
-                            <div className="flex items-center space-x-4 rtl:space-x-reverse text-sm text-gray-500">
-                              <span>{document.document_type || document.filename}</span>
-                              <span>{document.file_size ? `${Math.round(document.file_size / 1024)} KB` : ''}</span>
-                              <span>{document.mime_type || ''}</span>
+                            <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-gray-500 mt-1">
+                              <span className="bg-gray-100 dark:bg-gray-600 px-2 py-0.5 rounded">
+                                {document.document_type || document.filename}
+                              </span>
+                              {document.file_size && (
+                                <span>{Math.round(document.file_size / 1024)} KB</span>
+                              )}
                             </div>
                           </div>
                         </div>
 
-                        <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                        {/* Boutons - pleine largeur sur mobile */}
+                        <div className="flex items-center gap-2 mt-2 sm:mt-0">
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => handleViewDocument(document)}
+                            className="flex-1 sm:flex-initial"
                           >
                             <Eye className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
                             {isRTL ? 'عرض' : 'Voir'}
@@ -620,6 +630,7 @@ const PendingEnrollmentsPage = () => {
                             size="sm"
                             variant="outline"
                             onClick={() => handleDownloadDocument(document)}
+                            className="flex-1 sm:flex-initial"
                           >
                             <Download className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
                             {isRTL ? 'تحميل' : 'Télécharger'}
@@ -630,22 +641,24 @@ const PendingEnrollmentsPage = () => {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-8">
+                <div className="text-center py-12">
                   <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-500 dark:text-gray-400">
                     {isRTL ? 'لا توجد وثائق مرفقة' : 'Aucun document attaché'}
                   </p>
                 </div>
               )}
+            </div>
 
-              <div className="flex justify-end mt-6">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowDocumentsModal(false)}
-                >
-                  {isRTL ? 'إغلاق' : 'Fermer'}
-                </Button>
-              </div>
+            {/* Footer sticky */}
+            <div className="sticky bottom-0 bg-white dark:bg-gray-800 p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+              <Button
+                variant="outline"
+                onClick={() => setShowDocumentsModal(false)}
+                className="w-full sm:w-auto sm:ml-auto block"
+              >
+                {isRTL ? 'إغلاق' : 'Fermer'}
+              </Button>
             </div>
           </div>
         </div>
