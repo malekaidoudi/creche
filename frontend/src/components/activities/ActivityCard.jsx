@@ -237,10 +237,10 @@ const ActivityCard = ({ activity, onReact, onDelete, onEdit, isRTL = false }) =>
             className="fixed inset-0 z-50 bg-black/95 flex"
             onClick={() => setShowFullscreen(false)}
           >
-            {/* Bouton fermer */}
+            {/* Bouton fermer - visible en mode clair et sombre */}
             <button
               onClick={() => setShowFullscreen(false)}
-              className="absolute top-4 right-4 rtl:left-4 rtl:right-auto z-50 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
+              className="absolute top-4 right-4 rtl:left-4 rtl:right-auto z-50 p-3 bg-black/60 hover:bg-black/80 dark:bg-white/20 dark:hover:bg-white/30 rounded-full text-white shadow-lg transition-colors"
             >
               <FiX size={24} />
             </button>

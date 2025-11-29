@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar, Clock, CheckCircle } from 'lucide-react';
+import { X, Calendar, Clock, CheckCircle, Check } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useDialogContext } from '../../contexts/DialogContext';
 import api from '../../services/api';
