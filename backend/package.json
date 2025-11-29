@@ -16,6 +16,7 @@
     "migrate:cloudinary": "node scripts/migrate-documents-to-cloudinary.js",
     "seed": "node scripts/seed.js",
     "db:reset": "node scripts/reset-database.js && npm run db:init && npm run seed",
+    "db:cleanup": "node scripts/cleanup-database.js",
     "postinstall": "echo 'Backend dependencies installed successfully'"
   },
   "keywords": [
@@ -44,6 +45,7 @@
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
+    "node-cache": "^5.1.2",
     "node-cron": "^4.2.1",
     "node-fetch": "^2.7.0",
     "nodemailer": "^7.0.9",
