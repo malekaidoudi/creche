@@ -226,28 +226,14 @@ const enrollmentsController = {
         params.push(status);
       }
 
-      // Sélection explicite avec alias pour compatibilité frontend
+      // Sélection avec e.* et alias pour compatibilité frontend
       const query = `
         SELECT 
-          e.id,
-          e.child_first_name,
-          e.child_last_name,
-          e.child_birth_date,
-          e.child_gender,
+          e.*,
           e.applicant_first_name AS parent_first_name,
           e.applicant_last_name AS parent_last_name,
           e.applicant_email AS parent_email,
           e.applicant_phone AS parent_phone,
-          e.new_status,
-          e.rejection_type,
-          e.rejection_reason,
-          e.appointment_date,
-          e.approved_at,
-          e.rejected_at,
-          e.processed_at,
-          e.created_at,
-          e.updated_at,
-          e.medical_info,
           COUNT(ed.id) as documents_count
         FROM enrollments e
         LEFT JOIN enrollment_documents ed ON e.id = ed.enrollment_id
@@ -267,6 +253,7 @@ const enrollmentsController = {
       });
 
     } catch (error) {
+      console.error('❌ Erreur getAllEnrollments:', error);
       res.status(500).json({ success: false, error: error.message });
     }
   },
