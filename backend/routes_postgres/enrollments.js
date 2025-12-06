@@ -24,13 +24,13 @@ router.post('/', [
   body('applicant_last_name').notEmpty().withMessage('Nom du candidat requis'),
   body('applicant_email').isEmail().withMessage('Email valide requis'),
   body('applicant_phone').optional().isLength({ min: 8, max: 20 }),
-  
+
   // Validation enfant
   body('child_first_name').notEmpty().withMessage('Prénom de l\'enfant requis'),
   body('child_last_name').notEmpty().withMessage('Nom de l\'enfant requis'),
   body('child_birth_date').isDate().withMessage('Date de naissance valide requise'),
   body('child_gender').isIn(['M', 'F', 'Autre']).withMessage('Genre invalide'),
-  
+
   // Validation optionnelle
   body('regulation_accepted').isBoolean().optional(),
   body('lunch_assistance').isBoolean().optional()
@@ -51,7 +51,7 @@ router.post('/', [
  * Upload des documents pour un dossier d'inscription
  * Aucune authentification requise (utilise l'ID du dossier)
  */
-router.post('/:id/documents', 
+router.post('/:id/documents',
   upload.fields([
     { name: 'carnet_medical', maxCount: 1 },
     { name: 'acte_naissance', maxCount: 1 },
@@ -68,40 +68,40 @@ router.get('/:id/status', async (req, res) => {
   try {
     const { id } = req.params;
     const { email } = req.query;
-    
+
     if (!email) {
       return res.status(400).json({
         success: false,
         error: 'Email requis pour vérifier le statut'
       });
     }
-    
+
     const result = await db.query(`
-      SELECT id, new_status, created_at, updated_at, decision_notes
+      SELECT id, status, created_at, updated_at, decision_notes
       FROM enrollments 
       WHERE id = $1 AND applicant_email = $2
     `, [id, email]);
-    
+
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
         error: 'Dossier non trouvé ou email incorrect'
       });
     }
-    
+
     const enrollment = result.rows[0];
-    
+
     res.json({
       success: true,
       enrollment: {
         id: enrollment.id,
-        status: enrollment.new_status,
+        status: enrollment.status,
         created_at: enrollment.created_at,
         updated_at: enrollment.updated_at,
         notes: enrollment.decision_notes
       }
     });
-    
+
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -116,7 +116,7 @@ router.get('/:id/status', async (req, res) => {
 
 /**
  * GET /api/enrollments/appointments/today
- * Rendez-vous du jour (staff/admin)
+ * Rendez-vous du jour depuis la table appointments (staff/admin)
  */
 router.get('/appointments/today',
   auth.authenticateToken,
@@ -127,42 +127,61 @@ router.get('/appointments/today',
       today.setHours(0, 0, 0, 0);
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
-      
+
+      // Récupérer les RDV depuis la table appointments
       const result = await db.query(`
         SELECT 
-          e.id,
-          e.child_first_name,
-          e.child_last_name,
-          e.applicant_first_name,
-          e.applicant_last_name,
-          e.applicant_phone,
-          e.applicant_email,
-          e.appointment_date,
-          e.new_status,
-          TO_CHAR(e.appointment_date, 'HH24:MI') as appointment_time
-        FROM enrollments e
-        WHERE e.appointment_date >= $1
-          AND e.appointment_date < $2
-          AND e.new_status IN ('approved', 'rejected_incomplete')
-        ORDER BY e.appointment_date ASC
+          a.id,
+          a.enrollment_id,
+          a.proposed_date,
+          a.confirmed_date,
+          a.status as appointment_status,
+          a.appointment_type,
+          a.parent_first_name,
+          a.parent_last_name,
+          a.parent_phone,
+          a.parent_email,
+          a.child_first_name,
+          a.child_last_name,
+          a.rescheduled_count,
+          a.appointment_outcome,
+          TO_CHAR(COALESCE(a.confirmed_date, a.proposed_date), 'HH24:MI') as appointment_time,
+          e.status as enrollment_status
+        FROM appointments a
+        LEFT JOIN enrollments e ON a.enrollment_id = e.id
+        WHERE COALESCE(a.confirmed_date, a.proposed_date) >= $1
+          AND COALESCE(a.confirmed_date, a.proposed_date) < $2
+          AND a.status NOT IN ('cancelled', 'completed', 'failed')
+        ORDER BY COALESCE(a.confirmed_date, a.proposed_date) ASC
       `, [today, tomorrow]);
-      
+
       res.json({
         success: true,
         count: result.rows.length,
         date: today.toLocaleDateString('fr-FR'),
         appointments: result.rows.map(apt => ({
           id: apt.id,
-          child_name: `${apt.child_first_name} ${apt.child_last_name || ''}`.trim(),
-          parent_name: `${apt.applicant_first_name} ${apt.applicant_last_name || ''}`.trim(),
-          parent_phone: apt.applicant_phone,
-          parent_email: apt.applicant_email,
-          appointment_date: apt.appointment_date,
+          enrollment_id: apt.enrollment_id,
+          child_name: `${apt.child_first_name || ''} ${apt.child_last_name || ''}`.trim() || 'Enfant',
+          child_first_name: apt.child_first_name,
+          child_last_name: apt.child_last_name,
+          parent_name: `${apt.parent_first_name || ''} ${apt.parent_last_name || ''}`.trim() || 'Parent',
+          parent_first_name: apt.parent_first_name,
+          parent_last_name: apt.parent_last_name,
+          parent_phone: apt.parent_phone,
+          parent_email: apt.parent_email,
+          appointment_date: apt.proposed_date,
+          proposed_date: apt.proposed_date,
+          confirmed_date: apt.confirmed_date,
           appointment_time: apt.appointment_time,
-          status: apt.new_status
+          status: apt.appointment_status,
+          appointment_type: apt.appointment_type,
+          enrollment_status: apt.enrollment_status,
+          rescheduled_count: apt.rescheduled_count || 0,
+          appointment_outcome: apt.appointment_outcome
         }))
       });
-      
+
     } catch (error) {
       console.error('❌ Erreur récupération RDV du jour:', error);
       res.status(500).json({
@@ -177,7 +196,7 @@ router.get('/appointments/today',
  * GET /api/enrollments
  * Liste des dossiers d'inscription (staff/admin seulement)
  */
-router.get('/', 
+router.get('/',
   auth.authenticateToken,
   auth.requireRole('staff', 'admin'),
   enrollmentsController.getAllEnrollments
@@ -193,7 +212,7 @@ router.get('/:id',
   async (req, res) => {
     try {
       const { id } = req.params;
-      
+
       // Récupérer enrollment avec documents
       const enrollmentQuery = `
         SELECT e.*, 
@@ -203,7 +222,7 @@ router.get('/:id',
         LEFT JOIN users u ON e.approved_by = u.id
         WHERE e.id = $1
       `;
-      
+
       const documentsQuery = `
         SELECT id, filename, original_filename, document_type,
                file_size, mime_type, cloudinary_url, cloudinary_public_id,
@@ -212,25 +231,25 @@ router.get('/:id',
         WHERE enrollment_id = $1
         ORDER BY uploaded_at DESC
       `;
-      
+
       const [enrollmentResult, documentsResult] = await Promise.all([
         db.query(enrollmentQuery, [id]),
         db.query(documentsQuery, [id])
       ]);
-      
+
       if (enrollmentResult.rows.length === 0) {
         return res.status(404).json({
           success: false,
           error: 'Dossier non trouvé'
         });
       }
-      
+
       res.json({
         success: true,
         enrollment: enrollmentResult.rows[0],
         documents: documentsResult.rows
       });
-      
+
     } catch (error) {
       console.error('❌ Erreur GET /api/enrollments/:id:', error);
       res.status(500).json({
@@ -328,18 +347,18 @@ router.put('/:id/status',
     try {
       const { id } = req.params;
       const { status, notes } = req.body;
-      
+
       await db.query(`
         UPDATE enrollments 
-        SET new_status = $1, decision_notes = $2, updated_at = NOW()
+        SET status = $1, decision_notes = $2, updated_at = NOW()
         WHERE id = $3
       `, [status, notes, id]);
-      
+
       res.json({
         success: true,
         message: 'Statut mis à jour'
       });
-      
+
     } catch (error) {
       res.status(500).json({
         success: false,
@@ -358,31 +377,31 @@ router.delete('/:id',
   auth.requireRole('admin'),
   async (req, res) => {
     const client = await db.connect();
-    
+
     try {
       await client.query('BEGIN');
-      
+
       const { id } = req.params;
-      
+
       // Archiver avant suppression
       await client.query(`
         INSERT INTO enrollments_archive 
         SELECT * FROM enrollments WHERE id = $1
       `, [id]);
-      
+
       // Supprimer documents
       await client.query('DELETE FROM enrollment_documents WHERE enrollment_id = $1', [id]);
-      
+
       // Supprimer enrollment
       await client.query('DELETE FROM enrollments WHERE id = $1', [id]);
-      
+
       await client.query('COMMIT');
-      
+
       res.json({
         success: true,
         message: 'Dossier supprimé et archivé'
       });
-      
+
     } catch (error) {
       await client.query('ROLLBACK');
       res.status(500).json({
@@ -410,7 +429,7 @@ router.get('/:id/documents/:docId',
   async (req, res) => {
     try {
       const { id, docId } = req.params;
-      
+
       // Récupérer le document
       const result = await db.query(`
         SELECT 
@@ -427,16 +446,16 @@ router.get('/:id/documents/:docId',
         FROM enrollment_documents
         WHERE id = $1 AND enrollment_id = $2
       `, [docId, id]);
-      
+
       if (result.rows.length === 0) {
         return res.status(404).json({
           success: false,
           error: 'Document non trouvé'
         });
       }
-      
+
       const doc = result.rows[0];
-      
+
       // Retourner les informations du document avec URL Cloudinary
       res.json({
         success: true,
@@ -456,7 +475,7 @@ router.get('/:id/documents/:docId',
           download_url: doc.cloudinary_url ? `${doc.cloudinary_url.split('/upload/')[0]}/upload/fl_attachment/${doc.cloudinary_url.split('/upload/')[1]}` : null
         }
       });
-      
+
     } catch (error) {
       console.error('❌ Erreur récupération document:', error);
       res.status(500).json({
@@ -478,7 +497,7 @@ router.get('/:id/documents',
   async (req, res) => {
     try {
       const { id } = req.params;
-      
+
       const result = await db.query(`
         SELECT 
           id, 
@@ -494,7 +513,7 @@ router.get('/:id/documents',
         WHERE enrollment_id = $1
         ORDER BY uploaded_at DESC
       `, [id]);
-      
+
       res.json({
         success: true,
         count: result.rows.length,
@@ -512,14 +531,14 @@ router.get('/:id/documents',
           // URL pour visualisation directe (ouvre dans le navigateur)
           view_url: doc.cloudinary_url,
           // URL pour téléchargement forcé (force le download)
-          download_url: doc.cloudinary_url ? 
-            `${doc.cloudinary_url.split('/upload/')[0]}/upload/fl_attachment/${doc.cloudinary_url.split('/upload/')[1]}` : 
+          download_url: doc.cloudinary_url ?
+            `${doc.cloudinary_url.split('/upload/')[0]}/upload/fl_attachment/${doc.cloudinary_url.split('/upload/')[1]}` :
             null,
           // URL API pour récupérer les détails
           api_url: `/api/enrollments/${id}/documents/${doc.id}`
         }))
       });
-      
+
     } catch (error) {
       console.error('❌ Erreur récupération documents:', error);
       res.status(500).json({

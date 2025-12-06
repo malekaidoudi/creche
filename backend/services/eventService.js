@@ -510,14 +510,30 @@ async function getUpcomingEvents(userId, days = 7) {
 
 /**
  * Récupérer les événements en retard
+ * Pour admin: toutes les tâches en retard
+ * Pour staff: seulement les tâches assignées ou créées par lui
  */
-async function getOverdueEvents(userId) {
+async function getOverdueEvents(userId, userRole = null) {
   try {
+    // Récupérer le rôle de l'utilisateur si non fourni
+    let role = userRole;
+    if (!role) {
+      const userResult = await pool.query('SELECT role FROM users WHERE id = $1', [userId]);
+      role = userResult.rows[0]?.role || 'staff';
+    }
+
+    // Pour admin: voir toutes les tâches en retard
+    // Pour staff: seulement les siennes
+    const whereClause = role === 'admin'
+      ? ''
+      : 'AND (e.assigned_to = $1 OR e.created_by = $1)';
+
     const result = await pool.query(`
       SELECT 
         e.*,
         u1.first_name || ' ' || u1.last_name as created_by_name,
         u2.first_name || ' ' || u2.last_name as assigned_to_name,
+        u2.role as assigned_to_role,
         c.first_name || ' ' || c.last_name as child_name
       FROM events e
       LEFT JOIN users u1 ON e.created_by = u1.id
@@ -527,9 +543,9 @@ async function getOverdueEvents(userId) {
         AND e.type = 'task'
         AND e.status != 'completed'
         AND e.start_date < NOW()
-        AND (e.assigned_to = $1 OR e.created_by = $1)
+        ${whereClause}
       ORDER BY e.start_date ASC
-    `, [userId]);
+    `, role === 'admin' ? [] : [userId]);
 
     return { success: true, events: result.rows };
 

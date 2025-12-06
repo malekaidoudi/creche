@@ -124,13 +124,15 @@ async function getTodayAppointments() {
     const result = await pool.query(`
       SELECT 
         a.*,
-        u.first_name || ' ' || u.last_name as parent_name,
-        c.first_name || ' ' || c.last_name as child_name
+        COALESCE(u.first_name || ' ' || u.last_name, a.parent_first_name || ' ' || a.parent_last_name) as parent_name,
+        COALESCE(c.first_name || ' ' || c.last_name, a.child_first_name || ' ' || a.child_last_name) as child_name,
+        e.status as enrollment_status
       FROM appointments a
       LEFT JOIN users u ON a.parent_id = u.id
       LEFT JOIN children c ON a.child_id = c.id
+      LEFT JOIN enrollments e ON a.enrollment_id = e.id
       WHERE DATE(COALESCE(a.confirmed_date, a.proposed_date)) = CURRENT_DATE
-        AND a.status IN ('confirmed', 'proposed')
+        AND a.status IN ('confirmed', 'proposed', 'rescheduled')
       ORDER BY COALESCE(a.confirmed_date, a.proposed_date) ASC
     `);
 
@@ -485,6 +487,47 @@ async function getAppointmentById(appointmentId, userId, role) {
   }
 }
 
+/**
+ * Mettre à jour le statut d'un rendez-vous
+ */
+async function updateAppointmentStatus(appointmentId, status, userId) {
+  try {
+    const validStatuses = ['proposed', 'confirmed', 'rescheduled', 'completed', 'cancelled', 'failed', 'no_show'];
+
+    if (!validStatuses.includes(status)) {
+      return {
+        success: false,
+        error: `Statut invalide. Valeurs acceptées: ${validStatuses.join(', ')}`
+      };
+    }
+
+    const result = await pool.query(`
+      UPDATE appointments
+      SET status = $1, updated_at = NOW()
+      WHERE id = $2
+      RETURNING *
+    `, [status, appointmentId]);
+
+    if (result.rows.length === 0) {
+      return {
+        success: false,
+        error: 'Rendez-vous non trouvé'
+      };
+    }
+
+    console.log(`✅ Statut RDV #${appointmentId} mis à jour: ${status}`);
+
+    return {
+      success: true,
+      appointment: result.rows[0]
+    };
+
+  } catch (error) {
+    console.error('❌ Erreur updateAppointmentStatus:', error);
+    throw error;
+  }
+}
+
 module.exports = {
   createAppointment,
   getAppointments,
@@ -494,5 +537,6 @@ module.exports = {
   rescheduleAppointment,
   completeAppointment,
   cancelAppointment,
-  rejectWithProposal
+  rejectWithProposal,
+  updateAppointmentStatus
 };

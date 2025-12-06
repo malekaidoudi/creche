@@ -11,11 +11,13 @@
    CORRECTIONS GLOBALES
    ======================================== */
 
-/* Empêcher le débordement horizontal global */
+/* Empêcher le débordement horizontal global tout en permettant le scroll vertical */
 html,
 body {
     overflow-x: hidden;
+    overflow-y: auto !important;
     max-width: 100vw;
+    height: auto;
 }
 
 * {

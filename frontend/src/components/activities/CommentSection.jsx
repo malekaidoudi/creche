@@ -2,19 +2,24 @@
  * Section commentaires pour les activités
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiSend, FiTrash2, FiCornerDownRight, FiUser } from 'react-icons/fi';
+import { FiSend, FiTrash2, FiCornerDownRight, FiUser, FiLoader } from 'react-icons/fi';
 import activityService from '../../services/activityService';
 import { useAuth } from '../../contexts/AuthContext';
 
-const CommentSection = ({ activityId, commentsCount = 0, isRTL = false }) => {
+const CommentSection = ({ activityId, commentsCount = 0, isRTL = false, isFullscreen = false }) => {
   const { user } = useAuth();
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [newComment, setNewComment] = useState('');
   const [replyTo, setReplyTo] = useState(null);
   const [showComments, setShowComments] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const scrollContainerRef = useRef(null);
+  const COMMENTS_PER_PAGE = 5;
 
   const t = {
     comments: isRTL ? 'تعليقات' : 'Commentaires',
@@ -23,30 +28,78 @@ const CommentSection = ({ activityId, commentsCount = 0, isRTL = false }) => {
     delete: isRTL ? 'حذف' : 'Supprimer',
     noComments: isRTL ? 'لا توجد تعليقات بعد' : 'Aucun commentaire pour le moment',
     showComments: isRTL ? 'عرض التعليقات' : 'Voir les commentaires',
-    hideComments: isRTL ? 'إخفاء التعليقات' : 'Masquer les commentaires'
+    hideComments: isRTL ? 'إخفاء التعليقات' : 'Masquer les commentaires',
+    loadingMore: isRTL ? 'جاري تحميل المزيد...' : 'Chargement...'
   };
 
-  // Charger les commentaires
-  const loadComments = async () => {
-    if (!showComments) return;
+  // Charger les commentaires (initial ou pagination)
+  const loadComments = async (pageNum = 1, append = false) => {
+    if (loading || loadingMore) return;
+
     try {
-      setLoading(true);
-      const result = await activityService.getComments(activityId);
+      if (append) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+      }
+
+      const result = await activityService.getComments(activityId, pageNum, COMMENTS_PER_PAGE);
+
       if (result.success) {
-        setComments(result.comments);
+        const newComments = result.comments || [];
+
+        if (append) {
+          setComments(prev => [...prev, ...newComments]);
+        } else {
+          setComments(newComments);
+        }
+
+        // Vérifier s'il y a plus de commentaires
+        setHasMore(newComments.length === COMMENTS_PER_PAGE);
+        setPage(pageNum);
       }
     } catch (error) {
       console.error('Erreur chargement commentaires:', error);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
 
+  // Charger les commentaires au montage en mode fullscreen
   useEffect(() => {
-    if (showComments) {
-      loadComments();
+    if (isFullscreen) {
+      loadComments(1, false);
+    }
+  }, [activityId, isFullscreen]);
+
+  // Charger les commentaires quand on affiche la section (mode normal)
+  useEffect(() => {
+    if (showComments && !isFullscreen) {
+      loadComments(1, false);
     }
   }, [showComments, activityId]);
+
+  // Infinite scroll handler
+  const handleScroll = useCallback(() => {
+    if (!scrollContainerRef.current || loadingMore || !hasMore) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+
+    // Charger plus quand on est à 100px du bas
+    if (scrollHeight - scrollTop - clientHeight < 100) {
+      loadComments(page + 1, true);
+    }
+  }, [page, loadingMore, hasMore]);
+
+  // Attacher le listener de scroll
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (container && isFullscreen) {
+      container.addEventListener('scroll', handleScroll);
+      return () => container.removeEventListener('scroll', handleScroll);
+    }
+  }, [handleScroll, isFullscreen]);
 
   // Envoyer un commentaire
   const handleSubmit = async (e) => {
@@ -58,8 +111,8 @@ const CommentSection = ({ activityId, commentsCount = 0, isRTL = false }) => {
       if (result.success) {
         if (replyTo) {
           // Ajouter comme réponse
-          setComments(prev => prev.map(c => 
-            c.id === replyTo.id 
+          setComments(prev => prev.map(c =>
+            c.id === replyTo.id
               ? { ...c, replies: [...(c.replies || []), result.comment] }
               : c
           ));
@@ -91,7 +144,7 @@ const CommentSection = ({ activityId, commentsCount = 0, isRTL = false }) => {
     const d = new Date(date);
     const now = new Date();
     const diff = (now - d) / 1000;
-    
+
     if (diff < 60) return isRTL ? 'الآن' : 'À l\'instant';
     if (diff < 3600) return `${Math.floor(diff / 60)} ${isRTL ? 'دقيقة' : 'min'}`;
     if (diff < 86400) return `${Math.floor(diff / 3600)} ${isRTL ? 'ساعة' : 'h'}`;
@@ -143,6 +196,47 @@ const CommentSection = ({ activityId, commentsCount = 0, isRTL = false }) => {
     </motion.div>
   );
 
+  // Mode fullscreen - affichage direct sans toggle
+  if (isFullscreen) {
+    return (
+      <div className="flex flex-col h-full">
+        {/* Liste des commentaires avec scroll */}
+        <div
+          ref={scrollContainerRef}
+          className="flex-1 overflow-y-auto space-y-3 pb-4"
+        >
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <FiLoader className="animate-spin text-gray-400" size={24} />
+            </div>
+          ) : comments.length === 0 ? (
+            <p className="text-center text-gray-500 py-8">{t.noComments}</p>
+          ) : (
+            <>
+              {comments.map(comment => <CommentItem key={comment.id} comment={comment} />)}
+
+              {/* Indicateur de chargement pour infinite scroll */}
+              {loadingMore && (
+                <div className="flex items-center justify-center py-4">
+                  <FiLoader className="animate-spin text-gray-400" size={20} />
+                  <span className="ml-2 text-sm text-gray-500">{t.loadingMore}</span>
+                </div>
+              )}
+
+              {/* Message fin des commentaires */}
+              {!hasMore && comments.length > 0 && (
+                <p className="text-center text-gray-400 text-xs py-4">
+                  {isRTL ? 'لا توجد تعليقات أخرى' : 'Fin des commentaires'}
+                </p>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Mode normal - avec toggle
   return (
     <div className="border-t border-gray-200 dark:border-gray-700 pt-3">
       {/* Toggle commentaires */}

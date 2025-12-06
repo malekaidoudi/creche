@@ -54,7 +54,7 @@ async function cleanEnrollments() {
     try {
         // 1. Identifier les inscriptions avec données manquantes critiques
         const invalidEnrollments = await db.query(`
-      SELECT id, child_first_name, applicant_email, new_status, created_at
+      SELECT id, child_first_name, applicant_email, status, created_at
       FROM enrollments
       WHERE child_first_name IS NULL 
          OR child_first_name = ''
@@ -103,15 +103,15 @@ async function cleanEnrollments() {
 
         // 3. Vérifier les statuts valides
         const statusCheck = await db.query(`
-      SELECT new_status, COUNT(*) as count
+      SELECT status, COUNT(*) as count
       FROM enrollments
-      GROUP BY new_status
+      GROUP BY status
       ORDER BY count DESC
     `);
 
         log.info('Répartition des statuts:');
         statusCheck.rows.forEach(s => {
-            console.log(`   - ${s.new_status || 'NULL'}: ${s.count}`);
+            console.log(`   - ${s.status || 'NULL'}: ${s.count}`);
         });
 
     } catch (error) {

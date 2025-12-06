@@ -22,10 +22,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../..
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import HolidaysList from '../../components/HolidaysList';
 import TodayAbsences from '../../components/dashboard/TodayAbsences';
-import UpcomingEventsWidget from '../../components/widgets/UpcomingEventsWidget';
 import BirthdaysWidget from '../../components/widgets/BirthdaysWidget';
 import TodayTasksWidget from '../../components/widgets/TodayTasksWidget';
-import MessagesWidget from '../../components/widgets/MessagesWidget';
+import TodayAppointmentsWidget from '../../components/widgets/TodayAppointmentsWidget';
+import OverdueTasksWidget from '../../components/widgets/OverdueTasksWidget';
 import PendingAppointmentsWidget from '../../components/widgets/PendingAppointmentsWidget';
 import MobileDashboardComplete from '../../components/dashboard/MobileDashboardComplete';
 import EventModal from '../../components/modals/EventModal';
@@ -333,15 +333,15 @@ const DashboardHome = () => {
               />
             </motion.div>
 
-            {/* Widgets Événements, Messages, Anniversaires */}
+            {/* Widgets RDV Aujourd'hui, Tâches en Retard, Anniversaires */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.4 }}
             >
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-                <UpcomingEventsWidget onOpenEventModal={() => setShowEventModal(true)} />
-                <MessagesWidget />
+                <TodayAppointmentsWidget />
+                <OverdueTasksWidget />
                 <BirthdaysWidget />
               </div>
             </motion.div>

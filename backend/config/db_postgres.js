@@ -11,18 +11,19 @@ const dbConfig = {
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   port: process.env.DB_PORT || 5432,
-  ssl: { rejectUnauthorized: false },
-  
+  // SSL activé pour Neon - les certificats Neon sont valides, pas besoin de désactiver la vérification
+  ssl: process.env.NODE_ENV === 'production' ? true : { rejectUnauthorized: true },
+
   // Configuration du pool optimisée pour Neon
   max: 5, // Réduire le nombre de connexions max
   min: 0, // Pas de connexions minimum
   idleTimeoutMillis: 10000, // Fermer les connexions inactives après 10s
   connectionTimeoutMillis: 10000, // Augmenter le timeout de connexion à 10s
-  
+
   // Paramètres de requête
   query_timeout: 30000, // Timeout de requête à 30s
   statement_timeout: 30000, // Timeout de statement à 30s
-  
+
   // Retry sur erreur de connexion
   allowExitOnIdle: true, // Permettre au pool de se fermer si inactif
 };
@@ -86,38 +87,38 @@ const testConnection = async () => {
 const query = async (text, params, retries = 3) => {
   const start = Date.now();
   let lastError;
-  
+
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       const res = await pool.query(text, params);
       const duration = Date.now() - start;
-      
+
       // Log seulement en développement pour éviter le spam
       if (process.env.NODE_ENV === 'development') {
-        console.log('🔍 Requête exécutée:', { 
-          text: text.substring(0, 50) + '...', 
-          duration: duration + 'ms', 
-          rows: res.rowCount 
+        console.log('🔍 Requête exécutée:', {
+          text: text.substring(0, 50) + '...',
+          duration: duration + 'ms',
+          rows: res.rowCount
         });
       }
-      
+
       return res;
     } catch (error) {
       lastError = error;
-      
+
       // Si c'est un timeout ou une connexion terminée, on retry
       if ((error.message.includes('timeout') || error.message.includes('terminated')) && attempt < retries) {
         console.warn(`⚠️ Tentative ${attempt}/${retries} échouée, retry dans ${attempt * 500}ms...`);
         await new Promise(resolve => setTimeout(resolve, attempt * 500));
         continue;
       }
-      
+
       // Sinon on throw l'erreur
       console.error('❌ Erreur requête PostgreSQL:', error.message);
       throw error;
     }
   }
-  
+
   throw lastError;
 };
 

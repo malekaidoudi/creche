@@ -225,6 +225,8 @@ const EnrollmentsPage = () => {
     switch (status) {
       case 'pending':
         return <Clock className="w-4 h-4 text-yellow-500" />;
+      case 'in_progress':
+        return <Calendar className="w-4 h-4 text-blue-500" />;
       case 'approved':
         return <CheckCircle className="w-4 h-4 text-green-500" />;
       case 'rejected_incomplete':
@@ -238,6 +240,7 @@ const EnrollmentsPage = () => {
   const getStatusLabel = (status) => {
     const labels = {
       pending: isRTL ? 'في الانتظار' : 'En attente',
+      in_progress: isRTL ? 'في انتظار الموعد' : 'En attente du RDV',
       approved: isRTL ? 'مقبول' : 'Approuvé',
       rejected_incomplete: isRTL ? 'مرفوض (ملف غير مكتمل)' : 'Rejeté (dossier incomplet)',
       rejected_deleted: isRTL ? 'مرفوض (محذوف)' : 'Rejeté (supprimé)'
@@ -249,6 +252,8 @@ const EnrollmentsPage = () => {
     switch (status) {
       case 'pending':
         return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300';
+      case 'in_progress':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300';
       case 'approved':
         return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300';
       case 'rejected_incomplete':
@@ -276,7 +281,8 @@ const EnrollmentsPage = () => {
   const tabs = [
     { id: 'all', label: isRTL ? 'الكل' : 'Toutes', count: allEnrollmentsForCounts.length },
     { id: 'pending', label: isRTL ? 'في الانتظار' : 'En attente', count: allEnrollmentsForCounts.filter(e => (e.new_status || e.status) === 'pending').length },
-    { id: 'approved', label: isRTL ? 'مقبولة' : 'Approuvées', count: allEnrollmentsForCounts.filter(e => (e.new_status || e.status) === 'approved').length },
+    { id: 'in_progress', label: isRTL ? 'في انتظار الموعد' : 'RDV en attente', count: allEnrollmentsForCounts.filter(e => (e.new_status || e.status) === 'in_progress').length },
+    { id: 'approved', label: isRTL ? 'مقبولة' : 'Finalisées', count: allEnrollmentsForCounts.filter(e => (e.new_status || e.status) === 'approved').length },
     {
       id: 'rejected', label: isRTL ? 'مرفوضة' : 'Rejetées', count: allEnrollmentsForCounts.filter(e => {
         const status = e.new_status || e.status;
@@ -334,8 +340,8 @@ const EnrollmentsPage = () => {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`flex flex-col items-center justify-center p-2.5 rounded-lg border-2 transition-all ${activeTab === tab.id
-                  ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
-                  : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300'
+                ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
+                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300'
                 }`}
             >
               <span className="text-xl font-bold">{tab.count}</span>
@@ -352,14 +358,14 @@ const EnrollmentsPage = () => {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`py-2 px-1 border-b-2 font-medium text-sm whitespace-nowrap flex items-center ${activeTab === tab.id
-                    ? 'border-primary-500 text-primary-600 dark:text-primary-400'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                  ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
                   }`}
               >
                 {tab.label}
                 <span className={`ml-2 rtl:ml-0 rtl:mr-2 py-0.5 px-2 rounded-full text-xs ${activeTab === tab.id
-                    ? 'bg-primary-100 text-primary-600 dark:bg-primary-900/20 dark:text-primary-400'
-                    : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+                  ? 'bg-primary-100 text-primary-600 dark:bg-primary-900/20 dark:text-primary-400'
+                  : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
                   }`}>
                   {tab.count}
                 </span>

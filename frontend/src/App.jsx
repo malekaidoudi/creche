@@ -34,9 +34,8 @@ import MessagesPage from './pages/messages/MessagesPage'
 // Pages tasks
 import TasksPage from './pages/tasks/TasksPage'
 
-// Pages événements
-import EventsCalendar from './pages/events/EventsCalendar'
-import EventDetails from './pages/events/EventDetails'
+// Pages planning
+import MonthlyPlanningPage from './pages/dashboard/MonthlyPlanningPage'
 
 // Pages dashboard
 import DashboardHome from './pages/dashboard/DashboardHome'
@@ -56,6 +55,7 @@ import GeneralStatsPage from './pages/dashboard/GeneralStatsPage'
 import AttendanceReportPage from './pages/dashboard/AttendanceReportPage'
 import DashboardSettingsPage from './pages/dashboard/DashboardSettingsPage'
 import StaffSettingsPage from './pages/dashboard/StaffSettingsPage'
+import WeeklyPlanningPage from './pages/dashboard/WeeklyPlanningPage'
 
 // Page Activités
 import ActivitiesPage from './pages/activities/ActivitiesPage'
@@ -131,14 +131,7 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="mon-espace/events/:id"
-          element={
-            <ProtectedRoute roles={['parent']}>
-              <EventDetails />
-            </ProtectedRoute>
-          }
-        />
+        {/* Route mon-espace/events/:id supprimée - détails affichés dans modal */}
 
         {/* Page profil unifiée (tous les utilisateurs connectés) */}
         <Route
@@ -201,9 +194,13 @@ function App() {
         <Route path="documents/uploaded" element={<DocumentsPage />} />
         <Route path="absence-management" element={<AbsenceManagementPage />} />
 
-        {/* Routes événements */}
-        <Route path="events/calendar" element={<EventsCalendar />} />
-        <Route path="events/:id" element={<EventDetails />} />
+        {/* Route événements supprimée - détails affichés dans modal */}
+
+        {/* Routes planning */}
+        <Route path="planning/calendar" element={<MonthlyPlanningPage />} />
+        <Route path="planning/weekly" element={<WeeklyPlanningPage />} />
+        {/* Redirection ancienne route */}
+        <Route path="events/calendar" element={<MonthlyPlanningPage />} />
 
         {/* Route staff pour envoyer mémo/tâche */}
         <Route path="staff/send-message" element={<StaffMemoForm />} />
@@ -219,6 +216,9 @@ function App() {
 
         {/* Route activités (tous les rôles) */}
         <Route path="activities" element={<ActivitiesPage />} />
+
+        {/* Redirection ancienne route planning */}
+        <Route path="planning" element={<WeeklyPlanningPage />} />
 
         {/* Pages placeholder pour fonctionnalités non implémentées */}
         <Route path="parents" element={<ParentsPage />} />

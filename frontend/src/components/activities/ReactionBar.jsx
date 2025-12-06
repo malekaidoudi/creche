@@ -2,7 +2,7 @@
  * Barre de réactions pour les activités - Style moderne type Facebook/Instagram
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Emojis animés modernes avec gradients de couleur
@@ -18,6 +18,7 @@ const REACTIONS = [
 const ReactionBar = ({ reactions = {}, onReact, isRTL = false }) => {
   const [showPicker, setShowPicker] = useState(false);
   const [hoveredReaction, setHoveredReaction] = useState(null);
+  const longPressTimer = useRef(null);
   const userReaction = reactions.userReaction;
 
   const handleReaction = (type) => {
@@ -25,18 +26,50 @@ const ReactionBar = ({ reactions = {}, onReact, isRTL = false }) => {
     setShowPicker(false);
   };
 
+  // Gestion de l'appui long pour afficher le picker
+  const handleTouchStart = (e) => {
+    e.preventDefault(); // Empêcher la sélection de texte
+    longPressTimer.current = setTimeout(() => {
+      setShowPicker(true);
+    }, 500); // 500ms pour l'appui long
+  };
+
+  const handleTouchEnd = (e) => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      // Si le picker n'est pas affiché, c'était un tap court -> toggle reaction
+      if (!showPicker) {
+        if (userReaction) {
+          onReact(userReaction); // Retirer la réaction
+        } else {
+          onReact('like'); // Ajouter un like par défaut
+        }
+      }
+    }
+  };
+
+  const handleTouchCancel = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+    }
+  };
+
   const currentReaction = REACTIONS.find(r => r.type === userReaction);
 
   return (
-    <div className="relative">
+    <div className="relative overflow-visible">
       {/* Bouton principal */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <motion.button
           onClick={() => userReaction ? onReact(userReaction) : setShowPicker(!showPicker)}
           onMouseEnter={() => setShowPicker(true)}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          onTouchCancel={handleTouchCancel}
+          onContextMenu={(e) => e.preventDefault()}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all shadow-sm
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all shadow-sm select-none touch-manipulation
             ${currentReaction
               ? `${currentReaction.bg} bg-gradient-to-r ${currentReaction.color} bg-clip-text text-transparent border border-transparent`
               : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600'
@@ -86,8 +119,8 @@ const ReactionBar = ({ reactions = {}, onReact, isRTL = false }) => {
             transition={{ type: "spring", stiffness: 400, damping: 25 }}
             onMouseLeave={() => setShowPicker(false)}
             className={`absolute bottom-full mb-3 ${isRTL ? 'right-0' : 'left-0'}
-              bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700
-              px-3 py-2 flex gap-1 z-50`}
+              bg-white dark:bg-gray-800 rounded-full shadow-2xl border border-gray-100 dark:border-gray-700
+              px-2 py-1.5 flex items-center gap-0.5 z-50`}
           >
             {REACTIONS.map((reaction, index) => (
               <motion.div
@@ -103,26 +136,25 @@ const ReactionBar = ({ reactions = {}, onReact, isRTL = false }) => {
                       initial={{ opacity: 0, y: 5 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 5 }}
-                      className="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded-lg whitespace-nowrap shadow-lg"
+                      className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] px-2 py-1 rounded-lg whitespace-nowrap shadow-lg"
                     >
                       {isRTL ? reaction.labelAr : reaction.label}
-                      <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
                     </motion.div>
                   )}
                 </AnimatePresence>
 
                 {/* Bouton emoji */}
                 <motion.button
-                  initial={{ scale: 0, rotate: -180 }}
-                  animate={{ scale: 1, rotate: 0 }}
-                  transition={{ delay: index * 0.05, type: "spring", stiffness: 300 }}
-                  whileHover={{ scale: 1.4, y: -8, rotate: [0, -10, 10, 0] }}
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: index * 0.03, type: "spring", stiffness: 400 }}
+                  whileHover={{ scale: 1.3, y: -4 }}
                   whileTap={{ scale: 0.9 }}
                   onClick={() => handleReaction(reaction.type)}
-                  className={`text-3xl p-1.5 rounded-full transition-all
-                    ${userReaction === reaction.type ? `${reaction.bg} ring-2 ring-offset-2 ring-offset-white dark:ring-offset-gray-800 ring-gray-300 dark:ring-gray-600` : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                  className={`text-2xl w-10 h-10 flex items-center justify-center rounded-full transition-all
+                    ${userReaction === reaction.type ? `${reaction.bg}` : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
                 >
-                  {reaction.animatedEmoji || reaction.emoji}
+                  {reaction.emoji}
                 </motion.button>
               </motion.div>
             ))}

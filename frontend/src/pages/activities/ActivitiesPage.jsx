@@ -4,9 +4,10 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiPlus, FiLoader, FiImage, FiCheck } from 'react-icons/fi';
+import { FiPlus, FiLoader, FiImage, FiCheck, FiX, FiChevronUp, FiChevronDown } from 'react-icons/fi';
 import ActivityCard from '../../components/activities/ActivityCard';
 import ActivityForm from '../../components/activities/ActivityForm';
+import FullscreenFeed from '../../components/activities/FullscreenFeed';
 import useActivities from '../../hooks/useActivities';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -16,6 +17,7 @@ const ActivitiesPage = () => {
   const [isRTL, setIsRTL] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [fullscreenIndex, setFullscreenIndex] = useState(null); // Index de la publication en plein écran
   const observerRef = useRef(null);
   const loadMoreRef = useRef(null);
 
@@ -104,7 +106,7 @@ const ActivitiesPage = () => {
   };
 
   return (
-    <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 ${isRTL ? 'rtl' : 'ltr'}`} dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className={`pb-20 min-h-full overflow-x-hidden ${isRTL ? 'rtl' : 'ltr'}`} dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Notification de succès */}
       <AnimatePresence>
         {showSuccess && (
@@ -224,13 +226,14 @@ const ActivitiesPage = () => {
           </div>
         ) : (
           <div className="space-y-6">
-            {activities.map((activity) => (
+            {activities.map((activity, index) => (
               <ActivityCard
                 key={activity.id}
                 activity={activity}
                 onReact={toggleReaction}
                 onDelete={handleDelete}
                 isRTL={isRTL}
+                onOpenFullscreen={() => setFullscreenIndex(index)}
               />
             ))}
 
@@ -245,6 +248,21 @@ const ActivitiesPage = () => {
           </div>
         )}
       </div>
+
+      {/* Mode plein écran avec navigation verticale */}
+      <AnimatePresence>
+        {fullscreenIndex !== null && (
+          <FullscreenFeed
+            activities={activities}
+            initialIndex={fullscreenIndex}
+            onClose={() => setFullscreenIndex(null)}
+            onReact={toggleReaction}
+            isRTL={isRTL}
+            hasMore={hasMore}
+            onLoadMore={loadMore}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };

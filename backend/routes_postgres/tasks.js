@@ -18,18 +18,18 @@ const auth = require('../middleware/auth');
 router.post('/', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
   try {
     const result = await taskService.createTask(req.body, req.user.userId);
-    
+
     if (result.success) {
       res.status(201).json(result);
     } else {
       res.status(400).json(result);
     }
-    
+
   } catch (error) {
     console.error('❌ Erreur POST /api/tasks:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la création de la tâche' 
+      error: 'Erreur lors de la création de la tâche'
     });
   }
 });
@@ -41,14 +41,14 @@ router.get('/my', auth.authenticateToken, async (req, res) => {
   try {
     const { status, date } = req.query;
     const result = await taskService.getUserTasks(req.user.userId, { status, date });
-    
+
     res.json(result);
-    
+
   } catch (error) {
     console.error('❌ Erreur GET /api/tasks/my:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la récupération des tâches' 
+      error: 'Erreur lors de la récupération des tâches'
     });
   }
 });
@@ -59,14 +59,14 @@ router.get('/my', auth.authenticateToken, async (req, res) => {
 router.get('/today', auth.authenticateToken, async (req, res) => {
   try {
     const result = await taskService.getTodayTasks(req.user.userId);
-    
+
     res.json(result);
-    
+
   } catch (error) {
     console.error('❌ Erreur GET /api/tasks/today:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la récupération des tâches' 
+      error: 'Erreur lors de la récupération des tâches'
     });
   }
 });
@@ -77,14 +77,14 @@ router.get('/today', auth.authenticateToken, async (req, res) => {
 router.get('/overdue', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
   try {
     const result = await taskService.getOverdueTasks();
-    
+
     res.json(result);
-    
+
   } catch (error) {
     console.error('❌ Erreur GET /api/tasks/overdue:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la récupération des tâches en retard' 
+      error: 'Erreur lors de la récupération des tâches en retard'
     });
   }
 });
@@ -100,18 +100,18 @@ router.patch('/:id/status', auth.authenticateToken, async (req, res) => {
       status,
       req.user.userId
     );
-    
+
     if (result.success) {
       res.json(result);
     } else {
       res.status(404).json(result);
     }
-    
+
   } catch (error) {
     console.error('❌ Erreur PATCH /api/tasks/:id/status:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la mise à jour du statut' 
+      error: 'Erreur lors de la mise à jour du statut'
     });
   }
 });
@@ -125,18 +125,18 @@ router.post('/:id/remind', auth.authenticateToken, auth.requireRole('admin'), as
       parseInt(req.params.id),
       req.user.userId
     );
-    
+
     if (result.success) {
       res.json(result);
     } else {
       res.status(404).json(result);
     }
-    
+
   } catch (error) {
     console.error('❌ Erreur POST /api/tasks/:id/remind:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de l\'envoi du rappel' 
+      error: 'Erreur lors de l\'envoi du rappel'
     });
   }
 });
@@ -147,18 +147,18 @@ router.post('/:id/remind', auth.authenticateToken, auth.requireRole('admin'), as
 router.delete('/:id', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
   try {
     const result = await taskService.deleteTask(parseInt(req.params.id));
-    
+
     if (result.success) {
       res.json(result);
     } else {
       res.status(404).json(result);
     }
-    
+
   } catch (error) {
     console.error('❌ Erreur DELETE /api/tasks/:id:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la suppression de la tâche' 
+      error: 'Erreur lors de la suppression de la tâche'
     });
   }
 });

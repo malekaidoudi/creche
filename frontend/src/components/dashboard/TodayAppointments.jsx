@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, Clock, User, Phone, Mail, RefreshCw, CheckCircle, FileText } from 'lucide-react';
+import { Calendar, Clock, User, Phone, Mail, RefreshCw, CheckCircle, FileText, MoreVertical } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import api from '../../services/api';
 import { useDialogContext } from '../../contexts/DialogContext';
+import AppointmentActionModal from '../modals/AppointmentActionModal';
 
 const TodayAppointments = () => {
   const { isRTL } = useLanguage();
@@ -11,6 +12,8 @@ const TodayAppointments = () => {
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
+  const [showActionModal, setShowActionModal] = useState(false);
 
   const fetchAppointments = async (showToast = false) => {
     try {
@@ -142,12 +145,26 @@ const TodayAppointments = () => {
               transition={{ delay: index * 0.1 }}
               className="group relative bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500 rounded-xl p-4 hover:shadow-md transition-all"
             >
-              {/* Time Badge */}
-              <div className="absolute top-4 right-4">
+              {/* Time Badge + Action Button */}
+              <div className="absolute top-4 right-4 flex items-center gap-2">
                 <div className="flex items-center gap-1 px-3 py-1 bg-blue-500 text-white text-sm font-bold rounded-full shadow-lg">
                   <Clock className="w-4 h-4" />
                   {apt.appointment_time}
                 </div>
+                {/* Action Button for inscription appointments */}
+                {(apt.appointment_type === 'inscription' || apt.enrollment_id) &&
+                  apt.status !== 'completed' && apt.status !== 'failed' && (
+                    <button
+                      onClick={() => {
+                        setSelectedAppointment(apt);
+                        setShowActionModal(true);
+                      }}
+                      className="p-2 bg-white hover:bg-gray-100 rounded-full shadow-lg transition-colors"
+                      title={isRTL ? 'إجراءات' : 'Actions'}
+                    >
+                      <MoreVertical className="w-4 h-4 text-gray-600" />
+                    </button>
+                  )}
               </div>
 
               {/* Content */}
@@ -213,6 +230,17 @@ const TodayAppointments = () => {
           </p>
         </div>
       )}
+
+      {/* Action Modal */}
+      <AppointmentActionModal
+        isOpen={showActionModal}
+        onClose={() => {
+          setShowActionModal(false);
+          setSelectedAppointment(null);
+        }}
+        appointment={selectedAppointment}
+        onSuccess={() => fetchAppointments(true)}
+      />
     </motion.div>
   );
 };

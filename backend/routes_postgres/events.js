@@ -185,10 +185,12 @@ router.get('/views/upcoming', authenticateToken, async (req, res) => {
 /**
  * GET /api/events/overdue
  * Récupérer les événements en retard
+ * Admin: toutes les tâches en retard
+ * Staff: seulement les siennes
  */
 router.get('/views/overdue', authenticateToken, async (req, res) => {
   try {
-    const result = await eventService.getOverdueEvents(req.user.id);
+    const result = await eventService.getOverdueEvents(req.user.id, req.user.role);
     res.json(result);
 
   } catch (error) {

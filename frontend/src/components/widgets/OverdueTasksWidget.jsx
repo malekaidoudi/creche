@@ -1,29 +1,63 @@
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, CheckCircle, ChevronRight } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { useLanguage } from '../../contexts/LanguageContext';
+import { motion } from 'framer-motion';
+import { AlertCircle, CheckCircle, ChevronRight, Clock, RefreshCw, MessageSquare } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useLanguage } from '../../hooks/useLanguage';
+import { useAuth } from '../../hooks/useAuth';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
 import api from '../../services/api';
 import { useDialogContext } from '../../contexts/DialogContext';
+import TaskDetailModal from '../modals/TaskDetailModal';
 
 const OverdueTasksWidget = () => {
   const { isRTL } = useLanguage();
+  const { user, isAdmin } = useAuth();
   const dialog = useDialogContext();
   const navigate = useNavigate();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [processingId, setProcessingId] = useState(null);
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+
+  // Ouvrir la conversation avec le staff assigné
+  const openStaffConversation = (task) => {
+    if (task.assigned_to) {
+      navigate(`/dashboard/messages?user=${task.assigned_to}`);
+    }
+  };
+
+  // Déterminer les actions disponibles pour une tâche
+  // - Tâche assignée au directeur (admin) -> bouton Terminé
+  // - Tâche assignée à un staff -> bouton Message (pour admin uniquement)
+  const getTaskActions = (task) => {
+    // Si l'utilisateur actuel est admin
+    if (isAdmin()) {
+      // Tâche assignée à un staff (pas admin) -> bouton message seulement
+      if (task.assigned_to && task.assigned_to_role === 'staff') {
+        return { showMessage: true, showComplete: false };
+      }
+      // Tâche assignée au directeur ou non assignée -> bouton terminé
+      return { showMessage: false, showComplete: true };
+    }
+    // Pour les autres rôles, pas d'actions (ne devrait pas arriver car widget admin only)
+    return { showMessage: false, showComplete: false };
+  };
 
   useEffect(() => {
     loadOverdueTasks();
   }, []);
 
-  const loadOverdueTasks = async () => {
+  const loadOverdueTasks = async (showToast = false) => {
     try {
-      setLoading(true);
+      if (showToast) setRefreshing(true);
+      else setLoading(true);
+
       const response = await api.get('/api/events/views/overdue');
 
       if (response.data.success) {
-        setTasks(response.data.events || []);
+        setTasks((response.data.events || []).slice(0, 10)); // Limiter à 10
       } else {
         setTasks([]);
       }
@@ -32,7 +66,18 @@ const OverdueTasksWidget = () => {
       setTasks([]);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const handleTaskClick = (task) => {
+    setSelectedTask(task);
+    setShowDetailModal(true);
+  };
+
+  const handleTaskUpdate = () => {
+    loadOverdueTasks();
+    setShowDetailModal(false);
   };
 
   const getDaysOverdue = (dateString) => {
@@ -44,9 +89,13 @@ const OverdueTasksWidget = () => {
     if (diffDays === 0) {
       return isRTL ? 'اليوم' : 'Aujourd\'hui';
     } else if (diffDays === 1) {
-      return isRTL ? 'منذ يوم واحد' : 'Depuis 1 jour';
+      return isRTL ? 'يوم واحد' : '1 jour';
+    } else if (diffDays === 2) {
+      return isRTL ? 'يومين' : '2 jours';
+    } else if (diffDays < 11) {
+      return isRTL ? `${diffDays} أيام` : `${diffDays} jours`;
     } else {
-      return isRTL ? `منذ ${diffDays} أيام` : `Depuis ${diffDays} jours`;
+      return isRTL ? `${diffDays} يوم` : `${diffDays} jours`;
     }
   };
 
@@ -72,148 +121,142 @@ const OverdueTasksWidget = () => {
 
   if (loading) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+      <Card className="h-full">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 text-red-500" />
             {isRTL ? 'المهام المتأخرة' : 'Tâches en Retard'}
-          </h3>
-        </div>
-        <div className="space-y-3">
-          {[1, 2].map(i => (
-            <div key={i} className="animate-pulse">
-              <div className="h-16 bg-gray-200 dark:bg-gray-700 rounded"></div>
-            </div>
-          ))}
-        </div>
-      </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="animate-pulse h-14 bg-gray-100 dark:bg-gray-700 rounded-lg" />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
-      {/* Header */}
-      <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-red-100 dark:bg-red-900 rounded-lg">
-              <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                {isRTL ? 'المهام المتأخرة' : 'Tâches en Retard'}
-              </h3>
+    <>
+      <Card className="h-full">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-red-500" />
+              {isRTL ? 'المهام المتأخرة' : 'Tâches en Retard'}
               {tasks.length > 0 && (
-                <p className="text-sm text-red-600 dark:text-red-400 font-medium">
-                  {tasks.length} {isRTL ? 'مهمة متأخرة' : `tâche${tasks.length > 1 ? 's' : ''} en retard`}
-                </p>
+                <span className="ml-2 px-2 py-0.5 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-xs font-bold rounded-full">
+                  {tasks.length}
+                </span>
               )}
-            </div>
-          </div>
-
-          {tasks.length > 0 && (
+            </CardTitle>
             <button
-              onClick={() => navigate('/dashboard/tasks/kanban')}
-              className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-sm font-medium flex items-center gap-1"
+              onClick={() => loadOverdueTasks(true)}
+              disabled={refreshing}
+              className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
-              {isRTL ? 'عرض الكل' : 'Voir tout'}
-              <ChevronRight className="w-4 h-4" />
+              <RefreshCw className={`w-4 h-4 text-gray-500 ${refreshing ? 'animate-spin' : ''}`} />
             </button>
-          )}
-        </div>
-      </div>
-
-      {/* Tasks List */}
-      <div className="p-6">
-        {tasks.length === 0 ? (
-          <div className="text-center py-8">
-            <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
-            <p className="text-gray-500 dark:text-gray-400 font-medium">
-              {isRTL ? 'رائع! لا توجد مهام متأخرة' : 'Super ! Aucune tâche en retard'}
-            </p>
-            <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
-              {isRTL ? 'استمر في العمل الجيد' : 'Continuez comme ça'}
-            </p>
           </div>
-        ) : (
-          <div className="space-y-3">
-            {tasks.map((task) => (
-              <div
-                key={task.id}
-                className="relative overflow-hidden rounded-lg border-2 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-4 hover:shadow-md transition-shadow"
-              >
-                {/* Warning stripe */}
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 to-orange-500"></div>
-
-                <div className="flex items-start gap-3">
-                  {/* Icon */}
-                  <div className="flex-shrink-0 mt-1">
-                    <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
-                  </div>
-
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <h4
-                        className="font-medium text-gray-900 dark:text-white cursor-pointer hover:text-red-600 dark:hover:text-red-400"
-                        onClick={() => navigate(`/dashboard/events/${task.id}`)}
-                      >
+        </CardHeader>
+        <CardContent>
+          {tasks.length === 0 ? (
+            <div className="text-center py-6">
+              <CheckCircle className="w-10 h-10 mx-auto text-green-500 mb-2" />
+              <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">
+                {isRTL ? 'رائع! لا توجد مهام متأخرة' : 'Aucune tâche en retard'}
+              </p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                {isRTL ? 'استمر في العمل الجيد' : 'Continuez comme ça !'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-[280px] overflow-y-auto">
+              {tasks.map((task, index) => (
+                <motion.div
+                  key={task.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  onClick={() => handleTaskClick(task)}
+                  className="group p-3 rounded-lg border-l-4 border-red-500 bg-red-50 dark:bg-red-900/20 cursor-pointer transition-all hover:shadow-sm hover:bg-red-100 dark:hover:bg-red-900/30"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      {/* Titre */}
+                      <h4 className="font-semibold text-gray-900 dark:text-white text-sm truncate">
                         {task.title}
                       </h4>
+
+                      {/* Retard */}
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-red-500 text-white font-medium">
+                          ⏰ {getDaysOverdue(task.end_date || task.start_date)}
+                        </span>
+                        {task.assigned_to_name && (
+                          <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                            👤 {task.assigned_to_name}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
-                    {task.description && (
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">
-                        {task.description}
-                      </p>
-                    )}
-
-                    <div className="flex items-center gap-4 text-sm">
-                      <div className="flex items-center gap-1 text-red-600 dark:text-red-400 font-medium">
-                        <span>⏰</span>
-                        <span>{getDaysOverdue(task.end_date || task.start_date)}</span>
-                      </div>
-
-                      {task.assigned_to_name && (
-                        <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
-                          <span>👤</span>
-                          <span className="truncate">{task.assigned_to_name}</span>
-                        </div>
-                      )}
+                    {/* Actions selon l'assignation */}
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {(() => {
+                        const actions = getTaskActions(task);
+                        return (
+                          <>
+                            {/* Bouton message si tâche assignée à un staff */}
+                            {actions.showMessage && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); openStaffConversation(task); }}
+                                className="p-1.5 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/50 dark:hover:bg-blue-900 text-blue-600 dark:text-blue-400 rounded-lg transition-colors"
+                                title={isRTL ? 'مراسلة' : `Contacter ${task.assigned_to_name || 'le staff'}`}
+                              >
+                                <MessageSquare className="w-4 h-4" />
+                              </button>
+                            )}
+                            {/* Bouton compléter si tâche assignée au directeur ou non assignée */}
+                            {actions.showComplete && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); markAsCompleted(task.id); }}
+                                disabled={processingId === task.id}
+                                className="p-1.5 bg-green-100 hover:bg-green-200 dark:bg-green-900/50 dark:hover:bg-green-900 text-green-600 dark:text-green-400 rounded-lg transition-colors"
+                                title={isRTL ? 'إكمال' : 'Terminer'}
+                              >
+                                {processingId === task.id ? (
+                                  <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                  <CheckCircle className="w-4 h-4" />
+                                )}
+                              </button>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-                  {/* Action Button */}
-                  <button
-                    onClick={() => markAsCompleted(task.id)}
-                    disabled={processingId === task.id}
-                    className="flex-shrink-0 p-2 bg-green-100 hover:bg-green-200 dark:bg-green-900 dark:hover:bg-green-800 text-green-600 dark:text-green-400 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    title={isRTL ? 'وضع علامة كمكتمل' : 'Marquer comme complété'}
-                  >
-                    {processingId === task.id ? (
-                      <div className="w-5 h-5 border-2 border-green-600 border-t-transparent rounded-full animate-spin"></div>
-                    ) : (
-                      <CheckCircle className="w-5 h-5" />
-                    )}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Footer */}
-      {tasks.length > 0 && (
-        <div className="px-6 py-3 bg-red-50 dark:bg-red-900/20 border-t border-red-200 dark:border-red-800 rounded-b-lg">
-          <button
-            onClick={() => navigate('/dashboard/tasks/kanban')}
-            className="text-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 font-medium w-full text-center"
-          >
-            {isRTL ? 'إدارة جميع المهام' : 'Gérer toutes les tâches'}
-          </button>
-        </div>
+      {/* Modal de détails */}
+      {showDetailModal && selectedTask && (
+        <TaskDetailModal
+          isOpen={showDetailModal}
+          onClose={() => setShowDetailModal(false)}
+          task={selectedTask}
+          onUpdate={handleTaskUpdate}
+        />
       )}
-    </div>
+    </>
   );
 };
 

@@ -76,16 +76,16 @@ const auth = {
       try {
         const userId = req.user.id;
         const userRole = req.user.role;
-        
+
         // Admin et staff ont accès à tout
         if (['admin', 'staff'].includes(userRole)) {
           return next();
         }
-        
+
         // Pour les parents, vérifier la propriété selon le type de ressource
         if (userRole === 'parent') {
           let hasAccess = false;
-          
+
           switch (resourceType) {
             case 'enrollment':
               // Vérifier si l'enrollment appartient au parent
@@ -99,38 +99,38 @@ const auth = {
               `, [enrollmentId, userId]);
               hasAccess = enrollmentCheck.rows.length > 0;
               break;
-              
+
             case 'child':
               // Vérifier si l'enfant appartient au parent via enrollment
               const childId = req.params.id || req.params.childId;
               const childCheck = await db.query(`
                 SELECT 1 FROM enrollments e
                 JOIN users u ON e.parent_id = u.id
-                WHERE e.child_id = $1 AND u.id = $2 AND e.new_status = 'approved'
+                WHERE e.child_id = $1 AND u.id = $2 AND e.status = 'approved'
               `, [childId, userId]);
               hasAccess = childCheck.rows.length > 0;
               break;
-              
+
             case 'attendance':
               // Vérifier si la présence concerne un enfant du parent
               const attendanceChildId = req.params.childId || req.body.child_id;
               const attendanceCheck = await db.query(`
                 SELECT 1 FROM enrollments e
                 JOIN users u ON e.parent_id = u.id
-                WHERE e.child_id = $1 AND u.id = $2 AND e.new_status = 'approved'
+                WHERE e.child_id = $1 AND u.id = $2 AND e.status = 'approved'
               `, [attendanceChildId, userId]);
               hasAccess = attendanceCheck.rows.length > 0;
               break;
-              
+
             default:
               hasAccess = false;
           }
-          
+
           if (hasAccess) {
             return next();
           }
         }
-        
+
         return res.status(403).json({
           success: false,
           error: 'Accès refusé - Ressource non autorisée',
@@ -138,7 +138,7 @@ const auth = {
           user_role: userRole,
           code: 'RESOURCE_ACCESS_DENIED'
         });
-        
+
       } catch (error) {
         logger.error('❌ Erreur vérification propriété:', error.message);
         return res.status(500).json({
@@ -155,12 +155,12 @@ const auth = {
       const userId = req.user.id;
       const userRole = req.user.role;
       const documentId = req.params.docId || req.params.id;
-      
+
       // Admin et staff ont accès à tous les documents
       if (['admin', 'staff'].includes(userRole)) {
         return next();
       }
-      
+
       // Pour les parents, vérifier l'accès selon le type de document
       if (userRole === 'parent') {
         // Vérifier accès aux documents d'enrollment
@@ -172,29 +172,29 @@ const auth = {
             e.applicant_email = (SELECT email FROM users WHERE id = $2)
           )
         `, [documentId, userId]);
-        
+
         if (enrollmentDocCheck.rows.length > 0) {
           return next();
         }
-        
+
         // Vérifier accès aux documents d'enfant
         const childDocCheck = await db.query(`
           SELECT 1 FROM children_documents cd
           JOIN enrollments e ON cd.child_id = e.child_id
-          WHERE cd.id = $1 AND e.parent_id = $2 AND e.new_status = 'approved'
+          WHERE cd.id = $1 AND e.parent_id = $2 AND e.status = 'approved'
         `, [documentId, userId]);
-        
+
         if (childDocCheck.rows.length > 0) {
           return next();
         }
       }
-      
+
       return res.status(403).json({
         success: false,
         error: 'Accès refusé - Document non autorisé',
         code: 'DOCUMENT_ACCESS_DENIED'
       });
-      
+
     } catch (error) {
       logger.error('❌ Erreur vérification accès document:', error.message);
       return res.status(500).json({
@@ -207,25 +207,25 @@ const auth = {
   // Middleware pour les endpoints publics avec limitation
   rateLimitPublic: (maxRequests = 10, windowMs = 15 * 60 * 1000) => {
     const requests = new Map();
-    
+
     return (req, res, next) => {
       const ip = req.ip || req.connection.remoteAddress;
       const now = Date.now();
-      
+
       // Nettoyer les anciennes entrées
       for (const [key, data] of requests.entries()) {
         if (now - data.firstRequest > windowMs) {
           requests.delete(key);
         }
       }
-      
+
       const userRequests = requests.get(ip);
-      
+
       if (!userRequests) {
         requests.set(ip, { count: 1, firstRequest: now });
         return next();
       }
-      
+
       if (userRequests.count >= maxRequests) {
         return res.status(429).json({
           success: false,
@@ -234,7 +234,7 @@ const auth = {
           code: 'RATE_LIMIT_EXCEEDED'
         });
       }
-      
+
       userRequests.count++;
       next();
     };

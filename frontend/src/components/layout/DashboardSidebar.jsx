@@ -113,11 +113,22 @@ const DashboardSidebar = ({ isOpen, onClose, onCollapsedChange }) => {
       roles: ['admin', 'staff', 'parent']
     },
     {
-      key: 'calendar',
-      title: isRTL ? 'التقويم' : 'Calendrier',
+      key: 'planning',
+      title: isRTL ? 'التخطيط' : 'Planning',
       icon: Calendar,
-      path: '/dashboard/events/calendar',
-      roles: ['admin', 'staff']
+      roles: ['admin', 'staff'],
+      submenu: [
+        {
+          title: isRTL ? 'شهري' : 'Mensuelle',
+          path: '/dashboard/planning/calendar',
+          roles: ['admin', 'staff']
+        },
+        {
+          title: isRTL ? 'أسبوعي' : 'Hebdomadaire',
+          path: '/dashboard/planning/weekly',
+          roles: ['admin', 'staff']
+        }
+      ]
     },
     {
       key: 'attendance',
@@ -416,6 +427,22 @@ const DashboardSidebar = ({ isOpen, onClose, onCollapsedChange }) => {
               <SidebarLink key={item.key} item={item} />
             ))}
         </nav>
+
+        {/* Lien retour au site - Visible sur mobile uniquement */}
+        <div className="lg:hidden px-4 py-4 border-t border-gray-200 dark:border-gray-700">
+          <Link
+            to="/"
+            onClick={onClose}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+          >
+            <Home className="w-5 h-5" />
+            {!isCollapsed && (
+              <span className="font-medium">
+                {isRTL ? 'العودة للموقع' : 'Retour au site'}
+              </span>
+            )}
+          </Link>
+        </div>
       </div>
     </>
   );

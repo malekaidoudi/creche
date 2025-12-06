@@ -142,6 +142,7 @@ const corsOptions = {
       'http://localhost:5173',
       'http://localhost:3000',
       'http://127.0.0.1:5173',
+      'http://192.168.1.60:5173',
       'https://creche-mima-elghalia.netlify.app',
       'https://mimaelghalia.tn',
       'https://www.mimaelghalia.tn',
@@ -154,18 +155,21 @@ const corsOptions = {
       return callback(null, true);
     }
 
-    // Autoriser tous les sous-domaines Render (*.onrender.com)
-    if (origin.includes('.onrender.com')) {
+    // En développement uniquement: autoriser les IP locales
+    if (process.env.NODE_ENV !== 'production') {
+      if (origin.match(/^http:\/\/(192\.168\.\d+\.\d+|127\.0\.0\.1|localhost)(:\d+)?$/)) {
+        return callback(null, true);
+      }
+    }
+
+    // Autoriser uniquement les sous-domaines spécifiques de Render (notre backend)
+    if (origin === 'https://creche-backend.onrender.com') {
       return callback(null, true);
     }
 
-    // Autoriser tous les sous-domaines Vercel (*.vercel.app)
-    if (origin.includes('.vercel.app')) {
-      return callback(null, true);
-    }
-
-    // Autoriser le domaine principal et sous-domaines
-    if (origin.includes('mima-elghalia.com') || origin.includes('mimaelghalia.tn')) {
+    // Autoriser le domaine principal de production uniquement
+    if (origin === 'https://mima-elghalia.com' || origin === 'https://www.mima-elghalia.com' ||
+      origin === 'https://mimaelghalia.tn' || origin === 'https://www.mimaelghalia.tn') {
       return callback(null, true);
     }
 

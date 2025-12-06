@@ -256,7 +256,7 @@ router.get('/', auth.authenticateToken, async (req, res) => {
         u.email as parent_email,
         u.phone as parent_phone,
         e.enrollment_date,
-        e.new_status as enrollment_status,
+        e.status as enrollment_status,
         COUNT(cd.id) as documents_count
       FROM children c
       LEFT JOIN users u ON c.parent_id = u.id
@@ -321,7 +321,7 @@ router.get('/', auth.authenticateToken, async (req, res) => {
              c.emergency_contact_name, c.emergency_contact_phone, c.photo_url, 
              c.is_active, c.created_at, c.updated_at, c.parent_id,
              u.id, u.first_name, u.last_name, u.email, u.phone,
-             e.enrollment_date, e.new_status`;
+             e.enrollment_date, e.status`;
     sql += ` ORDER BY c.created_at DESC`;
     const offset = (page - 1) * limit;
     paramCount++;

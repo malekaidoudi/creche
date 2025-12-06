@@ -499,6 +499,18 @@ export default function MessagesPage() {
     }
   }, [searchParams, contacts, selectedContact]);
 
+  // Ouvrir une conversation depuis le paramètre user (ex: ?user=2)
+  useEffect(() => {
+    const userId = searchParams.get('user');
+    if (userId && contacts.length > 0 && !selectedContact) {
+      const contact = contacts.find(c => c.id === parseInt(userId));
+      if (contact) {
+        console.log('📬 Ouverture conversation avec utilisateur:', userId);
+        handleSelectContact(contact);
+      }
+    }
+  }, [searchParams, contacts]);
+
   // ============================================================================
   // RENDER
   // ============================================================================

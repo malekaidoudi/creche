@@ -114,13 +114,23 @@ router.post('/',
         );
 
         if (uploadResult.success) {
+          // Pour les vidéos, générer une thumbnail JPG à partir de la première frame
+          let thumbnailUrl = null;
+          if (isVideo) {
+            // Transformer l'URL vidéo en URL d'image (première frame)
+            // Format: /video/upload/ -> /video/upload/so_0,w_800,h_450,c_fill,f_jpg/
+            thumbnailUrl = uploadResult.url
+              .replace('/video/upload/', '/video/upload/so_0,w_800,h_450,c_fill,f_jpg/')
+              .replace(/\.(mp4|webm|mov|avi)$/i, '.jpg');
+          } else {
+            // Pour les images, simple redimensionnement
+            thumbnailUrl = uploadResult.url.replace('/upload/', '/upload/w_800,h_450,c_fill,q_auto:best/');
+          }
+
           mediaData = {
             mediaType: isVideo ? 'video' : 'image',
             mediaUrl: uploadResult.url,
-            // Thumbnail de meilleure qualité
-            mediaThumbnailUrl: isVideo
-              ? uploadResult.url.replace('/upload/', '/upload/so_0,w_800,h_450,c_fill,q_auto:best/')
-              : uploadResult.url.replace('/upload/', '/upload/w_800,h_450,c_fill,q_auto:best/'),
+            mediaThumbnailUrl: thumbnailUrl,
             cloudinaryPublicId: uploadResult.publicId
           };
         }

@@ -24,8 +24,8 @@ import { useLanguage } from '../../hooks/useLanguage';
 import { useNotifications } from '../../hooks/useNotifications';
 import TodayTasksWidget from '../widgets/TodayTasksWidget';
 import TodayTasksWidgetMobile from '../widgets/TodayTasksWidgetMobile';
-import MessagesWidget from '../widgets/MessagesWidget';
-import UpcomingEventsWidget from '../widgets/UpcomingEventsWidget';
+import TodayAppointmentsWidget from '../widgets/TodayAppointmentsWidget';
+import OverdueTasksWidget from '../widgets/OverdueTasksWidget';
 import BirthdaysWidget from '../widgets/BirthdaysWidget';
 import TodayAbsences from './TodayAbsences';
 import HolidaysList from '../HolidaysList';
@@ -50,8 +50,8 @@ const MobileDashboardComplete = ({
     // États pour les sections collapsibles
     const [expandedSections, setExpandedSections] = useState({
         tasks: true, // Ouvert par défaut
-        messages: false,
-        events: false,
+        appointments: false,
+        overdue: false,
         birthdays: false,
         activities: false,
         absences: false,
@@ -239,39 +239,37 @@ const MobileDashboardComplete = ({
                     </CollapsibleCard>
                 )}
 
-                {/* Messages */}
+                {/* RDV Aujourd'hui */}
                 {(isStaff() || isAdmin()) && (
                     <CollapsibleCard
-                        id="messages"
-                        title={isRTL ? 'الرسائل' : 'Messages'}
-                        icon={MessageSquare}
-                        isExpanded={expandedSections.messages}
-                        onToggle={() => toggleSection('messages')}
-                        onFocus={() => openFocusMode('messages')}
-                        badge={unreadMessagesCount}
+                        id="appointments"
+                        title={isRTL ? 'مواعيد اليوم' : 'RDV Aujourd\'hui'}
+                        icon={CalendarCheck}
+                        isExpanded={expandedSections.appointments}
+                        onToggle={() => toggleSection('appointments')}
+                        onFocus={() => openFocusMode('appointments')}
                     >
                         <div className="mobile-widget-wrapper">
-                            <MessagesWidget isMobileView={true} />
+                            <TodayAppointmentsWidget />
                         </div>
                     </CollapsibleCard>
                 )}
 
-                {/* Événements - Scroll horizontal */}
-                <CollapsibleCard
-                    id="events"
-                    title={isRTL ? 'الأحداث القادمة' : 'Événements à venir'}
-                    icon={Calendar}
-                    isExpanded={expandedSections.events}
-                    onToggle={() => toggleSection('events')}
-                    onFocus={() => openFocusMode('events')}
-                    scrollable
-                    hasActionBar
-                    onOpenEventModal={onOpenEventModal}
-                >
-                    <div className="mobile-widget-wrapper">
-                        <UpcomingEventsWidget onOpenEventModal={onOpenEventModal} isMobileView={true} />
-                    </div>
-                </CollapsibleCard>
+                {/* Tâches en retard */}
+                {(isStaff() || isAdmin()) && (
+                    <CollapsibleCard
+                        id="overdue"
+                        title={isRTL ? 'المهام المتأخرة' : 'Tâches en retard'}
+                        icon={AlertCircle}
+                        isExpanded={expandedSections.overdue}
+                        onToggle={() => toggleSection('overdue')}
+                        onFocus={() => openFocusMode('overdue')}
+                    >
+                        <div className="mobile-widget-wrapper">
+                            <OverdueTasksWidget />
+                        </div>
+                    </CollapsibleCard>
+                )}
 
                 {/* Anniversaires - Scroll horizontal */}
                 <CollapsibleCard
@@ -553,8 +551,8 @@ const FocusModal = ({
 
     const sectionTitles = {
         tasks: isRTL ? 'مهام اليوم' : 'Tâches du jour',
-        messages: isRTL ? 'الرسائل' : 'Messages',
-        events: isRTL ? 'الأحداث' : 'Événements',
+        appointments: isRTL ? 'مواعيد اليوم' : 'RDV Aujourd\'hui',
+        overdue: isRTL ? 'المهام المتأخرة' : 'Tâches en retard',
         birthdays: isRTL ? 'أعياد الميلاد' : 'Anniversaires',
         activities: isRTL ? 'الأنشطة' : 'Activités',
         absences: isRTL ? 'الغيابات' : 'Absences',
@@ -602,14 +600,14 @@ const FocusModal = ({
                                 />
                             </div>
                         )}
-                        {section === 'messages' && (
+                        {section === 'appointments' && (
                             <div className="p-4">
-                                <MessagesWidget />
+                                <TodayAppointmentsWidget />
                             </div>
                         )}
-                        {section === 'events' && (
+                        {section === 'overdue' && (
                             <div className="p-4">
-                                <UpcomingEventsWidget onOpenEventModal={onOpenEventModal} />
+                                <OverdueTasksWidget />
                             </div>
                         )}
                         {section === 'birthdays' && (

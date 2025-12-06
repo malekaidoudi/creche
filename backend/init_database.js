@@ -42,17 +42,17 @@ async function initializeDatabase() {
     console.log('✅ Table children créée/vérifiée');
 
     // Table enrollments
+    // Note: status peut être: pending, in_progress, approved, rejected_incomplete, rejected_deleted, archived
+    // Les RDV sont maintenant stockés dans la table appointments
     await db.query(`
       CREATE TABLE IF NOT EXISTS enrollments (
         id SERIAL PRIMARY KEY,
         parent_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         child_id INTEGER REFERENCES children(id) ON DELETE CASCADE,
         enrollment_date DATE DEFAULT CURRENT_DATE,
-        status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+        status VARCHAR(50) DEFAULT 'pending',
         lunch_assistance BOOLEAN DEFAULT FALSE,
         regulation_accepted BOOLEAN DEFAULT FALSE,
-        appointment_date DATE,
-        appointment_time TIME,
         admin_notes TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -222,12 +222,12 @@ async function insertTestData() {
     // Insérer des inscriptions de test pour TOUS les enfants
     const parentUser = await db.query('SELECT id FROM users WHERE role = $1 LIMIT 1', ['parent']);
     const allChildrenIds = await db.query('SELECT id FROM children');
-    
+
     if (parentUser.rows.length > 0 && allChildrenIds.rows.length > 0) {
       const parentId = parentUser.rows[0].id;
-      
+
       console.log(`📝 Création de ${allChildrenIds.rows.length} enrollments pour le parent ${parentId}`);
-      
+
       for (const child of allChildrenIds.rows) {
         await db.query(
           `INSERT INTO enrollments (parent_id, child_id, status, lunch_assistance, regulation_accepted) 
@@ -241,14 +241,14 @@ async function insertTestData() {
     // Insérer des présences de test
     const today = new Date().toISOString().split('T')[0];
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    
+
     for (const child of allChildrenIds.rows) {
       await db.query(
         `INSERT INTO attendance (child_id, date, check_in_time, check_out_time, status) 
          VALUES ($1, $2, $3, $4, $5)`,
         [child.id, today, '08:00', '16:30', 'present']
       );
-      
+
       await db.query(
         `INSERT INTO attendance (child_id, date, check_in_time, check_out_time, status) 
          VALUES ($1, $2, $3, $4, $5)`,

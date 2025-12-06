@@ -1,0 +1,3632 @@
+{
+  "generated_at": "2025-11-30T09:19:39.184Z",
+  "database": {
+    "tables": [
+      "absence_requests",
+      "activities",
+      "activity_comments",
+      "activity_reactions",
+      "announcements",
+      "appointments",
+      "attendance",
+      "children",
+      "children_documents",
+      "contact_messages",
+      "email_logs",
+      "enrollment_documents",
+      "enrollments",
+      "enrollments_archive",
+      "event_comments",
+      "event_history",
+      "event_reminders",
+      "events",
+      "holidays",
+      "logs",
+      "notifications",
+      "nursery_settings",
+      "payment_reminders",
+      "personal_memos",
+      "staff_messages",
+      "tasks",
+      "users"
+    ],
+    "structure": {
+      "absence_requests": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('absence_requests_id_seq'::regclass)",
+          "maxLength": null
+        },
+        {
+          "name": "child_id",
+          "type": "integer",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "parent_id",
+          "type": "integer",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "start_date",
+          "type": "date",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "end_date",
+          "type": "date",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "status",
+          "type": "character varying",
+          "nullable": true,
+          "default": "'pending'::character varying",
+          "maxLength": 20
+        },
+        {
+          "name": "admin_notes",
+          "type": "text",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        },
+        {
+          "name": "acknowledged_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        }
+      ],
+      "activities": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('activities_id_seq'::regclass)",
+          "maxLength": null
+        },
+        {
+          "name": "author_id",
+          "type": "integer",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "title",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "maxLength": 255
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "media_type",
+          "type": "character varying",
+          "nullable": true,
+          "default": "'none'::character varying",
+          "maxLength": 20
+        },
+        {
+          "name": "media_url",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 500
+        },
+        {
+          "name": "media_thumbnail_url",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 500
+        },
+        {
+          "name": "cloudinary_public_id",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 255
+        },
+        {
+          "name": "is_pinned",
+          "type": "boolean",
+          "nullable": true,
+          "default": "false",
+          "maxLength": null
+        },
+        {
+          "name": "is_visible",
+          "type": "boolean",
+          "nullable": true,
+          "default": "true",
+          "maxLength": null
+        },
+        {
+          "name": "view_count",
+          "type": "integer",
+          "nullable": true,
+          "default": "0",
+          "maxLength": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        }
+      ],
+      "activity_comments": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('activity_comments_id_seq'::regclass)",
+          "maxLength": null
+        },
+        {
+          "name": "activity_id",
+          "type": "integer",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "user_id",
+          "type": "integer",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "parent_comment_id",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "content",
+          "type": "text",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "is_visible",
+          "type": "boolean",
+          "nullable": true,
+          "default": "true",
+          "maxLength": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        }
+      ],
+      "activity_reactions": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('activity_reactions_id_seq'::regclass)",
+          "maxLength": null
+        },
+        {
+          "name": "activity_id",
+          "type": "integer",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "user_id",
+          "type": "integer",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "reaction_type",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "maxLength": 20
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        }
+      ],
+      "announcements": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('announcements_id_seq'::regclass)",
+          "maxLength": null
+        },
+        {
+          "name": "title",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "maxLength": 255
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "event_date",
+          "type": "timestamp without time zone",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "event_type",
+          "type": "character varying",
+          "nullable": true,
+          "default": "'general'::character varying",
+          "maxLength": 50
+        },
+        {
+          "name": "target_audience",
+          "type": "character varying",
+          "nullable": true,
+          "default": "'all'::character varying",
+          "maxLength": 20
+        },
+        {
+          "name": "target_children",
+          "type": "ARRAY",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "created_by",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "is_published",
+          "type": "boolean",
+          "nullable": true,
+          "default": "false",
+          "maxLength": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        }
+      ],
+      "appointments": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('appointments_id_seq'::regclass)",
+          "maxLength": null
+        },
+        {
+          "name": "parent_id",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "child_id",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "created_by",
+          "type": "integer",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "subject",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "maxLength": 255
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "proposed_date",
+          "type": "timestamp without time zone",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "confirmed_date",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "status",
+          "type": "character varying",
+          "nullable": true,
+          "default": "'proposed'::character varying",
+          "maxLength": 20
+        },
+        {
+          "name": "location",
+          "type": "character varying",
+          "nullable": true,
+          "default": "'Crèche'::character varying",
+          "maxLength": 255
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        },
+        {
+          "name": "enrollment_id",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "parent_email",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 255
+        },
+        {
+          "name": "parent_phone",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 50
+        },
+        {
+          "name": "parent_first_name",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 100
+        },
+        {
+          "name": "parent_last_name",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 100
+        },
+        {
+          "name": "child_first_name",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 100
+        },
+        {
+          "name": "child_last_name",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 100
+        },
+        {
+          "name": "rescheduled_count",
+          "type": "integer",
+          "nullable": true,
+          "default": "0",
+          "maxLength": null
+        },
+        {
+          "name": "last_rescheduled_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "staff_notes",
+          "type": "text",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "parent_notes",
+          "type": "text",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "appointment_type",
+          "type": "character varying",
+          "nullable": true,
+          "default": "'general'::character varying",
+          "maxLength": 50
+        }
+      ],
+      "attendance": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('attendance_id_seq'::regclass)",
+          "maxLength": null
+        },
+        {
+          "name": "child_id",
+          "type": "integer",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "date",
+          "type": "date",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "check_in_time",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "check_out_time",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        }
+      ],
+      "children": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('children_id_seq'::regclass)",
+          "maxLength": null
+        },
+        {
+          "name": "first_name",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "maxLength": 100
+        },
+        {
+          "name": "last_name",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "maxLength": 100
+        },
+        {
+          "name": "birth_date",
+          "type": "date",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "gender",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 10
+        },
+        {
+          "name": "medical_info",
+          "type": "text",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "emergency_contact_name",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 100
+        },
+        {
+          "name": "emergency_contact_phone",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 20
+        },
+        {
+          "name": "photo_url",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 255
+        },
+        {
+          "name": "is_active",
+          "type": "boolean",
+          "nullable": true,
+          "default": "true",
+          "maxLength": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        },
+        {
+          "name": "parent_id",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        }
+      ],
+      "children_documents": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('children_documents_id_seq'::regclass)",
+          "maxLength": null
+        },
+        {
+          "name": "child_id",
+          "type": "integer",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "filename",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "maxLength": 255
+        },
+        {
+          "name": "original_filename",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "maxLength": 255
+        },
+        {
+          "name": "file_path",
+          "type": "text",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "mime_type",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 100
+        },
+        {
+          "name": "file_size",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "document_type",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 50
+        },
+        {
+          "name": "transferred_from_enrollment",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "uploaded_by",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "uploaded_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        }
+      ],
+      "contact_messages": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('contact_messages_id_seq'::regclass)",
+          "maxLength": null
+        },
+        {
+          "name": "name",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "maxLength": 255
+        },
+        {
+          "name": "email",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "maxLength": 255
+        },
+        {
+          "name": "phone",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 50
+        },
+        {
+          "name": "subject",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 500
+        },
+        {
+          "name": "message",
+          "type": "text",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "status",
+          "type": "character varying",
+          "nullable": true,
+          "default": "'new'::character varying",
+          "maxLength": 20
+        },
+        {
+          "name": "responded_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "responded_by",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        }
+      ],
+      "email_logs": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('email_logs_id_seq'::regclass)",
+          "maxLength": null
+        },
+        {
+          "name": "email_type",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "maxLength": 50
+        },
+        {
+          "name": "recipient_email",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "maxLength": 255
+        },
+        {
+          "name": "sender_email",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "maxLength": 255
+        },
+        {
+          "name": "subject",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "maxLength": 500
+        },
+        {
+          "name": "status",
+          "type": "character varying",
+          "nullable": false,
+          "default": "'pending'::character varying",
+          "maxLength": 20
+        },
+        {
+          "name": "resend_id",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 100
+        },
+        {
+          "name": "error_message",
+          "type": "text",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "metadata",
+          "type": "jsonb",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        }
+      ],
+      "enrollment_documents": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('enrollment_documents_id_seq'::regclass)",
+          "maxLength": null
+        },
+        {
+          "name": "enrollment_id",
+          "type": "integer",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "filename",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "maxLength": 255
+        },
+        {
+          "name": "original_filename",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "maxLength": 255
+        },
+        {
+          "name": "file_path",
+          "type": "text",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "mime_type",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 100
+        },
+        {
+          "name": "file_size",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "document_type",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 50
+        },
+        {
+          "name": "uploaded_by",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "uploaded_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        },
+        {
+          "name": "is_verified",
+          "type": "boolean",
+          "nullable": true,
+          "default": "false",
+          "maxLength": null
+        },
+        {
+          "name": "verified_by",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "verified_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "cloudinary_url",
+          "type": "text",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "cloudinary_public_id",
+          "type": "text",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        }
+      ],
+      "enrollments": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('enrollments_id_seq'::regclass)",
+          "maxLength": null
+        },
+        {
+          "name": "parent_id",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "child_id",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "enrollment_date",
+          "type": "date",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "lunch_assistance",
+          "type": "boolean",
+          "nullable": true,
+          "default": "false",
+          "maxLength": null
+        },
+        {
+          "name": "regulation_accepted",
+          "type": "boolean",
+          "nullable": true,
+          "default": "false",
+          "maxLength": null
+        },
+        {
+          "name": "admin_notes",
+          "type": "text",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        },
+        {
+          "name": "applicant_first_name",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 100
+        },
+        {
+          "name": "applicant_last_name",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 100
+        },
+        {
+          "name": "applicant_email",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 255
+        },
+        {
+          "name": "status",
+          "type": "USER-DEFINED",
+          "nullable": true,
+          "default": "'pending'::enrollment_status",
+          "maxLength": null
+        },
+        {
+          "name": "approved_by",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "approved_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "applicant_phone",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 20
+        },
+        {
+          "name": "child_first_name",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 100
+        },
+        {
+          "name": "child_last_name",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 100
+        },
+        {
+          "name": "child_birth_date",
+          "type": "date",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "child_gender",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 1
+        },
+        {
+          "name": "child_medical_info",
+          "type": "text",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "emergency_contact_name",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 100
+        },
+        {
+          "name": "emergency_contact_phone",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 20
+        },
+        {
+          "name": "password_token",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 255
+        },
+        {
+          "name": "password_token_expires",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "rejection_type",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 50
+        },
+        {
+          "name": "rejection_reason",
+          "type": "text",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "processed_by",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "processed_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "rejected_by",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "rejected_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        }
+      ],
+      "enrollments_archive": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "parent_id",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "child_id",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "enrollment_date",
+          "type": "date",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "status",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 20
+        },
+        {
+          "name": "lunch_assistance",
+          "type": "boolean",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "regulation_accepted",
+          "type": "boolean",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "appointment_date",
+          "type": "date",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "appointment_time",
+          "type": "time without time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "admin_notes",
+          "type": "text",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "applicant_first_name",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 100
+        },
+        {
+          "name": "applicant_last_name",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 100
+        },
+        {
+          "name": "applicant_email",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 255
+        },
+        {
+          "name": "new_status",
+          "type": "USER-DEFINED",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "approved_by",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "approved_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        }
+      ],
+      "event_comments": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('event_comments_id_seq'::regclass)",
+          "maxLength": null
+        },
+        {
+          "name": "event_id",
+          "type": "integer",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "user_id",
+          "type": "integer",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "comment",
+          "type": "text",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        },
+        {
+          "name": "deleted_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        }
+      ],
+      "event_history": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('event_history_id_seq'::regclass)",
+          "maxLength": null
+        },
+        {
+          "name": "event_id",
+          "type": "integer",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "user_id",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "action",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "maxLength": 50
+        },
+        {
+          "name": "field_name",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 100
+        },
+        {
+          "name": "old_value",
+          "type": "text",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "new_value",
+          "type": "text",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        }
+      ],
+      "event_reminders": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('event_reminders_id_seq'::regclass)",
+          "maxLength": null
+        },
+        {
+          "name": "event_id",
+          "type": "integer",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "offset_minutes",
+          "type": "integer",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "notification_type",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "maxLength": 50
+        },
+        {
+          "name": "recipient_id",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "sent",
+          "type": "boolean",
+          "nullable": true,
+          "default": "false",
+          "maxLength": null
+        },
+        {
+          "name": "sent_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "scheduled_for",
+          "type": "timestamp without time zone",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "error_message",
+          "type": "text",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        }
+      ],
+      "events": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('events_id_seq'::regclass)",
+          "maxLength": null
+        },
+        {
+          "name": "title",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "maxLength": 255
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "type",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "maxLength": 50
+        },
+        {
+          "name": "start_date",
+          "type": "timestamp without time zone",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "end_date",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "all_day",
+          "type": "boolean",
+          "nullable": true,
+          "default": "false",
+          "maxLength": null
+        },
+        {
+          "name": "is_recurring",
+          "type": "boolean",
+          "nullable": true,
+          "default": "false",
+          "maxLength": null
+        },
+        {
+          "name": "recurrence_rule",
+          "type": "jsonb",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "parent_event_id",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "status",
+          "type": "character varying",
+          "nullable": true,
+          "default": "'pending'::character varying",
+          "maxLength": 50
+        },
+        {
+          "name": "priority",
+          "type": "character varying",
+          "nullable": true,
+          "default": "'medium'::character varying",
+          "maxLength": 20
+        },
+        {
+          "name": "created_by",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "assigned_to",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "child_id",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "reminder_enabled",
+          "type": "boolean",
+          "nullable": true,
+          "default": "false",
+          "maxLength": null
+        },
+        {
+          "name": "reminder_offset",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "reminder_sent",
+          "type": "boolean",
+          "nullable": true,
+          "default": "false",
+          "maxLength": null
+        },
+        {
+          "name": "reminder_sent_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "color",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 20
+        },
+        {
+          "name": "attendees",
+          "type": "jsonb",
+          "nullable": true,
+          "default": "'[]'::jsonb",
+          "maxLength": null
+        },
+        {
+          "name": "attachments",
+          "type": "jsonb",
+          "nullable": true,
+          "default": "'[]'::jsonb",
+          "maxLength": null
+        },
+        {
+          "name": "metadata",
+          "type": "jsonb",
+          "nullable": true,
+          "default": "'{}'::jsonb",
+          "maxLength": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        },
+        {
+          "name": "completed_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "deleted_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "source_table",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 50
+        },
+        {
+          "name": "source_id",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        }
+      ],
+      "holidays": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('holidays_id_seq'::regclass)",
+          "maxLength": null
+        },
+        {
+          "name": "name",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "maxLength": 255
+        },
+        {
+          "name": "date",
+          "type": "date",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "is_closed",
+          "type": "boolean",
+          "nullable": true,
+          "default": "true",
+          "maxLength": null
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        }
+      ],
+      "logs": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('logs_id_seq'::regclass)",
+          "maxLength": null
+        },
+        {
+          "name": "user_id",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "action",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "maxLength": 100
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        }
+      ],
+      "notifications": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('notifications_id_seq'::regclass)",
+          "maxLength": null
+        },
+        {
+          "name": "user_id",
+          "type": "integer",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "title",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "maxLength": 255
+        },
+        {
+          "name": "message",
+          "type": "text",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "type",
+          "type": "character varying",
+          "nullable": true,
+          "default": "'info'::character varying",
+          "maxLength": 30
+        },
+        {
+          "name": "is_read",
+          "type": "boolean",
+          "nullable": true,
+          "default": "false",
+          "maxLength": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        },
+        {
+          "name": "related_id",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        }
+      ],
+      "nursery_settings": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('nursery_settings_id_seq'::regclass)",
+          "maxLength": null
+        },
+        {
+          "name": "setting_key",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "maxLength": 100
+        },
+        {
+          "name": "value_fr",
+          "type": "text",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "value_ar",
+          "type": "text",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "category",
+          "type": "character varying",
+          "nullable": true,
+          "default": "'general'::character varying",
+          "maxLength": 50
+        },
+        {
+          "name": "is_active",
+          "type": "boolean",
+          "nullable": true,
+          "default": "true",
+          "maxLength": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        },
+        {
+          "name": "annual_vacation_enabled",
+          "type": "boolean",
+          "nullable": true,
+          "default": "false",
+          "maxLength": null
+        },
+        {
+          "name": "annual_vacation_start_date",
+          "type": "date",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "annual_vacation_end_date",
+          "type": "date",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        }
+      ],
+      "payment_reminders": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('payment_reminders_id_seq'::regclass)",
+          "maxLength": null
+        },
+        {
+          "name": "parent_id",
+          "type": "integer",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "child_id",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "amount",
+          "type": "numeric",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "due_date",
+          "type": "date",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "message",
+          "type": "text",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "status",
+          "type": "character varying",
+          "nullable": true,
+          "default": "'pending'::character varying",
+          "maxLength": 20
+        },
+        {
+          "name": "sent_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "created_by",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        }
+      ],
+      "personal_memos": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('personal_memos_id_seq'::regclass)",
+          "maxLength": null
+        },
+        {
+          "name": "user_id",
+          "type": "integer",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "content",
+          "type": "text",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "memo_date",
+          "type": "date",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "is_completed",
+          "type": "boolean",
+          "nullable": true,
+          "default": "false",
+          "maxLength": null
+        },
+        {
+          "name": "completed_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        }
+      ],
+      "staff_messages": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('staff_messages_id_seq'::regclass)",
+          "maxLength": null
+        },
+        {
+          "name": "sender_id",
+          "type": "integer",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "recipient_id",
+          "type": "integer",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "parent_message_id",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "subject",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 255
+        },
+        {
+          "name": "content",
+          "type": "text",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "is_read",
+          "type": "boolean",
+          "nullable": true,
+          "default": "false",
+          "maxLength": null
+        },
+        {
+          "name": "read_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        }
+      ],
+      "tasks": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('tasks_id_seq'::regclass)",
+          "maxLength": null
+        },
+        {
+          "name": "title",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "maxLength": 255
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "assigned_to",
+          "type": "integer",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "created_by",
+          "type": "integer",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "due_date",
+          "type": "timestamp without time zone",
+          "nullable": false,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "status",
+          "type": "character varying",
+          "nullable": true,
+          "default": "'pending'::character varying",
+          "maxLength": 20
+        },
+        {
+          "name": "priority",
+          "type": "character varying",
+          "nullable": true,
+          "default": "'medium'::character varying",
+          "maxLength": 20
+        },
+        {
+          "name": "completed_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        },
+        {
+          "name": "task_date",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        },
+        {
+          "name": "task_type",
+          "type": "character varying",
+          "nullable": true,
+          "default": "'custom'::character varying",
+          "maxLength": 50
+        },
+        {
+          "name": "enrollment_id",
+          "type": "integer",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        }
+      ],
+      "users": [
+        {
+          "name": "id",
+          "type": "integer",
+          "nullable": false,
+          "default": "nextval('users_id_seq'::regclass)",
+          "maxLength": null
+        },
+        {
+          "name": "email",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "maxLength": 255
+        },
+        {
+          "name": "password",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "maxLength": 255
+        },
+        {
+          "name": "first_name",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "maxLength": 100
+        },
+        {
+          "name": "last_name",
+          "type": "character varying",
+          "nullable": false,
+          "default": null,
+          "maxLength": 100
+        },
+        {
+          "name": "phone",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 20
+        },
+        {
+          "name": "role",
+          "type": "character varying",
+          "nullable": true,
+          "default": "'parent'::character varying",
+          "maxLength": 20
+        },
+        {
+          "name": "profile_image",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 255
+        },
+        {
+          "name": "is_active",
+          "type": "boolean",
+          "nullable": true,
+          "default": "true",
+          "maxLength": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp without time zone",
+          "nullable": true,
+          "default": "CURRENT_TIMESTAMP",
+          "maxLength": null
+        },
+        {
+          "name": "cloudinary_public_id",
+          "type": "character varying",
+          "nullable": true,
+          "default": null,
+          "maxLength": 255
+        },
+        {
+          "name": "birth_date",
+          "type": "date",
+          "nullable": true,
+          "default": null,
+          "maxLength": null
+        }
+      ]
+    }
+  },
+  "code": {
+    "tables": [
+      "absence_requests",
+      "activities",
+      "activity_comments",
+      "activity_reactions",
+      "age",
+      "announcements",
+      "appointments",
+      "attendance",
+      "children",
+      "children_documents",
+      "contact_messages",
+      "documents",
+      "email_logs",
+      "enrollment_documents",
+      "enrollments",
+      "enrollments_archive",
+      "event_comments",
+      "event_history",
+      "event_reminders",
+      "events",
+      "holidays",
+      "information_schema",
+      "logs",
+      "notifications",
+      "nursery_settings",
+      "overdue_tasks",
+      "personal_memos",
+      "setting_value",
+      "settings",
+      "staff_messages",
+      "staff_today_tasks",
+      "tasks",
+      "uploads",
+      "user_children",
+      "users"
+    ],
+    "columns": {
+      "a": [
+        "appointment_date",
+        "appointment_type",
+        "author_first_name",
+        "author_id",
+        "author_last_name",
+        "author_profile_image",
+        "author_role",
+        "check_in_time",
+        "check_out_time",
+        "child_first_name",
+        "child_id",
+        "child_last_name",
+        "comments_count",
+        "confirmed_date",
+        "created_at",
+        "datetime",
+        "description",
+        "enrollment_id",
+        "id",
+        "is_pinned",
+        "is_visible",
+        "media_thumbnail_url",
+        "media_type",
+        "media_url",
+        "notes",
+        "parent_email",
+        "parent_first_name",
+        "parent_id",
+        "parent_last_name",
+        "parent_phone",
+        "proposed_date",
+        "reactions",
+        "status",
+        "subject",
+        "title",
+        "updated_at",
+        "view_count"
+      ],
+      "e": [
+        "all_day",
+        "applicant_email",
+        "applicant_first_name",
+        "applicant_last_name",
+        "applicant_phone",
+        "appointment_date",
+        "approved_by",
+        "assigned_to",
+        "child_first_name",
+        "child_id",
+        "child_last_name",
+        "color",
+        "created_at",
+        "created_by",
+        "deleted_at",
+        "end_date",
+        "enrollment_date",
+        "id",
+        "parent_id",
+        "priority",
+        "start_date",
+        "status",
+        "title",
+        "type"
+      ],
+      "exports": [
+        "cancelappointment",
+        "completeappointment",
+        "confirmappointment",
+        "createappointmentforenrollment",
+        "createtask",
+        "deletetask",
+        "getallappointments",
+        "getappointmentbyenrollment",
+        "getappointmentbyid",
+        "gettodayappointments",
+        "gettodaytasks",
+        "marknoshow",
+        "updatetaskstatus"
+      ],
+      "today": [
+        "sethours",
+        "tolocaledatestring"
+      ],
+      "tomorrow": [
+        "getdate",
+        "setdate"
+      ],
+      "db": [
+        "execute",
+        "query"
+      ],
+      "req": [
+        "body",
+        "connection",
+        "file",
+        "files",
+        "get",
+        "headers",
+        "ip",
+        "method",
+        "originalurl",
+        "params",
+        "query",
+        "user"
+      ],
+      "result": [
+        "affectedrows",
+        "error",
+        "insertid",
+        "rows",
+        "success"
+      ],
+      "res": [
+        "json",
+        "sendfile",
+        "setheader",
+        "status",
+        "statuscode"
+      ],
+      "enrollmentdata": [
+        "applicant_first_name"
+      ],
+      "c": [
+        "activity_id",
+        "birth_date",
+        "created_at",
+        "emergency_contact_name",
+        "emergency_contact_phone",
+        "first_name",
+        "gender",
+        "id",
+        "is_active",
+        "is_visible",
+        "last_name",
+        "medical_info",
+        "parent_comment_id",
+        "parent_id",
+        "photo_url",
+        "status",
+        "updated_at",
+        "user_id"
+      ],
+      "params": [
+        "length",
+        "push"
+      ],
+      "console": [
+        "error",
+        "log",
+        "warn"
+      ],
+      "attendances": [
+        "length"
+      ],
+      "u": [
+        "child_id",
+        "created_at",
+        "email",
+        "first_name",
+        "id",
+        "last_name",
+        "phone",
+        "profile_image",
+        "role",
+        "uploaded_by"
+      ],
+      "d": [
+        "created_at",
+        "id",
+        "uploaded_by"
+      ],
+      "math": [
+        "ceil"
+      ],
+      "documents": [
+        "length"
+      ],
+      "enrollment": [
+        "applicant_email",
+        "created_at",
+        "decision_notes",
+        "id",
+        "processed_by",
+        "status",
+        "updated_at"
+      ],
+      "documentsresult": [
+        "rows"
+      ],
+      "cloudinaryservice": [
+        "deletefile"
+      ],
+      "doc": [
+        "cloudinary_public_id",
+        "cloudinary_url",
+        "document_type",
+        "file_size",
+        "id",
+        "is_verified",
+        "mime_type",
+        "original_filename",
+        "uploaded_at"
+      ],
+      "deleteresult": [
+        "error",
+        "success"
+      ],
+      "ed": [
+        "enrollment_id",
+        "id"
+      ],
+      "error": [
+        "message",
+        "name"
+      ],
+      "object": [
+        "entries",
+        "keys"
+      ],
+      "enrollmentcheck": [
+        "rows"
+      ],
+      "array": [
+        "isarray"
+      ],
+      "processorresult": [
+        "rows"
+      ],
+      "file": [
+        "file_path",
+        "filename",
+        "mimetype",
+        "originalname",
+        "path",
+        "size"
+      ],
+      "l": [
+        "action",
+        "created_at",
+        "description",
+        "id",
+        "user_id"
+      ],
+      "logs": [
+        "length",
+        "map"
+      ],
+      "log": [
+        "additional_data",
+        "user_email",
+        "user_first_name",
+        "user_last_name"
+      ],
+      "json": [
+        "parse",
+        "stringify"
+      ],
+      "actions": [
+        "map"
+      ],
+      "row": [
+        "action",
+        "category",
+        "enrollment_id",
+        "id",
+        "parent_first_name",
+        "setting_key",
+        "status",
+        "updated_at",
+        "value_ar",
+        "value_fr"
+      ],
+      "p": [
+        "email",
+        "first_name",
+        "id",
+        "last_name",
+        "phone"
+      ],
+      "settings": [
+        "length"
+      ],
+      "t": [
+        "assigned_to",
+        "created_by",
+        "description",
+        "id",
+        "priority",
+        "status",
+        "task_date",
+        "task_type",
+        "title"
+      ],
+      "u1": [
+        "first_name",
+        "id",
+        "last_name"
+      ],
+      "u2": [
+        "first_name",
+        "id",
+        "last_name"
+      ],
+      "apt": [
+        "parent_email",
+        "parent_phone"
+      ],
+      "b": [
+        "datetime"
+      ],
+      "alltasks": [
+        "length"
+      ],
+      "task_time": [
+        "split"
+      ],
+      "fulldatetime": [
+        "sethours"
+      ],
+      "us": [
+        "first_name",
+        "id",
+        "last_name"
+      ],
+      "path": [
+        "resolve"
+      ],
+      "files": [
+        "length"
+      ],
+      "fs": [
+        "existssync",
+        "unlinksync"
+      ],
+      "uploadresult": [
+        "insertid"
+      ],
+      "currentuser": [
+        "length"
+      ],
+      "deleteerror": [
+        "message"
+      ],
+      "ar": [
+        "acknowledged_at",
+        "admin_notes",
+        "child_id",
+        "created_at",
+        "end_date",
+        "id",
+        "parent_id",
+        "reason",
+        "start_date",
+        "status"
+      ],
+      "childinfo": [
+        "rows"
+      ],
+      "staffusers": [
+        "rows"
+      ],
+      "auth": [
+        "authenticatetoken"
+      ],
+      "activityservice": [
+        "deleteactivity",
+        "deletecomment"
+      ],
+      "announcementservice": [
+        "deleteannouncement"
+      ],
+      "pool": [
+        "connect",
+        "query"
+      ],
+      "checkresult": [
+        "rows"
+      ],
+      "updates": [
+        "assigned_to",
+        "length",
+        "push",
+        "status"
+      ],
+      "statsresult": [
+        "rows"
+      ],
+      "stats": [
+        "completed_count",
+        "present_count",
+        "rows",
+        "still_present_count",
+        "total_records"
+      ],
+      "countparams": [
+        "push"
+      ],
+      "countresult": [
+        "rows"
+      ],
+      "router": [
+        "get",
+        "post",
+        "put"
+      ],
+      "errors": [
+        "array",
+        "isempty"
+      ],
+      "existinguser": [
+        "rows"
+      ],
+      "bcrypt": [
+        "hash"
+      ],
+      "jwt": [
+        "sign",
+        "verify"
+      ],
+      "newuser": [
+        "email",
+        "id",
+        "role"
+      ],
+      "decoded": [
+        "userid"
+      ],
+      "enrollmentresult": [
+        "rows"
+      ],
+      "user": [
+        "email",
+        "first_name",
+        "id",
+        "last_name",
+        "password",
+        "phone",
+        "role"
+      ],
+      "cd": [
+        "child_id",
+        "id"
+      ],
+      "apiresponse": [
+        "success"
+      ],
+      "logger": [
+        "error"
+      ],
+      "enrollments": [
+        "rows"
+      ],
+      "attendance": [
+        "rows"
+      ],
+      "client": [
+        "query",
+        "release"
+      ],
+      "eventservice": [
+        "deleteevent",
+        "updateevent",
+        "updateeventstatus"
+      ],
+      "information_schema": [
+        "columns",
+        "tables"
+      ],
+      "n": [
+        "created_at",
+        "id",
+        "is_read",
+        "message",
+        "related_id",
+        "title",
+        "type",
+        "user_id"
+      ],
+      "userexists": [
+        "rows"
+      ],
+      "existingnotification": [
+        "rows"
+      ],
+      "absenceids": [
+        "length"
+      ],
+      "statusresult": [
+        "rows"
+      ],
+      "filterednotifications": [
+        "filter"
+      ],
+      "notif": [
+        "type"
+      ],
+      "existingusers": [
+        "rows"
+      ],
+      "user_ids": [
+        "length"
+      ],
+      "notifications": [
+        "length",
+        "push"
+      ],
+      "insertresult": [
+        "rows"
+      ],
+      "checkentry": [
+        "rows"
+      ],
+      "updateresult": [
+        "rowcount"
+      ],
+      "existing": [
+        "rows"
+      ],
+      "personalmemoservice": [
+        "deletememo"
+      ],
+      "cloudinaryresult": [
+        "publicid",
+        "url"
+      ],
+      "taskservice": [
+        "deletetask",
+        "updatetaskstatus"
+      ],
+      "this": [
+        "cache",
+        "formatcomment",
+        "getallsettings",
+        "invalidatepattern"
+      ],
+      "metadata": [
+        "categories"
+      ],
+      "activities": [
+        "rows"
+      ],
+      "activity": [
+        "id",
+        "reactions",
+        "reactions_total",
+        "rows"
+      ],
+      "reactions": [
+        "rows"
+      ],
+      "r": [
+        "parent_id",
+        "reaction_type"
+      ],
+      "comment": [
+        "id",
+        "replies"
+      ],
+      "replies": [
+        "rows"
+      ],
+      "parents": [
+        "rows"
+      ],
+      "childrenresult": [
+        "rows"
+      ],
+      "announcement": [
+        "target_audience",
+        "target_children"
+      ],
+      "apptresult": [
+        "rows"
+      ],
+      "appointment": [
+        "id",
+        "parent_id"
+      ],
+      "parentresult": [
+        "rows"
+      ],
+      "taskresult": [
+        "rows"
+      ],
+      "creator": [
+        "first_name",
+        "last_name"
+      ],
+      "er": [
+        "event_id",
+        "notification_type",
+        "scheduled_for",
+        "sent"
+      ],
+      "person": [
+        "id"
+      ],
+      "eventresult": [
+        "rows"
+      ],
+      "reminderdate": [
+        "getdate",
+        "setdate"
+      ],
+      "futuredate": [
+        "getdate",
+        "setdate"
+      ],
+      "staffresult": [
+        "rows"
+      ],
+      "reminder": [
+        "birth_date",
+        "first_name",
+        "id",
+        "last_name",
+        "notification_type",
+        "offset_minutes",
+        "start_date"
+      ],
+      "emailresult": [
+        "success"
+      ],
+      "process": [
+        "env"
+      ],
+      "eventdata": [
+        "all_day",
+        "assigned_to",
+        "description",
+        "end_date",
+        "is_recurring",
+        "recurrence_rule",
+        "reminder_enabled",
+        "reminders",
+        "start_date",
+        "status",
+        "title",
+        "type"
+      ],
+      "filters": [
+        "assigned_to",
+        "child_id",
+        "created_by",
+        "priority",
+        "status",
+        "type",
+        "user_id"
+      ],
+      "ec": [
+        "created_at",
+        "deleted_at",
+        "event_id",
+        "user_id"
+      ],
+      "fields": [
+        "length",
+        "push"
+      ],
+      "current": [
+        "assigned_to",
+        "created_by",
+        "status"
+      ],
+      "event": [
+        "comments",
+        "id",
+        "reminders",
+        "start_date",
+        "title",
+        "type"
+      ],
+      "currentresult": [
+        "rows"
+      ],
+      "updatedevent": [
+        "created_by"
+      ],
+      "updater": [
+        "first_name",
+        "last_name"
+      ],
+      "queryerror": [
+        "message"
+      ],
+      "scheduledfor": [
+        "getminutes",
+        "setminutes"
+      ],
+      "commentsresult": [
+        "rows"
+      ],
+      "remindersresult": [
+        "rows"
+      ],
+      "currentevent": [
+        "status"
+      ],
+      "task": [
+        "created_by",
+        "id",
+        "rows"
+      ],
+      "sender": [
+        "first_name",
+        "id",
+        "last_name"
+      ],
+      "recipient": [
+        "first_name",
+        "id",
+        "last_name"
+      ],
+      "m": [
+        "created_at",
+        "id",
+        "parent_message_id",
+        "recipient_id",
+        "sender_id"
+      ],
+      "sm": [
+        "content",
+        "created_at",
+        "id",
+        "is_read",
+        "recipient_id",
+        "sender_id"
+      ],
+      "currenttask": [
+        "rows"
+      ],
+      "enrollmentdoccheck": [
+        "rows"
+      ],
+      "requests": [
+        "entries",
+        "get"
+      ],
+      "data": [
+        "firstrequest"
+      ],
+      "matchingkeys": [
+        "length"
+      ],
+      "patterns": [
+        "foreach"
+      ],
+      "originaljson": [
+        "call"
+      ],
+      "emaildata": [
+        "error",
+        "metadata",
+        "resendid",
+        "status",
+        "subject",
+        "to",
+        "type"
+      ],
+      "child": [
+        "birth_date",
+        "emergency_contact_name",
+        "emergency_contact_phone",
+        "first_name",
+        "gender",
+        "id",
+        "last_name",
+        "medical_info"
+      ],
+      "allchildrenids": [
+        "rows"
+      ],
+      "setting": [
+        "description",
+        "value"
+      ],
+      "existingappointments": [
+        "rows"
+      ]
+    }
+  },
+  "comparison": {
+    "tables_in_db_not_in_code": [
+      "payment_reminders"
+    ],
+    "tables_in_code_not_in_db": [
+      "age",
+      "documents",
+      "information_schema",
+      "overdue_tasks",
+      "setting_value",
+      "settings",
+      "staff_today_tasks",
+      "uploads",
+      "user_children"
+    ],
+    "unused_columns": {
+      "absence_requests": [
+        "id",
+        "child_id",
+        "parent_id",
+        "start_date",
+        "end_date",
+        "reason",
+        "status",
+        "admin_notes",
+        "created_at",
+        "updated_at",
+        "acknowledged_at"
+      ],
+      "activities": [
+        "id",
+        "author_id",
+        "title",
+        "description",
+        "media_type",
+        "media_url",
+        "media_thumbnail_url",
+        "cloudinary_public_id",
+        "is_pinned",
+        "is_visible",
+        "view_count",
+        "created_at",
+        "updated_at"
+      ],
+      "activity_comments": [
+        "id",
+        "activity_id",
+        "user_id",
+        "parent_comment_id",
+        "content",
+        "is_visible",
+        "created_at",
+        "updated_at"
+      ],
+      "activity_reactions": [
+        "id",
+        "activity_id",
+        "user_id",
+        "reaction_type",
+        "created_at"
+      ],
+      "announcements": [
+        "id",
+        "title",
+        "description",
+        "event_date",
+        "event_type",
+        "target_audience",
+        "target_children",
+        "created_by",
+        "is_published",
+        "created_at",
+        "updated_at"
+      ],
+      "appointments": [
+        "id",
+        "parent_id",
+        "child_id",
+        "created_by",
+        "subject",
+        "description",
+        "proposed_date",
+        "confirmed_date",
+        "status",
+        "location",
+        "notes",
+        "created_at",
+        "updated_at",
+        "enrollment_id",
+        "parent_email",
+        "parent_phone",
+        "parent_first_name",
+        "parent_last_name",
+        "child_first_name",
+        "child_last_name",
+        "rescheduled_count",
+        "last_rescheduled_at",
+        "staff_notes",
+        "parent_notes",
+        "appointment_type"
+      ],
+      "attendance": [
+        "id",
+        "child_id",
+        "date",
+        "check_in_time",
+        "check_out_time",
+        "notes",
+        "created_at",
+        "updated_at"
+      ],
+      "children": [
+        "id",
+        "first_name",
+        "last_name",
+        "birth_date",
+        "gender",
+        "medical_info",
+        "emergency_contact_name",
+        "emergency_contact_phone",
+        "photo_url",
+        "is_active",
+        "created_at",
+        "updated_at",
+        "parent_id"
+      ],
+      "children_documents": [
+        "id",
+        "child_id",
+        "filename",
+        "original_filename",
+        "file_path",
+        "mime_type",
+        "file_size",
+        "document_type",
+        "transferred_from_enrollment",
+        "uploaded_by",
+        "uploaded_at",
+        "notes"
+      ],
+      "contact_messages": [
+        "id",
+        "name",
+        "email",
+        "phone",
+        "subject",
+        "message",
+        "status",
+        "responded_at",
+        "responded_by",
+        "created_at"
+      ],
+      "email_logs": [
+        "id",
+        "email_type",
+        "recipient_email",
+        "sender_email",
+        "subject",
+        "status",
+        "resend_id",
+        "error_message",
+        "metadata",
+        "created_at",
+        "updated_at"
+      ],
+      "enrollment_documents": [
+        "id",
+        "enrollment_id",
+        "filename",
+        "original_filename",
+        "file_path",
+        "mime_type",
+        "file_size",
+        "document_type",
+        "uploaded_by",
+        "uploaded_at",
+        "is_verified",
+        "verified_by",
+        "verified_at",
+        "notes",
+        "cloudinary_url",
+        "cloudinary_public_id"
+      ],
+      "enrollments": [
+        "id",
+        "parent_id",
+        "child_id",
+        "enrollment_date",
+        "lunch_assistance",
+        "regulation_accepted",
+        "admin_notes",
+        "created_at",
+        "updated_at",
+        "applicant_first_name",
+        "applicant_last_name",
+        "applicant_email",
+        "status",
+        "approved_by",
+        "approved_at",
+        "applicant_phone",
+        "child_first_name",
+        "child_last_name",
+        "child_birth_date",
+        "child_gender",
+        "child_medical_info",
+        "emergency_contact_name",
+        "emergency_contact_phone",
+        "password_token",
+        "password_token_expires",
+        "rejection_type",
+        "rejection_reason",
+        "processed_by",
+        "processed_at",
+        "rejected_by",
+        "rejected_at"
+      ],
+      "enrollments_archive": [
+        "id",
+        "parent_id",
+        "child_id",
+        "enrollment_date",
+        "status",
+        "lunch_assistance",
+        "regulation_accepted",
+        "appointment_date",
+        "appointment_time",
+        "admin_notes",
+        "created_at",
+        "updated_at",
+        "applicant_first_name",
+        "applicant_last_name",
+        "applicant_email",
+        "new_status",
+        "approved_by",
+        "approved_at"
+      ],
+      "event_comments": [
+        "id",
+        "event_id",
+        "user_id",
+        "comment",
+        "created_at",
+        "updated_at",
+        "deleted_at"
+      ],
+      "event_history": [
+        "id",
+        "event_id",
+        "user_id",
+        "action",
+        "field_name",
+        "old_value",
+        "new_value",
+        "created_at"
+      ],
+      "event_reminders": [
+        "id",
+        "event_id",
+        "offset_minutes",
+        "notification_type",
+        "recipient_id",
+        "sent",
+        "sent_at",
+        "scheduled_for",
+        "error_message",
+        "created_at"
+      ],
+      "events": [
+        "id",
+        "title",
+        "description",
+        "type",
+        "start_date",
+        "end_date",
+        "all_day",
+        "is_recurring",
+        "recurrence_rule",
+        "parent_event_id",
+        "status",
+        "priority",
+        "created_by",
+        "assigned_to",
+        "child_id",
+        "reminder_enabled",
+        "reminder_offset",
+        "reminder_sent",
+        "reminder_sent_at",
+        "color",
+        "attendees",
+        "attachments",
+        "metadata",
+        "created_at",
+        "updated_at",
+        "completed_at",
+        "deleted_at",
+        "source_table",
+        "source_id"
+      ],
+      "holidays": [
+        "id",
+        "name",
+        "date",
+        "is_closed",
+        "description",
+        "created_at",
+        "updated_at"
+      ],
+      "logs": [
+        "id",
+        "user_id",
+        "action",
+        "description",
+        "created_at"
+      ],
+      "notifications": [
+        "id",
+        "user_id",
+        "title",
+        "message",
+        "type",
+        "is_read",
+        "created_at",
+        "related_id"
+      ],
+      "nursery_settings": [
+        "id",
+        "setting_key",
+        "value_fr",
+        "value_ar",
+        "category",
+        "is_active",
+        "created_at",
+        "updated_at",
+        "annual_vacation_enabled",
+        "annual_vacation_start_date",
+        "annual_vacation_end_date"
+      ],
+      "payment_reminders": [
+        "id",
+        "parent_id",
+        "child_id",
+        "amount",
+        "due_date",
+        "message",
+        "status",
+        "sent_at",
+        "created_by",
+        "created_at"
+      ],
+      "personal_memos": [
+        "id",
+        "user_id",
+        "content",
+        "memo_date",
+        "is_completed",
+        "completed_at",
+        "created_at",
+        "updated_at"
+      ],
+      "staff_messages": [
+        "id",
+        "sender_id",
+        "recipient_id",
+        "parent_message_id",
+        "subject",
+        "content",
+        "is_read",
+        "read_at",
+        "created_at"
+      ],
+      "tasks": [
+        "id",
+        "title",
+        "description",
+        "assigned_to",
+        "created_by",
+        "due_date",
+        "status",
+        "priority",
+        "completed_at",
+        "created_at",
+        "updated_at",
+        "task_date",
+        "task_type",
+        "enrollment_id"
+      ],
+      "users": [
+        "id",
+        "email",
+        "password",
+        "first_name",
+        "last_name",
+        "phone",
+        "role",
+        "profile_image",
+        "is_active",
+        "created_at",
+        "updated_at",
+        "cloudinary_public_id",
+        "birth_date"
+      ]
+    },
+    "missing_columns": {}
+  }
+}

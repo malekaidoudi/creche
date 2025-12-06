@@ -7,25 +7,25 @@ const auth = require('../middleware/auth');
 router.get('/has-children', auth.authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
-    
+
     const result = await db.query(
       'SELECT COUNT(*) as count FROM children WHERE parent_id = $1',
       [userId]
     );
-    
+
     const hasChildren = parseInt(result.rows[0].count) > 0;
-    
+
     res.json({
       success: true,
       hasChildren,
       count: parseInt(result.rows[0].count)
     });
-    
+
   } catch (error) {
     console.error('Erreur vérification enfants:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Erreur lors de la vérification des enfants' 
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la vérification des enfants'
     });
   }
 });
@@ -34,7 +34,7 @@ router.get('/has-children', auth.authenticateToken, async (req, res) => {
 router.get('/children', auth.authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
-    
+
     const result = await db.query(
       `SELECT c.*, 
         e.status as enrollment_status,
@@ -45,18 +45,18 @@ router.get('/children', auth.authenticateToken, async (req, res) => {
        ORDER BY c.first_name, c.last_name`,
       [userId]
     );
-    
+
     res.json({
       success: true,
       children: result.rows,
       count: result.rows.length
     });
-    
+
   } catch (error) {
     console.error('Erreur récupération enfants:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Erreur lors de la récupération des enfants' 
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération des enfants'
     });
   }
 });
@@ -65,7 +65,7 @@ router.get('/children', auth.authenticateToken, async (req, res) => {
 router.get('/children-summary', auth.authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
-    
+
     // Requête simplifiée - colonnes existantes uniquement
     const result = await db.query(
       `SELECT 
@@ -81,17 +81,17 @@ router.get('/children-summary', auth.authenticateToken, async (req, res) => {
        ORDER BY c.first_name, c.last_name`,
       [userId]
     );
-    
+
     res.json({
       success: true,
       children: result.rows,
       count: result.rows.length
     });
-    
+
   } catch (error) {
     console.error('Erreur récupération résumé enfants:', error);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       error: 'Erreur lors de la récupération du résumé des enfants',
       details: error.message
     });

@@ -46,9 +46,9 @@ const enrollmentsController = {
         INSERT INTO enrollments (
           applicant_first_name, applicant_last_name, applicant_email, applicant_phone,
           child_first_name, child_last_name, child_birth_date, child_gender,
-          new_status, created_at
+          status, created_at
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', NOW())
-        RETURNING id, new_status
+        RETURNING id, status
       `, [applicant_first_name, applicant_last_name, applicant_email, applicant_phone,
         child_first_name, child_last_name, child_birth_date, child_gender]);
 
@@ -110,32 +110,105 @@ const enrollmentsController = {
       const passwordToken = crypto.randomBytes(32).toString('hex');
       const tokenExpires = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48h
 
-      // Mettre à jour le dossier
+      // ============================================================
+      // WORKFLOW: Dossier approuvé → status = 'in_progress'
+      // Le status passera à 'approved' uniquement après le RDV validé
+      // ============================================================
+
+      // 1. CRÉER LE RDV D'ABORD (pour avoir l'ID)
+      const appointmentResult = await db.query(`
+        INSERT INTO appointments (
+          enrollment_id,
+          parent_id,
+          child_id,
+          created_by,
+          subject,
+          description,
+          proposed_date,
+          status,
+          location,
+          appointment_type,
+          parent_email,
+          parent_phone,
+          parent_first_name,
+          parent_last_name,
+          child_first_name,
+          child_last_name
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+        RETURNING *
+      `, [
+        id,                                                                      // enrollment_id
+        null,                                                                    // parent_id (pas encore créé)
+        null,                                                                    // child_id (pas encore créé)
+        req.user.id,                                                             // created_by
+        `Rendez-vous d'inscription`,                                             // subject
+        `Rendez-vous pour finaliser l'inscription à la crèche.`,                 // description
+        appointment_date,                                                        // proposed_date
+        'proposed',                                                              // status (en attente de confirmation parent)
+        'Crèche Mima Elghalia',                                                  // location
+        'inscription',                                                           // appointment_type
+        null,                                                                    // parent_email (sera mis à jour après)
+        null,                                                                    // parent_phone
+        null,                                                                    // parent_first_name
+        null,                                                                    // parent_last_name
+        null,                                                                    // child_first_name
+        null                                                                     // child_last_name
+      ]);
+
+      const appointmentId = appointmentResult.rows[0].id;
+
+      // 2. Mettre à jour le dossier avec status = 'in_progress' et lier le RDV
       const result = await db.query(`
         UPDATE enrollments 
-        SET new_status = 'approved', 
+        SET status = 'in_progress', 
             approved_by = $1, 
             approved_at = NOW(),
-            appointment_date = $2,
-            password_token = $3,
-            password_token_expires = $4,
+            password_token = $2,
+            password_token_expires = $3,
             processed_by = $1,
-            processed_at = NOW()
+            processed_at = NOW(),
+            active_appointment_id = $4
         WHERE id = $5
         RETURNING *
-      `, [req.user.id, appointment_date, passwordToken, tokenExpires, id]);
+      `, [req.user.id, passwordToken, tokenExpires, appointmentId, id]);
 
       const enrollment = result.rows[0];
+
+      // 3. Mettre à jour le RDV avec les infos du dossier
+      await db.query(`
+        UPDATE appointments 
+        SET parent_email = $1,
+            parent_phone = $2,
+            parent_first_name = $3,
+            parent_last_name = $4,
+            child_first_name = $5,
+            child_last_name = $6,
+            subject = $7,
+            description = $8
+        WHERE id = $9
+      `, [
+        enrollment.applicant_email,
+        enrollment.applicant_phone || '',
+        enrollment.applicant_first_name || 'Parent',
+        enrollment.applicant_last_name || '',
+        enrollment.child_first_name,
+        enrollment.child_last_name || '',
+        `Rendez-vous d'inscription - ${enrollment.child_first_name}`,
+        `Rendez-vous pour finaliser l'inscription de ${enrollment.child_first_name} ${enrollment.child_last_name || ''} à la crèche.`,
+        appointmentId
+      ]);
+
+      console.log(`✅ RDV créé dans appointments: ID ${appointmentId} pour inscription #${id}`);
+      console.log(`📋 Dossier #${id} passé en status 'in_progress' (en attente du RDV)`);
 
       // Créer un log d'approbation
       await createLog(
         req.user.id,
         'approve_enrollment',
-        `Inscription approuvée pour ${enrollment.child_first_name} ${enrollment.child_last_name || ''}`
+        `Inscription approuvée pour ${enrollment.child_first_name} ${enrollment.child_last_name || ''} - RDV créé`
       );
 
       // Générer le lien de création de mot de passe
-      // Forcer l'URL de production pour éviter les problèmes de configuration
       const frontendUrl = process.env.FRONTEND_URL || 'https://mima-elghalia.com';
       console.log(`📧 URL Frontend utilisée pour email: ${frontendUrl}`);
       const passwordLink = `${frontendUrl}/create-password?token=${passwordToken}&email=${encodeURIComponent(enrollment.applicant_email)}`;
@@ -155,11 +228,11 @@ const enrollmentsController = {
         enrollment,
         appointmentDateFormatted,
         passwordLink
-      ).then(result => {
-        if (result.success) {
+      ).then(emailResult => {
+        if (emailResult.success) {
           console.log(`✅ E-mail d'approbation envoyé à ${enrollment.applicant_email}`);
         } else {
-          console.error(`❌ Échec envoi e-mail à ${enrollment.applicant_email}:`, result.error);
+          console.error(`❌ Échec envoi e-mail à ${enrollment.applicant_email}:`, emailResult.error);
         }
       }).catch(err => console.error('❌ Erreur envoi email approbation:', err));
 
@@ -212,36 +285,86 @@ const enrollmentsController = {
     }
   },
 
-  // GET /api/enrollments - Liste dossiers
+  // GET /api/enrollments - Liste dossiers (enrollments + enrollments_archive)
   getAllEnrollments: async (req, res) => {
     try {
-      const { status = 'all', page = 1, limit = 20 } = req.query;
+      const { status = 'all', page = 1, limit = 20, include_archived = 'true' } = req.query;
       const offset = (page - 1) * limit;
 
-      let whereClause = '1=1';
       let params = [];
+      let paramIndex = 1;
 
+      // Requête pour enrollments actifs
+      let enrollmentsWhere = '1=1';
       if (status !== 'all') {
-        whereClause = 'e.new_status = $1';
+        enrollmentsWhere = `e.status = $${paramIndex}`;
         params.push(status);
+        paramIndex++;
       }
 
-      // Sélection avec e.* et alias pour compatibilité frontend
-      const query = `
-        SELECT 
-          e.*,
-          e.applicant_first_name AS parent_first_name,
-          e.applicant_last_name AS parent_last_name,
-          e.applicant_email AS parent_email,
-          e.applicant_phone AS parent_phone,
-          COUNT(ed.id) as documents_count
-        FROM enrollments e
-        LEFT JOIN enrollment_documents ed ON e.id = ed.enrollment_id
-        WHERE ${whereClause}
-        GROUP BY e.id
-        ORDER BY e.created_at DESC
-        LIMIT $${params.length + 1} OFFSET $${params.length + 2}
-      `;
+      // Requête principale: UNION entre enrollments et enrollments_archive
+      const includeArchived = include_archived === 'true';
+
+      let query;
+      if (includeArchived && (status === 'all' || status === 'approved' || status === 'rejected_deleted')) {
+        // UNION avec enrollments_archive pour les statuts finalisés
+        query = `
+          WITH combined AS (
+            -- Inscriptions actives
+            SELECT 
+              e.id, e.status, e.created_at, e.updated_at,
+              e.child_first_name, e.child_last_name, e.child_birth_date, e.child_gender,
+              e.applicant_first_name, e.applicant_last_name, e.applicant_email, e.applicant_phone,
+              e.applicant_first_name AS parent_first_name,
+              e.applicant_last_name AS parent_last_name,
+              e.applicant_email AS parent_email,
+              e.applicant_phone AS parent_phone,
+              e.admin_notes, e.approved_by, e.approved_at,
+              e.active_appointment_id, e.failed_appointments_count,
+              COALESCE((SELECT COUNT(*) FROM enrollment_documents ed WHERE ed.enrollment_id = e.id), 0) as documents_count,
+              'active' as source
+            FROM enrollments e
+            WHERE ${enrollmentsWhere}
+            
+            UNION ALL
+            
+            -- Inscriptions archivées
+            SELECT 
+              ea.id, COALESCE(ea.new_status::text, ea.status) as status, ea.created_at, ea.updated_at,
+              NULL as child_first_name, NULL as child_last_name, NULL as child_birth_date, NULL as child_gender,
+              ea.applicant_first_name, ea.applicant_last_name, ea.applicant_email, NULL as applicant_phone,
+              ea.applicant_first_name AS parent_first_name,
+              ea.applicant_last_name AS parent_last_name,
+              ea.applicant_email AS parent_email,
+              NULL AS parent_phone,
+              ea.admin_notes, ea.approved_by, ea.approved_at,
+              NULL as active_appointment_id, NULL as failed_appointments_count,
+              0 as documents_count,
+              'archived' as source
+            FROM enrollments_archive ea
+            WHERE ${status === 'all' ? '1=1' : (status === 'approved' ? "COALESCE(ea.new_status::text, ea.status) = 'approved'" : (status === 'rejected_deleted' ? "COALESCE(ea.new_status::text, ea.status) = 'rejected_deleted'" : '1=0'))}
+          )
+          SELECT * FROM combined
+          ORDER BY created_at DESC
+          LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+        `;
+      } else {
+        // Requête simple sans archive
+        query = `
+          SELECT 
+            e.*,
+            e.applicant_first_name AS parent_first_name,
+            e.applicant_last_name AS parent_last_name,
+            e.applicant_email AS parent_email,
+            e.applicant_phone AS parent_phone,
+            COALESCE((SELECT COUNT(*) FROM enrollment_documents ed WHERE ed.enrollment_id = e.id), 0) as documents_count,
+            'active' as source
+          FROM enrollments e
+          WHERE ${enrollmentsWhere}
+          ORDER BY e.created_at DESC
+          LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+        `;
+      }
 
       params.push(limit, offset);
 
@@ -279,7 +402,7 @@ const enrollmentsController = {
       // Mettre à jour le dossier
       const result = await db.query(`
         UPDATE enrollments 
-        SET new_status = $1, 
+        SET status = $1, 
             rejection_type = $2,
             rejection_reason = $3,
             appointment_date = $4,

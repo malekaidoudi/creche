@@ -1221,8 +1221,8 @@ const DashboardSettingsPage = () => {
                     {isRTL ? 'قائمة الأعياد والعطل' : 'Liste des Jours Fériés'}
                   </h4>
 
-                  {/* Filtres par type */}
-                  <div className="flex gap-1 sm:gap-2 flex-wrap">
+                  {/* Filtres par type - toujours sur une ligne */}
+                  <div className="flex gap-1 sm:gap-2 flex-nowrap">
                     {[
                       { key: 'national', label: isRTL ? 'وطني' : 'National', color: 'bg-blue-500' },
                       { key: 'religious', label: isRTL ? 'ديني' : 'Religieux', color: 'bg-green-500' },
@@ -1231,8 +1231,8 @@ const DashboardSettingsPage = () => {
                       <button
                         key={filter.key}
                         onClick={() => setHolidayFilter(filter.key)}
-                        className={`px-2 sm:px-3 py-1 text-xs rounded-full transition-colors ${holidayFilter === filter.key
-                          ? `${filter.color} text-white`
+                        className={`px-1.5 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-medium rounded-full transition-colors whitespace-nowrap ${holidayFilter === filter.key
+                          ? `${filter.color} text-white shadow-sm`
                           : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
                           }`}
                       >
@@ -1249,21 +1249,23 @@ const DashboardSettingsPage = () => {
                       .filter(holiday => holiday.type === holidayFilter)
                       .sort((a, b) => new Date(a.date) - new Date(b.date))
                       .map(holiday => (
-                        <div key={holiday.external_id || holiday.id} className="p-3 sm:p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                          {/* Layout mobile: empilé, desktop: en ligne */}
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
+                        <div key={holiday.external_id || holiday.id} className="p-3 sm:p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
+                          {/* Layout mobile: colonne centrée, desktop: ligne */}
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+
                             {/* Info du jour férié */}
-                            <div className="flex items-start sm:items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                              <div className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full flex-shrink-0 mt-1 sm:mt-0 ${
-                                holiday.type === 'national' ? 'bg-blue-500' :
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                              {/* Indicateur coloré */}
+                              <div className={`w-3 h-3 rounded-full flex-shrink-0 ${holiday.type === 'national' ? 'bg-blue-500' :
                                 holiday.type === 'religious' ? 'bg-green-500' :
-                                holiday.type === 'school' ? 'bg-orange-500' : 'bg-purple-500'
-                              }`}></div>
+                                  holiday.type === 'school' ? 'bg-orange-500' : 'bg-purple-500'
+                                }`} />
+
                               <div className="min-w-0 flex-1">
                                 <h5 className="font-medium text-gray-900 dark:text-white text-sm sm:text-base truncate">
                                   {holiday.name}
                                 </h5>
-                                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
                                   {new Date(holiday.date).toLocaleDateString(isRTL ? 'ar-TN' : 'fr-FR', {
                                     weekday: 'short',
                                     day: 'numeric',
@@ -1272,43 +1274,47 @@ const DashboardSettingsPage = () => {
                                   })}
                                 </p>
                               </div>
-                            </div>
 
-                            {/* Badge type + Toggle */}
-                            <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 mt-1 sm:mt-0">
-                              {/* Badge type - caché sur très petit écran */}
-                              <span className={`hidden xs:inline-flex px-2 py-0.5 text-xs rounded-full flex-shrink-0 ${
-                                holiday.type === 'national' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300' :
-                                holiday.type === 'religious' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300' :
-                                holiday.type === 'school' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-300' :
-                                'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300'
-                              }`}>
+                              {/* Badge type - visible desktop seulement */}
+                              <span className={`hidden sm:inline-flex px-2.5 py-1 text-xs font-medium rounded-full flex-shrink-0 ${holiday.type === 'national' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' :
+                                holiday.type === 'religious' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
+                                  holiday.type === 'school' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' :
+                                    'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+                                }`}>
                                 {holiday.type === 'national' ? (isRTL ? 'وطني' : 'National') :
                                   holiday.type === 'religious' ? (isRTL ? 'ديني' : 'Religieux') :
-                                  holiday.type === 'school' ? (isRTL ? 'مدرسي' : 'Scolaire') :
-                                  (isRTL ? 'مخصص' : 'Perso')}
+                                    holiday.type === 'school' ? (isRTL ? 'مدرسي' : 'Scolaire') :
+                                      (isRTL ? 'مخصص' : 'Perso')}
                               </span>
-
-                              {/* Toggle pour activer/désactiver le jour férié */}
-                              <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-                                <span className={`text-xs font-medium whitespace-nowrap ${holiday.is_active ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'}`}>
-                                  {holiday.is_active ? (isRTL ? 'مفعل' : 'Activé') : (isRTL ? 'غير مفعل' : 'Désactivé')}
-                                </span>
-                                {user?.role === 'admin' ? (
-                                  <ToggleSwitch
-                                    checked={holiday.is_active || false}
-                                    onChange={(value) => toggleHolidayStatus(holiday, value)}
-                                    size="sm"
-                                    activeColor="bg-red-600"
-                                    ariaLabel={isRTL ? 'تفعيل العطلة' : 'Activer le jour férié'}
-                                  />
-                                ) : (
-                                  <span className="text-xs text-gray-400 dark:text-gray-500 hidden sm:inline">
-                                    {isRTL ? '(مدير)' : '(Admin)'}
-                                  </span>
-                                )}
-                              </div>
                             </div>
+
+                            {/* Toggle centré sur mobile */}
+                            {user?.role === 'admin' && (
+                              <div className="flex items-center justify-center sm:justify-end gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100 dark:border-gray-700">
+                                <span className={`text-xs font-medium ${holiday.is_active ? 'text-red-600 dark:text-red-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                                  {holiday.is_active ? (isRTL ? 'مغلق' : 'Fermé') : (isRTL ? 'مفتوح' : 'Ouvert')}
+                                </span>
+                                <ToggleSwitch
+                                  checked={holiday.is_active || false}
+                                  onChange={(value) => toggleHolidayStatus(holiday, value)}
+                                  size="sm"
+                                  activeColor="peer-checked:bg-red-500"
+                                  ariaLabel={isRTL ? 'تفعيل العطلة' : 'Activer le jour férié'}
+                                />
+                              </div>
+                            )}
+
+                            {/* Message pour non-admin */}
+                            {user?.role !== 'admin' && (
+                              <div className="flex items-center justify-center sm:justify-end">
+                                <span className={`px-2.5 py-1 text-xs rounded-full ${holiday.is_active
+                                  ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                                  : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                                  }`}>
+                                  {holiday.is_active ? (isRTL ? 'مغلق' : 'Fermé') : (isRTL ? 'مفتوح' : 'Ouvert')}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       ))}

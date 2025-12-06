@@ -302,13 +302,13 @@ export default function FloatingActionButton() {
         </div>
       )}
 
-      {/* Main button */}
+      {/* Main button - z-40 pour être en dessous des modals plein écran (z-50) */}
       <button
         onClick={() => {
           setIsOpen(!isOpen);
           setShowQuickActionsSubmenu(false);
         }}
-        className={`fixed bottom-6 right-6 z-50 p-4 rounded-full shadow-2xl transition-all ${isOpen
+        className={`fixed bottom-6 right-6 z-40 p-4 rounded-full shadow-2xl transition-all ${isOpen
           ? 'bg-red-600 hover:bg-red-700'
           : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700'
           }`}

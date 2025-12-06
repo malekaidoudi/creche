@@ -1,5 +1,22 @@
 /* Mobile Dashboard Optimizations */
 
+/* Fix scroll global - permettre le scroll vertical */
+html,
+body,
+#root {
+    height: auto !important;
+    min-height: 100vh;
+    overflow-y: auto !important;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Cacher le bouton flottant en mode plein écran */
+body.fullscreen-mode .fixed.bottom-6.right-6,
+body.fullscreen-mode .fixed.bottom-24 {
+    display: none !important;
+}
+
 /* Wrapper pour les widgets dans les cards collapsibles */
 .mobile-widget-wrapper {
     /* Réduire les paddings internes des widgets */
