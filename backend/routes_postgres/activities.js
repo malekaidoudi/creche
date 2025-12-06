@@ -217,6 +217,24 @@ router.post('/:id/reactions', auth.authenticateToken, async (req, res) => {
 });
 
 // =====================================================
+// GET /api/activities/:id/reactions/details - Détails des réactions
+// =====================================================
+router.get('/:id/reactions/details', auth.authenticateToken, async (req, res) => {
+  try {
+    const result = await activityService.getReactionDetails(req.params.id);
+
+    if (result.success) {
+      res.json(result);
+    } else {
+      res.status(400).json(result);
+    }
+  } catch (error) {
+    console.error('❌ GET /api/activities/:id/reactions/details:', error);
+    res.status(500).json({ success: false, error: 'Erreur serveur' });
+  }
+});
+
+// =====================================================
 // GET /api/activities/:id/comments - Liste des commentaires
 // =====================================================
 router.get('/:id/comments', auth.authenticateToken, async (req, res) => {

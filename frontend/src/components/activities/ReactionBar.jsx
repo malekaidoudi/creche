@@ -15,81 +15,74 @@ const REACTIONS = [
   { type: 'celebrate', emoji: '🎉', animatedEmoji: '🥳', label: 'Célébrer', labelAr: 'احتفال', color: 'from-purple-400 to-pink-500', bg: 'bg-purple-100 dark:bg-purple-900/40' }
 ];
 
-const ReactionBar = ({ reactions = {}, onReact, isRTL = false }) => {
+const ReactionBar = ({ reactions = {}, onReact, onShowReactors, isRTL = false }) => {
   const [showPicker, setShowPicker] = useState(false);
   const [hoveredReaction, setHoveredReaction] = useState(null);
-  const longPressTimer = useRef(null);
-  const userReaction = reactions.userReaction;
+  const hidePickerTimer = useRef(null);
+  const userReaction = reactions?.userReaction || null;
 
   const handleReaction = (type) => {
     onReact(type);
     setShowPicker(false);
   };
 
-  // Gestion de l'appui long pour afficher le picker
-  const handleTouchStart = (e) => {
-    e.preventDefault(); // Empêcher la sélection de texte
-    longPressTimer.current = setTimeout(() => {
-      setShowPicker(true);
-    }, 500); // 500ms pour l'appui long
-  };
-
-  const handleTouchEnd = (e) => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      // Si le picker n'est pas affiché, c'était un tap court -> toggle reaction
-      if (!showPicker) {
-        if (userReaction) {
-          onReact(userReaction); // Retirer la réaction
-        } else {
-          onReact('like'); // Ajouter un like par défaut
-        }
-      }
+  // Clic sur le bouton principal = like ou annuler
+  const handleMainClick = () => {
+    if (userReaction) {
+      onReact(userReaction); // Annuler
+    } else {
+      onReact('like'); // Like
     }
   };
 
-  const handleTouchCancel = () => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-    }
+  // Desktop: survol pour afficher picker
+  const handleMouseEnter = () => {
+    if (hidePickerTimer.current) clearTimeout(hidePickerTimer.current);
+    setShowPicker(true);
   };
 
-  const currentReaction = REACTIONS.find(r => r.type === userReaction);
+  const handleMouseLeave = () => {
+    hidePickerTimer.current = setTimeout(() => setShowPicker(false), 300);
+  };
+
+  const currentReaction = userReaction ? REACTIONS.find(r => r.type === userReaction) : null;
 
   return (
     <div className="relative overflow-visible">
       {/* Bouton principal */}
       <div className="flex items-center gap-3 flex-wrap">
         <motion.button
-          onClick={() => userReaction ? onReact(userReaction) : setShowPicker(!showPicker)}
-          onMouseEnter={() => setShowPicker(true)}
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
-          onTouchCancel={handleTouchCancel}
-          onContextMenu={(e) => e.preventDefault()}
+          onClick={handleMainClick}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all shadow-sm select-none touch-manipulation
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all shadow-sm
             ${currentReaction
               ? `${currentReaction.bg} bg-gradient-to-r ${currentReaction.color} bg-clip-text text-transparent border border-transparent`
               : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600'
             }`}
         >
           <motion.span
+            key={userReaction || 'default'}
             className="text-xl"
-            animate={currentReaction ? { scale: [1, 1.2, 1] } : {}}
-            transition={{ duration: 0.3 }}
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.2 }}
           >
-            {currentReaction?.animatedEmoji || currentReaction?.emoji || '👍'}
+            {currentReaction ? (currentReaction.animatedEmoji || currentReaction.emoji) : '👍'}
           </motion.span>
           <span className={currentReaction ? 'text-gray-700 dark:text-gray-200 font-semibold' : ''}>
             {currentReaction ? (isRTL ? currentReaction.labelAr : currentReaction.label) : (isRTL ? 'أعجبني' : 'J\'aime')}
           </span>
         </motion.button>
 
-        {/* Compteur avec emojis empilés style Facebook */}
+        {/* Compteur avec emojis empilés style Facebook - Cliquable */}
         {reactions.total > 0 && (
-          <div className="flex items-center gap-2">
+          <button
+            onClick={onShowReactors}
+            className="flex items-center gap-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg px-2 py-1 transition-colors"
+          >
             <div className="flex -space-x-1">
               {REACTIONS.filter(r => reactions[r.type] > 0).slice(0, 3).map((r, index) => (
                 <motion.div
@@ -105,22 +98,37 @@ const ReactionBar = ({ reactions = {}, onReact, isRTL = false }) => {
               ))}
             </div>
             <span className="text-sm font-medium text-gray-600 dark:text-gray-400">{reactions.total}</span>
-          </div>
+          </button>
         )}
       </div>
+
+      {/* Overlay pour fermer le picker sur mobile */}
+      {showPicker && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setShowPicker(false)}
+        />
+      )}
 
       {/* Picker de réactions moderne avec tooltips */}
       <AnimatePresence>
         {showPicker && (
           <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.8 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.8 }}
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
             transition={{ type: "spring", stiffness: 400, damping: 25 }}
-            onMouseLeave={() => setShowPicker(false)}
-            className={`absolute bottom-full mb-3 ${isRTL ? 'right-0' : 'left-0'}
-              bg-white dark:bg-gray-800 rounded-full shadow-2xl border border-gray-100 dark:border-gray-700
-              px-2 py-1.5 flex items-center gap-0.5 z-50`}
+            onMouseEnter={() => hidePickerTimer.current && clearTimeout(hidePickerTimer.current)}
+            onMouseLeave={handleMouseLeave}
+            style={{
+              position: 'absolute',
+              bottom: '100%',
+              left: isRTL ? 'auto' : '0',
+              right: isRTL ? '0' : 'auto',
+              marginBottom: '8px',
+              zIndex: 9999
+            }}
+            className="bg-white dark:bg-gray-800 rounded-full shadow-2xl border border-gray-100 dark:border-gray-700 px-2 py-1.5 flex items-center gap-0.5"
           >
             {REACTIONS.map((reaction, index) => (
               <motion.div
@@ -152,7 +160,7 @@ const ReactionBar = ({ reactions = {}, onReact, isRTL = false }) => {
                   whileTap={{ scale: 0.9 }}
                   onClick={() => handleReaction(reaction.type)}
                   className={`text-2xl w-10 h-10 flex items-center justify-center rounded-full transition-all
-                    ${userReaction === reaction.type ? `${reaction.bg}` : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                    ${userReaction === reaction.type ? `${reaction.bg} ring-2 ring-offset-2 ring-blue-500` : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
                 >
                   {reaction.emoji}
                 </motion.button>

@@ -8,6 +8,7 @@ import { FiMoreVertical, FiTrash2, FiEdit2, FiMessageCircle, FiEye, FiUser, FiPl
 import { FaFacebook, FaInstagram, FaTiktok } from 'react-icons/fa';
 import { BsPin, BsPinFill } from 'react-icons/bs';
 import ReactionBar from './ReactionBar';
+import ReactorsModal from './ReactorsModal';
 import CommentSection from './CommentSection';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -17,6 +18,7 @@ const ActivityCard = ({ activity, onReact, onDelete, onEdit, isRTL = false, onOp
   const [showVideo, setShowVideo] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false); // Menu de partage
+  const [showReactorsModal, setShowReactorsModal] = useState(false); // Modal des réacteurs
   const videoRef = useRef(null);
 
   const canModify = user?.role === 'admin' || user?.id === activity.author?.id;
@@ -87,7 +89,7 @@ const ActivityCard = ({ activity, onReact, onDelete, onEdit, isRTL = false, onOp
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden"
+      className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700"
     >
       {/* En-tête */}
       <div className="p-4 flex items-start justify-between">
@@ -268,11 +270,12 @@ const ActivityCard = ({ activity, onReact, onDelete, onEdit, isRTL = false, onOp
       </div>
 
       {/* Actions */}
-      <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-700 overflow-hidden">
+      <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-700 overflow-visible">
         <div className="flex items-center justify-between gap-2">
           <ReactionBar
             reactions={activity.reactions}
             onReact={(type) => onReact?.(activity.id, type)}
+            onShowReactors={() => setShowReactorsModal(true)}
             isRTL={isRTL}
           />
 
@@ -331,6 +334,14 @@ const ActivityCard = ({ activity, onReact, onDelete, onEdit, isRTL = false, onOp
           isRTL={isRTL}
         />
       </div>
+
+      {/* Modal des réacteurs */}
+      <ReactorsModal
+        activityId={activity.id}
+        isOpen={showReactorsModal}
+        onClose={() => setShowReactorsModal(false)}
+        isRTL={isRTL}
+      />
     </motion.div>
   );
 };

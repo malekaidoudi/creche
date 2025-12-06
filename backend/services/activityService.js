@@ -298,6 +298,42 @@ const activityService = {
   },
 
   /**
+   * Récupérer les détails des réactions (qui a réagi)
+   */
+  async getReactionDetails(activityId) {
+    try {
+      const result = await db.query(
+        `SELECT ar.reaction_type, u.id as user_id, u.first_name, u.last_name, u.profile_image, u.role
+         FROM activity_reactions ar
+         JOIN users u ON ar.user_id = u.id
+         WHERE ar.activity_id = $1
+         ORDER BY ar.created_at DESC`,
+        [activityId]
+      );
+
+      // Grouper par type de réaction
+      const grouped = {};
+      for (const row of result.rows) {
+        if (!grouped[row.reaction_type]) {
+          grouped[row.reaction_type] = [];
+        }
+        grouped[row.reaction_type].push({
+          userId: row.user_id,
+          firstName: row.first_name,
+          lastName: row.last_name,
+          profileImage: row.profile_image,
+          role: row.role
+        });
+      }
+
+      return { success: true, reactions: grouped, total: result.rows.length };
+    } catch (error) {
+      console.error('Erreur getReactionDetails:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
    * Récupérer les commentaires d'une activité
    */
   async getComments(activityId, page = 1, limit = 20) {

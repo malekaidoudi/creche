@@ -86,6 +86,19 @@ const activityService = {
   },
 
   /**
+   * Récupérer les détails des réactions (qui a réagi)
+   */
+  async getReactionDetails(activityId) {
+    try {
+      const response = await api.get(`/api/activities/${activityId}/reactions/details`);
+      return response.data;
+    } catch (error) {
+      console.error('Erreur getReactionDetails:', error);
+      throw error;
+    }
+  },
+
+  /**
    * Récupérer les commentaires d'une activité
    */
   async getComments(activityId, page = 1, limit = 20) {
