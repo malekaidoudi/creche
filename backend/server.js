@@ -73,6 +73,7 @@ const appointmentsRoutes = require('./routes_postgres/appointments');
 const staffMessagesRoutes = require('./routes_postgres/staff-messages');
 const personalMemosRoutes = require('./routes_postgres/personal-memos');
 const activitiesRoutes = require('./routes_postgres/activities');
+const activityLogsRoutes = require('./routes_postgres/activityLogs');
 console.log('✅ Routes chargées\n');
 
 const app = express();
@@ -304,6 +305,9 @@ console.log('  ✓ /api/personal-memos (mémos personnels) 🆕');
 
 app.use('/api/activities', activitiesRoutes);
 console.log('  ✓ /api/activities (fil d\'activités) 🆕');
+
+app.use('/api/activity-logs', activityLogsRoutes);
+console.log('  ✓ /api/activity-logs (journal d\'activité direction) 🆕');
 
 console.log('\n✅ Toutes les routes montées avec succès\n');
 

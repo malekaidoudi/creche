@@ -312,7 +312,7 @@ const enrollmentsController = {
           WITH combined AS (
             -- Inscriptions actives
             SELECT 
-              e.id, e.status, e.created_at, e.updated_at,
+              e.id, e.status::text as status, e.created_at, e.updated_at,
               e.child_first_name, e.child_last_name, e.child_birth_date, e.child_gender,
               e.applicant_first_name, e.applicant_last_name, e.applicant_email, e.applicant_phone,
               e.applicant_first_name AS parent_first_name,
@@ -330,7 +330,7 @@ const enrollmentsController = {
             
             -- Inscriptions archivées
             SELECT 
-              ea.id, COALESCE(ea.new_status::text, ea.status) as status, ea.created_at, ea.updated_at,
+              ea.id, COALESCE(ea.new_status::text, ea.status::text) as status, ea.created_at, ea.updated_at,
               NULL as child_first_name, NULL as child_last_name, NULL as child_birth_date, NULL as child_gender,
               ea.applicant_first_name, ea.applicant_last_name, ea.applicant_email, NULL as applicant_phone,
               ea.applicant_first_name AS parent_first_name,
@@ -342,7 +342,7 @@ const enrollmentsController = {
               0 as documents_count,
               'archived' as source
             FROM enrollments_archive ea
-            WHERE ${status === 'all' ? '1=1' : (status === 'approved' ? "COALESCE(ea.new_status::text, ea.status) = 'approved'" : (status === 'rejected_deleted' ? "COALESCE(ea.new_status::text, ea.status) = 'rejected_deleted'" : '1=0'))}
+            WHERE ${status === 'all' ? '1=1' : (status === 'approved' ? "COALESCE(ea.new_status::text, ea.status::text) = 'approved'" : (status === 'rejected_deleted' ? "COALESCE(ea.new_status::text, ea.status::text) = 'rejected_deleted'" : '1=0'))}
           )
           SELECT * FROM combined
           ORDER BY created_at DESC

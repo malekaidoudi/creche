@@ -19,22 +19,22 @@ const config = {
 async function seedLogs() {
   console.log('📝 INSERTION DES LOGS DE TEST');
   console.log('==============================\n');
-  
+
   const pool = new Pool(config);
   const client = await pool.connect();
-  
+
   try {
     // Récupérer les IDs des utilisateurs existants
     const usersResult = await client.query('SELECT id, first_name, last_name, role FROM users LIMIT 5');
     const users = usersResult.rows;
-    
+
     if (users.length === 0) {
       console.log('❌ Aucun utilisateur trouvé dans la base de données');
       return;
     }
-    
+
     console.log(`✅ ${users.length} utilisateurs trouvés\n`);
-    
+
     // Logs de test variés
     const testLogs = [
       {
@@ -88,25 +88,25 @@ async function seedLogs() {
         description: `${users[4]?.first_name || users[0].first_name} ${users[4]?.last_name || users[0].last_name} s'est déconnecté`
       }
     ];
-    
+
     // Insérer les logs avec des timestamps échelonnés
     console.log('📝 Insertion des logs...\n');
-    
+
     for (let i = 0; i < testLogs.length; i++) {
       const log = testLogs[i];
       const minutesAgo = (testLogs.length - i) * 15; // Échelonner les logs toutes les 15 minutes
-      
+
       await client.query(`
         INSERT INTO logs (user_id, action, description, created_at)
         VALUES ($1, $2, $3, NOW() - INTERVAL '${minutesAgo} minutes')
       `, [log.user_id, log.action, log.description]);
-      
+
       console.log(`✅ Log ${i + 1}/${testLogs.length}: ${log.action} (il y a ${minutesAgo} min)`);
     }
-    
+
     console.log('\n✅ TOUS LES LOGS ONT ÉTÉ INSÉRÉS AVEC SUCCÈS !');
     console.log(`📊 Total: ${testLogs.length} logs créés\n`);
-    
+
     // Afficher un aperçu des logs
     const logsResult = await client.query(`
       SELECT 
@@ -121,7 +121,7 @@ async function seedLogs() {
       ORDER BY l.created_at DESC
       LIMIT 5
     `);
-    
+
     console.log('📋 APERÇU DES 5 DERNIERS LOGS:');
     console.log('================================');
     logsResult.rows.forEach((log, index) => {
@@ -129,7 +129,7 @@ async function seedLogs() {
       console.log(`   Par: ${log.first_name} ${log.last_name}`);
       console.log(`   Date: ${new Date(log.created_at).toLocaleString('fr-FR')}\n`);
     });
-    
+
   } catch (error) {
     console.error('❌ Erreur:', error.message);
   } finally {

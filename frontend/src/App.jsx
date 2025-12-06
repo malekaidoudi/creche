@@ -60,6 +60,9 @@ import WeeklyPlanningPage from './pages/dashboard/WeeklyPlanningPage'
 // Page Activités
 import ActivitiesPage from './pages/activities/ActivitiesPage'
 
+// Journal d'activité (direction)
+import ActivityLogPage from './pages/dashboard/ActivityLogPage'
+
 // Composants
 import ProtectedRoute from './components/auth/ProtectedRoute'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -236,6 +239,9 @@ function App() {
             <StaffSettingsPage />
           </ErrorBoundary>
         } />
+
+        {/* Journal d'activité (direction) */}
+        <Route path="activity-logs" element={<ActivityLogPage />} />
       </Route>
 
 

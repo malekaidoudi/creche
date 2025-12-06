@@ -33,6 +33,7 @@ import MemoModal from '../../components/modals/MemoModal';
 import TaskModal from '../../components/modals/TaskModal';
 import CreateAppointmentModal from '../../components/modals/CreateAppointmentModal';
 import api from '../../services/api';
+import activityLogService from '../../services/activityLogService';
 
 const DashboardHome = () => {
   const { user, isAdmin, isStaff } = useAuth();
@@ -44,6 +45,7 @@ const DashboardHome = () => {
   const [showAppointmentModal, setShowAppointmentModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [recentActivities, setRecentActivities] = useState([]);
+  const [activityStats, setActivityStats] = useState(null);
 
   // Fonction pour formater un log en activité affichable
   const formatLogToActivity = (log) => {
@@ -129,11 +131,26 @@ const DashboardHome = () => {
           newEnrollmentsThisMonth: 3
         });
 
-        // Charger les logs réels depuis l'API
-        const response = await api.get('/api/logs?limit=5');
-        if (response.data.success) {
-          const formattedLogs = response.data.logs.map(log => formatLogToActivity(log));
-          setRecentActivities(formattedLogs);
+        // Charger les activités récentes depuis le nouveau système de logging
+        try {
+          const activityResponse = await activityLogService.getLogs({ limit: 10, period: 'week' });
+          if (activityResponse.success && activityResponse.logs) {
+            setRecentActivities(activityResponse.logs);
+          }
+
+          // Charger les stats d'activité
+          const statsResponse = await activityLogService.getStats({ period: 'today' });
+          if (statsResponse.success) {
+            setActivityStats(statsResponse.stats);
+          }
+        } catch (activityError) {
+          console.log('📊 Système de logging non disponible, utilisation des logs classiques');
+          // Fallback sur l'ancien système
+          const response = await api.get('/api/logs?limit=5');
+          if (response.data.success) {
+            const formattedLogs = response.data.logs.map(log => formatLogToActivity(log));
+            setRecentActivities(formattedLogs);
+          }
         }
       } catch (error) {
         console.error('❌ Erreur chargement dashboard:', error);
@@ -372,7 +389,7 @@ const DashboardHome = () => {
             </motion.div>
           )}
 
-          {/* Activités récentes */}
+          {/* Activités récentes - Lié au système de logging */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -381,29 +398,48 @@ const DashboardHome = () => {
           >
             <Card className="h-full flex flex-col">
               <CardHeader className="flex-shrink-0">
-                <CardTitle className="flex items-center">
-                  <Clock className="w-5 h-5 mr-2 rtl:mr-0 rtl:ml-2" />
-                  {isRTL ? 'الأنشطة الأخيرة' : 'Activités récentes'}
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center">
+                    <Clock className="w-5 h-5 mr-2 rtl:mr-0 rtl:ml-2" />
+                    {isRTL ? 'الأنشطة الأخيرة' : 'Activités récentes'}
+                  </CardTitle>
+                  <Link
+                    to="/dashboard/activity-logs"
+                    className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400"
+                  >
+                    {isRTL ? 'عرض الكل' : 'Voir tout →'}
+                  </Link>
+                </div>
               </CardHeader>
               <CardContent className="flex-1 overflow-y-auto">
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {recentActivities.length > 0 ? (
-                    recentActivities.map((activity, index) => (
-                      <div key={index} className="flex items-start space-x-3 rtl:space-x-reverse">
-                        <div className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
-                          <activity.icon className={`w-4 h-4 ${activity.color}`} />
+                    recentActivities.map((activity, index) => {
+                      // Couleurs selon la sévérité
+                      const severityColors = {
+                        critical: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400',
+                        warning: 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400',
+                        info: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400',
+                        debug: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+                      };
+                      const bgColor = severityColors[activity.severity] || severityColors.info;
+
+                      return (
+                        <div key={activity.id || index} className="flex items-start space-x-3 rtl:space-x-reverse p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${bgColor}`}>
+                            <span className="text-sm">{activity.severity_icon || activity.category_icon || '📋'}</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                              {activity.title || activity.message}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                              {activity.user_name || 'Système'} • {formatTimeAgo(activity.created_at)}
+                            </p>
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-gray-900 dark:text-white">
-                            {activity.message}
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {activity.time}
-                          </p>
-                        </div>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
                     <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                       <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />

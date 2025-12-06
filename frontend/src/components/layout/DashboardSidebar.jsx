@@ -20,7 +20,8 @@ import {
   ChevronLeft,
   User,
   MessageSquare,
-  Image
+  Image,
+  Activity
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -216,6 +217,14 @@ const DashboardSidebar = ({ isOpen, onClose, onCollapsedChange }) => {
           roles: ['admin']
         }
       ]
+    },
+    // Journal d'activité - Lien direct pour admin/staff
+    {
+      key: 'activity-logs',
+      title: isRTL ? 'سجل النشاط' : 'Journal d\'activité',
+      icon: Activity,
+      path: '/dashboard/activity-logs',
+      roles: ['admin', 'staff']
     },
     // Paramètres supprimé de la sidebar (accessible via menu utilisateur)
   ];
