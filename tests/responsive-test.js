@@ -23,7 +23,6 @@ const viewports = {
 const pagesToTest = [
     // Pages publiques
     { url: '/', name: 'Page d\'accueil', requiresAuth: false },
-    { url: '/articles', name: 'Articles', requiresAuth: false },
     { url: '/inscription', name: 'Page d\'inscription', requiresAuth: false },
     { url: '/contact', name: 'Contact', requiresAuth: false },
     { url: '/visite-virtuelle', name: 'Visite Virtuelle', requiresAuth: false },

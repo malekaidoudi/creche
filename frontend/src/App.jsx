@@ -6,8 +6,6 @@ import DashboardLayout from './layouts/DashboardLayout'
 
 // Pages publiques
 import HomePage from './pages/public/HomePage'
-import ArticlesPage from './pages/public/ArticlesPage'
-import ArticleDetailPage from './pages/public/ArticleDetailPage'
 import EnrollmentPage from './pages/public/EnrollmentPage'
 import ContactPageDynamic from './pages/public/ContactPageDynamic'
 import VirtualTourPage from './pages/public/VirtualTourPage'
@@ -82,8 +80,6 @@ function App() {
       {/* Routes publiques */}
       <Route path="/" element={<PublicLayout />}>
         <Route index element={<HomePage />} />
-        <Route path="articles" element={<ArticlesPage />} />
-        <Route path="articles/:id" element={<ArticleDetailPage />} />
         <Route path="inscription" element={<EnrollmentPage />} />
         <Route path="contact" element={<ContactPageDynamic />} />
         <Route path="visite-virtuelle" element={<VirtualTourPage />} />

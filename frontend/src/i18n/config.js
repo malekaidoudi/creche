@@ -58,7 +58,6 @@ const frTranslations = {
   },
   nav: {
     home: 'Accueil',
-    articles: 'Articles',
     news: 'Actualités',
     enrollment: 'Inscription',
     contact: 'Contact',
@@ -67,7 +66,6 @@ const frTranslations = {
     children: 'Enfants',
     enrollments: 'Inscriptions',
     attendance: 'Présences',
-    articlesManagement: 'Gestion Articles',
     newsManagement: 'Gestion Actualités',
     contacts: 'Messages'
   },
@@ -220,20 +218,6 @@ const frTranslations = {
     recordCheckIn: 'Enregistrer l\'arrivée',
     recordCheckOut: 'Enregistrer le départ'
   },
-  articles: {
-    title: 'Articles',
-    addArticle: 'Ajouter un article',
-    editArticle: 'Modifier l\'article',
-    titleFr: 'Titre (Français)',
-    titleAr: 'Titre (Arabe)',
-    contentFr: 'Contenu (Français)',
-    contentAr: 'Contenu (Arabe)',
-    image: 'Image',
-    status: 'Statut',
-    author: 'Auteur',
-    publishedAt: 'Publié le',
-    readMore: 'Lire la suite'
-  },
   news: {
     title: 'Actualités',
     addNews: 'Ajouter une actualité',
@@ -312,7 +296,6 @@ const arTranslations = {
   },
   nav: {
     home: 'الرئيسية',
-    articles: 'المقالات',
     news: 'الأخبار',
     enrollment: 'التسجيل',
     contact: 'اتصل بنا',
@@ -321,7 +304,6 @@ const arTranslations = {
     children: 'الأطفال',
     enrollments: 'التسجيلات',
     attendance: 'الحضور',
-    articlesManagement: 'إدارة المقالات',
     newsManagement: 'إدارة الأخبار',
     contacts: 'الرسائل'
   },
@@ -473,20 +455,6 @@ const arTranslations = {
     departed: 'المغادرون',
     recordCheckIn: 'تسجيل الوصول',
     recordCheckOut: 'تسجيل المغادرة'
-  },
-  articles: {
-    title: 'المقالات',
-    addArticle: 'إضافة مقال',
-    editArticle: 'تعديل المقال',
-    titleFr: 'العنوان (فرنسي)',
-    titleAr: 'العنوان (عربي)',
-    contentFr: 'المحتوى (فرنسي)',
-    contentAr: 'المحتوى (عربي)',
-    image: 'الصورة',
-    status: 'الحالة',
-    author: 'الكاتب',
-    publishedAt: 'نُشر في',
-    readMore: 'اقرأ المزيد'
   },
   news: {
     title: 'الأخبار',

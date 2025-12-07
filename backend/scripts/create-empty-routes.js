@@ -5,8 +5,8 @@ const path = require('path');
 
 const routes = [
   'users', 'children', 'enrollments', 'attendance', 'uploads', 'documents',
-  'reports', 'settings', 'logs', 'articles', 'news', 'contacts', 
-  'publicEnrollments', 'setup', 'profile', 'absenceRequests', 
+  'reports', 'settings', 'logs', 'news', 'contacts',
+  'publicEnrollments', 'setup', 'profile', 'absenceRequests',
   'nurserySettings', 'notifications', 'fixUserRole', 'userChildren',
   'absences', 'holidays', 'schedule-settings'
 ];
@@ -33,11 +33,11 @@ module.exports = router;`;
 
 async function createAllEmptyRoutes() {
   console.log('🔧 Création des routes vides PostgreSQL...');
-  
+
   for (const route of routes) {
     await createEmptyRoute(route);
   }
-  
+
   console.log('🎉 Toutes les routes vides créées !');
 }
 

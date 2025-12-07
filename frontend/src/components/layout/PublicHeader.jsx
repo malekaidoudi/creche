@@ -32,7 +32,6 @@ const PublicHeader = () => {
   // Navigation dynamique selon l'état de connexion
   const navigation = [
     { name: t('nav.home'), href: '/' },
-    // { name: t('nav.articles'), href: '/articles' }, // Masqué temporairement
     // Afficher Dashboard/Mon Espace si connecté, pas d'Inscription dans le menu
     ...(isAuthenticated ? [
       // Dashboard seulement pour admin et staff
@@ -93,8 +92,8 @@ const PublicHeader = () => {
                 key={item.name}
                 to={item.href}
                 className={`px-3 py-2 text-sm font-medium transition-colors duration-200 ${isActive(item.href)
-                    ? 'text-primary-600 dark:text-primary-400 border-b-2 border-primary-600 dark:border-primary-400'
-                    : 'text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400'
+                  ? 'text-primary-600 dark:text-primary-400 border-b-2 border-primary-600 dark:border-primary-400'
+                  : 'text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400'
                   }`}
               >
                 {item.name}
@@ -106,7 +105,7 @@ const PublicHeader = () => {
           <div className="hidden md:flex items-center space-x-4 rtl:space-x-reverse">
             <LanguageToggle />
             <ThemeToggle />
-            
+
             {isAuthenticated ? (
               <div className="relative">
                 <button
@@ -145,7 +144,7 @@ const PublicHeader = () => {
                         <Settings className="w-4 h-4 mr-3 rtl:mr-0 rtl:ml-3" />
                         {isRTL ? 'الملف الشخصي' : 'Profil'}
                       </Link>
-                      
+
                       <div className="border-t border-gray-200 dark:border-gray-700">
                         <button
                           onClick={() => {
@@ -191,8 +190,8 @@ const PublicHeader = () => {
                 to={item.href}
                 onClick={() => setIsMenuOpen(false)}
                 className={`block px-3 py-2 text-base font-medium transition-colors duration-200 rounded-lg ${isActive(item.href)
-                    ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20'
-                    : 'text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                  ? 'text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20'
+                  : 'text-gray-700 dark:text-gray-300 hover:text-primary-600 dark:hover:text-primary-400 hover:bg-gray-50 dark:hover:bg-gray-800'
                   }`}
               >
                 {item.name}
@@ -204,7 +203,7 @@ const PublicHeader = () => {
                 <LanguageToggle />
                 <ThemeToggle />
               </div>
-              
+
               {isAuthenticated ? (
                 <div className="px-3 space-y-3">
                   <div className="flex items-center space-x-3 rtl:space-x-reverse p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
@@ -228,12 +227,12 @@ const PublicHeader = () => {
                       </p>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
                         {user?.role === 'admin' ? (isRTL ? 'المدير' : 'Directeur') :
-                         user?.role === 'staff' ? (isRTL ? 'موظف' : 'Personnel') :
-                         (isRTL ? 'ولي أمر' : 'Parent')}
+                          user?.role === 'staff' ? (isRTL ? 'موظف' : 'Personnel') :
+                            (isRTL ? 'ولي أمر' : 'Parent')}
                       </p>
                     </div>
                   </div>
-                  
+
                   {hasMySpaceAccess && (
                     <Link
                       to="/mon-espace"
@@ -244,7 +243,7 @@ const PublicHeader = () => {
                       {isRTL ? 'مساحتي' : 'Mon espace'}
                     </Link>
                   )}
-                  
+
                   {isStaff() && (
                     <Link
                       to="/dashboard"
@@ -255,7 +254,7 @@ const PublicHeader = () => {
                       {isRTL ? 'لوحة التحكم' : 'Dashboard'}
                     </Link>
                   )}
-                  
+
                   <Link
                     to="/profile"
                     onClick={() => setIsMenuOpen(false)}
@@ -264,7 +263,7 @@ const PublicHeader = () => {
                     <Settings className="w-4 h-4 mr-3 rtl:mr-0 rtl:ml-3" />
                     {isRTL ? 'الملف الشخصي' : 'Profil'}
                   </Link>
-                  
+
                   <button
                     onClick={() => {
                       logout();

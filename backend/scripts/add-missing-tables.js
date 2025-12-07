@@ -19,10 +19,10 @@ const config = {
 async function addMissingTables() {
   console.log('🔧 AJOUT DES TABLES MANQUANTES');
   console.log('==============================');
-  
+
   const pool = new Pool(config);
   const client = await pool.connect();
-  
+
   try {
     // 1. Table absence_requests
     console.log('1️⃣ Création table absence_requests...');
@@ -40,21 +40,8 @@ async function addMissingTables() {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    
-    // 2. Table articles
-    console.log('2️⃣ Création table articles...');
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS articles (
-        id SERIAL PRIMARY KEY,
-        title_fr VARCHAR(255) NOT NULL,
-        content_fr TEXT NOT NULL,
-        author_id INTEGER REFERENCES users(id),
-        is_published BOOLEAN DEFAULT FALSE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-    
-    // 3. Table contacts
+
+    // 2. Table contacts
     console.log('3️⃣ Création table contacts...');
     await client.query(`
       CREATE TABLE IF NOT EXISTS contacts (
@@ -68,7 +55,7 @@ async function addMissingTables() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    
+
     // 4. Table documents
     console.log('4️⃣ Création table documents...');
     await client.query(`
@@ -81,7 +68,7 @@ async function addMissingTables() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    
+
     // 5. Table enrollment_documents
     console.log('5️⃣ Création table enrollment_documents...');
     await client.query(`
@@ -94,7 +81,7 @@ async function addMissingTables() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    
+
     // 6. Table notifications
     console.log('6️⃣ Création table notifications...');
     await client.query(`
@@ -108,7 +95,7 @@ async function addMissingTables() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    
+
     // 7. Table logs
     console.log('7️⃣ Création table logs...');
     await client.query(`
@@ -120,7 +107,7 @@ async function addMissingTables() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    
+
     // 8. Table uploads
     console.log('8️⃣ Création table uploads...');
     await client.query(`
@@ -135,9 +122,9 @@ async function addMissingTables() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    
+
     console.log('\n✅ TOUTES LES TABLES CRÉÉES AVEC SUCCÈS !');
-    
+
   } catch (error) {
     console.error('❌ Erreur:', error.message);
   } finally {

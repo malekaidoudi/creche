@@ -51,7 +51,6 @@ const documentsRoutes = require('./routes_postgres/documents');
 const reportsRoutes = require('./routes_postgres/reports');
 const settingsRoutes = require('./routes_postgres/settings');
 const logsRoutes = require('./routes_postgres/logs');
-const articleRoutes = require('./routes_postgres/articles');
 const newsRoutes = require('./routes_postgres/news');
 const contactRoutes = require('./routes_postgres/contacts');
 const healthRoutes = require('./routes_postgres/health');
@@ -236,9 +235,6 @@ console.log('  ✓ /api/settings');
 
 app.use('/api/logs', logsRoutes);
 console.log('  ✓ /api/logs');
-
-app.use('/api/articles', articleRoutes);
-console.log('  ✓ /api/articles');
 
 app.use('/api/news', newsRoutes);
 console.log('  ✓ /api/news');
