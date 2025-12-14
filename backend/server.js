@@ -73,6 +73,8 @@ const staffMessagesRoutes = require('./routes_postgres/staff-messages');
 const personalMemosRoutes = require('./routes_postgres/personal-memos');
 const activitiesRoutes = require('./routes_postgres/activities');
 const activityLogsRoutes = require('./routes_postgres/activityLogs');
+const userWorkflowRoutes = require('./routes_postgres/userWorkflow');
+const debugEnrollmentsRoutes = require('./routes_postgres/debugEnrollments');
 console.log('✅ Routes chargées\n');
 
 const app = express();
@@ -304,6 +306,12 @@ console.log('  ✓ /api/activities (fil d\'activités) 🆕');
 
 app.use('/api/activity-logs', activityLogsRoutes);
 console.log('  ✓ /api/activity-logs (journal d\'activité direction) 🆕');
+
+app.use('/api/user-workflow', userWorkflowRoutes);
+console.log('  ✓ /api/user-workflow (workflow parent/staff) 🆕');
+
+app.use('/api/debug', debugEnrollmentsRoutes);
+console.log('  ✓ /api/debug (diagnostic enrollments) 🔧');
 
 console.log('\n✅ Toutes les routes montées avec succès\n');
 

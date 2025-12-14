@@ -6,10 +6,14 @@ const auth = require('../middleware/auth');
 // GET /api/user/has-children - Vérifier si l'utilisateur a des enfants associés
 router.get('/has-children', auth.authenticateToken, async (req, res) => {
   try {
-    const userId = req.user.userId;
+    const userId = req.user.userId || req.user.id;
 
+    // Vérifie dans children.parent_id OU enrollments.parent_id
     const result = await db.query(
-      'SELECT COUNT(*) as count FROM children WHERE parent_id = $1',
+      `SELECT COUNT(DISTINCT c.id) as count 
+       FROM children c
+       LEFT JOIN enrollments e ON c.id = e.child_id
+       WHERE c.parent_id = $1 OR e.parent_id = $1`,
       [userId]
     );
 
@@ -33,16 +37,19 @@ router.get('/has-children', auth.authenticateToken, async (req, res) => {
 // GET /api/user/children - Récupérer les enfants de l'utilisateur
 router.get('/children', auth.authenticateToken, async (req, res) => {
   try {
-    const userId = req.user.userId;
+    const userId = req.user.userId || req.user.id;
 
+    // Utilise children.parent_id OU enrollments.parent_id
     const result = await db.query(
-      `SELECT c.*, 
-        e.status as enrollment_status,
-        e.start_date as enrollment_start_date
+      `SELECT DISTINCT ON (c.id)
+        c.*, 
+        COALESCE(c.enrollment_status::text, e.status::text, 'pending') as enrollment_status,
+        e.enrollment_date as enrollment_start_date,
+        COALESCE(c.parent_id, e.parent_id) as parent_id
        FROM children c
        LEFT JOIN enrollments e ON c.id = e.child_id
-       WHERE c.parent_id = $1
-       ORDER BY c.first_name, c.last_name`,
+       WHERE c.parent_id = $1 OR e.parent_id = $1
+       ORDER BY c.id, c.first_name, c.last_name`,
       [userId]
     );
 
@@ -64,9 +71,17 @@ router.get('/children', auth.authenticateToken, async (req, res) => {
 // GET /api/user/children-summary - Résumé des enfants de l'utilisateur
 router.get('/children-summary', auth.authenticateToken, async (req, res) => {
   try {
-    const userId = req.user.userId;
+    const userId = req.user.userId || req.user.id;
+    console.log('👶 children-summary - userId:', userId, 'user:', req.user);
 
-    // Requête simplifiée - colonnes existantes uniquement
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        error: 'ID utilisateur non trouvé dans le token'
+      });
+    }
+
+    // Requête avec calcul de l'âge - utilise children.parent_id OU enrollments.parent_id
     const result = await db.query(
       `SELECT 
         c.id,
@@ -74,13 +89,30 @@ router.get('/children-summary', auth.authenticateToken, async (req, res) => {
         c.last_name,
         c.birth_date,
         c.photo_url,
-        e.status as enrollment_status
+        c.gender,
+        COALESCE(c.enrollment_status::text, e.status::text, 'pending') as enrollment_status,
+        e.id as enrollment_id,
+        CASE 
+          WHEN c.birth_date IS NOT NULL THEN
+            CASE 
+              WHEN EXTRACT(YEAR FROM AGE(c.birth_date)) >= 1 THEN
+                EXTRACT(YEAR FROM AGE(c.birth_date))::text || ' an' || 
+                CASE WHEN EXTRACT(YEAR FROM AGE(c.birth_date)) > 1 THEN 's' ELSE '' END
+              ELSE
+                EXTRACT(MONTH FROM AGE(c.birth_date))::text || ' mois'
+            END
+          ELSE NULL
+        END as age_display
        FROM children c
        LEFT JOIN enrollments e ON c.id = e.child_id
-       WHERE c.parent_id = $1
+       WHERE c.parent_id = $1 OR e.parent_id = $1
+       GROUP BY c.id, c.first_name, c.last_name, c.birth_date, c.photo_url, c.gender, 
+                c.enrollment_status, e.status, e.id
        ORDER BY c.first_name, c.last_name`,
       [userId]
     );
+
+    console.log('👶 Enfants trouvés pour parent', userId, ':', result.rows.length, result.rows.map(r => ({ name: r.first_name, status: r.enrollment_status })));
 
     res.json({
       success: true,

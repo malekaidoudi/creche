@@ -1,12 +1,15 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useLanguage } from '../../hooks/useLanguage'
 import { useAuth } from '../../hooks/useAuth'
 import { Heart, Shield, GraduationCap, Star, ArrowRight, Camera } from 'lucide-react'
 import LoginFormHero from '../../components/auth/LoginFormHero'
+import JoinUsModal from '../../components/ui/JoinUsModal'
 
 const HomePage = () => {
   const { isRTL } = useLanguage()
   const { isAuthenticated, user } = useAuth()
+  const [showJoinModal, setShowJoinModal] = useState(false)
 
   return (
     <div className="min-h-screen">
@@ -18,9 +21,9 @@ const HomePage = () => {
             <div className="space-y-8 text-center lg:text-left">
               {/* Badge */}
               <div className="inline-flex items-center px-6 py-3 bg-white/90 dark:bg-gray-800/90 backdrop-blur-md rounded-full shadow-xl">
-                <img 
-                  src="/images/logo.jpg" 
-                  alt="Mima Elghalia Logo" 
+                <img
+                  src="/images/logo.jpg"
+                  alt="Mima Elghalia Logo"
                   className="w-8 h-8 rounded-full object-cover mr-3 rtl:mr-0 rtl:ml-3"
                 />
                 <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">
@@ -241,12 +244,12 @@ const HomePage = () => {
               }
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
-                to="/inscription"
+              <button
+                onClick={() => setShowJoinModal(true)}
                 className="bg-white text-blue-600 hover:bg-gray-50 px-8 py-4 rounded-xl font-bold text-lg transition-colors duration-300"
               >
                 {isRTL ? 'سجل الآن' : 'Inscription gratuite'}
-              </Link>
+              </button>
               <Link
                 to="/contact"
                 className="border-2 border-white text-white hover:bg-white hover:text-blue-600 px-8 py-4 rounded-xl font-bold text-lg transition-colors duration-300"
@@ -257,6 +260,9 @@ const HomePage = () => {
           </div>
         </section>
       )}
+
+      {/* Modal de choix inscription */}
+      <JoinUsModal isOpen={showJoinModal} onClose={() => setShowJoinModal(false)} />
     </div>
   )
 }

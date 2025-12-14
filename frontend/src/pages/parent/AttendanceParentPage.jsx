@@ -15,16 +15,19 @@ import {
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useTheme } from '../../hooks/useTheme';
+import useIsMobile from '../../hooks/useIsMobile';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import api from '../../services/api';
 import { useDialogContext } from '../../contexts/DialogContext';
+import MobileNavigation from '../../components/mobile/MobileNavigation';
 
 const AttendanceParentPage = () => {
   const { user } = useAuth();
   const { isRTL } = useLanguage();
   const dialog = useDialogContext();
   const { isDark } = useTheme();
+  const isMobile = useIsMobile();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [children, setChildren] = useState([]);
@@ -381,7 +384,7 @@ const AttendanceParentPage = () => {
   }
 
   return (
-    <div className={`min-h-screen p-4 md:p-6 ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
+    <div className={`min-h-screen p-4 md:p-6 ${isDark ? 'bg-gray-900' : 'bg-gray-50'} ${isMobile ? 'pb-24' : ''}`}>
       <div className="max-w-7xl mx-auto">
         {/* En-tête */}
         <motion.div
@@ -389,18 +392,21 @@ const AttendanceParentPage = () => {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <div className="flex items-center gap-4 mb-4">
-            <button
-              onClick={() => navigate('/mon-espace')}
-              className={`flex items-center gap-2 transition-colors ${isDark
-                ? 'text-gray-400 hover:text-white'
-                : 'text-gray-600 hover:text-gray-900'
-                }`}
-            >
-              <ArrowLeft className="w-4 h-4" />
-              {isRTL ? 'رجوع إلى مساحتي' : 'Retour à Mon Espace'}
-            </button>
-          </div>
+          {/* Bouton retour - masqué sur mobile */}
+          {!isMobile && (
+            <div className="flex items-center gap-4 mb-4">
+              <button
+                onClick={() => navigate('/mon-espace')}
+                className={`flex items-center gap-2 transition-colors ${isDark
+                  ? 'text-gray-400 hover:text-white'
+                  : 'text-gray-600 hover:text-gray-900'
+                  }`}
+              >
+                <ArrowLeft className="w-4 h-4" />
+                {isRTL ? 'رجوع إلى مساحتي' : 'Retour à Mon Espace'}
+              </button>
+            </div>
+          )}
 
           <h1 className={`text-2xl sm:text-3xl font-bold mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
             {isRTL ? 'تقرير حضور الأطفال' : 'Calendrier de Présence'}
@@ -544,6 +550,9 @@ const AttendanceParentPage = () => {
           </motion.div>
         ) : null}
       </div>
+
+      {/* Navigation mobile */}
+      {isMobile && <MobileNavigation />}
     </div>
   );
 };

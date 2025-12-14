@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { motion } from 'framer-motion';
-import { Baby, User, Calendar, Phone, AlertTriangle, Save, ArrowLeft } from 'lucide-react';
+import { Baby, User, Calendar, Phone, AlertTriangle, Save, ArrowLeft, CheckCircle, UserPlus, ArrowRight, FileText } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useDialogContext } from '../../contexts/DialogContext';
@@ -12,6 +12,7 @@ import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import DatePicker from '../../components/ui/DatePicker';
 import childrenService from '../../services/childrenService';
 import { convertToISO, calculateAge } from '../../utils/dateUtils';
+import DocumentScanner from '../../components/ui/DocumentScanner';
 
 const AddChildPage = () => {
   const { user } = useAuth();
@@ -21,6 +22,16 @@ const AddChildPage = () => {
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [parents, setParents] = useState([]);
+  const [showSuccessInfo, setShowSuccessInfo] = useState(false);
+  const [createdChild, setCreatedChild] = useState(null);
+  const [documents, setDocuments] = useState({
+    carnet_medical: null,
+    acte_naissance: null,
+    certificat_medical: null
+  });
+
+  // Détection mobile
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   const isPersonal = searchParams.get('personal') === 'true';
 
   const {
@@ -31,34 +42,37 @@ const AddChildPage = () => {
     setValue
   } = useForm();
 
-  // Pré-remplir les informations si c'est pour l'enfant personnel du staff
+  // Pré-remplir la date d'inscription avec aujourd'hui
   useEffect(() => {
-    if (isPersonal && user) {
-      setValue('emergency_contact_name', `${user.first_name} ${user.last_name}`);
-      setValue('emergency_contact_phone', user.phone || '');
-    }
-  }, [isPersonal, user, setValue]);
+    const today = new Date();
+    const formattedDate = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
+    setValue('enrollment_date', formattedDate);
+  }, [setValue]);
 
   const onSubmit = async (data) => {
     setLoading(true);
     try {
       // Formatage des données
+      // Workflow: L'enfant est créé avec statut "enrolled" (inscrit)
+      // et sans parent_id (orphelin) - sera associé plus tard
       const childData = {
         first_name: data.first_name,
         last_name: data.last_name,
         birth_date: convertToISO(data.birth_date), // Convertir dd/mm/yyyy → yyyy-mm-dd
         gender: data.gender,
         medical_info: data.medical_info || '',
-        emergency_contact_name: data.emergency_contact_name,
-        emergency_contact_phone: data.emergency_contact_phone,
-        status: 'pending' // Statut par défaut
+        // Contact d'urgence sera défini lors de la création du compte parent
+        // Pas de parent_id = enfant orphelin
+        // enrollment_status = 'enrolled' par défaut dans la DB
       };
 
       const response = await childrenService.createChild(childData);
 
       if (response.success) {
-        dialog.success(isRTL ? 'تم إضافة الطفل بنجاح' : 'Enfant ajouté avec succès');
-        navigate('/dashboard/children');
+        // Afficher les informations de succès avec instructions
+        setCreatedChild(response.child);
+        setShowSuccessInfo(true);
+        dialog.success(isRTL ? 'تم إضافة الطفل بنجاح' : 'Enfant inscrit avec succès');
       } else {
         dialog.error(response.error || (isRTL ? 'خطأ في إضافة الطفل' : 'Erreur lors de l\'ajout'));
       }
@@ -74,6 +88,92 @@ const AddChildPage = () => {
 
   const watchedBirthDate = watch('birth_date');
 
+  // Si l'enfant a été créé avec succès, afficher les instructions
+  if (showSuccessInfo && createdChild) {
+    return (
+      <div className="space-y-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-2xl mx-auto"
+        >
+          <Card className="border-green-200 dark:border-green-800">
+            <CardContent className="pt-6">
+              {/* Icône de succès */}
+              <div className="text-center mb-6">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 mb-4">
+                  <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {isRTL ? 'تم تسجيل الطفل بنجاح!' : 'Enfant inscrit avec succès !'}
+                </h2>
+                <p className="text-gray-600 dark:text-gray-400 mt-2">
+                  <strong>{createdChild.first_name} {createdChild.last_name}</strong>
+                  {isRTL ? ' مسجل الآن في الحضانة' : ' est maintenant inscrit(e) à la crèche'}
+                </p>
+              </div>
+
+              {/* Info Box - Enfant orphelin */}
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 mb-6">
+                <h3 className="font-semibold text-blue-800 dark:text-blue-300 mb-2">
+                  {isRTL ? 'الخطوة التالية' : 'Prochaine étape'}
+                </h3>
+                <p className="text-blue-700 dark:text-blue-400 text-sm">
+                  {isRTL
+                    ? 'الطفل مسجل بدون حساب ولي أمر. يمكنك الآن إنشاء حساب للوالد وربطه بهذا الطفل.'
+                    : 'L\'enfant est inscrit sans compte parent associé. Vous pouvez maintenant créer un compte parent et l\'associer à cet enfant.'
+                  }
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div className="space-y-3">
+                <Button
+                  onClick={() => navigate('/dashboard/add-user', { state: { preselectedChild: createdChild, preselectedRole: 'parent' } })}
+                  className="w-full bg-primary-600 hover:bg-primary-700"
+                >
+                  <UserPlus className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                  {isRTL ? 'إنشاء حساب ولي أمر' : 'Créer un compte parent'}
+                  <ArrowRight className="w-4 h-4 ml-2 rtl:ml-0 rtl:mr-2" />
+                </Button>
+
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowSuccessInfo(false);
+                      setCreatedChild(null);
+                    }}
+                    className="flex-1"
+                  >
+                    <Baby className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                    {isRTL ? 'إضافة طفل آخر' : 'Ajouter un autre enfant'}
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    onClick={() => navigate('/dashboard/children')}
+                    className="flex-1"
+                  >
+                    {isRTL ? 'العودة للقائمة' : 'Retour à la liste'}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Note */}
+              <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-4">
+                {isRTL
+                  ? 'يمكن للوالد أيضًا إنشاء حسابه بنفسه من صفحة التسجيل على الموقع'
+                  : 'Le parent peut aussi créer son compte lui-même depuis la page d\'inscription du site'
+                }
+              </p>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* En-tête */}
@@ -83,13 +183,13 @@ const AddChildPage = () => {
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
               {isPersonal ?
                 (isRTL ? 'إضافة طفلي' : 'Ajouter mon enfant') :
-                (isRTL ? 'إضافة طفل جديد' : 'Ajouter un enfant')
+                (isRTL ? 'إضافة طفل جديد' : 'Inscrire un enfant')
               }
             </h1>
             <p className="text-gray-600 dark:text-gray-300">
               {isPersonal ?
                 (isRTL ? 'إدخال معلومات طفلي الشخصي' : 'Saisir les informations de mon enfant personnel') :
-                (isRTL ? 'إدخال معلومات الطفل الجديد' : 'Saisir les informations du nouvel enfant')
+                (isRTL ? 'إدخال معلومات الطفل الجديد' : 'L\'enfant sera inscrit directement (statut: inscrit)')
               }
             </p>
           </div>
@@ -219,49 +319,45 @@ const AddChildPage = () => {
               </div>
             </div>
 
-            {/* Contact d'urgence */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  {isRTL ? 'اسم جهة الاتصال للطوارئ' : 'Contact d\'urgence'} *
-                </label>
-                <div className="relative">
-                  <User className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                  <input
-                    type="text"
-                    {...register('emergency_contact_name', {
-                      required: isRTL ? 'اسم جهة الاتصال للطوارئ مطلوب' : 'Contact d\'urgence requis'
-                    })}
-                    className={`w-full pl-10 rtl:pl-4 rtl:pr-10 pr-4 py-3 border rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${errors.emergency_contact_name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                      }`}
-                    placeholder={isRTL ? 'اسم جهة الاتصال' : 'Nom du contact'}
-                  />
-                </div>
-                {errors.emergency_contact_name && (
-                  <p className="text-red-500 text-sm mt-1">{errors.emergency_contact_name.message}</p>
+
+            {/* Documents (optionnel - scanner sur mobile) */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-3">
+                <FileText className="w-5 h-5 text-gray-500" />
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {isRTL ? 'المستندات (اختياري)' : 'Documents (optionnel)'}
+                </h3>
+                {isMobile && (
+                  <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full">
+                    {isRTL ? 'المسح متاح' : 'Scan disponible'}
+                  </span>
                 )}
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  {isRTL ? 'هاتف الطوارئ' : 'Téléphone d\'urgence'} *
-                </label>
-                <div className="relative">
-                  <Phone className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                  <input
-                    type="tel"
-                    {...register('emergency_contact_phone', {
-                      required: isRTL ? 'هاتف الطوارئ مطلوب' : 'Téléphone d\'urgence requis'
-                    })}
-                    className={`w-full pl-10 rtl:pl-4 rtl:pr-10 pr-4 py-3 border rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors ${errors.emergency_contact_phone ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                      }`}
-                    placeholder={isRTL ? 'رقم الهاتف' : 'Numéro de téléphone'}
-                  />
-                </div>
-                {errors.emergency_contact_phone && (
-                  <p className="text-red-500 text-sm mt-1">{errors.emergency_contact_phone.message}</p>
-                )}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <DocumentScanner
+                  label={isRTL ? 'الدفتر الصحي' : 'Carnet médical'}
+                  onCapture={(file) => setDocuments(d => ({ ...d, carnet_medical: file }))}
+                  onRemove={() => setDocuments(d => ({ ...d, carnet_medical: null }))}
+                />
+                <DocumentScanner
+                  label={isRTL ? 'شهادة الميلاد' : 'Acte de naissance'}
+                  onCapture={(file) => setDocuments(d => ({ ...d, acte_naissance: file }))}
+                  onRemove={() => setDocuments(d => ({ ...d, acte_naissance: null }))}
+                />
+                <DocumentScanner
+                  label={isRTL ? 'الشهادة الطبية' : 'Certificat médical'}
+                  onCapture={(file) => setDocuments(d => ({ ...d, certificat_medical: file }))}
+                  onRemove={() => setDocuments(d => ({ ...d, certificat_medical: null }))}
+                />
               </div>
+
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {isMobile
+                  ? (isRTL ? 'يمكنك مسح المستندات مباشرة باستخدام كاميرا هاتفك' : 'Vous pouvez scanner les documents directement avec la caméra de votre téléphone')
+                  : (isRTL ? 'يمكنك تحميل المستندات من جهازك' : 'Vous pouvez télécharger les documents depuis votre appareil')
+                }
+              </p>
             </div>
 
             {/* Options */}

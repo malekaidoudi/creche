@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import {
   FileText,
   Clock,
@@ -18,16 +19,22 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
+import useIsMobile from '../../hooks/useIsMobile';
 import DatePicker from '../../components/ui/DatePicker';
 import { useDialogContext } from '../../contexts/DialogContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import enrollmentsService from '../../services/enrollmentsService';
+import { TableToListAdapter } from '../../components/mobile/adapters';
+import MobileNavigation from '../../components/mobile/MobileNavigation';
+import MobileHeader from '../../components/mobile/MobileHeader';
 
 const EnrollmentsPage = () => {
   const { user } = useAuth();
-  const dialog = useDialogContext(); // Utiliser le contexte de dialogue
+  const dialog = useDialogContext();
+  const isMobile = useIsMobile();
+  const navigate = useNavigate();
   const isAdmin = () => user?.role === 'admin';
   const isStaff = () => user?.role === 'staff';
   const { isRTL } = useLanguage();
@@ -291,6 +298,88 @@ const EnrollmentsPage = () => {
     }
   ];
 
+  // Colonnes pour TableToListAdapter
+  const mobileColumns = [
+    { key: 'child_name', label: isRTL ? 'الطفل' : 'Enfant', isPrimary: true },
+    { key: 'parent_name', label: isRTL ? 'الوالد' : 'Parent', isSecondary: true },
+    {
+      key: 'status_label', label: isRTL ? 'الحالة' : 'Statut', isBadge: true, badgeColors: {
+        'En attente': 'orange',
+        'في الانتظار': 'orange',
+        'RDV en attente': 'blue',
+        'في انتظار الموعد': 'blue',
+        'Approuvé': 'green',
+        'مقبول': 'green',
+        'Rejeté': 'red',
+        'مرفوض': 'red'
+      }
+    },
+    { key: 'created_at', label: isRTL ? 'تاريخ' : 'Date', type: 'date' }
+  ];
+
+  // Préparer les données pour mobile
+  const mobileEnrollments = filteredEnrollments.map(e => ({
+    ...e,
+    child_name: (e.child_first_name || e.child_last_name)
+      ? `${e.child_first_name || ''} ${e.child_last_name || ''}`.trim()
+      : (isRTL ? 'طفل' : 'Enfant'),
+    parent_name: (e.parent_first_name || e.parent_last_name || e.applicant_first_name || e.applicant_last_name)
+      ? `${e.parent_first_name || e.applicant_first_name || ''} ${e.parent_last_name || e.applicant_last_name || ''}`.trim()
+      : (isRTL ? 'ولي الأمر' : 'Parent'),
+    status_label: getStatusLabel(e.new_status || e.status)
+  }));
+
+  // Version Mobile
+  if (isMobile) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20">
+        <MobileHeader
+          title={isRTL ? 'التسجيلات' : 'Inscriptions'}
+          subtitle={`${filteredEnrollments.length} ${isRTL ? 'طلب' : 'demande(s)'}`}
+        />
+
+        <div className="p-4 space-y-4">
+          {/* Filtres rapides */}
+          <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap ${activeTab === tab.id
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300'
+                  }`}
+              >
+                {tab.label} ({tab.count})
+              </button>
+            ))}
+          </div>
+
+          {/* Liste */}
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <LoadingSpinner />
+            </div>
+          ) : (
+            <TableToListAdapter
+              columns={mobileColumns}
+              rows={mobileEnrollments}
+              onRowClick={(row) => {
+                setSelectedEnrollment(row);
+                setShowModal(true);
+              }}
+              emptyMessage={isRTL ? 'لا توجد طلبات' : 'Aucune demande'}
+              emptyIcon={FileText}
+            />
+          )}
+        </div>
+
+        <MobileNavigation />
+      </div>
+    );
+  }
+
+  // Version Desktop
   return (
     <div className="space-y-6">
       {/* En-tête */}

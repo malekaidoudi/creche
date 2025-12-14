@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bienvenue - Créez votre mot de passe</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td align="center" style="padding: 40px 0;">
+        <table role="presentation" style="width: 600px; max-width: 100%; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">
+                🎉 Bienvenue !
+              </h1>
+              <p style="margin: 10px 0 0; color: #ffffff; font-size: 18px;">
+                Votre enfant est inscrit à la crèche
+              </p>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px 30px;">
+              <p style="margin: 0 0 20px; color: #374151; font-size: 16px; line-height: 1.6;">
+                Bonjour <strong>{{parentName}}</strong>,
+              </p>
+
+              <p style="margin: 0 0 30px; color: #374151; font-size: 16px; line-height: 1.6;">
+                Nous avons le plaisir de vous informer que <strong>{{childName}}</strong> est maintenant inscrit(e) à la crèche Mima Elghalia ! 🌟
+              </p>
+
+              <!-- Success Box -->
+              <table role="presentation" style="width: 100%; background-color: #d1fae5; border-left: 4px solid #10b981; border-radius: 8px; margin-bottom: 30px;">
+                <tr>
+                  <td style="padding: 20px; text-align: center;">
+                    <p style="margin: 0; color: #065f46; font-size: 18px; font-weight: 700;">
+                      ✅ Inscription confirmée
+                    </p>
+                    <p style="margin: 10px 0 0; color: #065f46; font-size: 15px;">
+                      {{childName}} fait maintenant partie de notre famille
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- CTA Box -->
+              <table role="presentation" style="width: 100%; background-color: #e0e7ff; border-radius: 8px; margin-bottom: 30px;">
+                <tr>
+                  <td style="padding: 30px; text-align: center;">
+                    <p style="margin: 0 0 15px; color: #3730a3; font-size: 18px; font-weight: 600;">
+                      🔐 Créez votre compte parent
+                    </p>
+                    <p style="margin: 0 0 20px; color: #4338ca; font-size: 15px; line-height: 1.6;">
+                      Pour accéder à votre espace parent et suivre les activités de {{childName}}, créez votre mot de passe :
+                    </p>
+                    <a href="{{createPasswordUrl}}" style="display: inline-block; background-color: #4f46e5; color: #ffffff; padding: 14px 40px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                      Créer mon mot de passe
+                    </a>
+                    <p style="margin: 15px 0 0; color: #6366f1; font-size: 13px;">
+                      ⏰ Ce lien est valide pendant {{expiresIn}}
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin: 0 0 15px; color: #374151; font-size: 16px; font-weight: 600;">
+                📱 Avec votre espace parent, vous pourrez :
+              </p>
+
+              <ul style="margin: 0 0 30px; padding-left: 20px; color: #374151; font-size: 15px; line-height: 1.8;">
+                <li>Consulter les informations de votre enfant</li>
+                <li>Suivre les présences et absences</li>
+                <li>Recevoir les actualités de la crèche</li>
+                <li>Communiquer avec l'équipe pédagogique</li>
+                <li>Signaler une absence</li>
+              </ul>
+
+              <!-- Info Box -->
+              <table role="presentation" style="width: 100%; background-color: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 8px; margin-bottom: 20px;">
+                <tr>
+                  <td style="padding: 20px;">
+                    <p style="margin: 0; color: #92400e; font-size: 14px; line-height: 1.6;">
+                      ⚠️ <strong>Important :</strong> Si vous n'avez pas demandé cette inscription, veuillez nous contacter immédiatement.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin: 0; color: #374151; font-size: 16px; line-height: 1.6;">
+                Nous sommes ravis de vous accueillir dans notre famille ! 🌈
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f9fafb; padding: 30px; text-align: center; border-radius: 0 0 12px 12px; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0 0 10px; color: #1f2937; font-size: 16px; font-weight: 600;">
+                {{nursery_name}}
+              </p>
+              <p style="margin: 0 0 5px; color: #6b7280; font-size: 14px;">
+                📧 {{contact_email}}
+              </p>
+              <p style="margin: 0; color: #6b7280; font-size: 14px;">
+                📞 {{contact_phone}}
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

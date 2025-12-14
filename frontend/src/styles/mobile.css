@@ -1,0 +1,362 @@
+/**
+ * Mobile Styles - Styles spécifiques pour l'expérience mobile
+ * 
+ * Ces styles complètent Tailwind pour une meilleure UX mobile.
+ */
+
+/* =========================================
+   SAFE AREA (iOS Notch, Home Indicator)
+   ========================================= */
+
+.safe-area-inset-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-area-inset-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-area-inset-left {
+  padding-left: env(safe-area-inset-left);
+}
+
+.safe-area-inset-right {
+  padding-right: env(safe-area-inset-right);
+}
+
+/* =========================================
+   TOUCH TARGETS (minimum 44px)
+   ========================================= */
+
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.touch-target-lg {
+  min-height: 48px;
+  min-width: 48px;
+}
+
+/* =========================================
+   MOBILE NAVIGATION
+   ========================================= */
+
+.mobile-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: white;
+  border-top: 1px solid #e5e7eb;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.dark .mobile-nav {
+  background: #1f2937;
+  border-top-color: #374151;
+}
+
+/* =========================================
+   BOTTOM SHEET
+   ========================================= */
+
+.bottom-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: white;
+  border-radius: 1.5rem 1.5rem 0 0;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.dark .bottom-sheet {
+  background: #1f2937;
+}
+
+.bottom-sheet-handle {
+  width: 3rem;
+  height: 0.25rem;
+  background: #d1d5db;
+  border-radius: 9999px;
+  margin: 0.75rem auto 0.5rem;
+}
+
+.dark .bottom-sheet-handle {
+  background: #4b5563;
+}
+
+/* =========================================
+   CARDS MOBILE
+   ========================================= */
+
+.card-mobile {
+  background: white;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+.dark .card-mobile {
+  background: #1f2937;
+}
+
+/* =========================================
+   FORMS MOBILE
+   ========================================= */
+
+.input-mobile {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.75rem;
+  font-size: 1rem;
+  background: white;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.dark .input-mobile {
+  background: #374151;
+  border-color: #4b5563;
+  color: white;
+}
+
+.input-mobile:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgb(59 130 246 / 0.1);
+}
+
+.input-mobile::placeholder {
+  color: #9ca3af;
+}
+
+/* =========================================
+   BUTTONS MOBILE
+   ========================================= */
+
+.btn-mobile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.875rem 1.5rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: all 0.2s;
+  touch-action: manipulation;
+}
+
+.btn-mobile:active {
+  transform: scale(0.98);
+}
+
+.btn-mobile-primary {
+  background: #3b82f6;
+  color: white;
+}
+
+.btn-mobile-primary:hover {
+  background: #2563eb;
+}
+
+.btn-mobile-secondary {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.dark .btn-mobile-secondary {
+  background: #374151;
+  color: #e5e7eb;
+}
+
+/* =========================================
+   SWIPE ACTIONS
+   ========================================= */
+
+.swipe-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 70px;
+  height: 100%;
+  color: white;
+  font-size: 0.75rem;
+}
+
+.swipe-action-edit {
+  background: #3b82f6;
+}
+
+.swipe-action-delete {
+  background: #ef4444;
+}
+
+.swipe-action-archive {
+  background: #6b7280;
+}
+
+/* =========================================
+   PULL TO REFRESH
+   ========================================= */
+
+.pull-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.pull-indicator-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* =========================================
+   SKELETON LOADING
+   ========================================= */
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    #f3f4f6 25%,
+    #e5e7eb 50%,
+    #f3f4f6 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
+  border-radius: 0.5rem;
+}
+
+.dark .skeleton {
+  background: linear-gradient(
+    90deg,
+    #374151 25%,
+    #4b5563 50%,
+    #374151 75%
+  );
+  background-size: 200% 100%;
+}
+
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* =========================================
+   RESPONSIVE UTILITIES
+   ========================================= */
+
+/* Hide on mobile */
+@media (max-width: 1023px) {
+  .hide-mobile {
+    display: none !important;
+  }
+}
+
+/* Show only on mobile */
+@media (min-width: 1024px) {
+  .show-mobile-only {
+    display: none !important;
+  }
+}
+
+/* Full width on mobile */
+@media (max-width: 639px) {
+  .full-mobile {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+/* =========================================
+   SCROLL BEHAVIOR
+   ========================================= */
+
+.scroll-smooth {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* =========================================
+   TRANSITIONS
+   ========================================= */
+
+.transition-mobile {
+  transition: all 0.2s ease-out;
+}
+
+.transition-slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.transition-slide-down {
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.transition-fade {
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

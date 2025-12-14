@@ -10,28 +10,28 @@ const EMAIL_TYPES = {
     template: 'registration.html',
     subject: 'Confirmation de votre demande d\'inscription - Crèche Mima Elghalia'
   },
-  
+
   ENROLLMENT_ACCEPTED: {
     type: 'enrollment_accepted',
     from: 'inscription@mima-elghalia.com',
     template: 'accepted.html',
     subject: 'Votre dossier a été accepté 🎉 - Crèche Mima Elghalia'
   },
-  
+
   ENROLLMENT_MISSING_DOCS: {
     type: 'enrollment_missing_docs',
     from: 'inscription@mima-elghalia.com',
     template: 'missing-docs.html',
     subject: 'Documents manquants pour votre dossier d\'inscription - Crèche Mima Elghalia'
   },
-  
+
   ENROLLMENT_REJECTED: {
     type: 'enrollment_rejected',
     from: 'inscription@mima-elghalia.com',
     template: 'rejected.html',
     subject: 'Mise à jour de votre demande d\'inscription - Crèche Mima Elghalia'
   },
-  
+
   // E-mails de contact
   CONTACT_MESSAGE: {
     type: 'contact_message',
@@ -39,7 +39,7 @@ const EMAIL_TYPES = {
     template: 'contact.html',
     subject: 'Nouveau message de contact - Crèche Mima Elghalia'
   },
-  
+
   // E-mail de confirmation de rendez-vous
   APPOINTMENT_CONFIRMATION: {
     type: 'appointment_confirmation',
@@ -54,6 +54,35 @@ const EMAIL_TYPES = {
     from: 'noreply@mima-elghalia.com',
     template: null, // Utilise du HTML direct
     subject: 'Notification - Crèche Mima Elghalia'
+  },
+
+  // E-mails workflow parent/staff
+  PARENT_WELCOME: {
+    type: 'parent_welcome',
+    from: 'inscription@mima-elghalia.com',
+    template: 'parent-welcome.html',
+    subject: 'Bienvenue à la crèche Mima Elghalia - Créez votre mot de passe'
+  },
+
+  STAFF_WELCOME: {
+    type: 'staff_welcome',
+    from: 'rh@mima-elghalia.com',
+    template: 'staff-welcome.html',
+    subject: 'Bienvenue dans l\'équipe de la crèche Mima Elghalia'
+  },
+
+  PARENT_REGISTRATION_CONFIRMATION: {
+    type: 'parent_registration_confirmation',
+    from: 'inscription@mima-elghalia.com',
+    template: 'parent-registration-confirmation.html',
+    subject: 'Confirmation de création de compte - Crèche Mima Elghalia'
+  },
+
+  RESEND_PASSWORD_LINK: {
+    type: 'resend_password_link',
+    from: 'noreply@mima-elghalia.com',
+    template: 'resend-password-link.html',
+    subject: 'Nouveau lien de création de mot de passe - Crèche Mima Elghalia'
   }
 };
 

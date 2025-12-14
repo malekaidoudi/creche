@@ -454,26 +454,30 @@ const activityService = {
   },
 
   /**
-   * Notifier les parents d'une nouvelle activité
+   * Notifier tous les membres d'une nouvelle activité (parents + staff)
    */
   async notifyParentsNewActivity(activity) {
     try {
-      // Récupérer tous les parents actifs
-      const parents = await db.query(
-        "SELECT id FROM users WHERE role = 'parent' AND is_active = true"
+      // Récupérer tous les utilisateurs actifs (parents et staff) sauf l'auteur
+      const users = await db.query(
+        `SELECT id, role FROM users 
+         WHERE is_active = true 
+         AND role IN ('parent', 'staff', 'admin')
+         AND id != $1`,
+        [activity.author_id]
       );
 
-      if (parents.rows.length === 0) return;
+      if (users.rows.length === 0) return { success: true, notified: 0 };
 
       // Créer les notifications en batch
-      const values = parents.rows.map((p, i) =>
+      const values = users.rows.map((u, i) =>
         `($${i * 5 + 1}, $${i * 5 + 2}, $${i * 5 + 3}, $${i * 5 + 4}, $${i * 5 + 5})`
       ).join(', ');
 
-      const params = parents.rows.flatMap(p => [
-        p.id,
-        'Nouvelle activité',
-        activity.title,
+      const params = users.rows.flatMap(u => [
+        u.id,
+        '📸 Nouvelle activité',
+        activity.title || 'Une nouvelle activité a été publiée',
         'activity',
         activity.id
       ]);
@@ -484,7 +488,8 @@ const activityService = {
         params
       );
 
-      return { success: true, notified: parents.rows.length };
+      console.log(`📢 Notifications envoyées à ${users.rows.length} utilisateurs pour l'activité "${activity.title}"`);
+      return { success: true, notified: users.rows.length };
     } catch (error) {
       console.error('Erreur notifyParentsNewActivity:', error);
       return { success: false, error: error.message };

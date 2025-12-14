@@ -6,12 +6,15 @@ import interactionPlugin from '@fullcalendar/interaction';
 import frLocale from '@fullcalendar/core/locales/fr';
 import { Calendar, Filter, X, ChevronRight, Clock, User, MapPin, CheckCircle } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
+import useIsMobile from '../../hooks/useIsMobile';
 import api from '../../services/api';
 import { useDialogContext } from '../../contexts/DialogContext';
 import QuickEventModal from '../../components/modals/QuickEventModal';
 import EventModal from '../../components/modals/EventModal';
 import TaskModal from '../../components/modals/TaskModal';
 import CreateAppointmentModal from '../../components/modals/CreateAppointmentModal';
+import MobilePlanning from '../../components/mobile/MobilePlanning';
+import MobileNavigation from '../../components/mobile/MobileNavigation';
 
 const EVENT_TYPE_COLORS = {
   event: '#3B82F6',       // Bleu - Événement
@@ -24,6 +27,7 @@ const EVENT_TYPE_COLORS = {
 
 const MonthlyPlanningPage = () => {
   const { isRTL } = useLanguage();
+  const isMobile = useIsMobile();
   const dialog = useDialogContext();
   const calendarRef = useRef(null);
   const [searchParams] = useSearchParams();
@@ -40,7 +44,6 @@ const MonthlyPlanningPage = () => {
   const [showDayEventsModal, setShowDayEventsModal] = useState(false);
   const [dayEvents, setDayEvents] = useState([]);
   const [selectedDayDate, setSelectedDayDate] = useState(null);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
 
   // Modal de détails d'événement
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -448,6 +451,53 @@ const MonthlyPlanningPage = () => {
     { value: 'meeting', label: isRTL ? 'اجتماع' : 'Réunion', icon: '👥' }
   ];
 
+  // Version Mobile
+  if (isMobile) {
+    return (
+      <>
+        <MobilePlanning
+          events={events}
+          loading={loading}
+          onAddEvent={() => setShowQuickModal(true)}
+          onEventClick={(event) => {
+            setSelectedEvent(event);
+            setShowDetailModal(true);
+          }}
+          onDateChange={(date) => setSelectedDate(date.toISOString().split('T')[0])}
+        />
+
+        {/* Modals */}
+        <QuickEventModal
+          isOpen={showQuickModal}
+          onClose={() => setShowQuickModal(false)}
+          selectedDate={selectedDate}
+          onSelectType={handleTypeSelect}
+        />
+        <EventModal
+          isOpen={showEventModal}
+          onClose={() => setShowEventModal(false)}
+          selectedDate={selectedDate}
+          onSuccess={handleModalSuccess}
+        />
+        <TaskModal
+          isOpen={showTaskModal}
+          onClose={() => setShowTaskModal(false)}
+          selectedDate={selectedDate}
+          onSuccess={handleModalSuccess}
+        />
+        <CreateAppointmentModal
+          isOpen={showAppointmentModal}
+          onClose={() => setShowAppointmentModal(false)}
+          selectedDate={selectedDate}
+          onSuccess={handleModalSuccess}
+        />
+
+        <MobileNavigation />
+      </>
+    );
+  }
+
+  // Version Desktop
   return (
     <div className="space-y-6">
       {/* Header - Style unifié avec Planning Hebdomadaire */}
@@ -849,10 +899,10 @@ const MonthlyPlanningPage = () => {
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full max-h-[85vh] overflow-hidden">
             {/* Header avec type */}
             <div className={`p-4 ${selectedEvent.type === 'birthday' ? 'bg-gradient-to-r from-pink-500 to-rose-500'
-                : selectedEvent.type === 'rdv' ? 'bg-gradient-to-r from-green-500 to-emerald-500'
-                  : selectedEvent.type === 'task' ? 'bg-gradient-to-r from-blue-500 to-cyan-500'
-                    : selectedEvent.type === 'holiday' ? 'bg-gradient-to-r from-amber-500 to-orange-500'
-                      : 'bg-gradient-to-r from-indigo-500 to-purple-500'
+              : selectedEvent.type === 'rdv' ? 'bg-gradient-to-r from-green-500 to-emerald-500'
+                : selectedEvent.type === 'task' ? 'bg-gradient-to-r from-blue-500 to-cyan-500'
+                  : selectedEvent.type === 'holiday' ? 'bg-gradient-to-r from-amber-500 to-orange-500'
+                    : 'bg-gradient-to-r from-indigo-500 to-purple-500'
               } text-white`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -889,8 +939,8 @@ const MonthlyPlanningPage = () => {
                   </span>
                   {selectedEvent.priority && (
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${selectedEvent.priority === 'urgent' ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' :
-                        selectedEvent.priority === 'high' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300' :
-                          'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                      selectedEvent.priority === 'high' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300' :
+                        'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
                       }`}>
                       {selectedEvent.priority === 'urgent' ? (isRTL ? 'عاجل' : 'Urgent') :
                         selectedEvent.priority === 'high' ? (isRTL ? 'مهم' : 'Important') :

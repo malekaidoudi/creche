@@ -6,6 +6,8 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import frLocale from '@fullcalendar/core/locales/fr';
 import { useLanguage } from '../../hooks/useLanguage';
+import useIsMobile from '../../hooks/useIsMobile';
+import MobileNavigation from '../../components/mobile/MobileNavigation';
 import api from '../../services/api';
 import { useDialogContext } from '../../contexts/DialogContext';
 
@@ -24,15 +26,17 @@ const ParentCalendarPage = () => {
     const { isRTL } = useLanguage();
     const dialog = useDialogContext();
     const navigate = useNavigate();
+    const isMobile = useIsMobile();
     const calendarRef = useRef(null);
-    const [allEvents, setAllEvents] = useState([]); // Tous les événements chargés
-    const [events, setEvents] = useState([]); // Événements filtrés affichés
+    const [allEvents, setAllEvents] = useState([]);
+    const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedTypes, setSelectedTypes] = useState([]);
     const [showDayEventsModal, setShowDayEventsModal] = useState(false);
     const [dayEvents, setDayEvents] = useState([]);
     const [selectedDayDate, setSelectedDayDate] = useState(null);
-    const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+    const [selectedEvent, setSelectedEvent] = useState(null);
+    const [showEventDetailModal, setShowEventDetailModal] = useState(false);
 
     const loadEvents = useCallback(async () => {
         try {
@@ -263,16 +267,18 @@ const ParentCalendarPage = () => {
     ];
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-6">
+        <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 py-6 ${isMobile ? 'pb-24' : ''}`}>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                {/* Bouton retour */}
-                <button
-                    onClick={() => navigate('/mon-espace')}
-                    className="mb-6 flex items-center gap-2 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                >
-                    <ArrowLeft className="w-5 h-5" />
-                    <span className="font-medium">{isRTL ? 'العودة إلى مساحتي' : 'Retour à Mon Espace'}</span>
-                </button>
+                {/* Bouton retour - masqué sur mobile */}
+                {!isMobile && (
+                    <button
+                        onClick={() => navigate('/mon-espace')}
+                        className="mb-6 flex items-center gap-2 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                    >
+                        <ArrowLeft className="w-5 h-5" />
+                        <span className="font-medium">{isRTL ? 'العودة إلى مساحتي' : 'Retour à Mon Espace'}</span>
+                    </button>
+                )}
 
                 {/* Header */}
                 <div className="flex items-center justify-between mb-6">
@@ -621,8 +627,9 @@ const ParentCalendarPage = () => {
                                             {!String(event.id).startsWith('holiday-') && !String(event.id).startsWith('birthday-') && event.id !== 'annual-vacation' && (
                                                 <button
                                                     onClick={() => {
+                                                        setSelectedEvent(event);
                                                         setShowDayEventsModal(false);
-                                                        navigate(`/mon-espace/events/${event.id}`);
+                                                        setShowEventDetailModal(true);
                                                     }}
                                                     className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
                                                 >
@@ -637,6 +644,116 @@ const ParentCalendarPage = () => {
                     </div>
                 </div>
             )}
+
+            {/* Modal détail événement */}
+            {showEventDetailModal && selectedEvent && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+                        {/* Header */}
+                        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+                            <div className="flex items-start justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div
+                                        className="w-4 h-4 rounded-full flex-shrink-0"
+                                        style={{ backgroundColor: selectedEvent.backgroundColor }}
+                                    />
+                                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                                        {selectedEvent.title}
+                                    </h3>
+                                </div>
+                                <button
+                                    onClick={() => setShowEventDetailModal(false)}
+                                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                                >
+                                    <X className="w-5 h-5 text-gray-500" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Contenu */}
+                        <div className="p-6 space-y-4">
+                            {/* Date et heure */}
+                            <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400">
+                                <CalendarIcon className="w-5 h-5" />
+                                <div>
+                                    <p className="font-medium text-gray-900 dark:text-white">
+                                        {new Date(selectedEvent.start).toLocaleDateString(isRTL ? 'ar-TN' : 'fr-FR', {
+                                            weekday: 'long',
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: 'numeric'
+                                        })}
+                                    </p>
+                                    {!selectedEvent.allDay && (
+                                        <p className="text-sm">
+                                            {new Date(selectedEvent.start).toLocaleTimeString(isRTL ? 'ar-TN' : 'fr-FR', {
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                            })}
+                                            {selectedEvent.end && ` - ${new Date(selectedEvent.end).toLocaleTimeString(isRTL ? 'ar-TN' : 'fr-FR', {
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                            })}`}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Type */}
+                            {selectedEvent.extendedProps?.type && (
+                                <div className="flex items-center gap-2">
+                                    <span className="px-3 py-1 rounded-full text-sm font-medium" style={{
+                                        backgroundColor: `${selectedEvent.backgroundColor}20`,
+                                        color: selectedEvent.backgroundColor
+                                    }}>
+                                        {selectedEvent.extendedProps.type === 'rdv' ? 'Rendez-vous' :
+                                            selectedEvent.extendedProps.type === 'event' ? 'Événement' :
+                                                selectedEvent.extendedProps.type === 'meeting' ? 'Réunion' :
+                                                    selectedEvent.extendedProps.type}
+                                    </span>
+                                </div>
+                            )}
+
+                            {/* Description */}
+                            {selectedEvent.extendedProps?.description && (
+                                <div>
+                                    <h4 className="font-medium text-gray-900 dark:text-white mb-2">
+                                        {isRTL ? 'الوصف' : 'Description'}
+                                    </h4>
+                                    <p className="text-gray-600 dark:text-gray-400">
+                                        {selectedEvent.extendedProps.description}
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Lieu */}
+                            {selectedEvent.extendedProps?.location && (
+                                <div>
+                                    <h4 className="font-medium text-gray-900 dark:text-white mb-2">
+                                        {isRTL ? 'المكان' : 'Lieu'}
+                                    </h4>
+                                    <p className="text-gray-600 dark:text-gray-400">
+                                        {selectedEvent.extendedProps.location}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-6 border-t border-gray-200 dark:border-gray-700">
+                            <button
+                                onClick={() => setShowEventDetailModal(false)}
+                                className="w-full px-4 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-xl font-medium transition-colors"
+                            >
+                                {isRTL ? 'إغلاق' : 'Fermer'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Navigation mobile */}
+            {isMobile && <MobileNavigation />}
         </div>
     );
 };

@@ -13,6 +13,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Send, MessageSquare, X, Info, Shield, Users as UsersIcon, User, ArrowLeft } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../../hooks/useAuth';
+import useIsMobile from '../../hooks/useIsMobile';
+import MobileNavigation from '../../components/mobile/MobileNavigation';
 import API_CONFIG from '../../config/api';
 
 const API_URL = `${API_CONFIG.BASE_URL}/api`;
@@ -20,6 +22,7 @@ const API_URL = `${API_CONFIG.BASE_URL}/api`;
 export default function MessagesPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const [searchParams] = useSearchParams();
 
   // États
@@ -526,10 +529,11 @@ export default function MessagesPage() {
   const grouped = groupContactsByRole();
 
   return (
-    <div className="h-screen flex flex-col max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+    <div className={`h-screen flex flex-col max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 ${isMobile ? 'pb-20' : ''}`}>
       {/* Header */}
       <div className="mb-4 shrink-0">
-        {user?.role === 'parent' && (
+        {/* Bouton retour - masqué sur mobile */}
+        {user?.role === 'parent' && !isMobile && (
           <button
             onClick={() => navigate('/mon-espace')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
@@ -787,6 +791,9 @@ export default function MessagesPage() {
           </div>
         )}
       </div>
+
+      {/* Navigation mobile - masquée quand conversation ouverte */}
+      {isMobile && !selectedContact && <MobileNavigation />}
     </div>
   );
 }

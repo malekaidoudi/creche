@@ -1,5 +1,6 @@
-/* Import Mobile Dashboard Styles - DOIT être en premier */
+/* Import Mobile Styles */
 @import './styles/mobile-dashboard.css';
+@import './styles/mobile.css';
 
 @tailwind base;
 @tailwind components;

@@ -28,6 +28,7 @@ import TodayAppointmentsWidget from '../../components/widgets/TodayAppointmentsW
 import OverdueTasksWidget from '../../components/widgets/OverdueTasksWidget';
 import PendingAppointmentsWidget from '../../components/widgets/PendingAppointmentsWidget';
 import MobileDashboardComplete from '../../components/dashboard/MobileDashboardComplete';
+import MobileNavigation from '../../components/mobile/MobileNavigation';
 import EventModal from '../../components/modals/EventModal';
 import MemoModal from '../../components/modals/MemoModal';
 import TaskModal from '../../components/modals/TaskModal';
@@ -262,6 +263,7 @@ const DashboardHome = () => {
           onOpenEventModal={() => setShowEventModal(true)}
           onOpenAppointmentModal={() => setShowAppointmentModal(true)}
         />
+        <MobileNavigation />
       </div>
 
       {/* VERSION DESKTOP - min-width: 1024px */}

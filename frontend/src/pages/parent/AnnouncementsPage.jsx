@@ -3,12 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { Megaphone, Calendar, AlertCircle, Info, CheckCircle, ArrowLeft } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../../hooks/useAuth';
+import useIsMobile from '../../hooks/useIsMobile';
+import MobileNavigation from '../../components/mobile/MobileNavigation';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3003/api';
 
 export default function AnnouncementsPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // all, info, alert, event
@@ -90,11 +93,11 @@ export default function AnnouncementsPage() {
   }
 
   return (
-    <div className="min-h-screen max-w-4xl mx-auto p-6">
+    <div className={`min-h-screen max-w-4xl mx-auto p-6 ${isMobile ? 'pb-24' : ''}`}>
       {/* Header */}
       <div className="mb-6">
-        {/* Bouton retour pour les parents */}
-        {user?.role === 'parent' && (
+        {/* Bouton retour pour les parents - masqué sur mobile */}
+        {user?.role === 'parent' && !isMobile && (
           <button
             onClick={() => navigate('/mon-espace')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
@@ -118,8 +121,8 @@ export default function AnnouncementsPage() {
         <button
           onClick={() => setFilter('all')}
           className={`px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors text-xs sm:text-sm ${filter === 'all'
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+            ? 'bg-blue-600 text-white'
+            : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
             }`}
         >
           Toutes ({announcements.length})
@@ -127,8 +130,8 @@ export default function AnnouncementsPage() {
         <button
           onClick={() => setFilter('general')}
           className={`px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors text-xs sm:text-sm ${filter === 'general'
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+            ? 'bg-blue-600 text-white'
+            : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
             }`}
         >
           <span className="hidden sm:inline">Informations</span>
@@ -137,8 +140,8 @@ export default function AnnouncementsPage() {
         <button
           onClick={() => setFilter('urgent')}
           className={`px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors text-xs sm:text-sm ${filter === 'urgent'
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+            ? 'bg-blue-600 text-white'
+            : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
             }`}
         >
           Urgent ({announcements.filter(a => a.event_type === 'urgent').length})
@@ -146,8 +149,8 @@ export default function AnnouncementsPage() {
         <button
           onClick={() => setFilter('meeting')}
           className={`px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors text-xs sm:text-sm ${filter === 'meeting'
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+            ? 'bg-blue-600 text-white'
+            : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
             }`}
         >
           <span className="hidden sm:inline">Réunions</span>
@@ -156,8 +159,8 @@ export default function AnnouncementsPage() {
         <button
           onClick={() => setFilter('event')}
           className={`px-3 sm:px-4 py-2 rounded-lg font-medium transition-colors text-xs sm:text-sm col-span-2 sm:col-span-1 ${filter === 'event'
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+            ? 'bg-blue-600 text-white'
+            : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
             }`}
         >
           Événements ({announcements.filter(a => a.event_type === 'event').length})
@@ -220,6 +223,9 @@ export default function AnnouncementsPage() {
           ))}
         </div>
       )}
+
+      {/* Navigation mobile */}
+      {isMobile && <MobileNavigation />}
     </div>
   );
 }

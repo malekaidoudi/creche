@@ -145,3 +145,8 @@ temp/
 # Fichiers sensibles - Ne jamais versionner
 COMPTES_TEST.md
 **/COMPTES_TEST.md
+PRD app mobile.docx
+# les migrations
+backend/database/migrations/*
+# les docs
+backend/docs/*

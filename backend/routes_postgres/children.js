@@ -66,25 +66,64 @@ router.get('/available', async (req, res) => {
   }
 });
 
-// GET /api/children/orphans - Enfants orphelins (sans parent)
+// GET /api/children/orphans - Enfants orphelins (sans parent associé)
+// Utilisé par l'admin pour associer un enfant à un nouveau compte parent
 router.get('/orphans', async (req, res) => {
   try {
-    const sql = `
-      SELECT c.id, c.first_name, c.last_name, c.birth_date, c.gender, 
-             c.medical_info, c.emergency_contact_name, c.emergency_contact_phone, 
-             c.photo_url, c.is_active, c.created_at,
-             EXTRACT(YEAR FROM AGE(c.birth_date)) as age
+    const { search } = req.query;
+
+    // Enfants inscrits avec parent_id NULL dans la table children
+    let sql = `
+      SELECT 
+        c.id, 
+        c.first_name, 
+        c.last_name, 
+        c.birth_date, 
+        c.gender, 
+        c.medical_info, 
+        c.emergency_contact_name, 
+        c.emergency_contact_phone, 
+        c.photo_url, 
+        c.is_active, 
+        c.created_at,
+        'enrolled' as enrollment_status,
+        EXTRACT(YEAR FROM AGE(c.birth_date)) as age_years,
+        EXTRACT(MONTH FROM AGE(c.birth_date)) % 12 as age_months
       FROM children c
-      LEFT JOIN enrollments e ON c.id = e.child_id
-      WHERE c.is_active = true AND e.id IS NULL
-      ORDER BY c.created_at DESC
+      WHERE c.is_active = true 
+        AND c.parent_id IS NULL
     `;
 
-    const result = await pool.query(sql);
+    const params = [];
+
+    // Recherche optionnelle par nom (supporte: prénom, nom, "prénom nom", "nom prénom")
+    if (search) {
+      const searchTerm = search.trim();
+      sql += ` AND (
+        c.first_name ILIKE $1 
+        OR c.last_name ILIKE $1
+        OR CONCAT(c.first_name, ' ', c.last_name) ILIKE $1
+        OR CONCAT(c.last_name, ' ', c.first_name) ILIKE $1
+      )`;
+      params.push(`%${searchTerm}%`);
+    }
+
+    sql += ` ORDER BY c.created_at DESC`;
+
+    const result = await pool.query(sql, params);
+
+    // Formater l'âge pour l'affichage
+    const children = result.rows.map(child => ({
+      ...child,
+      age_display: child.age_years > 0
+        ? `${child.age_years} an${child.age_years > 1 ? 's' : ''}${child.age_months > 0 ? ` et ${child.age_months} mois` : ''}`
+        : `${child.age_months} mois`
+    }));
 
     res.json({
       success: true,
-      children: result.rows
+      children: children,
+      count: children.length
     });
   } catch (error) {
     console.error('Erreur enfants orphelins:', error);
@@ -163,26 +202,75 @@ router.get('/stats', async (req, res) => {
 });
 
 // PUT /api/children/:id/associate-parent - Associer un enfant à un parent
-router.put('/:id/associate-parent', async (req, res) => {
+// Workflow: Admin crée un parent → sélectionne un enfant orphelin → association
+router.put('/:id/associate-parent', auth.authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { parentId } = req.body;
+    const { parentId, isPrimary = true } = req.body;
+
+    if (!parentId) {
+      return res.status(400).json({
+        success: false,
+        error: 'ID du parent requis'
+      });
+    }
+
+    // Vérifier que l'enfant existe et est orphelin
+    const childCheck = await pool.query(
+      'SELECT id, first_name, last_name, parent_id FROM children WHERE id = $1 AND is_active = true',
+      [id]
+    );
+
+    if (childCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Enfant non trouvé'
+      });
+    }
+
+    // Vérifier que le parent existe
+    const parentCheck = await pool.query(
+      'SELECT id, first_name, last_name, role FROM users WHERE id = $1 AND is_active = true',
+      [parentId]
+    );
+
+    if (parentCheck.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Parent non trouvé'
+      });
+    }
+
+    // Mettre à jour l'enfant avec le parent_id
+    await pool.query(
+      'UPDATE children SET parent_id = $1, updated_at = NOW() WHERE id = $2',
+      [parentId, id]
+    );
+
+    // Créer aussi l'entrée dans parent_children pour la relation N-N
+    await pool.query(`
+      INSERT INTO parent_children (parent_id, child_id, relationship, is_primary, created_at)
+      VALUES ($1, $2, 'parent', $3, NOW())
+      ON CONFLICT (parent_id, child_id) 
+      DO UPDATE SET is_primary = $3, updated_at = NOW()
+    `, [parentId, id, isPrimary]);
 
     // Créer ou mettre à jour l'inscription
-    const sql = `
-      INSERT INTO enrollments (child_id, parent_id, status, created_at)
-      VALUES ($1, $2, 'approved', NOW())
+    await pool.query(`
+      INSERT INTO enrollments (child_id, parent_id, status, enrollment_date, created_at)
+      VALUES ($1, $2, 'approved', CURRENT_DATE, NOW())
       ON CONFLICT (child_id) 
       DO UPDATE SET parent_id = $2, status = 'approved', updated_at = NOW()
-      RETURNING *
-    `;
+    `, [id, parentId]);
 
-    const result = await pool.query(sql, [id, parentId]);
+    const child = childCheck.rows[0];
+    const parent = parentCheck.rows[0];
 
     res.json({
       success: true,
-      enrollment: result.rows[0],
-      message: 'Enfant associé au parent avec succès'
+      message: `${child.first_name} ${child.last_name} associé à ${parent.first_name} ${parent.last_name}`,
+      child: { id: child.id, first_name: child.first_name, last_name: child.last_name },
+      parent: { id: parent.id, first_name: parent.first_name, last_name: parent.last_name }
     });
   } catch (error) {
     console.error('Erreur association enfant-parent:', error);
@@ -471,7 +559,7 @@ router.post('/', [
   body('first_name').notEmpty().withMessage('Prénom requis'),
   body('last_name').notEmpty().withMessage('Nom requis'),
   body('birth_date').isISO8601().withMessage('Date de naissance invalide'),
-  body('gender').isIn(['male', 'female']).withMessage('Genre invalide')
+  body('gender').isIn(['male', 'female', 'M', 'F']).withMessage('Genre invalide')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -487,12 +575,33 @@ router.post('/', [
       first_name,
       last_name,
       birth_date,
-      gender,
+      gender: rawGender,
       medical_info,
       emergency_contact_name,
       emergency_contact_phone,
       photo_url
     } = req.body;
+
+    // Normaliser le genre (M/F → male/female)
+    const gender = rawGender === 'M' ? 'male' : rawGender === 'F' ? 'female' : rawGender;
+
+    // Vérifier si un enfant avec le même nom, prénom et date de naissance existe déjà
+    const duplicateCheck = await pool.query(
+      `SELECT id, first_name, last_name, birth_date FROM children 
+       WHERE LOWER(first_name) = LOWER($1) 
+       AND LOWER(last_name) = LOWER($2) 
+       AND birth_date = $3 
+       AND is_active = true`,
+      [first_name, last_name, birth_date]
+    );
+
+    if (duplicateCheck.rows.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Un enfant avec le même nom, prénom et date de naissance existe déjà',
+        duplicate: duplicateCheck.rows[0]
+      });
+    }
 
     // Insérer le nouvel enfant
     const result = await pool.query(
@@ -506,10 +615,67 @@ router.post('/', [
         emergency_contact_name, emergency_contact_phone, photo_url, true]
     );
 
+    const newChild = result.rows[0];
+
+    // Créer automatiquement une inscription (enrollment) avec statut 'approved'
+    // pour que l'enfant apparaisse dans la page inscriptions
+    try {
+      // Vérifier si une inscription existe déjà pour cet enfant
+      const existingEnrollment = await pool.query(
+        'SELECT id FROM enrollments WHERE child_id = $1',
+        [newChild.id]
+      );
+
+      if (existingEnrollment.rows.length === 0) {
+        // Récupérer les infos du parent si parent_id est fourni dans la requête
+        let parentInfo = {
+          first_name: 'Ajouté via',
+          last_name: 'Dashboard',
+          email: 'dashboard@creche.local',
+          phone: null
+        };
+
+        // Si un parent_id est fourni dans le body, récupérer ses infos
+        if (req.body.parent_id) {
+          const parentResult = await pool.query(
+            'SELECT first_name, last_name, email, phone FROM users WHERE id = $1',
+            [req.body.parent_id]
+          );
+          if (parentResult.rows[0]) {
+            parentInfo = parentResult.rows[0];
+          }
+        }
+
+        // Créer l'inscription avec les vraies données
+        await pool.query(
+          `INSERT INTO enrollments (
+            child_id, child_first_name, child_last_name, child_birth_date, child_gender,
+            applicant_first_name, applicant_last_name, applicant_email, applicant_phone,
+            status, created_at, updated_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'approved', NOW(), NOW())`,
+          [
+            newChild.id,
+            first_name,
+            last_name,
+            birth_date,
+            gender,
+            parentInfo.first_name,
+            parentInfo.last_name,
+            parentInfo.email,
+            parentInfo.phone
+          ]
+        );
+        console.log(`✅ Inscription créée automatiquement pour l'enfant ${first_name} ${last_name}`);
+      }
+    } catch (enrollmentError) {
+      // Log l'erreur mais ne pas bloquer la création de l'enfant
+      console.warn('⚠️ Erreur création enrollment automatique:', enrollmentError.message);
+    }
+
     res.status(201).json({
       success: true,
       message: 'Enfant créé avec succès',
-      child: result.rows[0]
+      child: newChild
     });
 
   } catch (error) {
@@ -721,6 +887,183 @@ router.get('/stats/overview', async (req, res) => {
       success: false,
       error: 'Erreur lors de la récupération des statistiques'
     });
+  }
+});
+
+// ============================================
+// ROUTES DONNÉES MÉDICALES
+// ============================================
+
+// GET /api/children/:id/medical - Récupérer les données médicales
+router.get('/:id/medical', auth.authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Vérifier l'accès (parent de l'enfant ou admin/staff)
+    const childCheck = await pool.query(
+      'SELECT parent_id FROM children WHERE id = $1',
+      [id]
+    );
+
+    if (childCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Enfant non trouvé' });
+    }
+
+    const child = childCheck.rows[0];
+    if (req.user.role === 'parent' && child.parent_id !== req.user.userId) {
+      return res.status(403).json({ success: false, error: 'Accès non autorisé' });
+    }
+
+    // Récupérer les données médicales
+    const result = await pool.query(`
+      SELECT medical_info, allergies, medications, conditions, blood_type, 
+             doctor_name, doctor_phone, medical_notes
+      FROM children WHERE id = $1
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      return res.json({ success: true, allergies: [], medications: [], conditions: [] });
+    }
+
+    const data = result.rows[0];
+    res.json({
+      success: true,
+      allergies: data.allergies || [],
+      medications: data.medications || [],
+      conditions: data.conditions || [],
+      blood_type: data.blood_type || '',
+      doctor_name: data.doctor_name || '',
+      doctor_phone: data.doctor_phone || '',
+      notes: data.medical_notes || data.medical_info || ''
+    });
+
+  } catch (error) {
+    console.error('Erreur GET medical:', error);
+    res.status(500).json({ success: false, error: 'Erreur serveur' });
+  }
+});
+
+// PUT /api/children/:id/medical - Mettre à jour les données médicales
+router.put('/:id/medical', auth.authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { allergies, medications, conditions, blood_type, doctor_name, doctor_phone, notes } = req.body;
+
+    // Vérifier l'accès
+    const childCheck = await pool.query(
+      'SELECT parent_id FROM children WHERE id = $1',
+      [id]
+    );
+
+    if (childCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Enfant non trouvé' });
+    }
+
+    const child = childCheck.rows[0];
+    if (req.user.role === 'parent' && child.parent_id !== req.user.userId) {
+      return res.status(403).json({ success: false, error: 'Accès non autorisé' });
+    }
+
+    // Mettre à jour
+    await pool.query(`
+      UPDATE children SET 
+        allergies = $1,
+        medications = $2,
+        conditions = $3,
+        blood_type = $4,
+        doctor_name = $5,
+        doctor_phone = $6,
+        medical_notes = $7,
+        updated_at = NOW()
+      WHERE id = $8
+    `, [
+      JSON.stringify(allergies || []),
+      JSON.stringify(medications || []),
+      JSON.stringify(conditions || []),
+      blood_type || null,
+      doctor_name || null,
+      doctor_phone || null,
+      notes || null,
+      id
+    ]);
+
+    res.json({ success: true, message: 'Données médicales mises à jour' });
+
+  } catch (error) {
+    console.error('Erreur PUT medical:', error);
+    res.status(500).json({ success: false, error: 'Erreur serveur' });
+  }
+});
+
+// ============================================
+// ROUTES CONTACTS D'URGENCE
+// ============================================
+
+// GET /api/children/:id/emergency-contacts
+router.get('/:id/emergency-contacts', auth.authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Vérifier l'accès
+    const childCheck = await pool.query(
+      'SELECT parent_id, emergency_contacts FROM children WHERE id = $1',
+      [id]
+    );
+
+    if (childCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Enfant non trouvé' });
+    }
+
+    const child = childCheck.rows[0];
+    if (req.user.role === 'parent' && child.parent_id !== req.user.userId) {
+      return res.status(403).json({ success: false, error: 'Accès non autorisé' });
+    }
+
+    res.json({
+      success: true,
+      contacts: child.emergency_contacts || []
+    });
+
+  } catch (error) {
+    console.error('Erreur GET emergency-contacts:', error);
+    res.status(500).json({ success: false, error: 'Erreur serveur' });
+  }
+});
+
+// PUT /api/children/:id/emergency-contacts
+router.put('/:id/emergency-contacts', auth.authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { contacts } = req.body;
+
+    // Vérifier l'accès
+    const childCheck = await pool.query(
+      'SELECT parent_id FROM children WHERE id = $1',
+      [id]
+    );
+
+    if (childCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Enfant non trouvé' });
+    }
+
+    const child = childCheck.rows[0];
+    if (req.user.role === 'parent' && child.parent_id !== req.user.userId) {
+      return res.status(403).json({ success: false, error: 'Accès non autorisé' });
+    }
+
+    // Mettre à jour
+    await pool.query(`
+      UPDATE children SET 
+        emergency_contacts = $1,
+        updated_at = NOW()
+      WHERE id = $2
+    `, [JSON.stringify(contacts || []), id]);
+
+    res.json({ success: true, message: 'Contacts d\'urgence mis à jour' });
+
+  } catch (error) {
+    console.error('Erreur PUT emergency-contacts:', error);
+    res.status(500).json({ success: false, error: 'Erreur serveur' });
   }
 });
 

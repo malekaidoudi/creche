@@ -139,6 +139,10 @@ const CalendarPicker = ({
 
           {/* Grille des jours */}
           <div className="grid grid-cols-7 gap-1">
+            {/* Cellules vides pour le décalage du premier jour */}
+            {Array.from({ length: new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay() }).map((_, index) => (
+              <div key={`empty-${index}`} className="p-3 min-h-[50px]" />
+            ))}
             {days.map((day, index) => {
               const isPast = day < today;
               const isSelected = selectedDate && day.toDateString() === selectedDate.toDateString();
@@ -152,15 +156,15 @@ const CalendarPicker = ({
                   className={`
                     p-3 min-h-[50px] border rounded-lg text-sm font-medium transition-all duration-200
                     ${isPast
-                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200'
-                      : 'hover:bg-primary-50 hover:border-primary-300 cursor-pointer'
+                      ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed border-gray-200 dark:border-gray-700'
+                      : 'hover:bg-primary-50 dark:hover:bg-primary-900/30 hover:border-primary-300 dark:hover:border-primary-700 cursor-pointer'
                     }
                     ${isSelected
                       ? 'bg-primary-500 text-white border-primary-500'
-                      : 'bg-white border-gray-200'
+                      : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100'
                     }
                     ${isWeekend && !isPast && !isSelected
-                      ? 'bg-gray-50 text-gray-600'
+                      ? 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
                       : ''
                     }
                   `}

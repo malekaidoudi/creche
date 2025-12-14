@@ -286,6 +286,7 @@ const enrollmentsController = {
   },
 
   // GET /api/enrollments - Liste dossiers (enrollments + enrollments_archive)
+  // Jointure avec children et users pour récupérer les vraies données
   getAllEnrollments: async (req, res) => {
     try {
       const { status = 'all', page = 1, limit = 20, include_archived = 'true' } = req.query;
@@ -303,6 +304,7 @@ const enrollmentsController = {
       }
 
       // Requête principale: UNION entre enrollments et enrollments_archive
+      // IMPORTANT: Jointure avec children et users pour récupérer les vraies données
       const includeArchived = include_archived === 'true';
 
       let query;
@@ -310,20 +312,30 @@ const enrollmentsController = {
         // UNION avec enrollments_archive pour les statuts finalisés
         query = `
           WITH combined AS (
-            -- Inscriptions actives
+            -- Inscriptions actives avec jointure children et users
             SELECT 
               e.id, e.status::text as status, e.created_at, e.updated_at,
-              e.child_first_name, e.child_last_name, e.child_birth_date, e.child_gender,
-              e.applicant_first_name, e.applicant_last_name, e.applicant_email, e.applicant_phone,
-              e.applicant_first_name AS parent_first_name,
-              e.applicant_last_name AS parent_last_name,
-              e.applicant_email AS parent_email,
-              e.applicant_phone AS parent_phone,
+              -- Priorité: données de la table children, sinon données de enrollments
+              COALESCE(c.first_name, e.child_first_name) as child_first_name,
+              COALESCE(c.last_name, e.child_last_name) as child_last_name,
+              COALESCE(c.birth_date, e.child_birth_date) as child_birth_date,
+              COALESCE(c.gender, e.child_gender) as child_gender,
+              -- Priorité: données du parent (users), sinon données de enrollments
+              COALESCE(u.first_name, e.applicant_first_name) as applicant_first_name,
+              COALESCE(u.last_name, e.applicant_last_name) as applicant_last_name,
+              COALESCE(u.email, e.applicant_email) as applicant_email,
+              COALESCE(u.phone, e.applicant_phone) as applicant_phone,
+              COALESCE(u.first_name, e.applicant_first_name) AS parent_first_name,
+              COALESCE(u.last_name, e.applicant_last_name) AS parent_last_name,
+              COALESCE(u.email, e.applicant_email) AS parent_email,
+              COALESCE(u.phone, e.applicant_phone) AS parent_phone,
               e.admin_notes, e.approved_by, e.approved_at,
               e.active_appointment_id, e.failed_appointments_count,
               COALESCE((SELECT COUNT(*) FROM enrollment_documents ed WHERE ed.enrollment_id = e.id), 0) as documents_count,
               'active' as source
             FROM enrollments e
+            LEFT JOIN children c ON e.child_id = c.id
+            LEFT JOIN users u ON c.parent_id = u.id
             WHERE ${enrollmentsWhere}
             
             UNION ALL
@@ -349,17 +361,27 @@ const enrollmentsController = {
           LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
         `;
       } else {
-        // Requête simple sans archive
+        // Requête simple sans archive - avec jointure children et users
         query = `
           SELECT 
-            e.*,
-            e.applicant_first_name AS parent_first_name,
-            e.applicant_last_name AS parent_last_name,
-            e.applicant_email AS parent_email,
-            e.applicant_phone AS parent_phone,
+            e.id, e.status, e.created_at, e.updated_at,
+            e.admin_notes, e.approved_by, e.approved_at,
+            e.active_appointment_id, e.failed_appointments_count,
+            -- Priorité: données de la table children, sinon données de enrollments
+            COALESCE(c.first_name, e.child_first_name) as child_first_name,
+            COALESCE(c.last_name, e.child_last_name) as child_last_name,
+            COALESCE(c.birth_date, e.child_birth_date) as child_birth_date,
+            COALESCE(c.gender, e.child_gender) as child_gender,
+            -- Priorité: données du parent (users), sinon données de enrollments
+            COALESCE(u.first_name, e.applicant_first_name) AS parent_first_name,
+            COALESCE(u.last_name, e.applicant_last_name) AS parent_last_name,
+            COALESCE(u.email, e.applicant_email) AS parent_email,
+            COALESCE(u.phone, e.applicant_phone) AS parent_phone,
             COALESCE((SELECT COUNT(*) FROM enrollment_documents ed WHERE ed.enrollment_id = e.id), 0) as documents_count,
             'active' as source
           FROM enrollments e
+          LEFT JOIN children c ON e.child_id = c.id
+          LEFT JOIN users u ON c.parent_id = u.id
           WHERE ${enrollmentsWhere}
           ORDER BY e.created_at DESC
           LIMIT $${paramIndex} OFFSET $${paramIndex + 1}

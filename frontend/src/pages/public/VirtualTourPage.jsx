@@ -19,12 +19,14 @@ import { useLanguage } from '../../hooks/useLanguage'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { ImageWithFallback, defaultImages } from '../../utils/imageUtils.jsx'
+import JoinUsModal from '../../components/ui/JoinUsModal'
 
 const VirtualTourPage = () => {
   const { t } = useTranslation()
   const { isRTL } = useLanguage()
   const [currentRoom, setCurrentRoom] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [showJoinModal, setShowJoinModal] = useState(false)
 
   // Animation variants
   const fadeInUp = {
@@ -281,8 +283,8 @@ const VirtualTourPage = () => {
                 <button
                   onClick={() => setCurrentRoom(index)}
                   className={`w-full p-3 rounded-xl transition-all duration-300 ${currentRoom === index
-                      ? 'bg-primary-600 text-white shadow-lg scale-105'
-                      : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-primary-50 dark:hover:bg-gray-700 shadow-md'
+                    ? 'bg-primary-600 text-white shadow-lg scale-105'
+                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-primary-50 dark:hover:bg-gray-700 shadow-md'
                     }`}
                 >
                   <div className="aspect-square mb-2 rounded-lg overflow-hidden">
@@ -382,16 +384,21 @@ const VirtualTourPage = () => {
                     {isRTL ? 'احجز موعد زيارة' : 'Réserver une visite'}
                   </a>
                 </Button>
-                <Button asChild size="lg" className="bg-white text-primary-600 hover:bg-white/90 border-2 border-white font-bold">
-                  <a href="/inscription">
-                    {isRTL ? 'انضم إلينا' : 'Rejoignez-nous'}
-                  </a>
+                <Button
+                  size="lg"
+                  className="bg-white text-primary-600 hover:bg-white/90 border-2 border-white font-bold"
+                  onClick={() => setShowJoinModal(true)}
+                >
+                  {isRTL ? 'انضم إلينا' : 'Rejoignez-nous'}
                 </Button>
               </div>
             </CardContent>
           </Card>
         </motion.div>
       </div>
+
+      {/* Modal de choix */}
+      <JoinUsModal isOpen={showJoinModal} onClose={() => setShowJoinModal(false)} />
     </div>
   )
 }

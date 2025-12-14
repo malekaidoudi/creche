@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useLocation, Link } from 'react-router-dom';
 import {
@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
+import useIsMobile from '../../hooks/useIsMobile';
 import api from '../../services/api';
 import { useDialogContext } from '../../contexts/DialogContext';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
@@ -18,10 +19,13 @@ import childrenService from '../../services/childrenService';
 import TodaySection from '../../components/attendance/TodaySection';
 import HistorySection from '../../components/attendance/HistorySection';
 import StatsSection from '../../components/attendance/StatsSection';
+import MobileAttendance from '../../components/mobile/MobileAttendance';
+import MobileNavigation from '../../components/mobile/MobileNavigation';
 
 const AttendancePage = () => {
   const { isAdmin, isStaff } = useAuth();
   const { isRTL } = useLanguage();
+  const isMobile = useIsMobile();
   const dialog = useDialogContext();
   const location = useLocation();
   const [loading, setLoading] = useState(true);
@@ -233,6 +237,44 @@ const AttendancePage = () => {
   };
 
 
+  // Préparer les données pour le composant mobile
+  const mobileAttendanceMap = useMemo(() => {
+    const map = {};
+    attendanceData.forEach(record => {
+      map[record.child_id] = {
+        check_in: record.check_in_time || record.check_in,
+        check_out: record.check_out_time || record.check_out
+      };
+    });
+    return map;
+  }, [attendanceData]);
+
+  const mobileStats = useMemo(() => ({
+    present: currentlyPresent.length,
+    absent: allChildren.length - currentlyPresent.length,
+    total: allChildren.length
+  }), [currentlyPresent, allChildren]);
+
+  // Version Mobile
+  if (isMobile) {
+    return (
+      <>
+        <MobileAttendance
+          children={allChildren}
+          attendance={mobileAttendanceMap}
+          stats={mobileStats}
+          loading={loading}
+          selectedDate={new Date(selectedDate)}
+          onCheckIn={handleCheckIn}
+          onCheckOut={handleCheckOut}
+          onRefresh={handleRefresh}
+        />
+        <MobileNavigation />
+      </>
+    );
+  }
+
+  // Version Desktop
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">

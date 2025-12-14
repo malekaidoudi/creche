@@ -5,18 +5,21 @@ import { User, Mail, Phone, Lock, Camera, Save, ArrowLeft, Eye, EyeOff, Shield, 
 import { useAuth } from '../hooks/useAuth';
 import { useLanguage } from '../hooks/useLanguage';
 import { useTheme } from '../hooks/useTheme';
+import useIsMobile from '../hooks/useIsMobile';
 import api from '../services/api';
 import { useDialogContext } from '../contexts/DialogContext';
 import { useProfileImage } from '../hooks/useProfileImage';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import MobileNavigation from '../components/mobile/MobileNavigation';
 
 const UnifiedProfilePage = () => {
   const { user, updateUser } = useAuth();
   const { isRTL } = useLanguage();
   const dialog = useDialogContext();
   const { isDark } = useTheme();
+  const isMobile = useIsMobile();
   const { getImageUrl, hasImage, refreshImage } = useProfileImage();
   const navigate = useNavigate();
 
@@ -191,13 +194,16 @@ const UnifiedProfilePage = () => {
   }
 
   return (
-    <div className={`min-h-screen p-4 md:p-6 ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
+    <div className={`min-h-screen p-4 md:p-6 ${isDark ? 'bg-gray-900' : 'bg-gray-50'} ${isMobile ? 'pb-24' : ''}`}>
       <div className="max-w-4xl mx-auto">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="flex items-center gap-2 mb-6">
-            <ArrowLeft className={`w-4 h-4 ${isRTL ? 'rotate-180' : ''}`} />
-            {isRTL ? 'رجوع' : 'Retour'}
-          </Button>
+          {/* Bouton retour masqué sur mobile */}
+          {!isMobile && (
+            <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="flex items-center gap-2 mb-6">
+              <ArrowLeft className={`w-4 h-4 ${isRTL ? 'rotate-180' : ''}`} />
+              {isRTL ? 'رجوع' : 'Retour'}
+            </Button>
+          )}
 
           <div className="text-center">
             <h1 className={`text-3xl font-bold mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
@@ -419,6 +425,9 @@ const UnifiedProfilePage = () => {
           </div>
         </div>
       </div>
+
+      {/* Navigation mobile */}
+      {isMobile && <MobileNavigation />}
     </div>
   );
 };

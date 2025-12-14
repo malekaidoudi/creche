@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 
 // Layouts
 import PublicLayout from './layouts/PublicLayout'
@@ -11,6 +11,7 @@ import ContactPageDynamic from './pages/public/ContactPageDynamic'
 import VirtualTourPage from './pages/public/VirtualTourPage'
 import CreatePasswordPage from './pages/public/CreatePasswordPage'
 import UploadDocumentsPage from './pages/public/UploadDocumentsPage'
+// ParentRegisterPage supprimé - fonctionnalité intégrée dans EnrollmentPage avec ?mode=parent
 
 // Pages d'authentification
 import RegisterPage from './pages/auth/RegisterPage'
@@ -21,6 +22,9 @@ import AttendanceParentPage from './pages/parent/AttendanceParentPage'
 import AbsenceRequestPage from './pages/parent/AbsenceRequestPage'
 import AnnouncementsPage from './pages/parent/AnnouncementsPage'
 import ParentCalendarPage from './pages/parent/ParentCalendarPage'
+import ChildDetailsPage from './pages/parent/ChildDetailsPage'
+import ChildMedicalPage from './pages/parent/ChildMedicalPage'
+import ChildEmergencyContactsPage from './pages/parent/ChildEmergencyContactsPage'
 
 // Pages staff
 import AbsenceManagementPage from './pages/staff/AbsenceManagementPage'
@@ -76,6 +80,8 @@ function App() {
       {/* Routes workflow inscription */}
       <Route path="/create-password" element={<CreatePasswordPage />} />
       <Route path="/upload-documents" element={<UploadDocumentsPage />} />
+      {/* Route /inscription-parent redirige vers /inscription?mode=parent */}
+      <Route path="/inscription-parent" element={<Navigate to="/inscription?mode=parent" replace />} />
 
       {/* Routes publiques */}
       <Route path="/" element={<PublicLayout />}>
@@ -162,6 +168,32 @@ function App() {
           element={
             <ProtectedRoute roles={['parent']}>
               <ActivitiesPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Routes enfant pour parents */}
+        <Route
+          path="mon-espace/child/:id/details"
+          element={
+            <ProtectedRoute roles={['parent']}>
+              <ChildDetailsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="mon-espace/child/:id/medical"
+          element={
+            <ProtectedRoute roles={['parent']}>
+              <ChildMedicalPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="mon-espace/child/:id/emergency-contacts"
+          element={
+            <ProtectedRoute roles={['parent']}>
+              <ChildEmergencyContactsPage />
             </ProtectedRoute>
           }
         />

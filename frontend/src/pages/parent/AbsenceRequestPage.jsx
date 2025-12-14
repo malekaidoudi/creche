@@ -15,17 +15,20 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
+import useIsMobile from '../../hooks/useIsMobile';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import CalendarPicker from '../../components/ui/CalendarPicker';
 import { useDialogContext } from '../../contexts/DialogContext';
+import MobileNavigation from '../../components/mobile/MobileNavigation';
 import api from '../../services/api';
 
 const AbsenceRequestPage = () => {
   const { user } = useAuth();
   const dialog = useDialogContext();
   const { isRTL } = useLanguage();
+  const isMobile = useIsMobile();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -179,24 +182,27 @@ const AbsenceRequestPage = () => {
   }
 
   return (
-    <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 p-4 ${isRTL ? 'rtl' : 'ltr'}`}>
+    <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 p-4 ${isRTL ? 'rtl' : 'ltr'} ${isMobile ? 'pb-24' : ''}`}>
       <div className="max-w-4xl mx-auto">
-        {/* En-tête avec bouton retour */}
+        {/* En-tête */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <div className="flex items-center mb-4">
-            <Button
-              variant="outline"
-              onClick={() => navigate('/mon-espace')}
-              className="mr-4 rtl:mr-0 rtl:ml-4"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2 rtl:rotate-180" />
-              {isRTL ? 'العودة إلى مساحتي' : 'Retour à Mon Espace'}
-            </Button>
-          </div>
+          {/* Bouton retour masqué sur mobile */}
+          {!isMobile && (
+            <div className="flex items-center mb-4">
+              <Button
+                variant="outline"
+                onClick={() => navigate('/mon-espace')}
+                className="mr-4 rtl:mr-0 rtl:ml-4"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2 rtl:rotate-180" />
+                {isRTL ? 'العودة إلى مساحتي' : 'Retour à Mon Espace'}
+              </Button>
+            </div>
+          )}
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
             {isRTL ? 'طلب غياب' : 'Demande d\'absence'}
           </h1>
@@ -321,6 +327,9 @@ const AbsenceRequestPage = () => {
           </motion.div>
         </div>
       </div>
+
+      {/* Navigation mobile */}
+      {isMobile && <MobileNavigation />}
     </div>
   );
 };

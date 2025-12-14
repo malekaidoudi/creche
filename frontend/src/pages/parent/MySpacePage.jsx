@@ -11,6 +11,7 @@ import {
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
+import useIsMobile from '../../hooks/useIsMobile';
 import api from '../../services/api';
 import { useProfileImage } from '../../hooks/useProfileImage';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
@@ -22,16 +23,20 @@ import RequestAppointmentModal from '../../components/modals/RequestAppointmentM
 import RescheduleAppointmentModal from '../../components/modals/RescheduleAppointmentModal';
 import SideMenu from '../../components/ui/SideMenu';
 import FloatingActionButton from '../../components/ui/FloatingActionButton';
+import MobileParentSpace from '../../components/mobile/MobileParentSpace';
+import MobileNavigation from '../../components/mobile/MobileNavigation';
 import { useDialogContext } from '../../contexts/DialogContext';
 
 const MySpacePage = () => {
   const { user } = useAuth();
   const { isRTL } = useLanguage();
+  const isMobile = useIsMobile();
   const dialog = useDialogContext();
   const { getImageUrl, hasImage } = useProfileImage();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [children, setChildren] = useState([]);
+  const [appointments, setAppointments] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showAppointmentModal, setShowAppointmentModal] = useState(false);
@@ -42,11 +47,23 @@ const MySpacePage = () => {
   useEffect(() => {
     loadChildren();
     loadUnreadCount();
+    loadAppointments();
 
     // Rafraîchir le compteur toutes les 30 secondes
     const interval = setInterval(loadUnreadCount, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  const loadAppointments = async () => {
+    try {
+      const response = await api.get('/api/appointments/my');
+      if (response.data?.success) {
+        setAppointments(response.data.appointments || []);
+      }
+    } catch (error) {
+      console.error('Erreur chargement rendez-vous:', error);
+    }
+  };
 
   const loadChildren = async () => {
     try {
@@ -76,6 +93,55 @@ const MySpacePage = () => {
   };
 
 
+  // Version Mobile
+  if (isMobile) {
+    return (
+      <>
+        <MobileParentSpace
+          children={children}
+          appointments={appointments}
+          unreadCount={unreadCount}
+          loading={loading}
+          onShowNotifications={() => setShowNotifications(true)}
+          onRequestAppointment={() => setShowAppointmentModal(true)}
+          onRescheduleAppointment={(appointment) => {
+            setSelectedAppointment(appointment);
+            setShowRescheduleModal(true);
+          }}
+        />
+
+        {/* Modals */}
+        <SimpleNotificationCenter
+          isOpen={showNotifications}
+          onClose={() => {
+            setShowNotifications(false);
+            loadUnreadCount();
+          }}
+        />
+        <RequestAppointmentModal
+          isOpen={showAppointmentModal}
+          onClose={() => setShowAppointmentModal(false)}
+          onSuccess={() => {
+            dialog.success(isRTL ? 'تم إرسال طلب الموعد بنجاح' : 'Demande de rendez-vous envoyée');
+            loadAppointments();
+          }}
+        />
+        <RescheduleAppointmentModal
+          isOpen={showRescheduleModal}
+          onClose={() => {
+            setShowRescheduleModal(false);
+            setSelectedAppointment(null);
+          }}
+          appointment={selectedAppointment}
+          onSuccess={() => loadAppointments()}
+        />
+
+        <MobileNavigation />
+      </>
+    );
+  }
+
+  // Version Desktop
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">

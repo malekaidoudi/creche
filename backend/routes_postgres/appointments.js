@@ -37,6 +37,42 @@ router.post('/', auth.authenticateToken, async (req, res) => {
 });
 
 /**
+ * GET /api/appointments/my - Récupérer les RDV du parent connecté
+ */
+router.get('/my', auth.authenticateToken, async (req, res) => {
+  try {
+    const { pool } = require('../config/db_postgres');
+
+    // Récupérer les RDV du parent par son user_id ou email
+    const result = await pool.query(`
+      SELECT 
+        a.*,
+        TO_CHAR(a.proposed_date, 'YYYY-MM-DD"T"HH24:MI') as proposed_date_formatted,
+        TO_CHAR(a.confirmed_date, 'YYYY-MM-DD"T"HH24:MI') as confirmed_date_formatted,
+        c.first_name as child_first_name,
+        c.last_name as child_last_name
+      FROM appointments a
+      LEFT JOIN children c ON a.child_id = c.id
+      WHERE a.parent_id = $1
+         OR a.parent_email = (SELECT email FROM users WHERE id = $1)
+      ORDER BY COALESCE(a.confirmed_date, a.proposed_date) DESC
+    `, [req.user.userId]);
+
+    res.json({
+      success: true,
+      appointments: result.rows
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur GET /api/appointments/my:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération des rendez-vous'
+    });
+  }
+});
+
+/**
  * GET /api/appointments - Récupérer les RDV
  */
 router.get('/', auth.authenticateToken, async (req, res) => {

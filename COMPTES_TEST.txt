@@ -44,5 +44,3 @@ Accès       : Mon Espace, suivi enfant, présences
    - Frontend : http://localhost:5173
    - Backend  : http://localhost:3003
    - API      : http://localhost:3003/api
-
-═══════════════════════════════════════════════════════════════

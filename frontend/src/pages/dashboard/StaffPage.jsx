@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import {
   UserCheck,
   Search,
@@ -21,15 +22,21 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useAuth } from '../../hooks/useAuth';
+import useIsMobile from '../../hooks/useIsMobile';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { useDialogContext } from '../../contexts/DialogContext';
+import { TableToListAdapter } from '../../components/mobile/adapters';
+import MobileNavigation from '../../components/mobile/MobileNavigation';
+import MobileHeader from '../../components/mobile/MobileHeader';
 
 const StaffPage = () => {
   const { isRTL } = useLanguage();
   const dialog = useDialogContext();
   const { isAdmin } = useAuth();
+  const isMobile = useIsMobile();
+  const navigate = useNavigate();
   const [staff, setStaff] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -164,6 +171,73 @@ const StaffPage = () => {
     dialog.success(isRTL ? 'تم تحميل البيانات بنجاح' : 'Données téléchargées avec succès');
   };
 
+  // Colonnes pour TableToListAdapter
+  const mobileColumns = [
+    { key: 'full_name', label: isRTL ? 'الاسم' : 'Nom', isPrimary: true },
+    {
+      key: 'role_label', label: isRTL ? 'الدور' : 'Rôle', isBadge: true, badgeColors: {
+        'Admin': 'purple',
+        'مدير': 'purple',
+        'Staff': 'blue',
+        'موظف': 'blue'
+      }
+    },
+    { key: 'department', label: isRTL ? 'القسم' : 'Département', isSecondary: true },
+    {
+      key: 'status_label', label: isRTL ? 'الحالة' : 'Statut', isBadge: true, badgeColors: {
+        'Actif': 'green',
+        'نشط': 'green',
+        'Inactif': 'red',
+        'غير نشط': 'red'
+      }
+    }
+  ];
+
+  // Préparer les données pour mobile
+  const mobileStaff = filteredStaff.map(s => ({
+    ...s,
+    full_name: `${s.first_name} ${s.last_name}`,
+    role_label: s.role === 'admin' ? (isRTL ? 'مدير' : 'Admin') : (isRTL ? 'موظف' : 'Staff'),
+    status_label: s.status === 'active' ? (isRTL ? 'نشط' : 'Actif') : (isRTL ? 'غير نشط' : 'Inactif')
+  }));
+
+  // Version Mobile
+  if (isMobile) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20">
+        <MobileHeader
+          title={isRTL ? 'الموظفون' : 'Personnel'}
+          subtitle={`${filteredStaff.length} ${isRTL ? 'موظف' : 'membre(s)'}`}
+          showSearch={true}
+          onSearch={setSearchTerm}
+          searchPlaceholder={isRTL ? 'بحث...' : 'Rechercher...'}
+        />
+
+        <div className="p-4">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <LoadingSpinner />
+            </div>
+          ) : (
+            <TableToListAdapter
+              columns={mobileColumns}
+              rows={mobileStaff}
+              onRowClick={(row) => {
+                setSelectedStaff(row);
+                setShowDetails(true);
+              }}
+              emptyMessage={isRTL ? 'لا يوجد موظفون' : 'Aucun personnel'}
+              emptyIcon={Users}
+            />
+          )}
+        </div>
+
+        <MobileNavigation />
+      </div>
+    );
+  }
+
+  // Version Desktop
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">

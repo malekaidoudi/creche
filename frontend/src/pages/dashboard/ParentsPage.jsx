@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import {
   Users,
   Search,
@@ -19,16 +20,22 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useAuth } from '../../hooks/useAuth';
+import useIsMobile from '../../hooks/useIsMobile';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { useDialogContext } from '../../contexts/DialogContext';
 import api from '../../services/api';
+import { TableToListAdapter } from '../../components/mobile/adapters';
+import MobileNavigation from '../../components/mobile/MobileNavigation';
+import MobileHeader from '../../components/mobile/MobileHeader';
 
 const ParentsPage = () => {
   const { isRTL } = useLanguage();
   const dialog = useDialogContext();
   const { isAdmin } = useAuth();
+  const isMobile = useIsMobile();
+  const navigate = useNavigate();
   const [parents, setParents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -170,6 +177,65 @@ const ParentsPage = () => {
     dialog.success(isRTL ? 'تم تصدير قائمة الأولياء' : 'Liste des parents exportée');
   };
 
+  // Colonnes pour TableToListAdapter
+  const mobileColumns = [
+    { key: 'full_name', label: isRTL ? 'الاسم' : 'Nom', isPrimary: true },
+    { key: 'email', label: isRTL ? 'البريد' : 'Email', isSecondary: true },
+    {
+      key: 'status_label', label: isRTL ? 'الحالة' : 'Statut', isBadge: true, badgeColors: {
+        'Actif': 'green',
+        'نشط': 'green',
+        'Inactif': 'red',
+        'غير نشط': 'red'
+      }
+    },
+    { key: 'children_count', label: isRTL ? 'الأطفال' : 'Enfants' }
+  ];
+
+  // Préparer les données pour mobile
+  const mobileParents = filteredParents.map(p => ({
+    ...p,
+    full_name: `${p.first_name} ${p.last_name}`,
+    status_label: p.status === 'active' ? (isRTL ? 'نشط' : 'Actif') : (isRTL ? 'غير نشط' : 'Inactif')
+  }));
+
+  // Version Mobile
+  if (isMobile) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20">
+        <MobileHeader
+          title={isRTL ? 'الأولياء' : 'Parents'}
+          subtitle={`${filteredParents.length} ${isRTL ? 'ولي' : 'parent(s)'}`}
+          showSearch={true}
+          onSearch={setSearchTerm}
+          searchPlaceholder={isRTL ? 'بحث...' : 'Rechercher...'}
+        />
+
+        <div className="p-4">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <LoadingSpinner />
+            </div>
+          ) : (
+            <TableToListAdapter
+              columns={mobileColumns}
+              rows={mobileParents}
+              onRowClick={(row) => {
+                setSelectedParent(row);
+                setShowDetails(true);
+              }}
+              emptyMessage={isRTL ? 'لا يوجد أولياء' : 'Aucun parent'}
+              emptyIcon={Users}
+            />
+          )}
+        </div>
+
+        <MobileNavigation />
+      </div>
+    );
+  }
+
+  // Version Desktop
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">

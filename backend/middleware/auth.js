@@ -27,13 +27,17 @@ const auth = {
         });
       }
 
-      // Log sensible uniquement en dev
-      logger.sensitive('🔐 Token décodé - user:', { id: user.id, role: user.role });
-
       // 🔧 Normaliser userId → id pour compatibilité
       if (user.userId && !user.id) {
         user.id = user.userId;
       }
+      // Aussi normaliser dans l'autre sens
+      if (user.id && !user.userId) {
+        user.userId = user.id;
+      }
+
+      // Log sensible uniquement en dev (après normalisation)
+      logger.sensitive('🔐 Token décodé - user:', { id: user.id, userId: user.userId, role: user.role });
 
       req.user = user;
       next();

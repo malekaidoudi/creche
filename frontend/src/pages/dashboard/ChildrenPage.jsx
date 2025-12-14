@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Baby,
   Search,
@@ -26,7 +26,10 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
+import useIsMobile from '../../hooks/useIsMobile';
 import { Button } from '../../components/ui/Button';
+import MobileChildrenList from '../../components/mobile/MobileChildrenList';
+import MobileNavigation from '../../components/mobile/MobileNavigation';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { useDialogContext } from '../../contexts/DialogContext';
 import childrenService from '../../services/childrenService';
@@ -38,6 +41,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../..
 const ChildrenPage = () => {
   const { user, isAdmin, isStaff } = useAuth();
   const { isRTL } = useLanguage();
+  const isMobile = useIsMobile();
+  const navigate = useNavigate();
   const dialog = useDialogContext();
   const [loading, setLoading] = useState(true);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -534,6 +539,26 @@ const ChildrenPage = () => {
 
   // Les données sont déjà filtrées côté serveur via l'API
 
+  // Version Mobile
+  if (isMobile) {
+    return (
+      <>
+        <MobileChildrenList
+          children={children}
+          groups={[]} // À connecter avec l'API des groupes si disponible
+          loading={loading}
+          onViewChild={(child) => handleViewChild(child)}
+          onEditChild={(child) => handleViewChild(child)}
+          onDeleteChild={(child) => handleDelete(child.id)}
+          onAddChild={() => navigate('/dashboard/children/add')}
+          onRefresh={() => loadChildren()}
+        />
+        <MobileNavigation />
+      </>
+    );
+  }
+
+  // Version Desktop
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">

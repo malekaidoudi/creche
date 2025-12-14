@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useLanguage } from '../../hooks/useLanguage'
 import { useDialogContext } from '../../contexts/DialogContext'
 import { Mail, Lock, Eye, EyeOff, LogIn, UserPlus, AlertCircle } from 'lucide-react'
+import JoinUsModal from '../ui/JoinUsModal'
 
 const LoginFormHero = () => {
   const { login } = useAuth()
@@ -18,6 +19,7 @@ const LoginFormHero = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [showJoinModal, setShowJoinModal] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -187,14 +189,18 @@ const LoginFormHero = () => {
         </div>
       </div>
 
-      {/* Sign up link */}
-      <Link
-        to="/inscription"
+      {/* Sign up link - ouvre le modal */}
+      <button
+        type="button"
+        onClick={() => setShowJoinModal(true)}
         className="w-full bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-2 border-gray-300 dark:border-gray-600 py-3 px-6 rounded-xl font-semibold text-base sm:text-lg shadow-md hover:shadow-lg transform hover:scale-[1.02] transition-all duration-300 flex items-center justify-center whitespace-nowrap"
       >
         <UserPlus className={`w-5 h-5 ${isRTL ? 'ml-2' : 'mr-2'}`} />
         {isRTL ? 'انضم إلينا' : 'Rejoignez-nous'}
-      </Link>
+      </button>
+
+      {/* Modal de choix */}
+      <JoinUsModal isOpen={showJoinModal} onClose={() => setShowJoinModal(false)} />
 
       {/* Footer */}
       <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-6">
