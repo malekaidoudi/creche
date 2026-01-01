@@ -21,7 +21,12 @@ const getBaseUrl = () => {
     return 'http://localhost:3003';
   }
 
-  // Production
+  // Production (mima-elghalia.com) - Backend PROD
+  if (hostname === 'mima-elghalia.com' || hostname === 'www.mima-elghalia.com') {
+    return 'https://creche-backend-prod.onrender.com';
+  }
+
+  // Staging/Preview (Vercel) - Backend DEV
   return 'https://creche-backend.onrender.com';
 };
 

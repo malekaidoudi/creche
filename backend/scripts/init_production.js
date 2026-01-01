@@ -5,9 +5,19 @@
  * Usage: NODE_ENV=production node scripts/init_production.js
  */
 
-require('dotenv').config({ path: '.env.production' });
+const path = require('path');
+const envPath = path.join(__dirname, '..', '.env.production');
+require('dotenv').config({ path: envPath, override: true });
 const bcrypt = require('bcryptjs');
 const { Pool } = require('pg');
+
+// Debug: afficher les variables chargées
+console.log('📁 Fichier env chargé:', envPath);
+console.log('🔧 Configuration DB:', {
+    host: process.env.DB_HOST,
+    database: process.env.DB_NAME,
+    user: process.env.DB_USER
+});
 
 // Configuration de la connexion
 const pool = new Pool({
