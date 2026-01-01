@@ -20,7 +20,7 @@ const SettingsContext = createContext();
  */
 export const SettingsProvider = ({ children }) => {
   const queryClient = useQueryClient();
-  
+
   // Cache intelligent avec React Query
   const settingsQuery = useQuery({
     queryKey: ['settings', 'all'],
@@ -30,7 +30,7 @@ export const SettingsProvider = ({ children }) => {
       return response.data;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
-    cacheTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
     refetchOnWindowFocus: false,
     refetchOnMount: false
   });
@@ -93,7 +93,7 @@ export const useContactData = (language = 'fr') => {
       return response.data;
     },
     staleTime: 10 * 60 * 1000, // 10 minutes (données publiques)
-    cacheTime: 15 * 60 * 1000, // 15 minutes
+    gcTime: 15 * 60 * 1000, // 15 minutes
     refetchOnWindowFocus: false,
     select: (data) => data.contact // Extraire seulement les données contact
   });
@@ -111,7 +111,7 @@ export const useFooterData = (language = 'fr') => {
       return response.data;
     },
     staleTime: 15 * 60 * 1000, // 15 minutes (données très statiques)
-    cacheTime: 20 * 60 * 1000, // 20 minutes
+    gcTime: 20 * 60 * 1000, // 20 minutes
     refetchOnWindowFocus: false,
     select: (data) => data.settings // Extraire seulement les settings
   });
@@ -122,7 +122,7 @@ export const useFooterData = (language = 'fr') => {
  */
 export const useUpdateSettings = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async ({ key, value_fr, value_ar, category }) => {
       console.log(`🔄 Mise à jour setting: ${key} = ${value_fr}`);
@@ -138,7 +138,7 @@ export const useUpdateSettings = () => {
       // Mise à jour optimiste du cache
       queryClient.setQueryData(['settings', 'all'], (oldData) => {
         if (!oldData) return oldData;
-        
+
         return {
           ...oldData,
           settings: {
@@ -151,11 +151,11 @@ export const useUpdateSettings = () => {
           }
         };
       });
-      
+
       // Invalider les caches dépendants
       queryClient.invalidateQueries(['contact']);
       queryClient.invalidateQueries(['footer']);
-      
+
       console.log(`✅ Setting ${variables.key} mis à jour et cache synchronisé`);
     }
   });
@@ -182,7 +182,7 @@ export const useCacheStats = () => {
 export const useSmartSettings = (keys = []) => {
   const { settings, isLoading, isError } = useSettings();
   const [localCache, setLocalCache] = useState({});
-  
+
   // Fallback vers localStorage en cas d'erreur
   useEffect(() => {
     if (isError) {
@@ -208,18 +208,18 @@ export const useSmartSettings = (keys = []) => {
   // Extraire seulement les clés demandées
   const filteredSettings = useCallback(() => {
     const source = isError ? localCache : settings;
-    
+
     if (keys.length === 0) {
       return source;
     }
-    
+
     const filtered = {};
     keys.forEach(key => {
       if (source[key]) {
         filtered[key] = source[key];
       }
     });
-    
+
     return filtered;
   }, [settings, localCache, keys, isError]);
 
@@ -237,16 +237,16 @@ export const useSmartSettings = (keys = []) => {
 export const useRealtimeSettings = () => {
   const queryClient = useQueryClient();
   const [lastUpdate, setLastUpdate] = useState(null);
-  
+
   // Écouter les événements de mise à jour
   useEffect(() => {
     const handleSettingsUpdate = (event) => {
       const { key, value, timestamp } = event.detail;
-      
+
       // Mise à jour optimiste
       queryClient.setQueryData(['settings', 'all'], (oldData) => {
         if (!oldData) return oldData;
-        
+
         return {
           ...oldData,
           settings: {
@@ -259,14 +259,14 @@ export const useRealtimeSettings = () => {
           }
         };
       });
-      
+
       setLastUpdate(timestamp);
       console.log(`🔄 Mise à jour temps réel: ${key}`);
     };
 
     // Écouter les événements personnalisés
     window.addEventListener('settings-updated', handleSettingsUpdate);
-    
+
     return () => {
       window.removeEventListener('settings-updated', handleSettingsUpdate);
     };
@@ -281,7 +281,7 @@ export const useRealtimeSettings = () => {
         timestamp: new Date().toISOString()
       }
     });
-    
+
     window.dispatchEvent(event);
   }, []);
 

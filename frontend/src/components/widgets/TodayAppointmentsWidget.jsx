@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, Clock, User, Phone, CheckCircle, ClipboardCheck, RefreshCw, ChevronRight } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
+import { Calendar, User, RefreshCw, ChevronRight } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useDialogContext } from '../../contexts/DialogContext';
 import api from '../../services/api';
 import AppointmentActionModal from '../modals/AppointmentActionModal';
+import WidgetCard, { WidgetEmptyState } from '../ui/WidgetCard';
 
 /**
  * Widget affichant les rendez-vous d'aujourd'hui
@@ -97,107 +97,82 @@ const TodayAppointmentsWidget = () => {
         return appt.appointment_type === 'inscription' || appt.enrollment_id;
     };
 
-    if (loading) {
-        return (
-            <Card className="h-full">
-                <CardHeader className="pb-2">
-                    <CardTitle className="text-base flex items-center gap-2">
-                        <Calendar className="w-5 h-5 text-green-500" />
-                        {isRTL ? 'مواعيد اليوم' : 'RDV Aujourd\'hui'}
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="space-y-3">
-                        {[1, 2, 3].map((i) => (
-                            <div key={i} className="animate-pulse h-16 bg-gray-100 dark:bg-gray-700 rounded-lg" />
-                        ))}
-                    </div>
-                </CardContent>
-            </Card>
-        );
-    }
+    // Bouton de rafraîchissement pour le header
+    const headerAction = (
+        <button
+            onClick={() => loadAppointments(true)}
+            disabled={refreshing}
+            className="p-1.5 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
+            title={isRTL ? 'تحديث' : 'Actualiser'}
+        >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+        </button>
+    );
 
     return (
         <>
-            <Card className="h-full">
-                <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                        <CardTitle className="text-base flex items-center gap-2">
-                            <Calendar className="w-5 h-5 text-green-500" />
-                            {isRTL ? 'مواعيد اليوم' : 'RDV Aujourd\'hui'}
-                            {appointments.length > 0 && (
-                                <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs font-bold rounded-full">
-                                    {appointments.length}
-                                </span>
-                            )}
-                        </CardTitle>
-                        <button
-                            onClick={() => loadAppointments(true)}
-                            disabled={refreshing}
-                            className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                        >
-                            <RefreshCw className={`w-4 h-4 text-gray-500 ${refreshing ? 'animate-spin' : ''}`} />
-                        </button>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    {appointments.length === 0 ? (
-                        <div className="text-center py-6">
-                            <Calendar className="w-10 h-10 mx-auto text-gray-300 dark:text-gray-600 mb-2" />
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                                {isRTL ? 'لا توجد مواعيد اليوم' : 'Aucun RDV aujourd\'hui'}
-                            </p>
-                        </div>
-                    ) : (
-                        <div className="space-y-2 max-h-[280px] overflow-y-auto">
-                            {appointments.map((appt, index) => (
-                                <motion.div
-                                    key={appt.id}
-                                    initial={{ opacity: 0, x: -10 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ delay: index * 0.05 }}
-                                    onClick={() => handleAppointmentClick(appt)}
-                                    className={`group p-3 rounded-lg border-l-4 cursor-pointer transition-all hover:shadow-sm ${isInscription(appt)
-                                            ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/30'
-                                            : 'bg-green-50 dark:bg-green-900/20 border-green-500 hover:bg-green-100 dark:hover:bg-green-900/30'
-                                        }`}
-                                >
-                                    <div className="flex items-start justify-between gap-2">
-                                        <div className="flex-1 min-w-0">
-                                            {/* Badge type + heure */}
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isInscription(appt)
-                                                        ? 'bg-blue-500 text-white'
-                                                        : 'bg-green-500 text-white'
-                                                    }`}>
-                                                    {isInscription(appt) ? '📋' : '📅'} {getTime(appt)}
-                                                </span>
-                                            </div>
-
-                                            {/* Titre */}
-                                            <h4 className="font-semibold text-gray-900 dark:text-white text-sm truncate">
-                                                {isInscription(appt)
-                                                    ? `RDV Inscription: ${appt.child_name || 'Enfant'}`
-                                                    : (appt.subject || 'Rendez-vous')}
-                                            </h4>
-
-                                            {/* Parent */}
-                                            {appt.parent_name && (
-                                                <div className="flex items-center gap-1.5 mt-1 text-xs text-gray-600 dark:text-gray-400">
-                                                    <User className="w-3 h-3" />
-                                                    <span className="truncate">{appt.parent_name}</span>
-                                                </div>
-                                            )}
+            <WidgetCard
+                icon={Calendar}
+                title={isRTL ? 'مواعيد اليوم' : 'RDV Aujourd\'hui'}
+                badge={appointments.length || null}
+                headerAction={headerAction}
+                iconColor="green"
+                loading={loading}
+            >
+                {appointments.length === 0 ? (
+                    <WidgetEmptyState
+                        icon={Calendar}
+                        message={isRTL ? 'لا توجد مواعيد اليوم' : 'Aucun RDV aujourd\'hui'}
+                    />
+                ) : (
+                    <div className="space-y-2 max-h-[280px] overflow-y-auto">
+                        {appointments.map((appt, index) => (
+                            <motion.div
+                                key={appt.id}
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: index * 0.05 }}
+                                onClick={() => handleAppointmentClick(appt)}
+                                className={`group p-3 rounded-lg border-l-4 cursor-pointer transition-all hover:shadow-sm ${isInscription(appt)
+                                    ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/30'
+                                    : 'bg-green-50 dark:bg-green-900/20 border-green-500 hover:bg-green-100 dark:hover:bg-green-900/30'
+                                    }`}
+                            >
+                                <div className="flex items-start justify-between gap-2">
+                                    <div className="flex-1 min-w-0">
+                                        {/* Badge type + heure */}
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isInscription(appt)
+                                                ? 'bg-blue-500 text-white'
+                                                : 'bg-green-500 text-white'
+                                                }`}>
+                                                {isInscription(appt) ? '📋' : '📅'} {getTime(appt)}
+                                            </span>
                                         </div>
 
-                                        <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 flex-shrink-0 mt-1" />
+                                        {/* Titre */}
+                                        <h4 className="font-semibold text-gray-900 dark:text-white text-sm truncate">
+                                            {isInscription(appt)
+                                                ? `RDV Inscription: ${appt.child_name || 'Enfant'}`
+                                                : (appt.subject || 'Rendez-vous')}
+                                        </h4>
+
+                                        {/* Parent */}
+                                        {appt.parent_name && (
+                                            <div className="flex items-center gap-1.5 mt-1 text-xs text-gray-600 dark:text-gray-400">
+                                                <User className="w-3 h-3" />
+                                                <span className="truncate">{appt.parent_name}</span>
+                                            </div>
+                                        )}
                                     </div>
-                                </motion.div>
-                            ))}
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+
+                                    <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 flex-shrink-0 mt-1" />
+                                </div>
+                            </motion.div>
+                        ))}
+                    </div>
+                )}
+            </WidgetCard>
 
             {/* Modal d'action */}
             {showActionModal && selectedAppointment && (

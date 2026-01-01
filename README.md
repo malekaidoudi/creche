@@ -63,14 +63,14 @@ Système complet de gestion pour la crèche **Mima Elghalia** (ميما الغا
    ```
    → Site disponible sur http://localhost:5173
 
-3. **Backend (Express + MySQL)**
+3. **Backend (Express + PostgreSQL)**
    ```bash
    cd backend
    npm install
-   cp .env.example .env  # Configurer la base de données
+   cp .env.example .env  # Configurer la base de données PostgreSQL
    npm start
    ```
-   → API disponible sur http://localhost:3001
+   → API disponible sur http://localhost:3003
 
 ## 📁 Structure du Projet
 

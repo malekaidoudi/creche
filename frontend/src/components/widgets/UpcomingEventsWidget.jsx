@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, AlertCircle, Info, Megaphone, Plus, ExternalLink } from 'lucide-react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Calendar, Clock, Plus, ExternalLink } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useLanguage } from '../../hooks/useLanguage';
 import axios from 'axios';
+import WidgetCard, { WidgetEmptyState } from '../ui/WidgetCard';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3003/api';
 
@@ -26,9 +27,8 @@ const TYPE_COLORS = {
   celebration: 'bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-400'
 };
 
-const UpcomingEventsWidget = ({ onOpenEventModal, isMobileView = false }) => {
+const UpcomingEventsWidget = ({ onOpenEventModal }) => {
   const { isRTL } = useLanguage();
-  const navigate = useNavigate();
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -105,67 +105,37 @@ const UpcomingEventsWidget = ({ onOpenEventModal, isMobileView = false }) => {
     return labels[eventType] || eventType;
   };
 
-  if (loading) {
-    return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            {isRTL ? 'الأحداث القادمة' : 'Événements à Venir'}
-          </h3>
-        </div>
-        <div className="space-y-3">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="animate-pulse">
-              <div className="h-16 bg-gray-200 dark:bg-gray-700 rounded"></div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  // Bouton d'action pour le header
+  const headerAction = onOpenEventModal ? (
+    <button
+      onClick={onOpenEventModal}
+      className="p-1.5 rounded-lg bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
+      title={isRTL ? 'إضافة حدث' : 'Ajouter un événement'}
+    >
+      <Plus className="w-4 h-4" />
+    </button>
+  ) : null;
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow flex flex-col h-[400px]">
-      {/* Header - Masqué en mode mobile */}
-      {!isMobileView && (
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {isRTL ? 'الأحداث القادمة' : 'Événements à Venir'}
-                </h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {isRTL ? 'هذا الشهر' : 'Ce mois-ci'}
-                </p>
-              </div>
-            </div>
-            {onOpenEventModal && (
-              <button
-                onClick={onOpenEventModal}
-                className="p-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                title={isRTL ? 'إضافة حدث' : 'Ajouter un événement'}
-              >
-                <Plus className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-              </button>
-            )}
-          </div>
+    <WidgetCard
+      icon={Calendar}
+      title={isRTL ? 'الأحداث القادمة' : 'Événements'}
+      subtitle={isRTL ? 'هذا الشهر' : 'Ce mois-ci'}
+      badge={announcements.length || null}
+      headerAction={headerAction}
+      iconColor="purple"
+      loading={loading}
+      noPadding
+    >
+      {announcements.length === 0 ? (
+        <div className="p-4">
+          <WidgetEmptyState
+            icon={Calendar}
+            message={isRTL ? 'لا توجد أحداث قادمة' : 'Aucun événement à venir'}
+          />
         </div>
-      )}
-
-      {/* Events List */}
-      <div className={`p-4 flex-1 min-h-0 overflow-y-auto ${isMobileView ? 'p-3' : ''}`}>
-        {announcements.length === 0 ? (
-          <div className="text-center py-8">
-            <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-            <p className="text-gray-500 dark:text-gray-400">
-              {isRTL ? 'لا توجد أحداث قادمة' : 'Aucun événement à venir'}
-            </p>
-          </div>
-        ) : (
+      ) : (
+        <div className="p-4">
           <div className="space-y-2">
             {announcements.map((announcement) => (
               <div
@@ -209,20 +179,20 @@ const UpcomingEventsWidget = ({ onOpenEventModal, isMobileView = false }) => {
               </div>
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Footer avec lien vers calendrier */}
-      <div className="p-3 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+      <div className="p-3 border-t border-gray-200 dark:border-gray-700">
         <Link
           to="/dashboard/events/calendar?filter=events"
-          className="flex items-center justify-center gap-2 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium transition-colors"
+          className="flex items-center justify-center gap-2 text-sm text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 font-medium transition-colors"
         >
           <span>{isRTL ? 'عرض جميع الأحداث' : 'Voir tous les événements'}</span>
           <ExternalLink className="w-4 h-4" />
         </Link>
       </div>
-    </div>
+    </WidgetCard>
   );
 };
 

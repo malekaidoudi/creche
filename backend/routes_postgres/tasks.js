@@ -72,9 +72,9 @@ router.get('/today', auth.authenticateToken, async (req, res) => {
 });
 
 /**
- * GET /api/tasks/overdue - Tâches en retard (admin uniquement)
+ * GET /api/tasks/overdue - Tâches en retard (admin et staff)
  */
-router.get('/overdue', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
+router.get('/overdue', auth.authenticateToken, async (req, res) => {
   try {
     const result = await taskService.getOverdueTasks();
 

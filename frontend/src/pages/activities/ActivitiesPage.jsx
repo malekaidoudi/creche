@@ -150,19 +150,8 @@ const ActivitiesPage = () => {
             <div>
               <h1 className="text-2xl md:text-3xl font-bold">{t.title}</h1>
               <p className="text-white/80 mt-1">{t.subtitle}</p>
-              {total > 0 && (
-                <p className="text-white/60 text-sm mt-1">
-                  {total} {isRTL ? 'نشاط' : 'publication(s)'}
-                </p>
-              )}
             </div>
-            {/* Badge nombre d'activités */}
-            {activities.length > 0 && (
-              <div className="hidden sm:flex items-center gap-2 bg-white/20 px-4 py-2 rounded-full">
-                <FiImage size={18} />
-                <span className="font-semibold">{activities.length}</span>
-              </div>
-            )}
+            
           </div>
         </div>
       </div>

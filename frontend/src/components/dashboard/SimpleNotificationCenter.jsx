@@ -120,14 +120,14 @@ const SimpleNotificationCenter = ({ isOpen, onClose }) => {
       const isParent = user?.role === 'parent';
       const messagesRoute = isParent ? '/mon-espace/messages' : '/dashboard/messages';
       const announcementsRoute = isParent ? '/mon-espace/announcements' : '/dashboard';
+      const settingsRoute = '/dashboard/settings';
 
       // Rediriger selon le type de notification
       if (notification.type === 'staff_message') {
-        // Notification de message - ouvrir la conversation avec le contact
+        // Notification de message - related_id contient l'ID de l'expéditeur
         if (notification.related_id) {
-          // related_id contient l'ID du message
-          // On passe l'ID du message pour ouvrir la conversation automatiquement
-          navigate(`${messagesRoute}?messageId=${notification.related_id}`);
+          // Ouvrir la conversation avec le contact (related_id = sender_id)
+          navigate(`${messagesRoute}?contactId=${notification.related_id}`);
         } else {
           navigate(messagesRoute);
         }
@@ -148,7 +148,7 @@ const SimpleNotificationCenter = ({ isOpen, onClose }) => {
         } else {
           navigate('/dashboard/events/list');
         }
-      } else if (notification.type === 'task') {
+      } else if (notification.type === 'task' || notification.type === 'task_assigned') {
         // Notification de tâche
         if (notification.related_id) {
           navigate(`/dashboard/tasks?taskId=${notification.related_id}`);
@@ -163,6 +163,31 @@ const SimpleNotificationCenter = ({ isOpen, onClose }) => {
         } else {
           navigate('/dashboard/appointments');
         }
+      } else if (notification.type === 'holiday_added' || notification.type === 'holiday_removed' ||
+        notification.type === 'vacation_added' || notification.type === 'vacation_removed') {
+        // Notifications jours fériés/vacances - Rediriger vers le dashboard/mon-espace (widget jours fériés visible)
+        // Admin va aux paramètres, les autres vont au dashboard où le widget est affiché
+        if (user?.role === 'admin') {
+          navigate(`${settingsRoute}?section=holidays`);
+        } else {
+          navigate(isParent ? '/mon-espace' : '/dashboard');
+        }
+      } else if (notification.type === 'schedule_changed' || notification.type === 'saturday_changed' || notification.type === 'phone_changed') {
+        // Notifications paramètres crèche - Admin vers paramètres, autres vers dashboard
+        if (user?.role === 'admin') {
+          navigate(settingsRoute);
+        } else {
+          navigate(isParent ? '/mon-espace' : '/dashboard');
+        }
+      } else if (notification.type === 'birthday_reminder') {
+        // Anniversaire - Rediriger vers le dashboard
+        navigate('/dashboard');
+      } else if (notification.type === 'payment_alert') {
+        // Alerte paiement - Parents vers mon-espace, Admin vers dashboard
+        navigate(isParent ? '/mon-espace' : '/dashboard');
+      } else if (notification.type === 'activity') {
+        // Activité publiée - Parents vers activités
+        navigate(isParent ? '/mon-espace/activities' : '/dashboard/activities');
       }
     } catch (error) {
       console.error('Erreur lors du clic sur la notification:', error);

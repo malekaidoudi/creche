@@ -1,15 +1,14 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, CheckCircle, Clock, AlertCircle, ChevronRight, CalendarPlus, Plus, FileText, StickyNote, Cake, ClipboardCheck, User, Phone } from 'lucide-react';
+import { Calendar, CheckCircle, Clock, AlertCircle, CalendarPlus, FileText, StickyNote, Cake, User, Phone } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useDialogContext } from '../../contexts/DialogContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/Card';
 import { useLanguage } from '../../hooks/useLanguage';
 import api from '../../services/api';
 import CreateAppointmentModal from '../modals/CreateAppointmentModal';
 import TaskDetailModal from '../modals/TaskDetailModal';
 import AppointmentActionModal from '../modals/AppointmentActionModal';
-import LoadingSpinner from '../ui/LoadingSpinner';
+import WidgetCard, { WidgetEmptyState } from '../ui/WidgetCard';
 
 /**
  * Composant de carte unifié pour toutes les tâches
@@ -357,78 +356,58 @@ const TodayTasksWidget = ({ onOpenMemoModal, onOpenTaskModal, onOpenAppointmentM
     }
   };
 
-  if (loading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Calendar className="w-5 h-5 mr-2" />
-            Tâches d'aujourd'hui
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex justify-center py-8">
-            <LoadingSpinner />
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  // Actions du header
+  const headerAction = (
+    <div className="flex items-center gap-1">
+      {onOpenMemoModal && (
+        <button
+          onClick={onOpenMemoModal}
+          className="p-1.5 rounded-lg bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
+          title={isRTL ? 'مذكرة' : 'Mémo'}
+        >
+          <StickyNote className="w-4 h-4" />
+        </button>
+      )}
+      {onOpenTaskModal && (
+        <button
+          onClick={onOpenTaskModal}
+          className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+          title={isRTL ? 'مهمة' : 'Tâche'}
+        >
+          <FileText className="w-4 h-4" />
+        </button>
+      )}
+      {onOpenAppointmentModal && (
+        <button
+          onClick={onOpenAppointmentModal}
+          className="p-1.5 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
+          title={isRTL ? 'موعد' : 'RDV'}
+        >
+          <CalendarPlus className="w-4 h-4" />
+        </button>
+      )}
+    </div>
+  );
 
   return (
-    <Card>
-      {/* Header masqué en mode mobile (géré par CollapsibleCard) */}
-      {!isMobileView && (
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between mb-2">
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="w-5 h-5" />
-              <span>Tâches d'aujourd'hui</span>
-              <span className="text-sm font-normal text-gray-500">
-                ({tasks.length})
-              </span>
-            </CardTitle>
-            <div className="flex items-center gap-1">
-              {onOpenMemoModal && (
-                <button
-                  onClick={onOpenMemoModal}
-                  className="flex flex-col items-center gap-0.5 px-2 py-1 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors"
-                >
-                  <StickyNote className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                  <span className="text-[10px] text-purple-600 dark:text-purple-400 font-medium">Mémo</span>
-                </button>
-              )}
-              {onOpenTaskModal && (
-                <button
-                  onClick={onOpenTaskModal}
-                  className="flex flex-col items-center gap-0.5 px-2 py-1 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                >
-                  <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                  <span className="text-[10px] text-blue-600 dark:text-blue-400 font-medium">Tâche</span>
-                </button>
-              )}
-              {onOpenAppointmentModal && (
-                <button
-                  onClick={onOpenAppointmentModal}
-                  className="flex flex-col items-center gap-0.5 px-2 py-1 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
-                >
-                  <CalendarPlus className="w-4 h-4 text-green-600 dark:text-green-400" />
-                  <span className="text-[10px] text-green-600 dark:text-green-400 font-medium">RDV</span>
-                </button>
-              )}
-            </div>
-          </div>
-        </CardHeader>
-      )}
-      <CardContent className={isMobileView ? 'p-0' : ''}>
+    <>
+      <WidgetCard
+        icon={Calendar}
+        title={isRTL ? 'مهام اليوم' : "Tâches d'aujourd'hui"}
+        badge={tasks.length || null}
+        headerAction={!isMobileView ? headerAction : null}
+        iconColor="orange"
+        loading={loading}
+        noPadding={isMobileView}
+      >
         {tasks.length === 0 ? (
-          <div className="text-center py-8">
-            <Calendar className="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-3" />
-            <p className="text-gray-500 dark:text-gray-400">
-              Aucune tâche prévue aujourd'hui
-            </p>
-            <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
-              Profitez de cette journée tranquille ! 🎉
+          <div className="text-center py-6">
+            <WidgetEmptyState
+              icon={Calendar}
+              message={isRTL ? 'لا توجد مهام اليوم' : "Aucune tâche prévue aujourd'hui"}
+            />
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+              {isRTL ? 'استمتع بيومك!' : 'Profitez de cette journée tranquille !'} 🎉
             </p>
           </div>
         ) : (
@@ -486,7 +465,7 @@ const TodayTasksWidget = ({ onOpenMemoModal, onOpenTaskModal, onOpenAppointmentM
             )}
           </div>
         )}
-      </CardContent>
+      </WidgetCard>
 
       {/* Modal de détails de tâche */}
       <TaskDetailModal
@@ -500,20 +479,22 @@ const TodayTasksWidget = ({ onOpenMemoModal, onOpenTaskModal, onOpenAppointmentM
       />
 
       {/* Modal création RDV pour tâches urgentes */}
-      {showAppointmentModal && selectedTask && (
-        <CreateAppointmentModal
-          isOpen={showAppointmentModal}
-          onClose={() => {
-            setShowAppointmentModal(false);
-            setSelectedTask(null);
-          }}
-          prefilledParentId={selectedTask.metadata?.parent_id}
-          prefilledDate={selectedTask.metadata?.proposed_date}
-          onSuccess={() => {
-            loadTodayTasks();
-          }}
-        />
-      )}
+      {
+        showAppointmentModal && selectedTask && (
+          <CreateAppointmentModal
+            isOpen={showAppointmentModal}
+            onClose={() => {
+              setShowAppointmentModal(false);
+              setSelectedTask(null);
+            }}
+            prefilledParentId={selectedTask.metadata?.parent_id}
+            prefilledDate={selectedTask.metadata?.proposed_date}
+            onSuccess={() => {
+              loadTodayTasks();
+            }}
+          />
+        )
+      }
 
       {/* Modal action RDV d'inscription (valider/échouer) */}
       <AppointmentActionModal
@@ -528,7 +509,7 @@ const TodayTasksWidget = ({ onOpenMemoModal, onOpenTaskModal, onOpenAppointmentM
           window.dispatchEvent(new Event('taskUpdated'));
         }}
       />
-    </Card>
+    </>
   );
 };
 

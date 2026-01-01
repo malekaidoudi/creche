@@ -90,6 +90,7 @@ router.get('/children-summary', auth.authenticateToken, async (req, res) => {
         c.birth_date,
         c.photo_url,
         c.gender,
+        COALESCE(c.photo_shared_with_staff, true) as photo_shared_with_staff,
         COALESCE(c.enrollment_status::text, e.status::text, 'pending') as enrollment_status,
         e.id as enrollment_id,
         CASE 
@@ -107,7 +108,7 @@ router.get('/children-summary', auth.authenticateToken, async (req, res) => {
        LEFT JOIN enrollments e ON c.id = e.child_id
        WHERE c.parent_id = $1 OR e.parent_id = $1
        GROUP BY c.id, c.first_name, c.last_name, c.birth_date, c.photo_url, c.gender, 
-                c.enrollment_status, e.status, e.id
+                c.photo_shared_with_staff, c.enrollment_status, e.status, e.id
        ORDER BY c.first_name, c.last_name`,
       [userId]
     );

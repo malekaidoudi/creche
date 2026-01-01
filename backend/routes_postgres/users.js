@@ -98,6 +98,42 @@ router.get('/children-summary', auth.authenticateToken, async (req, res) => {
   }
 });
 
+// GET /api/users/contacts - Récupérer les contacts pour la messagerie
+router.get('/contacts', auth.authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId || req.user.id;
+    const userRole = req.user.role;
+
+    let sql = `
+      SELECT id, email, first_name, last_name, role, profile_image
+      FROM users 
+      WHERE is_active = true AND id != $1
+    `;
+    const params = [userId];
+
+    // Parents ne voient que le staff/admin
+    if (userRole === 'parent') {
+      sql += ` AND role IN ('admin', 'staff')`;
+    }
+
+    sql += ` ORDER BY role ASC, first_name ASC`;
+
+    const result = await db.query(sql, params);
+
+    res.json({
+      success: true,
+      contacts: result.rows
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur GET /api/users/contacts:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération des contacts'
+    });
+  }
+});
+
 // GET /api/users - Récupérer tous les utilisateurs
 router.get('/', auth.authenticateToken, async (req, res) => {
   try {
@@ -679,6 +715,50 @@ router.put('/change-password', auth.authenticateToken, [
     res.status(500).json({
       success: false,
       error: 'Erreur lors du changement de mot de passe'
+    });
+  }
+});
+
+// POST /api/users/push-token - Enregistrer le token push pour les notifications
+router.post('/push-token', auth.authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId || req.user.id;
+    const { push_token } = req.body;
+
+    if (!push_token) {
+      return res.status(400).json({
+        success: false,
+        error: 'Token push requis'
+      });
+    }
+
+    // Vérifier si la colonne push_token existe, sinon la créer
+    try {
+      await db.query(`
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS push_token VARCHAR(255)
+      `);
+    } catch (alterError) {
+      // Ignorer si la colonne existe déjà
+    }
+
+    // Mettre à jour le token push de l'utilisateur
+    await db.query(
+      'UPDATE users SET push_token = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+      [push_token, userId]
+    );
+
+    console.log(`✅ Token push enregistré pour l'utilisateur ${userId}`);
+
+    res.json({
+      success: true,
+      message: 'Token push enregistré avec succès'
+    });
+
+  } catch (error) {
+    console.error('Erreur enregistrement token push:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de l\'enregistrement du token push'
     });
   }
 });

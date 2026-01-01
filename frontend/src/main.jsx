@@ -17,6 +17,18 @@ import { DialogProvider } from './contexts/DialogContext.jsx'
 // Configuration i18n
 import './i18n/config.js'
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+
+// Création du client React Query
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+})
+
 // Listener pour les tests de responsivité (dev only)
 import { initTestAuthListener } from './utils/testAuthListener.js'
 initTestAuthListener()
@@ -25,13 +37,15 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter basename="/">
       <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200">
-        <AuthProvider>
-          <LanguageProvider>
-            <DialogProvider>
-              <App />
-            </DialogProvider>
-          </LanguageProvider>
-        </AuthProvider>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <LanguageProvider>
+              <DialogProvider>
+                <App />
+              </DialogProvider>
+            </LanguageProvider>
+          </AuthProvider>
+        </QueryClientProvider>
       </div>
     </BrowserRouter>
   </StrictMode>

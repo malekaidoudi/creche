@@ -133,8 +133,36 @@ const closePool = async () => {
   console.log('🔒 Pool PostgreSQL fermé');
 };
 
-// Test de connexion au démarrage
-testConnection().catch(console.error);
+// Migration automatique: Ajouter la colonne photo_shared_with_staff si elle n'existe pas
+const ensurePhotoPrivacyColumn = async () => {
+  try {
+    const checkQuery = `
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'children' AND column_name = 'photo_shared_with_staff';
+    `;
+    const res = await pool.query(checkQuery);
+
+    if (res.rows.length === 0) {
+      console.log('📝 Ajout colonne photo_shared_with_staff...');
+      await pool.query(`
+        ALTER TABLE children 
+        ADD COLUMN photo_shared_with_staff BOOLEAN DEFAULT TRUE;
+      `);
+      console.log('✅ Colonne photo_shared_with_staff ajoutée');
+    }
+  } catch (error) {
+    // Ignorer l'erreur si la colonne existe déjà ou si la table n'existe pas encore
+    if (!error.message.includes('already exists')) {
+      console.log('⚠️ Migration photo_shared_with_staff:', error.message);
+    }
+  }
+};
+
+// Test de connexion au démarrage puis migration
+testConnection()
+  .then(() => ensurePhotoPrivacyColumn())
+  .catch(console.error);
 
 // Export des fonctions
 module.exports = {

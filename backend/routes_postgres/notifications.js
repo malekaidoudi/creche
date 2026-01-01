@@ -10,7 +10,7 @@ router.get('/', auth.authenticateToken, async (req, res) => {
     // Utiliser l'utilisateur connecté au lieu du query param
     const user_id = req.user.userId;
     const { type, is_read, page = 1, limit = 50 } = req.query;
-    
+
     let sql = `
       SELECT n.id, n.user_id, n.title, n.message, n.type, n.is_read, n.created_at,
              n.related_id,
@@ -22,26 +22,34 @@ router.get('/', auth.authenticateToken, async (req, res) => {
     `;
     const params = [];
     let paramCount = 0;
-    
+
     // Filtres
     if (user_id) {
       paramCount++;
       sql += ` AND n.user_id = $${paramCount}`;
       params.push(user_id);
     }
-    
+
     if (type) {
-      paramCount++;
-      sql += ` AND n.type = $${paramCount}`;
-      params.push(type);
+      // Support pour plusieurs types séparés par des virgules
+      const types = type.split(',').map(t => t.trim());
+      if (types.length === 1) {
+        paramCount++;
+        sql += ` AND n.type = $${paramCount}`;
+        params.push(types[0]);
+      } else {
+        paramCount++;
+        sql += ` AND n.type = ANY($${paramCount})`;
+        params.push(types);
+      }
     }
-    
+
     if (is_read !== undefined) {
       paramCount++;
       sql += ` AND n.is_read = $${paramCount}`;
       params.push(is_read === 'true');
     }
-    
+
     // Pagination
     sql += ` ORDER BY n.created_at DESC`;
     const offset = (page - 1) * limit;
@@ -51,41 +59,41 @@ router.get('/', auth.authenticateToken, async (req, res) => {
     paramCount++;
     sql += ` OFFSET $${paramCount}`;
     params.push(offset);
-    
+
     const result = await db.query(sql, params);
-    
+
     // Filtrer les notifications d'absence validées
     let filteredNotifications = result.rows;
-    
+
     // Pour chaque notification d'absence, vérifier le statut
     if (filteredNotifications.some(n => n.type === 'absence_request')) {
       const absenceNotifications = filteredNotifications.filter(n => n.type === 'absence_request');
       const absenceIds = absenceNotifications
         .map(n => n.related_id)
         .filter(id => id != null);
-      
+
       // Récupérer les statuts des demandes d'absence
       if (absenceIds.length > 0) {
         const statusResult = await db.query(
           `SELECT id, status FROM absence_requests WHERE id = ANY($1)`,
           [absenceIds]
         );
-        
+
         const statusMap = {};
         statusResult.rows.forEach(row => {
           statusMap[row.id] = row.status;
         });
-        
+
         // Filtrer les notifications dont la demande est validée
         filteredNotifications = filteredNotifications.filter(notif => {
           if (notif.type !== 'absence_request') return true;
-          
+
           const absenceId = notif.related_id;
           return !absenceId || statusMap[absenceId] !== 'acknowledged';
         });
       }
     }
-    
+
     // Compter le total
     let countSql = `
       SELECT COUNT(*) as total 
@@ -95,27 +103,27 @@ router.get('/', auth.authenticateToken, async (req, res) => {
     `;
     const countParams = [];
     let countParamCount = 0;
-    
+
     if (user_id) {
       countParamCount++;
       countSql += ` AND n.user_id = $${countParamCount}`;
       countParams.push(user_id);
     }
-    
+
     if (type) {
       countParamCount++;
       countSql += ` AND n.type = $${countParamCount}`;
       countParams.push(type);
     }
-    
+
     if (is_read !== undefined) {
       countParamCount++;
       countSql += ` AND n.is_read = $${countParamCount}`;
       countParams.push(is_read === 'true');
     }
-    
+
     const countResult = await db.query(countSql, countParams);
-    
+
     res.json({
       success: true,
       notifications: filteredNotifications,
@@ -126,13 +134,13 @@ router.get('/', auth.authenticateToken, async (req, res) => {
         pages: Math.ceil(filteredNotifications.length / limit)
       }
     });
-    
+
   } catch (error) {
     console.error('❌ Erreur récupération notifications:', error);
     console.error('❌ Message:', error.message);
     console.error('❌ Stack:', error.stack);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       error: 'Erreur lors de la récupération des notifications',
       details: error.message
     });
@@ -143,7 +151,7 @@ router.get('/', auth.authenticateToken, async (req, res) => {
 router.get('/:id', auth.authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const result = await db.query(
       `SELECT n.id, n.user_id, n.title, n.message, n.type, n.is_read, n.created_at,
               u.first_name as user_first_name, u.last_name as user_last_name, 
@@ -153,24 +161,24 @@ router.get('/:id', auth.authenticateToken, async (req, res) => {
        WHERE n.id = $1`,
       [id]
     );
-    
+
     if (result.rows.length === 0) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'Notification non trouvée' 
+      return res.status(404).json({
+        success: false,
+        error: 'Notification non trouvée'
       });
     }
-    
+
     res.json({
       success: true,
       notification: result.rows[0]
     });
-    
+
   } catch (error) {
     console.error('Erreur récupération notification:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Erreur lors de la récupération de la notification' 
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération de la notification'
     });
   }
 });
@@ -185,24 +193,24 @@ router.post('/', [
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        error: 'Données invalides', 
-        details: errors.array() 
+        error: 'Données invalides',
+        details: errors.array()
       });
     }
-    
+
     const { user_id, title, message, type = 'info' } = req.body;
-    
+
     // Vérifier si l'utilisateur existe
     const userExists = await db.query('SELECT id FROM users WHERE id = $1', [user_id]);
     if (userExists.rows.length === 0) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        error: 'Utilisateur non trouvé' 
+        error: 'Utilisateur non trouvé'
       });
     }
-    
+
     // Insérer la nouvelle notification
     const result = await db.query(
       `INSERT INTO notifications (user_id, title, message, type, is_read) 
@@ -210,18 +218,18 @@ router.post('/', [
        RETURNING id, user_id, title, message, type, is_read, created_at`,
       [user_id, title, message, type, false]
     );
-    
+
     res.status(201).json({
       success: true,
       message: 'Notification créée avec succès',
       notification: result.rows[0]
     });
-    
+
   } catch (error) {
     console.error('Erreur création notification:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la création de la notification' 
+      error: 'Erreur lors de la création de la notification'
     });
   }
 });
@@ -236,36 +244,36 @@ router.post('/broadcast', [
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        error: 'Données invalides', 
-        details: errors.array() 
+        error: 'Données invalides',
+        details: errors.array()
       });
     }
-    
+
     const { user_ids, title, message, type = 'info' } = req.body;
-    
+
     if (user_ids.length === 0) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        error: 'Au moins un utilisateur requis' 
+        error: 'Au moins un utilisateur requis'
       });
     }
-    
+
     // Vérifier que tous les utilisateurs existent
     const placeholders = user_ids.map((_, index) => `$${index + 1}`).join(',');
     const existingUsers = await db.query(
       `SELECT id FROM users WHERE id IN (${placeholders})`,
       user_ids
     );
-    
+
     if (existingUsers.rows.length !== user_ids.length) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        error: 'Certains utilisateurs n\'existent pas' 
+        error: 'Certains utilisateurs n\'existent pas'
       });
     }
-    
+
     // Créer les notifications pour tous les utilisateurs
     const notifications = [];
     for (const user_id of user_ids) {
@@ -277,18 +285,18 @@ router.post('/broadcast', [
       );
       notifications.push(result.rows[0]);
     }
-    
+
     res.status(201).json({
       success: true,
       message: `${notifications.length} notifications créées avec succès`,
       notifications
     });
-    
+
   } catch (error) {
     console.error('Erreur broadcast notifications:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de l\'envoi des notifications' 
+      error: 'Erreur lors de l\'envoi des notifications'
     });
   }
 });
@@ -297,7 +305,7 @@ router.post('/broadcast', [
 router.put('/:id/read', auth.authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // Marquer comme lue (idempotent - pas d'erreur si déjà lue)
     const result = await db.query(
       `UPDATE notifications 
@@ -306,25 +314,25 @@ router.put('/:id/read', auth.authenticateToken, async (req, res) => {
        RETURNING id, user_id, title, message, type, is_read, created_at`,
       [id]
     );
-    
+
     if (result.rows.length === 0) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        error: 'Notification non trouvée' 
+        error: 'Notification non trouvée'
       });
     }
-    
+
     res.json({
       success: true,
       message: 'Notification marquée comme lue',
       notification: result.rows[0]
     });
-    
+
   } catch (error) {
     console.error('Erreur marquage notification:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors du marquage de la notification' 
+      error: 'Erreur lors du marquage de la notification'
     });
   }
 });
@@ -333,14 +341,14 @@ router.put('/:id/read', auth.authenticateToken, async (req, res) => {
 router.put('/read-all', async (req, res) => {
   try {
     const userId = req.body.user_id || req.query.user_id;
-    
+
     if (!userId) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        error: 'ID utilisateur requis' 
+        error: 'ID utilisateur requis'
       });
     }
-    
+
     // Marquer toutes les notifications non lues comme lues
     const result = await db.query(
       `UPDATE notifications 
@@ -349,18 +357,18 @@ router.put('/read-all', async (req, res) => {
        RETURNING id`,
       [userId]
     );
-    
+
     res.json({
       success: true,
       message: `${result.rows.length} notifications marquées comme lues`,
       updated_count: result.rows.length
     });
-    
+
   } catch (error) {
     console.error('Erreur marquage toutes notifications:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors du marquage des notifications' 
+      error: 'Erreur lors du marquage des notifications'
     });
   }
 });
@@ -369,16 +377,16 @@ router.put('/read-all', async (req, res) => {
 router.put('/user/:user_id/read-all', async (req, res) => {
   try {
     const { user_id } = req.params;
-    
+
     // Vérifier si l'utilisateur existe
     const userExists = await db.query('SELECT id FROM users WHERE id = $1', [user_id]);
     if (userExists.rows.length === 0) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        error: 'Utilisateur non trouvé' 
+        error: 'Utilisateur non trouvé'
       });
     }
-    
+
     // Marquer toutes les notifications non lues comme lues
     const result = await db.query(
       `UPDATE notifications 
@@ -387,18 +395,18 @@ router.put('/user/:user_id/read-all', async (req, res) => {
        RETURNING id`,
       [user_id]
     );
-    
+
     res.json({
       success: true,
       message: `${result.rows.length} notifications marquées comme lues`,
       updated_count: result.rows.length
     });
-    
+
   } catch (error) {
     console.error('Erreur marquage toutes notifications:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors du marquage des notifications' 
+      error: 'Erreur lors du marquage des notifications'
     });
   }
 });
@@ -407,29 +415,29 @@ router.put('/user/:user_id/read-all', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // Vérifier si la notification existe
     const existingNotification = await db.query('SELECT id FROM notifications WHERE id = $1', [id]);
     if (existingNotification.rows.length === 0) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        error: 'Notification non trouvée' 
+        error: 'Notification non trouvée'
       });
     }
-    
+
     // Supprimer la notification
     await db.query('DELETE FROM notifications WHERE id = $1', [id]);
-    
+
     res.json({
       success: true,
       message: 'Notification supprimée avec succès'
     });
-    
+
   } catch (error) {
     console.error('Erreur suppression notification:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la suppression de la notification' 
+      error: 'Erreur lors de la suppression de la notification'
     });
   }
 });
@@ -438,33 +446,33 @@ router.delete('/:id', async (req, res) => {
 router.get('/user/:user_id/unread-count', async (req, res) => {
   try {
     const { user_id } = req.params;
-    
+
     // Vérifier si l'utilisateur existe
     const userExists = await db.query('SELECT id FROM users WHERE id = $1', [user_id]);
     if (userExists.rows.length === 0) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        error: 'Utilisateur non trouvé' 
+        error: 'Utilisateur non trouvé'
       });
     }
-    
+
     // Compter les notifications non lues
     const result = await db.query(
       'SELECT COUNT(*) as unread_count FROM notifications WHERE user_id = $1 AND is_read = FALSE',
       [user_id]
     );
-    
+
     res.json({
       success: true,
       user_id: parseInt(user_id),
       unread_count: parseInt(result.rows[0].unread_count)
     });
-    
+
   } catch (error) {
     console.error('Erreur comptage notifications:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors du comptage des notifications' 
+      error: 'Erreur lors du comptage des notifications'
     });
   }
 });
@@ -487,17 +495,17 @@ router.get('/stats/overview', async (req, res) => {
         COUNT(DISTINCT user_id) as unique_users
       FROM notifications
     `);
-    
+
     res.json({
       success: true,
       stats: stats.rows[0]
     });
-    
+
   } catch (error) {
     console.error('Erreur statistiques notifications:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la récupération des statistiques' 
+      error: 'Erreur lors de la récupération des statistiques'
     });
   }
 });

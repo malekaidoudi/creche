@@ -12,21 +12,21 @@ if (!fs.existsSync(uploadsDir)) {
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     let uploadPath = uploadsDir;
-    
+
     // Organiser par catégorie
     if (req.body.category) {
       uploadPath = path.join(uploadsDir, req.body.category);
-    } else if (file.fieldname === 'profile' || file.fieldname === 'profile_image' || file.fieldname === 'image') {
+    } else if (file.fieldname === 'profile' || file.fieldname === 'profile_image' || file.fieldname === 'image' || file.fieldname === 'photo') {
       uploadPath = path.join(uploadsDir, 'profiles');
     } else if (file.fieldname === 'document') {
       uploadPath = path.join(uploadsDir, 'documents');
     }
-    
+
     // Créer le dossier s'il n'existe pas
     if (!fs.existsSync(uploadPath)) {
       fs.mkdirSync(uploadPath, { recursive: true });
     }
-    
+
     cb(null, uploadPath);
   },
   filename: function (req, file, cb) {
@@ -39,21 +39,21 @@ const storage = multer.diskStorage({
 
 // Filtrer les types de fichiers
 const fileFilter = (req, file, cb) => {
-  if (file.fieldname === 'profile' || file.fieldname === 'image') {
-    // Images seulement pour les profils
+  if (file.fieldname === 'profile' || file.fieldname === 'image' || file.fieldname === 'photo') {
+    // Images seulement pour les profils et photos
     if (file.mimetype.startsWith('image/')) {
       cb(null, true);
     } else {
-      cb(new Error('Seules les images sont autorisées pour les photos de profil'), false);
+      cb(new Error('Seules les images sont autorisées pour les photos'), false);
     }
   } else {
     // Documents et images pour les autres uploads
     const allowedTypes = [
       'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
-      'application/pdf', 'application/msword', 
+      'application/pdf', 'application/msword',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     ];
-    
+
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {

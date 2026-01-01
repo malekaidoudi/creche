@@ -122,6 +122,134 @@ async function initializeDatabase() {
     `);
     console.log('✅ Table notifications créée/vérifiée');
 
+    // Table daily_reports - Rapports journaliers de suivi des enfants
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS daily_reports (
+        id SERIAL PRIMARY KEY,
+        child_id INTEGER REFERENCES children(id) ON DELETE CASCADE,
+        report_date DATE NOT NULL DEFAULT CURRENT_DATE,
+        report_type VARCHAR(20) DEFAULT 'child' CHECK (report_type IN ('baby', 'child')),
+        created_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        temperature DECIMAL(3,1),
+        medication TEXT,
+        meals_count INTEGER DEFAULT 0,
+        meal_type VARCHAR(50) CHECK (meal_type IN ('bottle', 'compote', 'fruit', 'solid', 'other', NULL)),
+        period VARCHAR(20) CHECK (period IN ('morning', 'noon', 'afternoon', 'full_day', NULL)),
+        appetite VARCHAR(20) CHECK (appetite IN ('good', 'medium', 'none', NULL)),
+        appetite_notes TEXT,
+        diaper_changes INTEGER DEFAULT 0,
+        diaper_nature VARCHAR(20) CHECK (diaper_nature IN ('pee', 'poop', 'mixed', NULL)),
+        diaper_notes TEXT,
+        skin_condition VARCHAR(20) DEFAULT 'good' CHECK (skin_condition IN ('good', 'other', NULL)),
+        skin_notes TEXT,
+        sleep_quality VARCHAR(20) CHECK (sleep_quality IN ('calm', 'discontinuous', 'deep', NULL)),
+        sleep_start TIME,
+        sleep_end TIME,
+        sleep_notes TEXT,
+        activities TEXT,
+        observations TEXT,
+        status VARCHAR(20) DEFAULT 'draft' CHECK (status IN ('draft', 'completed', 'sent')),
+        UNIQUE(child_id, report_date)
+      )
+    `);
+    console.log('✅ Table daily_reports créée/vérifiée');
+
+    // Index pour daily_reports
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_daily_reports_child_date ON daily_reports(child_id, report_date)`);
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_daily_reports_date ON daily_reports(report_date)`);
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_daily_reports_created_by ON daily_reports(created_by)`);
+    console.log('✅ Index daily_reports créés/vérifiés');
+
+    // Table daily_meals - Détail de chaque repas par période
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS daily_meals (
+        id SERIAL PRIMARY KEY,
+        report_id INTEGER REFERENCES daily_reports(id) ON DELETE CASCADE,
+        child_id INTEGER REFERENCES children(id) ON DELETE CASCADE,
+        meal_date DATE NOT NULL DEFAULT CURRENT_DATE,
+        period VARCHAR(20) NOT NULL CHECK (period IN ('morning', 'noon', 'afternoon', 'snack')),
+        meal_type VARCHAR(50) NOT NULL CHECK (meal_type IN ('bottle', 'compote', 'fruit', 'other')),
+        meal_description TEXT,
+        quantity VARCHAR(20) CHECK (quantity IN ('none', 'little', 'half', 'good', 'full')),
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ Table daily_meals créée/vérifiée');
+
+    // Table daily_diaper_changes - Détail de chaque changement de couche
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS daily_diaper_changes (
+        id SERIAL PRIMARY KEY,
+        report_id INTEGER REFERENCES daily_reports(id) ON DELETE CASCADE,
+        child_id INTEGER REFERENCES children(id) ON DELETE CASCADE,
+        change_date DATE NOT NULL DEFAULT CURRENT_DATE,
+        change_time TIME DEFAULT CURRENT_TIME,
+        nature VARCHAR(20) NOT NULL CHECK (nature IN ('pee', 'poop', 'mixed')),
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ Table daily_diaper_changes créée/vérifiée');
+
+    // Table child_supplies - Stock de fournitures par enfant (couches, etc.)
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS child_supplies (
+        id SERIAL PRIMARY KEY,
+        child_id INTEGER REFERENCES children(id) ON DELETE CASCADE,
+        supply_type VARCHAR(50) NOT NULL CHECK (supply_type IN ('diapers', 'wipes', 'cream', 'other')),
+        quantity INTEGER DEFAULT 0,
+        alert_threshold INTEGER DEFAULT 10,
+        last_refill_date DATE,
+        last_refill_quantity INTEGER,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(child_id, supply_type)
+      )
+    `);
+    console.log('✅ Table child_supplies créée/vérifiée');
+
+    // Table daily_supplies_brought - Fournitures apportées par les parents chaque jour
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS daily_supplies_brought (
+        id SERIAL PRIMARY KEY,
+        child_id INTEGER REFERENCES children(id) ON DELETE CASCADE,
+        brought_date DATE NOT NULL DEFAULT CURRENT_DATE,
+        supply_type VARCHAR(50) NOT NULL CHECK (supply_type IN ('diapers', 'food', 'wipes', 'cream', 'clothes', 'other')),
+        quantity INTEGER DEFAULT 1,
+        description TEXT,
+        recorded_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ Table daily_supplies_brought créée/vérifiée');
+
+    // Index pour les nouvelles tables
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_daily_meals_report ON daily_meals(report_id)`);
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_daily_meals_child_date ON daily_meals(child_id, meal_date)`);
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_daily_diaper_changes_report ON daily_diaper_changes(report_id)`);
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_daily_diaper_changes_child_date ON daily_diaper_changes(child_id, change_date)`);
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_child_supplies_child ON child_supplies(child_id)`);
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_daily_supplies_brought_child_date ON daily_supplies_brought(child_id, brought_date)`);
+    console.log('✅ Index nouvelles tables créés/vérifiés');
+
+    // Table staff_age_assignments - Affectation des tranches d'âge aux membres du staff
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS staff_age_assignments (
+        id SERIAL PRIMARY KEY,
+        staff_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        age_group VARCHAR(20) NOT NULL CHECK (age_group IN ('baby', 'child', 'both')),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(staff_id)
+      )
+    `);
+    console.log('✅ Table staff_age_assignments créée/vérifiée');
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_staff_age_assignments_staff ON staff_age_assignments(staff_id)`);
+
     // Insérer des données de test si les tables sont vides
     await insertTestData();
 

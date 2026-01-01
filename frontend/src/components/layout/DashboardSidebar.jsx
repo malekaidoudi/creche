@@ -132,6 +132,13 @@ const DashboardSidebar = ({ isOpen, onClose, onCollapsedChange }) => {
       ]
     },
     {
+      key: 'daily-reports',
+      title: isRTL ? 'التقارير اليومية' : 'Rapports Journaliers',
+      icon: FileText,
+      path: '/dashboard/daily-reports',
+      roles: ['admin', 'staff']
+    },
+    {
       key: 'attendance',
       title: isRTL ? 'الحضور' : 'Présences',
       icon: Clock,

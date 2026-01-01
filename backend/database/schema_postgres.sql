@@ -113,6 +113,7 @@ CREATE TABLE holidays (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     date DATE NOT NULL,
+    type VARCHAR(50) DEFAULT 'custom', -- national, religious, school, custom
     is_closed BOOLEAN DEFAULT TRUE,
     description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -125,6 +126,29 @@ CREATE TABLE holidays (
 -- Index pour les performances
 CREATE INDEX idx_holidays_date ON holidays(date);
 CREATE INDEX idx_holidays_is_closed ON holidays(is_closed);
+CREATE INDEX idx_holidays_type ON holidays(type);
+
+-- =====================================================
+-- TABLE HOLIDAY_POLICIES (Politiques des jours fériés)
+-- =====================================================
+CREATE TABLE holiday_policies (
+    id SERIAL PRIMARY KEY,
+    holiday_key VARCHAR(100) UNIQUE NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    name_ar VARCHAR(255),
+    type VARCHAR(50) NOT NULL DEFAULT 'national', -- national, religious
+    fixed_day INTEGER,
+    fixed_month INTEGER,
+    days_count INTEGER DEFAULT 1,
+    is_active BOOLEAN DEFAULT TRUE,
+    is_recurring BOOLEAN DEFAULT TRUE,
+    display_order INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_holiday_policies_type ON holiday_policies(type);
+CREATE INDEX idx_holiday_policies_is_active ON holiday_policies(is_active);
 
 -- =====================================================
 -- TABLE NURSERY_SETTINGS

@@ -502,13 +502,14 @@ export default function MessagesPage() {
     }
   }, [searchParams, contacts, selectedContact]);
 
-  // Ouvrir une conversation depuis le paramètre user (ex: ?user=2)
+  // Ouvrir une conversation depuis le paramètre user ou contactId (ex: ?user=2 ou ?contactId=2)
   useEffect(() => {
-    const userId = searchParams.get('user');
-    if (userId && contacts.length > 0 && !selectedContact) {
+    const userId = searchParams.get('user') || searchParams.get('contactId');
+    if (userId && contacts.length > 0 && !selectedContact && !hasOpenedFromNotification.current) {
       const contact = contacts.find(c => c.id === parseInt(userId));
       if (contact) {
         console.log('📬 Ouverture conversation avec utilisateur:', userId);
+        hasOpenedFromNotification.current = true;
         handleSelectContact(contact);
       }
     }

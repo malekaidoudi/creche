@@ -14,18 +14,18 @@ const auth = require('../middleware/auth');
 router.post('/', auth.authenticateToken, auth.requireRole('staff', 'admin', 'parent'), async (req, res) => {
   try {
     const result = await staffMessageService.sendMessage(req.body, req.user.userId);
-    
+
     if (result.success) {
       res.status(201).json(result);
     } else {
       res.status(400).json(result);
     }
-    
+
   } catch (error) {
     console.error('❌ Erreur POST /api/staff-messages:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de l\'envoi du message' 
+      error: 'Erreur lors de l\'envoi du message'
     });
   }
 });
@@ -36,14 +36,14 @@ router.post('/', auth.authenticateToken, auth.requireRole('staff', 'admin', 'par
 router.get('/', auth.authenticateToken, auth.requireRole('staff', 'admin', 'parent'), async (req, res) => {
   try {
     const result = await staffMessageService.getUserMessages(req.user.userId);
-    
+
     res.json(result);
-    
+
   } catch (error) {
     console.error('❌ Erreur GET /api/staff-messages:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la récupération des messages' 
+      error: 'Erreur lors de la récupération des messages'
     });
   }
 });
@@ -54,14 +54,55 @@ router.get('/', auth.authenticateToken, auth.requireRole('staff', 'admin', 'pare
 router.get('/unread', auth.authenticateToken, auth.requireRole('staff', 'admin', 'parent'), async (req, res) => {
   try {
     const result = await staffMessageService.getUnreadMessages(req.user.userId);
-    
+
     res.json(result);
-    
+
   } catch (error) {
     console.error('❌ Erreur GET /api/staff-messages/unread:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la récupération des messages non lus' 
+      error: 'Erreur lors de la récupération des messages non lus'
+    });
+  }
+});
+
+/**
+ * GET /api/staff-messages/conversations - Récupérer toutes les conversations groupées par contact
+ */
+router.get('/conversations', auth.authenticateToken, auth.requireRole('staff', 'admin', 'parent'), async (req, res) => {
+  try {
+    const userId = req.user.userId || req.user.id;
+
+    const result = await staffMessageService.getConversationsList(userId);
+
+    res.json(result);
+
+  } catch (error) {
+    console.error('❌ Erreur GET /api/staff-messages/conversations:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération des conversations'
+    });
+  }
+});
+
+/**
+ * GET /api/staff-messages/conversation/:contactId - Récupérer une conversation avec un contact
+ */
+router.get('/conversation/:contactId', auth.authenticateToken, auth.requireRole('staff', 'admin', 'parent'), async (req, res) => {
+  try {
+    const contactId = parseInt(req.params.contactId);
+    const userId = req.user.userId || req.user.id;
+
+    const result = await staffMessageService.getConversationWithContact(contactId, userId);
+
+    res.json(result);
+
+  } catch (error) {
+    console.error('❌ Erreur GET /api/staff-messages/conversation/:contactId:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération de la conversation'
     });
   }
 });
@@ -75,14 +116,14 @@ router.get('/:id/conversation', auth.authenticateToken, auth.requireRole('staff'
       parseInt(req.params.id),
       req.user.userId
     );
-    
+
     res.json(result);
-    
+
   } catch (error) {
     console.error('❌ Erreur GET /api/staff-messages/:id/conversation:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la récupération de la conversation' 
+      error: 'Erreur lors de la récupération de la conversation'
     });
   }
 });
@@ -96,18 +137,18 @@ router.patch('/:id/read', auth.authenticateToken, auth.requireRole('staff', 'adm
       parseInt(req.params.id),
       req.user.userId
     );
-    
+
     if (result.success) {
       res.json(result);
     } else {
       res.status(404).json(result);
     }
-    
+
   } catch (error) {
     console.error('❌ Erreur PATCH /api/staff-messages/:id/read:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors du marquage' 
+      error: 'Erreur lors du marquage'
     });
   }
 });

@@ -11,7 +11,8 @@ const ToggleSwitch = ({
   disabled = false,
   className = '',
   ariaLabel = '',
-  activeColor = 'peer-checked:bg-primary-600'
+  activeColor = 'peer-checked:bg-primary-600',
+  inactiveColor = 'bg-gray-200 dark:bg-gray-700'
 }) => {
   // Classes par taille avec RTL support
   const sizeConfig = {
@@ -50,7 +51,7 @@ const ToggleSwitch = ({
       <div
         className={`
           relative ${s.track} rounded-full
-          bg-gray-200 dark:bg-gray-700
+          ${inactiveColor}
           peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-700
           ${activeColor}
           transition-colors duration-200

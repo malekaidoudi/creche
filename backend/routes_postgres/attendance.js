@@ -9,7 +9,7 @@ router.get('/today', auth.authenticateToken, async (req, res) => {
   try {
     const { page = 1, limit = 50 } = req.query;
     const today = new Date().toISOString().split('T')[0];
-    
+
     const sql = `
       SELECT a.id, a.child_id, a.date, a.check_in_time, a.check_out_time, 
              a.notes, a.created_at, a.updated_at,
@@ -21,10 +21,10 @@ router.get('/today', auth.authenticateToken, async (req, res) => {
       ORDER BY a.check_in_time DESC
       LIMIT $2 OFFSET $3
     `;
-    
+
     const offset = (page - 1) * limit;
     const result = await db.query(sql, [today, limit, offset]);
-    
+
     res.json({
       success: true,
       attendance: result.rows,
@@ -36,9 +36,9 @@ router.get('/today', auth.authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Erreur présences aujourd\'hui:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la récupération des présences d\'aujourd\'hui' 
+      error: 'Erreur lors de la récupération des présences d\'aujourd\'hui'
     });
   }
 });
@@ -48,19 +48,19 @@ router.get('/child/:id/month', auth.authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const { year, month } = req.query;
-    
+
     if (!year || !month) {
       return res.status(400).json({
         success: false,
         error: 'Année et mois requis'
       });
     }
-    
+
     // Construire les dates de début et fin du mois
     const startDate = `${year}-${month.toString().padStart(2, '0')}-01`;
     const lastDay = new Date(year, month, 0).getDate();
     const endDate = `${year}-${month.toString().padStart(2, '0')}-${lastDay}`;
-    
+
     const result = await db.query(
       `SELECT 
         a.id,
@@ -77,7 +77,7 @@ router.get('/child/:id/month', auth.authenticateToken, async (req, res) => {
        ORDER BY a.date ASC`,
       [id, startDate, endDate]
     );
-    
+
     res.json({
       success: true,
       attendance: result.rows,
@@ -85,7 +85,7 @@ router.get('/child/:id/month', auth.authenticateToken, async (req, res) => {
       year: parseInt(year),
       month: parseInt(month)
     });
-    
+
   } catch (error) {
     console.error('Erreur présences enfant mois:', error);
     res.status(500).json({
@@ -99,7 +99,7 @@ router.get('/child/:id/month', auth.authenticateToken, async (req, res) => {
 router.get('/currently-present', async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
-    
+
     const sql = `
       SELECT a.id as attendance_id, a.child_id, a.check_in_time, a.notes,
              c.id, c.first_name, c.last_name,
@@ -109,9 +109,9 @@ router.get('/currently-present', async (req, res) => {
       WHERE a.date = $1 AND a.check_in_time IS NOT NULL AND a.check_out_time IS NULL
       ORDER BY a.check_in_time DESC
     `;
-    
+
     const result = await db.query(sql, [today]);
-    
+
     res.json({
       success: true,
       children: result.rows,
@@ -119,9 +119,9 @@ router.get('/currently-present', async (req, res) => {
     });
   } catch (error) {
     console.error('Erreur enfants présents:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la récupération des enfants présents' 
+      error: 'Erreur lors de la récupération des enfants présents'
     });
   }
 });
@@ -131,7 +131,7 @@ router.get('/stats', auth.authenticateToken, async (req, res) => {
   try {
     const { date } = req.query;
     const targetDate = date || new Date().toISOString().split('T')[0];
-    
+
     // Statistiques de base
     const statsQuery = `
       SELECT 
@@ -142,10 +142,10 @@ router.get('/stats', auth.authenticateToken, async (req, res) => {
       FROM attendance 
       WHERE date = $1
     `;
-    
+
     const statsResult = await db.query(statsQuery, [targetDate]);
     const stats = statsResult.rows[0];
-    
+
     res.json({
       success: true,
       stats: {
@@ -159,9 +159,9 @@ router.get('/stats', auth.authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Erreur statistiques présence:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la récupération des statistiques' 
+      error: 'Erreur lors de la récupération des statistiques'
     });
   }
 });
@@ -171,7 +171,7 @@ router.get('/date/:date', auth.authenticateToken, async (req, res) => {
   try {
     const { date } = req.params;
     const { page = 1, limit = 100 } = req.query;
-    
+
     const sql = `
       SELECT a.id, a.child_id, a.date, a.check_in_time, a.check_out_time, 
              a.notes, a.created_at, a.updated_at,
@@ -183,10 +183,10 @@ router.get('/date/:date', auth.authenticateToken, async (req, res) => {
       ORDER BY a.check_in_time DESC
       LIMIT $2 OFFSET $3
     `;
-    
+
     const offset = (page - 1) * limit;
     const result = await db.query(sql, [date, limit, offset]);
-    
+
     res.json({
       success: true,
       attendances: result.rows,
@@ -198,9 +198,9 @@ router.get('/date/:date', auth.authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Erreur présences par date:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la récupération des présences' 
+      error: 'Erreur lors de la récupération des présences'
     });
   }
 });
@@ -220,9 +220,9 @@ router.get('/report', async (req, res) => {
     });
   } catch (error) {
     console.error('Erreur rapport présence:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la récupération du rapport de présence' 
+      error: 'Erreur lors de la récupération du rapport de présence'
     });
   }
 });
@@ -231,7 +231,7 @@ router.get('/report', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const { child_id, date, start_date, end_date, page = 1, limit = 50 } = req.query;
-    
+
     let sql = `
       SELECT a.id, a.child_id, a.date, a.check_in_time, a.check_out_time, 
              a.notes, a.created_at, a.updated_at,
@@ -243,32 +243,32 @@ router.get('/', async (req, res) => {
     `;
     const params = [];
     let paramCount = 0;
-    
+
     // Filtres
     if (child_id) {
       paramCount++;
       sql += ` AND a.child_id = $${paramCount}`;
       params.push(child_id);
     }
-    
+
     if (date) {
       paramCount++;
       sql += ` AND a.date = $${paramCount}`;
       params.push(date);
     }
-    
+
     if (start_date) {
       paramCount++;
       sql += ` AND a.date >= $${paramCount}`;
       params.push(start_date);
     }
-    
+
     if (end_date) {
       paramCount++;
       sql += ` AND a.date <= $${paramCount}`;
       params.push(end_date);
     }
-    
+
     // Pagination
     sql += ` ORDER BY a.date DESC, a.check_in_time DESC`;
     const offset = (page - 1) * limit;
@@ -278,9 +278,9 @@ router.get('/', async (req, res) => {
     paramCount++;
     sql += ` OFFSET $${paramCount}`;
     params.push(offset);
-    
+
     const result = await db.query(sql, params);
-    
+
     // Compter le total
     let countSql = `
       SELECT COUNT(*) as total 
@@ -290,33 +290,33 @@ router.get('/', async (req, res) => {
     `;
     const countParams = [];
     let countParamCount = 0;
-    
+
     if (child_id) {
       countParamCount++;
       countSql += ` AND a.child_id = $${countParamCount}`;
       countParams.push(child_id);
     }
-    
+
     if (date) {
       countParamCount++;
       countSql += ` AND a.date = $${countParamCount}`;
       countParams.push(date);
     }
-    
+
     if (start_date) {
       countParamCount++;
       countSql += ` AND a.date >= $${countParamCount}`;
       countParams.push(start_date);
     }
-    
+
     if (end_date) {
       countParamCount++;
       countSql += ` AND a.date <= $${countParamCount}`;
       countParams.push(end_date);
     }
-    
+
     const countResult = await db.query(countSql, countParams);
-    
+
     res.json({
       success: true,
       attendance: result.rows,
@@ -327,12 +327,12 @@ router.get('/', async (req, res) => {
         pages: Math.ceil(countResult.rows[0].total / limit)
       }
     });
-    
+
   } catch (error) {
     console.error('Erreur récupération présences:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Erreur lors de la récupération des présences' 
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération des présences'
     });
   }
 });
@@ -343,7 +343,7 @@ router.get('/today', async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
     const { page = 1, limit = 50 } = req.query;
-    
+
     const result = await db.query(
       `SELECT a.id, a.child_id, a.date, a.check_in_time, a.check_out_time, 
               a.notes, a.created_at, a.updated_at,
@@ -356,7 +356,7 @@ router.get('/today', async (req, res) => {
        LIMIT $2 OFFSET $3`,
       [today, limit, (page - 1) * limit]
     );
-    
+
     res.json({
       success: true,
       attendance: result.rows,
@@ -366,12 +366,12 @@ router.get('/today', async (req, res) => {
         total: result.rows.length
       }
     });
-    
+
   } catch (error) {
     console.error('Erreur récupération présences aujourd\'hui:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Erreur lors de la récupération des présences d\'aujourd\'hui' 
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération des présences d\'aujourd\'hui'
     });
   }
 });
@@ -380,7 +380,7 @@ router.get('/today', async (req, res) => {
 router.get('/stats', async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
-    
+
     const result = await db.query(
       `SELECT 
         COUNT(*) as total_today,
@@ -390,17 +390,17 @@ router.get('/stats', async (req, res) => {
        WHERE date = $1`,
       [today]
     );
-    
+
     res.json({
       success: true,
       stats: result.rows[0]
     });
-    
+
   } catch (error) {
     console.error('Erreur récupération statistiques:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Erreur lors de la récupération des statistiques' 
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération des statistiques'
     });
   }
 });
@@ -409,7 +409,7 @@ router.get('/stats', async (req, res) => {
 router.get('/currently-present', async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
-    
+
     const result = await db.query(
       `SELECT a.id, a.child_id, a.date, a.check_in_time, a.check_out_time, 
               a.notes, a.created_at, a.updated_at,
@@ -421,17 +421,17 @@ router.get('/currently-present', async (req, res) => {
        ORDER BY a.check_in_time DESC`,
       [today]
     );
-    
+
     res.json({
       success: true,
       currently_present: result.rows
     });
-    
+
   } catch (error) {
     console.error('Erreur récupération présents:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Erreur lors de la récupération des présents' 
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération des présents'
     });
   }
 });
@@ -441,7 +441,7 @@ router.get('/date/:date', async (req, res) => {
   try {
     const { date } = req.params;
     const { page = 1, limit = 50 } = req.query;
-    
+
     const result = await db.query(
       `SELECT a.id, a.child_id, a.date, a.check_in_time, a.check_out_time, 
               a.notes, a.created_at, a.updated_at,
@@ -454,7 +454,7 @@ router.get('/date/:date', async (req, res) => {
        LIMIT $2 OFFSET $3`,
       [date, limit, (page - 1) * limit]
     );
-    
+
     res.json({
       success: true,
       attendance: result.rows,
@@ -464,12 +464,12 @@ router.get('/date/:date', async (req, res) => {
         total: result.rows.length
       }
     });
-    
+
   } catch (error) {
     console.error('Erreur récupération présences par date:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Erreur lors de la récupération des présences par date' 
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération des présences par date'
     });
   }
 });
@@ -478,7 +478,7 @@ router.get('/date/:date', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const result = await db.query(
       `SELECT a.id, a.child_id, a.date, a.check_in_time, a.check_out_time, 
               a.notes, a.created_at, a.updated_at,
@@ -489,24 +489,24 @@ router.get('/:id', async (req, res) => {
        WHERE a.id = $1`,
       [id]
     );
-    
+
     if (result.rows.length === 0) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'Présence non trouvée' 
+      return res.status(404).json({
+        success: false,
+        error: 'Présence non trouvée'
       });
     }
-    
+
     res.json({
       success: true,
       attendance: result.rows[0]
     });
-    
+
   } catch (error) {
     console.error('Erreur récupération présence:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Erreur lors de la récupération de la présence' 
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération de la présence'
     });
   }
 });
@@ -520,36 +520,36 @@ router.post('/', [
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        error: 'Données invalides', 
-        details: errors.array() 
+        error: 'Données invalides',
+        details: errors.array()
       });
     }
-    
+
     const { child_id, date, check_in_time, notes } = req.body;
-    
+
     // Vérifier si l'enfant existe
     const childExists = await db.query('SELECT id FROM children WHERE id = $1 AND is_active = TRUE', [child_id]);
     if (childExists.rows.length === 0) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        error: 'Enfant non trouvé ou inactif' 
+        error: 'Enfant non trouvé ou inactif'
       });
     }
-    
+
     // Vérifier s'il n'y a pas déjà une présence pour cet enfant à cette date
     const existingAttendance = await db.query(
-      'SELECT id FROM attendance WHERE child_id = $1 AND date = $2', 
+      'SELECT id FROM attendance WHERE child_id = $1 AND date = $2',
       [child_id, date]
     );
     if (existingAttendance.rows.length > 0) {
-      return res.status(409).json({ 
+      return res.status(409).json({
         success: false,
-        error: 'Une présence existe déjà pour cet enfant à cette date' 
+        error: 'Une présence existe déjà pour cet enfant à cette date'
       });
     }
-    
+
     // Insérer la nouvelle présence
     const result = await db.query(
       `INSERT INTO attendance (child_id, date, check_in_time, notes) 
@@ -557,18 +557,18 @@ router.post('/', [
        RETURNING id, child_id, date, check_in_time, notes, created_at`,
       [child_id, date, check_in_time, notes]
     );
-    
+
     res.status(201).json({
       success: true,
       message: 'Arrivée enregistrée avec succès',
       attendance: result.rows[0]
     });
-    
+
   } catch (error) {
     console.error('Erreur création présence:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de l\'enregistrement de l\'arrivée' 
+      error: 'Erreur lors de l\'enregistrement de l\'arrivée'
     });
   }
 });
@@ -580,44 +580,44 @@ router.put('/:id/checkout', [
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        error: 'Données invalides', 
-        details: errors.array() 
+        error: 'Données invalides',
+        details: errors.array()
       });
     }
-    
+
     const { id } = req.params;
     const { check_out_time, notes } = req.body;
-    
+
     // Vérifier si la présence existe et n'a pas déjà de check-out
     const existingAttendance = await db.query(
-      'SELECT id, check_in_time, check_out_time FROM attendance WHERE id = $1', 
+      'SELECT id, check_in_time, check_out_time FROM attendance WHERE id = $1',
       [id]
     );
     if (existingAttendance.rows.length === 0) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        error: 'Présence non trouvée' 
+        error: 'Présence non trouvée'
       });
     }
-    
+
     if (existingAttendance.rows[0].check_out_time) {
-      return res.status(409).json({ 
+      return res.status(409).json({
         success: false,
-        error: 'Le départ a déjà été enregistré pour cette présence' 
+        error: 'Le départ a déjà été enregistré pour cette présence'
       });
     }
-    
+
     // Vérifier que l'heure de départ est après l'heure d'arrivée
     const checkInTime = existingAttendance.rows[0].check_in_time;
     if (check_out_time <= checkInTime) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        error: 'L\'heure de départ doit être après l\'heure d\'arrivée' 
+        error: 'L\'heure de départ doit être après l\'heure d\'arrivée'
       });
     }
-    
+
     // Mettre à jour avec l'heure de départ
     const result = await db.query(
       `UPDATE attendance 
@@ -626,18 +626,18 @@ router.put('/:id/checkout', [
        RETURNING id, child_id, date, check_in_time, check_out_time, notes, updated_at`,
       [check_out_time, notes, id]
     );
-    
+
     res.json({
       success: true,
       message: 'Départ enregistré avec succès',
       attendance: result.rows[0]
     });
-    
+
   } catch (error) {
     console.error('Erreur enregistrement départ:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de l\'enregistrement du départ' 
+      error: 'Erreur lors de l\'enregistrement du départ'
     });
   }
 });
@@ -650,92 +650,92 @@ router.put('/:id', [
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        error: 'Données invalides', 
-        details: errors.array() 
+        error: 'Données invalides',
+        details: errors.array()
       });
     }
-    
+
     const { id } = req.params;
     const { check_in_time, check_out_time, notes } = req.body;
-    
+
     // Vérifier si la présence existe
     const existingAttendance = await db.query('SELECT id FROM attendance WHERE id = $1', [id]);
     if (existingAttendance.rows.length === 0) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        error: 'Présence non trouvée' 
+        error: 'Présence non trouvée'
       });
     }
-    
+
     // Vérifier la cohérence des heures si les deux sont fournies
     if (check_in_time && check_out_time && check_out_time <= check_in_time) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        error: 'L\'heure de départ doit être après l\'heure d\'arrivée' 
+        error: 'L\'heure de départ doit être après l\'heure d\'arrivée'
       });
     }
-    
+
     // Construire la requête de mise à jour dynamiquement
     const updates = [];
     const params = [];
     let paramCount = 0;
-    
+
     if (check_in_time !== undefined) {
       paramCount++;
       updates.push(`check_in_time = $${paramCount}`);
       params.push(check_in_time);
     }
-    
+
     if (check_out_time !== undefined) {
       paramCount++;
       updates.push(`check_out_time = $${paramCount}`);
       params.push(check_out_time);
     }
-    
+
     if (notes !== undefined) {
       paramCount++;
       updates.push(`notes = $${paramCount}`);
       params.push(notes);
     }
-    
+
     if (updates.length === 0) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        error: 'Aucune donnée à mettre à jour' 
+        error: 'Aucune donnée à mettre à jour'
       });
     }
-    
+
     // Ajouter updated_at
     paramCount++;
     updates.push(`updated_at = $${paramCount}`);
     params.push(new Date());
-    
+
     // Ajouter l'ID pour la clause WHERE
     paramCount++;
     params.push(id);
-    
+
     const sql = `
       UPDATE attendance 
       SET ${updates.join(', ')} 
       WHERE id = $${paramCount}
       RETURNING id, child_id, date, check_in_time, check_out_time, notes, updated_at
     `;
-    
+
     const result = await db.query(sql, params);
-    
+
     res.json({
       success: true,
       message: 'Présence mise à jour avec succès',
       attendance: result.rows[0]
     });
-    
+
   } catch (error) {
     console.error('Erreur mise à jour présence:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la mise à jour de la présence' 
+      error: 'Erreur lors de la mise à jour de la présence'
     });
   }
 });
@@ -744,80 +744,29 @@ router.put('/:id', [
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // Vérifier si la présence existe
     const existingAttendance = await db.query('SELECT id FROM attendance WHERE id = $1', [id]);
     if (existingAttendance.rows.length === 0) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        error: 'Présence non trouvée' 
+        error: 'Présence non trouvée'
       });
     }
-    
+
     // Supprimer la présence
     await db.query('DELETE FROM attendance WHERE id = $1', [id]);
-    
+
     res.json({
       success: true,
       message: 'Présence supprimée avec succès'
     });
-    
+
   } catch (error) {
     console.error('Erreur suppression présence:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la suppression de la présence' 
-    });
-  }
-});
-
-// GET /api/attendance/child/:child_id/calendar - Calendrier de présence d'un enfant
-router.get('/child/:child_id/calendar', async (req, res) => {
-  try {
-    const { child_id } = req.params;
-    const { year, month } = req.query;
-    
-    if (!year || !month) {
-      return res.status(400).json({ 
-        success: false,
-        error: 'Année et mois requis' 
-      });
-    }
-    
-    // Vérifier si l'enfant existe
-    const childExists = await db.query('SELECT id FROM children WHERE id = $1', [child_id]);
-    if (childExists.rows.length === 0) {
-      return res.status(404).json({ 
-        success: false,
-        error: 'Enfant non trouvé' 
-      });
-    }
-    
-    // Récupérer les présences du mois
-    const startDate = `${year}-${month.padStart(2, '0')}-01`;
-    const endDate = `${year}-${month.padStart(2, '0')}-31`;
-    
-    const result = await db.query(
-      `SELECT date, check_in_time, check_out_time, notes
-       FROM attendance 
-       WHERE child_id = $1 AND date >= $2 AND date <= $3
-       ORDER BY date`,
-      [child_id, startDate, endDate]
-    );
-    
-    res.json({
-      success: true,
-      child_id: parseInt(child_id),
-      year: parseInt(year),
-      month: parseInt(month),
-      attendance: result.rows
-    });
-    
-  } catch (error) {
-    console.error('Erreur calendrier présence:', error);
-    res.status(500).json({ 
-      success: false,
-      error: 'Erreur lors de la récupération du calendrier' 
+      error: 'Erreur lors de la suppression de la présence'
     });
   }
 });
@@ -826,23 +775,23 @@ router.get('/child/:child_id/calendar', async (req, res) => {
 router.get('/stats/overview', async (req, res) => {
   try {
     const { start_date, end_date } = req.query;
-    
+
     let dateFilter = '';
     const params = [];
     let paramCount = 0;
-    
+
     if (start_date) {
       paramCount++;
       dateFilter += ` AND date >= $${paramCount}`;
       params.push(start_date);
     }
-    
+
     if (end_date) {
       paramCount++;
       dateFilter += ` AND date <= $${paramCount}`;
       params.push(end_date);
     }
-    
+
     const stats = await db.query(`
       SELECT 
         COUNT(*) as total_attendance,
@@ -854,18 +803,18 @@ router.get('/stats/overview', async (req, res) => {
       FROM attendance
       WHERE 1=1 ${dateFilter}
     `, params);
-    
+
     res.json({
       success: true,
       stats: stats.rows[0],
       period: { start_date, end_date }
     });
-    
+
   } catch (error) {
     console.error('Erreur statistiques présences:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la récupération des statistiques' 
+      error: 'Erreur lors de la récupération des statistiques'
     });
   }
 });
@@ -876,23 +825,23 @@ router.post('/check-in', auth.authenticateToken, async (req, res) => {
     const { child_id, notes } = req.body;
     const today = new Date().toISOString().split('T')[0];
     const now = new Date();
-    
+
     // Vérifier si l'enfant existe
     const childCheck = await db.query('SELECT id FROM children WHERE id = $1 AND is_active = true', [child_id]);
     if (childCheck.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Enfant non trouvé' });
     }
-    
+
     // Vérifier s'il y a déjà un check-in aujourd'hui
     const existing = await db.query(
       'SELECT id, check_in_time FROM attendance WHERE child_id = $1 AND date = $2',
       [child_id, today]
     );
-    
+
     if (existing.rows.length > 0 && existing.rows[0].check_in_time) {
       return res.status(400).json({ success: false, error: 'L\'enfant est déjà arrivé aujourd\'hui' });
     }
-    
+
     // Créer ou mettre à jour l'enregistrement
     if (existing.rows.length > 0) {
       await db.query(
@@ -905,7 +854,7 @@ router.post('/check-in', auth.authenticateToken, async (req, res) => {
         [child_id, today, now, notes]
       );
     }
-    
+
     res.json({ success: true, message: 'Arrivée enregistrée avec succès' });
   } catch (error) {
     console.error('Erreur check-in:', error);
@@ -919,31 +868,194 @@ router.post('/check-out', auth.authenticateToken, async (req, res) => {
     const { child_id, notes } = req.body;
     const today = new Date().toISOString().split('T')[0];
     const now = new Date();
-    
+
     // Vérifier s'il y a un check-in aujourd'hui
     const existing = await db.query(
       'SELECT id, check_in_time, check_out_time FROM attendance WHERE child_id = $1 AND date = $2',
       [child_id, today]
     );
-    
+
     if (existing.rows.length === 0 || !existing.rows[0].check_in_time) {
       return res.status(400).json({ success: false, error: 'L\'enfant n\'est pas encore arrivé aujourd\'hui' });
     }
-    
+
     if (existing.rows[0].check_out_time) {
       return res.status(400).json({ success: false, error: 'Le départ a déjà été enregistré' });
     }
-    
+
     // Mettre à jour avec le check-out
     await db.query(
       'UPDATE attendance SET check_out_time = $1, notes = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
       [now, notes, existing.rows[0].id]
     );
-    
+
     res.json({ success: true, message: 'Départ enregistré avec succès' });
   } catch (error) {
     console.error('Erreur check-out:', error);
     res.status(500).json({ success: false, error: 'Erreur lors de l\'enregistrement du départ' });
+  }
+});
+
+// GET /api/attendance/child/:id/calendar - Calendrier de présence avec jours de fermeture
+router.get('/child/:id/calendar', auth.authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { year, month } = req.query;
+
+    if (!year || !month) {
+      return res.status(400).json({
+        success: false,
+        error: 'Année et mois requis'
+      });
+    }
+
+    // Construire les dates de début et fin du mois
+    const startDate = `${year}-${month.toString().padStart(2, '0')}-01`;
+    const lastDay = new Date(year, month, 0).getDate();
+    const endDate = `${year}-${month.toString().padStart(2, '0')}-${lastDay}`;
+
+    // 1. Récupérer les présences de l'enfant pour ce mois
+    const attendanceResult = await db.query(
+      `SELECT 
+        a.id,
+        a.date,
+        a.check_in_time,
+        a.check_out_time,
+        a.notes
+       FROM attendance a
+       WHERE a.child_id = $1 
+       AND a.date >= $2 
+       AND a.date <= $3
+       ORDER BY a.date ASC`,
+      [id, startDate, endDate]
+    );
+
+    // 2. Récupérer les jours fériés (holidays) pour ce mois
+    const holidaysResult = await db.query(
+      `SELECT date, name, is_closed
+       FROM holidays
+       WHERE date >= $1 AND date <= $2 AND is_closed = TRUE
+       ORDER BY date ASC`,
+      [startDate, endDate]
+    );
+
+    // 3. Récupérer les paramètres (samedi ouvert, vacances annuelles)
+    let settingsResult;
+    try {
+      settingsResult = await db.query(
+        `SELECT setting_key, value_fr
+         FROM nursery_settings
+         WHERE setting_key IN ('saturday_open', 'opening_hours')`
+      );
+    } catch (e) {
+      console.error('Erreur récupération settings:', e);
+      settingsResult = { rows: [] };
+    }
+
+    // Parser les settings
+    let saturdayOpen = false;
+
+    settingsResult.rows.forEach(row => {
+      if (row.setting_key === 'saturday_open') {
+        saturdayOpen = row.value_fr === 'true' || row.value_fr === '1';
+      }
+    });
+
+    // 4. Construire le calendrier avec statuts
+    const calendar = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (let day = 1; day <= lastDay; day++) {
+      const dateStr = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+      const date = new Date(dateStr);
+      const dayOfWeek = date.getDay(); // 0 = dimanche, 6 = samedi
+
+      let status = 'unknown'; // unknown, present, absent, closed
+      let checkIn = null;
+      let checkOut = null;
+      let closedReason = null;
+
+      // Vérifier si c'est un dimanche (toujours fermé)
+      if (dayOfWeek === 0) {
+        status = 'closed';
+        closedReason = 'Dimanche';
+      }
+      // Vérifier si c'est un samedi et si la crèche est fermée le samedi
+      else if (dayOfWeek === 6 && !saturdayOpen) {
+        status = 'closed';
+        closedReason = 'Samedi';
+      }
+      // Vérifier les jours fériés
+      else {
+        const holiday = holidaysResult.rows.find(h => {
+          // Convertir la date de la DB en format local YYYY-MM-DD
+          const dbDate = new Date(h.date);
+          const hDate = `${dbDate.getFullYear()}-${String(dbDate.getMonth() + 1).padStart(2, '0')}-${String(dbDate.getDate()).padStart(2, '0')}`;
+          return hDate === dateStr;
+        });
+
+        if (holiday) {
+          status = 'closed';
+          closedReason = holiday.name;
+        }
+      }
+
+      // Si pas fermé, vérifier la présence
+      if (status !== 'closed') {
+        const attendance = attendanceResult.rows.find(a => {
+          // Convertir la date de la DB en format local YYYY-MM-DD
+          const dbDate = new Date(a.date);
+          const aDate = `${dbDate.getFullYear()}-${String(dbDate.getMonth() + 1).padStart(2, '0')}-${String(dbDate.getDate()).padStart(2, '0')}`;
+          return aDate === dateStr;
+        });
+
+        if (attendance) {
+          if (attendance.check_in_time) {
+            status = 'present';
+            checkIn = attendance.check_in_time;
+            checkOut = attendance.check_out_time;
+          } else {
+            status = 'absent';
+          }
+        } else {
+          // Pas d'enregistrement - si c'est dans le passé, c'est absent
+          if (date < today) {
+            status = 'absent';
+          } else {
+            status = 'unknown'; // Futur
+          }
+        }
+      }
+
+      calendar.push({
+        date: dateStr,
+        day,
+        dayOfWeek,
+        status,
+        checkIn,
+        checkOut,
+        closedReason
+      });
+    }
+
+    res.json({
+      success: true,
+      calendar,
+      child_id: parseInt(id),
+      year: parseInt(year),
+      month: parseInt(month),
+      settings: {
+        saturdayOpen
+      }
+    });
+
+  } catch (error) {
+    console.error('Erreur calendrier présence:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération du calendrier'
+    });
   }
 });
 

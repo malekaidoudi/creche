@@ -6,7 +6,8 @@ import {
   User,
   Bell,
   Home,
-  ChevronLeft
+  ChevronLeft,
+  FileText
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -14,9 +15,9 @@ import { useLanguage } from '../../hooks/useLanguage';
 import useIsMobile from '../../hooks/useIsMobile';
 import api from '../../services/api';
 import { useProfileImage } from '../../hooks/useProfileImage';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
+import WidgetCard, { WidgetEmptyState } from '../../components/ui/WidgetCard';
 import SimpleNotificationCenter from '../../components/dashboard/SimpleNotificationCenter';
 import MyAppointmentsWidget from '../../components/widgets/MyAppointmentsWidget';
 import RequestAppointmentModal from '../../components/modals/RequestAppointmentModal';
@@ -26,6 +27,8 @@ import FloatingActionButton from '../../components/ui/FloatingActionButton';
 import MobileParentSpace from '../../components/mobile/MobileParentSpace';
 import MobileNavigation from '../../components/mobile/MobileNavigation';
 import { useDialogContext } from '../../contexts/DialogContext';
+import NewsWidget from '../../components/NewsWidget';
+import HolidaysList from '../../components/HolidaysList';
 
 const MySpacePage = () => {
   const { user } = useAuth();
@@ -243,6 +246,34 @@ const MySpacePage = () => {
             </div>
           </motion.div>
 
+          {/* Lien rapide vers les rapports journaliers */}
+          {children.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 }}
+              className="mb-6"
+            >
+              <Link
+                to="/mon-espace/daily-reports"
+                className="flex items-center gap-4 p-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl text-white hover:from-green-600 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl"
+              >
+                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                  <FileText className="w-6 h-6" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-lg">
+                    {isRTL ? 'التقارير اليومية' : 'Rapports Journaliers'}
+                  </h3>
+                  <p className="text-green-100 text-sm">
+                    {isRTL ? 'تابع يوم طفلك في الحضانة' : 'Suivez la journée de votre enfant à la crèche'}
+                  </p>
+                </div>
+                <ChevronLeft className={`w-6 h-6 ${isRTL ? '' : 'rotate-180'}`} />
+              </Link>
+            </motion.div>
+          )}
+
           {/* Grille principale: Enfants + Rendez-vous */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             {/* Widget Enfants */}
@@ -252,56 +283,48 @@ const MySpacePage = () => {
               transition={{ delay: 0.1 }}
               className="h-[400px]"
             >
-              <Card className="h-full flex flex-col">
-                <CardHeader className="flex-shrink-0">
-                  <CardTitle className="flex items-center gap-2">
-                    <Baby className="w-5 h-5" />
-                    {isRTL ? 'أطفالي' : 'Mes Enfants'}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="flex-1 min-h-0 overflow-y-auto">
-                  {loading ? (
-                    <div className="flex items-center justify-center py-8">
-                      <LoadingSpinner />
-                    </div>
-                  ) : children.length === 0 ? (
-                    <div className="text-center py-8">
-                      <Baby className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                      <p className="text-gray-500 dark:text-gray-400">
-                        {isRTL ? 'لا يوجد أطفال مسجلين' : 'Aucun enfant enregistré'}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {children.map((child) => (
-                        <div
-                          key={child.id}
-                          className="p-4 rounded-lg border bg-gray-50 border-gray-200 dark:bg-gray-800 dark:border-gray-600"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                              <Baby className="w-5 h-5 text-blue-600" />
-                            </div>
-                            <div>
-                              <h3 className="font-medium text-gray-900 dark:text-white">
-                                {child.first_name} {child.last_name}
-                              </h3>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">
-                                {child.enrollment_status === 'approved'
-                                  ? (isRTL ? 'مقبول' : 'Approuvé')
-                                  : child.enrollment_status === 'pending'
-                                    ? (isRTL ? 'في الانتظار' : 'En attente')
-                                    : (isRTL ? 'غير محدد' : 'Non défini')
-                                }
-                              </p>
-                            </div>
+              <WidgetCard
+                icon={Baby}
+                title={isRTL ? 'أطفالي' : 'Mes Enfants'}
+                badge={children.length || null}
+                iconColor="blue"
+                loading={loading}
+              >
+                {children.length === 0 ? (
+                  <WidgetEmptyState
+                    icon={Baby}
+                    message={isRTL ? 'لا يوجد أطفال مسجلين' : 'Aucun enfant enregistré'}
+                  />
+                ) : (
+                  <div className="space-y-3">
+                    {children.map((child) => (
+                      <div
+                        key={child.id}
+                        className="p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+                            <Baby className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-gray-900 dark:text-white truncate">
+                              {child.first_name} {child.last_name}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              {child.enrollment_status === 'approved'
+                                ? (isRTL ? 'مقبول' : 'Approuvé')
+                                : child.enrollment_status === 'pending'
+                                  ? (isRTL ? 'في الانتظار' : 'En attente')
+                                  : (isRTL ? 'غير محدد' : 'Non défini')
+                              }
+                            </p>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </WidgetCard>
             </motion.div>
 
             {/* Widget Rendez-vous */}
@@ -319,6 +342,30 @@ const MySpacePage = () => {
                   setShowRescheduleModal(true);
                 }}
               />
+            </motion.div>
+          </div>
+
+          {/* Widgets Nouveautés et Jours Fériés côte à côte */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            {/* Widget Nouveautés */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              id="news-widget"
+              className="h-[400px]"
+            >
+              <NewsWidget />
+            </motion.div>
+
+            {/* Widget Jours Fériés à venir */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="h-[400px]"
+            >
+              <HolidaysList userRole="parent" />
             </motion.div>
           </div>
 

@@ -75,10 +75,15 @@ const activitiesRoutes = require('./routes_postgres/activities');
 const activityLogsRoutes = require('./routes_postgres/activityLogs');
 const userWorkflowRoutes = require('./routes_postgres/userWorkflow');
 const debugEnrollmentsRoutes = require('./routes_postgres/debugEnrollments');
+const backupRoutes = require('./routes_postgres/backup');
+const recoveryRoutes = require('./routes_postgres/recovery');
+const dailyReportsRoutes = require('./routes_postgres/dailyReports');
+const suppliesRoutes = require('./routes_postgres/supplies');
+const staffAssignmentsRoutes = require('./routes_postgres/staffAssignments');
 console.log('✅ Routes chargées\n');
 
 const app = express();
-const PORT = process.env.PORT || 3005;
+const PORT = process.env.PORT || 3003;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CONFIGURATION MIDDLEWARES
@@ -269,6 +274,7 @@ console.log('  ✓ /api/nursery-settings');
 app.use('/api/holidays', holidaysRoutes);
 console.log('  ✓ /api/holidays');
 
+
 app.use('/api/schedule-settings', scheduleSettingsRoutes);
 console.log('  ✓ /api/schedule-settings');
 
@@ -312,6 +318,21 @@ console.log('  ✓ /api/user-workflow (workflow parent/staff) 🆕');
 
 app.use('/api/debug', debugEnrollmentsRoutes);
 console.log('  ✓ /api/debug (diagnostic enrollments) 🔧');
+
+app.use('/api/backup', backupRoutes);
+console.log('  ✓ /api/backup (système de sauvegarde) 💾');
+
+app.use('/api/recovery', recoveryRoutes);
+console.log('  ✓ /api/recovery (récupération d\'urgence) 🆘');
+
+app.use('/api/daily-reports', dailyReportsRoutes);
+console.log('  ✓ /api/daily-reports (rapports journaliers enfants) 📋');
+
+app.use('/api/supplies', suppliesRoutes);
+console.log('  ✓ /api/supplies (fournitures enfants) 🎒');
+
+app.use('/api/staff-assignments', staffAssignmentsRoutes);
+console.log('  ✓ /api/staff-assignments (affectations staff) 👥');
 
 console.log('\n✅ Toutes les routes montées avec succès\n');
 
@@ -429,6 +450,15 @@ app.listen(PORT, () => {
     startAllJobs();
   } catch (error) {
     console.error('❌ Erreur démarrage jobs événements:', error.message);
+  }
+
+  // Démarrer le job de backup automatique
+  try {
+    const { startBackupJob } = require('./jobs/backupJob');
+    startBackupJob();
+    console.log('💾 Backup:          Automatique quotidien à 02:00 ✅');
+  } catch (error) {
+    console.error('❌ Erreur démarrage job backup:', error.message);
   }
 });
 

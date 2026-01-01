@@ -35,6 +35,7 @@ import TaskModal from '../../components/modals/TaskModal';
 import CreateAppointmentModal from '../../components/modals/CreateAppointmentModal';
 import api from '../../services/api';
 import activityLogService from '../../services/activityLogService';
+import NewsWidget from '../../components/NewsWidget';
 
 const DashboardHome = () => {
   const { user, isAdmin, isStaff } = useAuth();
@@ -378,79 +379,29 @@ const DashboardHome = () => {
           </motion.div>
         )}
 
-        {/* Jours fériés et Activités récentes côte à côte sur desktop, empilés sur mobile */}
+        {/* Jours fériés et Nouveautés côte à côte sur desktop, empilés sur mobile */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-          {/* Jours fériés */}
+          {/* Jours fériés - Hauteur limitée pour afficher ~5 jours */}
           {user && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.7 }}
+              className="h-[400px]"
             >
               <HolidaysList userRole={user?.role} />
             </motion.div>
           )}
 
-          {/* Activités récentes - Lié au système de logging */}
+          {/* Widget Nouveautés */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.8 }}
-            className="h-[500px]"
+            id="news-widget"
+            className="h-[400px]"
           >
-            <Card className="h-full flex flex-col">
-              <CardHeader className="flex-shrink-0">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center">
-                    <Clock className="w-5 h-5 mr-2 rtl:mr-0 rtl:ml-2" />
-                    {isRTL ? 'الأنشطة الأخيرة' : 'Activités récentes'}
-                  </CardTitle>
-                  <Link
-                    to="/dashboard/activity-logs"
-                    className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400"
-                  >
-                    {isRTL ? 'عرض الكل' : 'Voir tout →'}
-                  </Link>
-                </div>
-              </CardHeader>
-              <CardContent className="flex-1 overflow-y-auto">
-                <div className="space-y-3">
-                  {recentActivities.length > 0 ? (
-                    recentActivities.map((activity, index) => {
-                      // Couleurs selon la sévérité
-                      const severityColors = {
-                        critical: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400',
-                        warning: 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400',
-                        info: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400',
-                        debug: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
-                      };
-                      const bgColor = severityColors[activity.severity] || severityColors.info;
-
-                      return (
-                        <div key={activity.id || index} className="flex items-start space-x-3 rtl:space-x-reverse p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${bgColor}`}>
-                            <span className="text-sm">{activity.severity_icon || activity.category_icon || '📋'}</span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                              {activity.title || activity.message}
-                            </p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                              {activity.user_name || 'Système'} • {formatTimeAgo(activity.created_at)}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                      <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                      <p>{isRTL ? 'لا توجد أنشطة حديثة' : 'Aucune activité récente'}</p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+            <NewsWidget />
           </motion.div>
         </div>
       </div>

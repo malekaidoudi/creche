@@ -5,6 +5,8 @@ const { pool } = require('../config/db_postgres');
 const auth = require('../middleware/auth');
 const logger = require('../utils/logger');
 const apiResponse = require('../utils/apiResponse');
+const upload = require('../middleware/upload');
+const path = require('path');
 
 // GET /api/children/simple - Liste simple des enfants avec parent_id (pour messages)
 router.get('/simple', auth.authenticateToken, async (req, res) => {
@@ -336,6 +338,7 @@ router.get('/', auth.authenticateToken, async (req, res) => {
       SELECT 
         c.id, c.first_name, c.last_name, c.birth_date, c.gender, c.medical_info, 
         c.emergency_contact_name, c.emergency_contact_phone, c.photo_url, 
+        COALESCE(c.photo_shared_with_staff, true) as photo_shared_with_staff,
         c.is_active, c.created_at, c.updated_at, c.parent_id,
         EXTRACT(YEAR FROM AGE(c.birth_date)) as age,
         u.id as parent_user_id,
@@ -502,7 +505,7 @@ router.get('/:id', async (req, res) => {
 
     const result = await pool.query(
       `SELECT id, first_name, last_name, birth_date, gender, medical_info, 
-              emergency_contact_name, emergency_contact_phone, photo_url, 
+              emergency_contact_name, emergency_contact_phone, photo_url, photo_shared_with_staff,
               is_active, created_at, updated_at,
               EXTRACT(YEAR FROM AGE(birth_date)) as age
        FROM children WHERE id = $1`,
@@ -714,6 +717,7 @@ router.put('/:id', [
       emergency_contact_name,
       emergency_contact_phone,
       photo_url,
+      photo_shared_with_staff,
       is_active
     } = req.body;
 
@@ -777,6 +781,12 @@ router.put('/:id', [
       paramCount++;
       updates.push(`photo_url = $${paramCount}`);
       params.push(photo_url);
+    }
+
+    if (photo_shared_with_staff !== undefined) {
+      paramCount++;
+      updates.push(`photo_shared_with_staff = $${paramCount}`);
+      params.push(photo_shared_with_staff);
     }
 
     if (is_active !== undefined) {
@@ -857,6 +867,58 @@ router.delete('/:id', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Erreur lors de la suppression de l\'enfant'
+    });
+  }
+});
+
+// POST /api/children/:id/photo - Upload photo d'un enfant
+router.post('/:id/photo', auth.authenticateToken, upload.single('photo'), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Vérifier si l'enfant existe
+    const existingChild = await pool.query('SELECT id, first_name, last_name FROM children WHERE id = $1', [id]);
+    if (existingChild.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Enfant non trouvé'
+      });
+    }
+
+    // Vérifier si un fichier a été uploadé
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: 'Aucune photo fournie'
+      });
+    }
+
+    // Construire l'URL de la photo
+    const photoUrl = `/uploads/profiles/${req.file.filename}`;
+
+    // Mettre à jour la photo dans la base de données
+    const result = await pool.query(
+      `UPDATE children 
+       SET photo_url = $1, updated_at = CURRENT_TIMESTAMP 
+       WHERE id = $2 
+       RETURNING id, first_name, last_name, photo_url`,
+      [photoUrl, id]
+    );
+
+    logger.info(`📸 Photo mise à jour pour enfant ${id}: ${photoUrl}`);
+
+    res.json({
+      success: true,
+      message: 'Photo mise à jour avec succès',
+      photo_url: photoUrl,
+      child: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error('Erreur upload photo enfant:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de l\'upload de la photo'
     });
   }
 });
