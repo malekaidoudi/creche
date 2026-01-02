@@ -96,39 +96,46 @@ router.get('/', async (req, res) => {
 /**
  * GET /api/contact/info
  * Informations de contact avec horaires depuis nursery_settings
+ * Utilise les clés unifiées: opening_time, closing_time, saturday_opening_time, saturday_closing_time
  */
 router.get('/info', async (req, res) => {
   try {
-    // Récupérer les horaires depuis nursery_settings
+    // Récupérer tous les paramètres nécessaires
     const result = await db.query(`
       SELECT setting_key, value_fr, value_ar
       FROM nursery_settings
-      WHERE setting_key IN ('working_hours_weekdays', 'working_hours_saturday', 'saturday_open')
+      WHERE setting_key IN (
+        'opening_time', 'closing_time', 
+        'saturday_open', 'saturday_opening_time', 'saturday_closing_time',
+        'address', 'phone', 'email', 'nursery_name'
+      )
       AND is_active = true
     `);
 
-    // Horaires par défaut
-    let hoursFr = 'Lun - Ven: 07:00-18:00';
-    let hoursAr = 'الإثنين - الجمعة: 07:00-18:00';
-
     // Parser les résultats
     const settings = {};
+    const settingsAr = {};
     result.rows.forEach(row => {
       settings[row.setting_key] = row.value_fr;
+      settingsAr[row.setting_key] = row.value_ar || row.value_fr;
     });
 
     console.log('📋 Settings trouvés:', settings);
 
-    // Horaires de semaine (format: "07:00-18:00")
-    if (settings.working_hours_weekdays) {
-      hoursFr = `Lun - Ven: ${settings.working_hours_weekdays}`;
-      hoursAr = `الإثنين - الجمعة: ${settings.working_hours_weekdays}`;
-    }
+    // Construire les horaires
+    const openingTime = settings.opening_time || '07:00';
+    const closingTime = settings.closing_time || '18:00';
+    const saturdayOpen = settings.saturday_open === 'true';
+    const satOpeningTime = settings.saturday_opening_time || '08:00';
+    const satClosingTime = settings.saturday_closing_time || '12:00';
 
-    // Samedi (format: "true" et "08:00-12:00")
-    if (settings.saturday_open === 'true' && settings.working_hours_saturday) {
-      hoursFr += `, Sam: ${settings.working_hours_saturday}`;
-      hoursAr += `، السبت: ${settings.working_hours_saturday}`;
+    // Horaires formatés
+    let hoursFr = `Lun - Ven: ${openingTime}-${closingTime}`;
+    let hoursAr = `الإثنين - الجمعة: ${openingTime}-${closingTime}`;
+
+    if (saturdayOpen) {
+      hoursFr += `, Sam: ${satOpeningTime}-${satClosingTime}`;
+      hoursAr += `، السبت: ${satOpeningTime}-${satClosingTime}`;
     }
 
     console.log('✅ Horaires finaux:', hoursFr);
@@ -136,10 +143,10 @@ router.get('/info', async (req, res) => {
     res.json({
       success: true,
       contact: {
-        address: '8 Rue Bizerte, Medenine 4100, Tunisie',
-        address_ar: '8 شارع بنزرت، مدنين 4100، تونس',
-        phone: '+216 25 95 35 32',
-        email: 'contact@mimaelghalia.tn',
+        address: settings.address || '8 Rue Bizerte, Medenine 4100, Tunisie',
+        address_ar: settingsAr.address || '8 نهج بنزرت، مدنين 4100، تونس',
+        phone: settings.phone || '+216 25 95 35 32',
+        email: settings.email || 'contact@mimaelghalia.tn',
         hours: hoursFr,
         hours_ar: hoursAr
       }

@@ -128,18 +128,18 @@ const DashboardSettingsPage = () => {
           console.log('  - saturday_open:', apiSettings.saturday_open);
           console.log('  - working_hours_saturday:', apiSettings.working_hours_saturday);
 
-          // Transformer les données pour l'état local
+          // Transformer les données pour l'état local (clés unifiées)
           const transformedSettings = {
             nurseryName: apiSettings.nursery_name || 'Crèche Mima Elghalia',
             address: apiSettings.address || '16 Rue Bizerte, Medenine 4100, Tunisie',
             phone: apiSettings.phone || '+216 25 95 35 32',
             email: apiSettings.email || 'contact@mimaelghalia.tn',
-            capacity: parseInt(apiSettings.capacity?.toString().replace(/\D/g, '')) || 40,
-            openingTime: apiSettings.working_hours_weekdays?.split('-')[0] || '07:00',
-            closingTime: apiSettings.working_hours_weekdays?.split('-')[1] || '18:00',
+            capacity: parseInt(apiSettings.max_capacity?.toString().replace(/\D/g, '')) || 30,
+            openingTime: apiSettings.opening_time || '07:00',
+            closingTime: apiSettings.closing_time || '18:00',
             saturdayOpen: apiSettings.saturday_open === 'true' || apiSettings.saturday_open === true,
-            saturdayOpeningTime: apiSettings.working_hours_saturday?.split('-')[0] || '08:00',
-            saturdayClosingTime: apiSettings.working_hours_saturday?.split('-')[1] || '12:00'
+            saturdayOpeningTime: apiSettings.saturday_opening_time || '08:00',
+            saturdayClosingTime: apiSettings.saturday_closing_time || '12:00'
           };
 
           console.log('🎯 PARAMÈTRES FINAUX:', transformedSettings);
@@ -678,16 +678,18 @@ const DashboardSettingsPage = () => {
     try {
       const token = localStorage.getItem('token');
 
-      // Utiliser la nouvelle API simple qui fonctionne
+      // Utiliser les clés unifiées pour la sauvegarde
       const updateData = {
         nursery_name: settings.nurseryName,
         address: settings.address,
         phone: settings.phone,
         email: settings.email,
-        capacity: `${settings.capacity} enfants`,
-        working_hours_weekdays: `${settings.openingTime}-${settings.closingTime}`,
+        max_capacity: settings.capacity.toString(),
+        opening_time: settings.openingTime,
+        closing_time: settings.closingTime,
         saturday_open: settings.saturdayOpen.toString(),
-        working_hours_saturday: `${settings.saturdayOpeningTime}-${settings.saturdayClosingTime}`
+        saturday_opening_time: settings.saturdayOpeningTime,
+        saturday_closing_time: settings.saturdayClosingTime
       };
 
       console.log('📤 Données à envoyer (API simple):', updateData);

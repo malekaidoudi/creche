@@ -191,6 +191,7 @@ router.put('/annual-vacation', async (req, res) => {
 });
 
 // POST /api/nursery-settings/simple-update - Mise à jour simplifiée de plusieurs paramètres (admin)
+// Met à jour value_fr ET value_ar pour les valeurs qui sont identiques (horaires, capacité, etc.)
 router.post('/simple-update', async (req, res) => {
   try {
     const updates = req.body;
@@ -209,6 +210,15 @@ router.post('/simple-update', async (req, res) => {
 
       // Pour chaque paramètre à mettre à jour
       for (const [key, value] of Object.entries(updates)) {
+        // Déterminer si value_ar doit être identique à value_fr
+        // (pour les horaires, capacité, téléphone, email - valeurs non traduisibles)
+        const sameValueKeys = [
+          'opening_time', 'closing_time',
+          'saturday_opening_time', 'saturday_closing_time',
+          'saturday_open', 'max_capacity', 'phone', 'email'
+        ];
+        const updateAr = sameValueKeys.includes(key);
+
         // Vérifier si le paramètre existe
         const existing = await client.query(
           'SELECT id FROM nursery_settings WHERE setting_key = $1',
@@ -216,19 +226,29 @@ router.post('/simple-update', async (req, res) => {
         );
 
         if (existing.rows.length > 0) {
-          // Mettre à jour
-          await client.query(
-            `UPDATE nursery_settings 
-             SET value_fr = $1, updated_at = CURRENT_TIMESTAMP
-             WHERE setting_key = $2`,
-            [value, key]
-          );
+          // Mettre à jour value_fr et value_ar si nécessaire
+          if (updateAr) {
+            await client.query(
+              `UPDATE nursery_settings 
+               SET value_fr = $1, value_ar = $1, updated_at = CURRENT_TIMESTAMP
+               WHERE setting_key = $2`,
+              [value, key]
+            );
+          } else {
+            await client.query(
+              `UPDATE nursery_settings 
+               SET value_fr = $1, updated_at = CURRENT_TIMESTAMP
+               WHERE setting_key = $2`,
+              [value, key]
+            );
+          }
         } else {
           // Créer si n'existe pas
+          const valueAr = updateAr ? value : null;
           await client.query(
-            `INSERT INTO nursery_settings (setting_key, value_fr, category, is_active) 
-             VALUES ($1, $2, 'general', true)`,
-            [key, value]
+            `INSERT INTO nursery_settings (setting_key, value_fr, value_ar, category, is_active) 
+             VALUES ($1, $2, $3, 'general', true)`,
+            [key, value, valueAr]
           );
         }
       }
