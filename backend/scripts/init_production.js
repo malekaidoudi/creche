@@ -47,6 +47,31 @@ async function initProduction() {
         await pool.query('SELECT NOW()');
         console.log('✅ Connexion réussie!\n');
 
+        // Supprimer les tables existantes si --reset est passé
+        if (process.argv.includes('--reset')) {
+            console.log('🗑️  Suppression des tables existantes...');
+            await pool.query('DROP TABLE IF EXISTS tasks CASCADE');
+            await pool.query('DROP TABLE IF EXISTS holidays CASCADE');
+            await pool.query('DROP TABLE IF EXISTS staff_messages CASCADE');
+            await pool.query('DROP TABLE IF EXISTS announcements CASCADE');
+            await pool.query('DROP TABLE IF EXISTS staff_age_assignments CASCADE');
+            await pool.query('DROP TABLE IF EXISTS daily_supplies_brought CASCADE');
+            await pool.query('DROP TABLE IF EXISTS child_supplies CASCADE');
+            await pool.query('DROP TABLE IF EXISTS daily_diaper_changes CASCADE');
+            await pool.query('DROP TABLE IF EXISTS daily_meals CASCADE');
+            await pool.query('DROP TABLE IF EXISTS daily_reports CASCADE');
+            await pool.query('DROP TABLE IF EXISTS notifications CASCADE');
+            await pool.query('DROP TABLE IF EXISTS absence_requests CASCADE');
+            await pool.query('DROP TABLE IF EXISTS appointments CASCADE');
+            await pool.query('DROP TABLE IF EXISTS attendance CASCADE');
+            await pool.query('DROP TABLE IF EXISTS enrollments CASCADE');
+            await pool.query('DROP TABLE IF EXISTS children CASCADE');
+            await pool.query('DROP TABLE IF EXISTS activity_logs CASCADE');
+            await pool.query('DROP TABLE IF EXISTS nursery_settings CASCADE');
+            await pool.query('DROP TABLE IF EXISTS users CASCADE');
+            console.log('✅ Tables supprimées!\n');
+        }
+
         // Créer les tables
         console.log('📦 Création des tables...');
         await createTables();
@@ -90,7 +115,7 @@ async function createTables() {
             last_name VARCHAR(100) NOT NULL,
             phone VARCHAR(20),
             role VARCHAR(20) DEFAULT 'parent' CHECK (role IN ('admin', 'staff', 'parent')),
-            avatar_url TEXT,
+            profile_image TEXT,
             is_active BOOLEAN DEFAULT true,
             email_verified BOOLEAN DEFAULT false,
             last_login TIMESTAMP,

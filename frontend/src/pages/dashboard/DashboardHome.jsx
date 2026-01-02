@@ -122,16 +122,35 @@ const DashboardHome = () => {
   useEffect(() => {
     const loadDashboardData = async () => {
       try {
-        // Charger les statistiques (simulées pour l'instant)
-        setStats({
-          totalChildren: 24,
-          presentToday: 18,
-          pendingEnrollments: 5,
-          maxCapacity: 30,
-          availablePlaces: 6,
-          attendanceRate: 85,
-          newEnrollmentsThisMonth: 3
-        });
+        // Charger les statistiques réelles depuis l'API
+        try {
+          const statsResponse = await api.get('/api/dashboard/stats');
+          if (statsResponse.data.success) {
+            setStats(statsResponse.data.stats);
+          } else {
+            // Valeurs par défaut si erreur
+            setStats({
+              totalChildren: 0,
+              presentToday: 0,
+              pendingEnrollments: 0,
+              maxCapacity: 30,
+              availablePlaces: 30,
+              attendanceRate: 0,
+              newEnrollmentsThisMonth: 0
+            });
+          }
+        } catch (statsError) {
+          console.log('📊 Erreur chargement stats, utilisation valeurs par défaut');
+          setStats({
+            totalChildren: 0,
+            presentToday: 0,
+            pendingEnrollments: 0,
+            maxCapacity: 30,
+            availablePlaces: 30,
+            attendanceRate: 0,
+            newEnrollmentsThisMonth: 0
+          });
+        }
 
         // Charger les activités récentes depuis le nouveau système de logging
         try {
