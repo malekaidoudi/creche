@@ -192,7 +192,7 @@ const PendingEnrollmentsPage = () => {
     try {
       // Utiliser cloudinary_url si disponible, sinon fallback
       const documentUrl = doc.cloudinary_url ||
-        `${import.meta.env.VITE_API_URL || 'https://creche-backend.onrender.com'}/uploads/enrollments/${doc.filename}`;
+        `${import.meta.env.VITE_API_URL || 'https://creche-backend-prod.onrender.com'}/uploads/enrollments/${doc.filename}`;
 
       // Télécharger le fichier
       const response = await fetch(documentUrl);
@@ -227,7 +227,7 @@ const PendingEnrollmentsPage = () => {
     try {
       // Utiliser cloudinary_url si disponible, sinon fallback
       const documentUrl = doc.cloudinary_url ||
-        `${import.meta.env.VITE_API_URL || 'https://creche-backend.onrender.com'}/uploads/enrollments/${doc.filename}`;
+        `${import.meta.env.VITE_API_URL || 'https://creche-backend-prod.onrender.com'}/uploads/enrollments/${doc.filename}`;
 
       // Ouvrir dans un nouvel onglet
       window.open(documentUrl, '_blank');

@@ -14,12 +14,12 @@ const PublicFooter = () => {
   useEffect(() => {
     const loadNurserySettings = async () => {
       try {
-        // Utiliser directement l'URL locale pour éviter les problèmes de cache
+        // Utiliser l'URL appropriée selon l'environnement
         const apiUrl = window.location.hostname === 'localhost' ||
           window.location.hostname === '127.0.0.1' ||
           window.location.hostname === '192.168.1.60'
           ? 'http://localhost:3003'
-          : 'https://creche-backend.onrender.com';
+          : 'https://creche-backend-prod.onrender.com';
 
         const response = await fetch(`${apiUrl}/api/contact/info`);
         const data = await response.json();
