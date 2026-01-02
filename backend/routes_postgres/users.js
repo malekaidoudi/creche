@@ -141,7 +141,7 @@ router.get('/', auth.authenticateToken, async (req, res) => {
 
     let sql = `
       SELECT id, email, first_name, last_name, phone, role, profile_image, 
-             is_active, created_at, updated_at
+             is_active, password_set, created_at, updated_at
       FROM users 
       WHERE 1=1
     `;

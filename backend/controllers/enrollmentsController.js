@@ -3,7 +3,8 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
-// Nouveau service d'e-mails avec Resend et templates
+const bcrypt = require('bcryptjs');
+// Nouveau service d'e-mails avec templates
 const emailService = require('../emails/emailService');
 // Utiliser Cloudinary pour stockage cloud (Render = système éphémère)
 const cloudinaryService = require('../services/cloudinaryService');
@@ -94,6 +95,7 @@ const enrollmentsController = {
   },
 
   // POST /api/enrollments/:id/approve - Approbation avec date RDV
+  // WORKFLOW: Crée le compte parent + RDV. Si RDV échoue, le compte sera supprimé.
   approveEnrollment: async (req, res) => {
     try {
       const { id } = req.params;
@@ -106,16 +108,68 @@ const enrollmentsController = {
         });
       }
 
-      // Générer un token pour la création du mot de passe
+      // Récupérer d'abord les infos du dossier
+      const enrollmentCheck = await db.query(
+        'SELECT * FROM enrollments WHERE id = $1',
+        [id]
+      );
+
+      if (enrollmentCheck.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: 'Dossier non trouvé'
+        });
+      }
+
+      const enrollmentData = enrollmentCheck.rows[0];
+
+      // Vérifier si l'email n'existe pas déjà dans users
+      const emailCheck = await db.query(
+        'SELECT id FROM users WHERE email = $1',
+        [enrollmentData.applicant_email]
+      );
+
+      if (emailCheck.rows.length > 0) {
+        return res.status(409).json({
+          success: false,
+          error: 'Un compte existe déjà avec cet email'
+        });
+      }
+
+      // Générer un token pour la création du mot de passe (7 jours)
       const passwordToken = crypto.randomBytes(32).toString('hex');
-      const tokenExpires = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48h
+      const tokenExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
       // ============================================================
-      // WORKFLOW: Dossier approuvé → status = 'in_progress'
-      // Le status passera à 'approved' uniquement après le RDV validé
+      // WORKFLOW: Dossier approuvé → Créer compte parent + RDV
+      // Si RDV échoue/annulé → Supprimer le compte parent
+      // Si RDV validé → Garder le compte parent
       // ============================================================
 
-      // 1. CRÉER LE RDV D'ABORD (pour avoir l'ID)
+      // 1. CRÉER LE COMPTE PARENT (sans mot de passe défini)
+      const tempPassword = await bcrypt.hash(crypto.randomBytes(16).toString('hex'), 10);
+
+      const userResult = await db.query(`
+        INSERT INTO users (
+          email, password, first_name, last_name, phone, role,
+          password_token, password_token_expires, password_set,
+          is_active, created_at
+        ) VALUES ($1, $2, $3, $4, $5, 'parent', $6, $7, false, true, NOW())
+        RETURNING id, email, first_name, last_name, phone, role
+      `, [
+        enrollmentData.applicant_email,
+        tempPassword,
+        enrollmentData.applicant_first_name || 'Parent',
+        enrollmentData.applicant_last_name || '',
+        enrollmentData.applicant_phone || '',
+        passwordToken,
+        tokenExpires
+      ]);
+
+      const newUser = userResult.rows[0];
+      console.log(`✅ Compte parent créé: ${newUser.email} (ID: ${newUser.id})`);
+
+      // 2. CRÉER LE RDV avec le parent_id
       const appointmentResult = await db.query(`
         INSERT INTO appointments (
           enrollment_id,
@@ -137,27 +191,27 @@ const enrollmentsController = {
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
         RETURNING *
       `, [
-        id,                                                                      // enrollment_id
-        null,                                                                    // parent_id (pas encore créé)
-        null,                                                                    // child_id (pas encore créé)
-        req.user.id,                                                             // created_by
-        `Rendez-vous d'inscription`,                                             // subject
-        `Rendez-vous pour finaliser l'inscription à la crèche.`,                 // description
-        appointment_date,                                                        // proposed_date
-        'proposed',                                                              // status (en attente de confirmation parent)
-        'Crèche Mima Elghalia',                                                  // location
-        'inscription',                                                           // appointment_type
-        null,                                                                    // parent_email (sera mis à jour après)
-        null,                                                                    // parent_phone
-        null,                                                                    // parent_first_name
-        null,                                                                    // parent_last_name
-        null,                                                                    // child_first_name
-        null                                                                     // child_last_name
+        id,
+        newUser.id,
+        null,
+        req.user.id,
+        `Rendez-vous d'inscription - ${enrollmentData.child_first_name}`,
+        `Rendez-vous pour finaliser l'inscription de ${enrollmentData.child_first_name} ${enrollmentData.child_last_name || ''} à la crèche.`,
+        appointment_date,
+        'proposed',
+        'Crèche Mima Elghalia',
+        'inscription',
+        enrollmentData.applicant_email,
+        enrollmentData.applicant_phone || '',
+        enrollmentData.applicant_first_name || 'Parent',
+        enrollmentData.applicant_last_name || '',
+        enrollmentData.child_first_name,
+        enrollmentData.child_last_name || ''
       ]);
 
       const appointmentId = appointmentResult.rows[0].id;
 
-      // 2. Mettre à jour le dossier avec status = 'in_progress' et lier le RDV
+      // 3. Mettre à jour le dossier avec status = 'in_progress', lier le RDV et le user créé
       const result = await db.query(`
         UPDATE enrollments 
         SET status = 'in_progress', 
@@ -167,36 +221,13 @@ const enrollmentsController = {
             password_token_expires = $3,
             processed_by = $1,
             processed_at = NOW(),
-            active_appointment_id = $4
-        WHERE id = $5
+            active_appointment_id = $4,
+            created_parent_user_id = $5
+        WHERE id = $6
         RETURNING *
-      `, [req.user.id, passwordToken, tokenExpires, appointmentId, id]);
+      `, [req.user.id, passwordToken, tokenExpires, appointmentId, newUser.id, id]);
 
       const enrollment = result.rows[0];
-
-      // 3. Mettre à jour le RDV avec les infos du dossier
-      await db.query(`
-        UPDATE appointments 
-        SET parent_email = $1,
-            parent_phone = $2,
-            parent_first_name = $3,
-            parent_last_name = $4,
-            child_first_name = $5,
-            child_last_name = $6,
-            subject = $7,
-            description = $8
-        WHERE id = $9
-      `, [
-        enrollment.applicant_email,
-        enrollment.applicant_phone || '',
-        enrollment.applicant_first_name || 'Parent',
-        enrollment.applicant_last_name || '',
-        enrollment.child_first_name,
-        enrollment.child_last_name || '',
-        `Rendez-vous d'inscription - ${enrollment.child_first_name}`,
-        `Rendez-vous pour finaliser l'inscription de ${enrollment.child_first_name} ${enrollment.child_last_name || ''} à la crèche.`,
-        appointmentId
-      ]);
 
       console.log(`✅ RDV créé dans appointments: ID ${appointmentId} pour inscription #${id}`);
       console.log(`📋 Dossier #${id} passé en status 'in_progress' (en attente du RDV)`);

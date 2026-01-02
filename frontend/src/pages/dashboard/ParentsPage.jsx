@@ -16,7 +16,11 @@ import {
   UserX,
   Eye,
   ChevronDown,
-  BarChart3
+  BarChart3,
+  RefreshCw,
+  KeyRound,
+  Copy,
+  Check
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useAuth } from '../../hooks/useAuth';
@@ -26,6 +30,7 @@ import { Button } from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { useDialogContext } from '../../contexts/DialogContext';
 import api from '../../services/api';
+import userWorkflowService from '../../services/userWorkflowService';
 import { TableToListAdapter } from '../../components/mobile/adapters';
 import MobileNavigation from '../../components/mobile/MobileNavigation';
 import MobileHeader from '../../components/mobile/MobileHeader';
@@ -43,74 +48,75 @@ const ParentsPage = () => {
   const [selectedParent, setSelectedParent] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
   const [statsExpanded, setStatsExpanded] = useState(false);
+  const [resendingLink, setResendingLink] = useState(false);
+  const [generatedLink, setGeneratedLink] = useState(null);
+  const [linkCopied, setLinkCopied] = useState(false);
 
-  // Données simulées pour les parents
+  // Charger les parents depuis l'API
   useEffect(() => {
     const loadParents = async () => {
       try {
-        // Simulation d'appel API
-        setTimeout(() => {
-          const mockParents = [
-            {
-              id: 1,
-              first_name: 'Ahmed',
-              last_name: 'Ben Ali',
-              email: 'ahmed.benali@email.com',
-              phone: '+216 25 123 456',
-              status: 'active',
-              children_count: 2,
-              registration_date: '2024-01-15',
-              last_login: '2024-10-20',
-              children: ['Lina Ben Ali', 'Omar Ben Ali']
-            },
-            {
-              id: 2,
-              first_name: 'Fatma',
-              last_name: 'Trabelsi',
-              email: 'fatma.trabelsi@email.com',
-              phone: '+216 22 987 654',
-              status: 'active',
-              children_count: 1,
-              registration_date: '2024-02-20',
-              last_login: '2024-10-22',
-              children: ['Youssef Trabelsi']
-            },
-            {
-              id: 3,
-              first_name: 'Mohamed',
-              last_name: 'Khelifi',
-              email: 'mohamed.khelifi@email.com',
-              phone: '+216 28 456 789',
-              status: 'inactive',
-              children_count: 1,
-              registration_date: '2024-03-10',
-              last_login: '2024-09-15',
-              children: ['Amina Khelifi']
-            },
-            {
-              id: 4,
-              first_name: 'Amel',
-              last_name: 'Sassi',
-              email: 'amel.sassi@email.com',
-              phone: '+216 26 321 987',
-              status: 'active',
-              children_count: 3,
-              registration_date: '2023-12-05',
-              last_login: '2024-10-21',
-              children: ['Sarra Sassi', 'Khalil Sassi', 'Nour Sassi']
-            }
-          ];
-          setParents(mockParents);
-          setLoading(false);
-        }, 1000);
+        setLoading(true);
+
+        // Récupérer les utilisateurs avec le rôle 'parent'
+        const response = await api.get('/api/users', { params: { role: 'parent', active: 'true' } });
+
+        if (response.data.success && response.data.users) {
+          // Récupérer les enfants pour chaque parent
+          const parentsWithChildren = await Promise.all(
+            response.data.users.map(async (user) => {
+              try {
+                // Récupérer les enfants associés à ce parent
+                const childrenResponse = await api.get(`/api/children`, { params: { parent_id: user.id } });
+                const children = childrenResponse.data.success ? childrenResponse.data.children : [];
+
+                return {
+                  id: user.id,
+                  first_name: user.first_name,
+                  last_name: user.last_name,
+                  email: user.email,
+                  phone: user.phone || '',
+                  status: user.is_active ? 'active' : 'inactive',
+                  password_set: user.password_set,
+                  children_count: children.length,
+                  registration_date: user.created_at?.split('T')[0] || '',
+                  last_login: user.updated_at?.split('T')[0] || '',
+                  children: children.map(c => `${c.first_name} ${c.last_name}`)
+                };
+              } catch (childError) {
+                console.error(`Erreur chargement enfants pour parent ${user.id}:`, childError);
+                return {
+                  id: user.id,
+                  first_name: user.first_name,
+                  last_name: user.last_name,
+                  email: user.email,
+                  phone: user.phone || '',
+                  status: user.is_active ? 'active' : 'inactive',
+                  password_set: user.password_set,
+                  children_count: 0,
+                  registration_date: user.created_at?.split('T')[0] || '',
+                  last_login: user.updated_at?.split('T')[0] || '',
+                  children: []
+                };
+              }
+            })
+          );
+
+          setParents(parentsWithChildren);
+        } else {
+          setParents([]);
+        }
       } catch (error) {
         console.error('Erreur chargement parents:', error);
+        dialog.error(isRTL ? 'خطأ في تحميل الأولياء' : 'Erreur lors du chargement des parents');
+        setParents([]);
+      } finally {
         setLoading(false);
       }
     };
 
     loadParents();
-  }, []);
+  }, [isRTL]);
 
   const filteredParents = parents.filter(parent => {
     const matchesSearch =
@@ -126,6 +132,8 @@ const ParentsPage = () => {
   const handleViewDetails = (parent) => {
     setSelectedParent(parent);
     setShowDetails(true);
+    setGeneratedLink(null);
+    setLinkCopied(false);
   };
 
   const handleStatusToggle = (parentId) => {
@@ -147,11 +155,10 @@ const ParentsPage = () => {
     if (!confirmed) return;
 
     try {
-      // Simulation d'appel API
-      setTimeout(() => {
-        setParents(prev => prev.filter(parent => parent.id !== parentId));
-        dialog.success(isRTL ? 'تم حذف الولي بنجاح' : 'Parent supprimé avec succès');
-      }, 1000);
+      // Appel API réel pour supprimer le parent
+      await api.delete(`/api/users/${parentId}`);
+      setParents(prev => prev.filter(parent => parent.id !== parentId));
+      dialog.success(isRTL ? 'تم حذف الولي بنجاح' : 'Parent supprimé avec succès');
     } catch (error) {
       console.error('Erreur suppression:', error);
       dialog.error(isRTL ? 'خطأ في الحذف' : 'Erreur lors de la suppression');
@@ -175,6 +182,45 @@ const ParentsPage = () => {
     document.body.removeChild(link);
 
     dialog.success(isRTL ? 'تم تصدير قائمة الأولياء' : 'Liste des parents exportée');
+  };
+
+  // Renvoyer le lien de création de mot de passe
+  const handleResendPasswordLink = async (parentId) => {
+    try {
+      setResendingLink(true);
+      setGeneratedLink(null);
+      setLinkCopied(false);
+
+      const result = await userWorkflowService.resendPasswordLink(parentId);
+
+      if (result.success) {
+        setGeneratedLink(result.passwordLink);
+        dialog.success(isRTL ? 'تم إرسال رابط جديد بنجاح' : 'Nouveau lien envoyé avec succès');
+      } else {
+        dialog.error(result.error || (isRTL ? 'خطأ في إرسال الرابط' : 'Erreur lors de l\'envoi du lien'));
+      }
+    } catch (error) {
+      console.error('Erreur renvoi lien:', error);
+      const errorMessage = error.error || error.message || (isRTL ? 'خطأ في إرسال الرابط' : 'Erreur lors de l\'envoi du lien');
+      dialog.error(errorMessage);
+    } finally {
+      setResendingLink(false);
+    }
+  };
+
+  // Copier le lien dans le presse-papier
+  const handleCopyLink = async () => {
+    if (generatedLink) {
+      try {
+        await navigator.clipboard.writeText(generatedLink);
+        setLinkCopied(true);
+        dialog.success(isRTL ? 'تم نسخ الرابط' : 'Lien copié dans le presse-papier');
+        setTimeout(() => setLinkCopied(false), 3000);
+      } catch (error) {
+        console.error('Erreur copie:', error);
+        dialog.error(isRTL ? 'خطأ في النسخ' : 'Erreur lors de la copie');
+      }
+    }
   };
 
   // Colonnes pour TableToListAdapter
@@ -789,7 +835,70 @@ const ParentsPage = () => {
 
                 {isAdmin() && (
                   <>
+                    {/* Bouton Renvoyer le lien - visible si mot de passe non défini */}
+                    {!selectedParent.password_set && (
+                      <div className="mb-3 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                        <div className="flex items-center gap-2 mb-2">
+                          <KeyRound className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                          <span className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                            {isRTL ? 'كلمة المرور غير محددة' : 'Mot de passe non défini'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-amber-700 dark:text-amber-400 mb-3">
+                          {isRTL
+                            ? 'هذا الولي لم يحدد كلمة المرور بعد. يمكنك إعادة إرسال رابط الإنشاء.'
+                            : 'Ce parent n\'a pas encore défini son mot de passe. Vous pouvez renvoyer le lien de création.'}
+                        </p>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleResendPasswordLink(selectedParent.id)}
+                          disabled={resendingLink}
+                          className="w-full justify-center bg-amber-100 hover:bg-amber-200 dark:bg-amber-800 dark:hover:bg-amber-700 border-amber-300 dark:border-amber-600"
+                        >
+                          {resendingLink ? (
+                            <>
+                              <RefreshCw className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2 animate-spin" />
+                              {isRTL ? 'جاري الإرسال...' : 'Envoi en cours...'}
+                            </>
+                          ) : (
+                            <>
+                              <Mail className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                              {isRTL ? 'إعادة إرسال رابط كلمة المرور' : 'Renvoyer le lien de mot de passe'}
+                            </>
+                          )}
+                        </Button>
 
+                        {/* Afficher le lien généré avec option de copie */}
+                        {generatedLink && (
+                          <div className="mt-3 p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+                            <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
+                              {isRTL ? 'الرابط المُنشأ (صالح لمدة 7 أيام):' : 'Lien généré (valide 7 jours) :'}
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={generatedLink}
+                                readOnly
+                                className="flex-1 text-xs p-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded truncate"
+                              />
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={handleCopyLink}
+                                className="shrink-0"
+                              >
+                                {linkCopied ? (
+                                  <Check className="w-4 h-4 text-green-500" />
+                                ) : (
+                                  <Copy className="w-4 h-4" />
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     <Button
                       size="sm"

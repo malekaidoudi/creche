@@ -27,6 +27,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Ca
 import { Button } from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { useDialogContext } from '../../contexts/DialogContext';
+import api from '../../services/api';
 import { TableToListAdapter } from '../../components/mobile/adapters';
 import MobileNavigation from '../../components/mobile/MobileNavigation';
 import MobileHeader from '../../components/mobile/MobileHeader';
@@ -45,76 +46,44 @@ const StaffPage = () => {
   const [showDetails, setShowDetails] = useState(false);
   const [statsExpanded, setStatsExpanded] = useState(false);
 
-  // Données simulées pour le personnel
+  // Charger le personnel depuis l'API
   useEffect(() => {
     const loadStaff = async () => {
       try {
-        setTimeout(() => {
-          const mockStaff = [
-            {
-              id: 1,
-              first_name: 'Sarah',
-              last_name: 'Benali',
-              email: 'sarah.benali@mimaelghalia.tn',
-              phone: '+216 25 111 222',
-              role: 'admin',
-              status: 'active',
-              hire_date: '2023-01-15',
-              last_login: '2024-10-22',
-              department: 'Administration',
-              experience_years: 5,
-              specialization: 'Gestion pédagogique'
-            },
-            {
-              id: 2,
-              first_name: 'Amina',
-              last_name: 'Khelifi',
-              email: 'amina.khelifi@mimaelghalia.tn',
-              phone: '+216 22 333 444',
-              role: 'staff',
-              status: 'active',
-              hire_date: '2023-03-20',
-              last_login: '2024-10-22',
-              department: 'Éducation',
-              experience_years: 3,
-              specialization: 'Petite enfance'
-            },
-            {
-              id: 3,
-              first_name: 'Fatma',
-              last_name: 'Trabelsi',
-              email: 'fatma.trabelsi@mimaelghalia.tn',
-              phone: '+216 28 555 666',
-              role: 'staff',
-              status: 'active',
-              hire_date: '2023-06-10',
-              last_login: '2024-10-21',
-              department: 'Soins',
-              experience_years: 4,
-              specialization: 'Soins infirmiers'
-            },
-            {
-              id: 4,
-              first_name: 'Mohamed',
-              last_name: 'Sassi',
-              email: 'mohamed.sassi@mimaelghalia.tn',
-              phone: '+216 26 777 888',
-              role: 'staff',
-              status: 'inactive',
-              hire_date: '2023-09-05',
-              last_login: '2024-09-30',
-              department: 'Sécurité',
-              experience_years: 2,
-              specialization: 'Surveillance'
-            }
-          ];
-          setStaff(mockStaff);
-          setLoading(false);
-        }, 1000);
+        setLoading(true);
+
+        // Récupérer les utilisateurs avec les rôles 'admin' et 'staff'
+        const [adminResponse, staffResponse] = await Promise.all([
+          api.get('/api/users', { params: { role: 'admin' } }),
+          api.get('/api/users', { params: { role: 'staff' } })
+        ]);
+
+        const admins = adminResponse.data.success ? adminResponse.data.users : [];
+        const staffMembers = staffResponse.data.success ? staffResponse.data.users : [];
+
+        // Combiner et formater les données
+        const allStaff = [...admins, ...staffMembers].map(user => ({
+          id: user.id,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          email: user.email,
+          phone: user.phone || '',
+          role: user.role,
+          status: user.is_active ? 'active' : 'inactive',
+          hire_date: user.created_at?.split('T')[0] || '',
+          last_login: user.updated_at?.split('T')[0] || '',
+          department: user.role === 'admin' ? 'Administration' : 'Éducation',
+          experience_years: 0,
+          specialization: ''
+        }));
+
+        setStaff(allStaff);
       } catch (error) {
         console.error('Erreur chargement personnel:', error);
-        setLoading(false);
         dialog.error(isRTL ? 'خطأ في تحميل البيانات' : 'Erreur lors du chargement');
+        setStaff([]);
+      } finally {
+        setLoading(false);
       }
     };
 

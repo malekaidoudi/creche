@@ -409,33 +409,101 @@ exports.completeAppointment = async (req, res) => {
 /**
  * Staff annule le RDV
  * POST /api/appointments/:id/cancel
+ * 
+ * WORKFLOW pour RDV d'inscription (premier RDV):
+ * - Annuler le RDV
+ * - Supprimer le compte parent créé lors de l'approbation
+ * - Archiver et supprimer l'inscription
  */
 exports.cancelAppointment = async (req, res) => {
     try {
         const { id } = req.params;
         const { reason } = req.body;
 
-        const result = await db.query(`
-      UPDATE appointments
-      SET 
-        status = 'cancelled',
-        staff_notes = COALESCE($2, staff_notes),
-        updated_at = NOW()
-      WHERE id = $1
-      RETURNING *
-    `, [id, reason]);
+        // 1. Récupérer le RDV avec les infos de l'inscription
+        const appointmentCheck = await db.query(`
+            SELECT a.*, 
+                   e.id as enrollment_id, e.created_parent_user_id,
+                   e.applicant_first_name, e.applicant_last_name, e.applicant_email,
+                   e.child_first_name, e.child_last_name
+            FROM appointments a
+            LEFT JOIN enrollments e ON a.enrollment_id = e.id
+            WHERE a.id = $1
+        `, [id]);
 
-        if (result.rows.length === 0) {
+        if (appointmentCheck.rows.length === 0) {
             return res.status(404).json({
                 success: false,
                 error: 'Rendez-vous non trouvé'
             });
         }
 
+        const appointment = appointmentCheck.rows[0];
+
+        // 2. Annuler le RDV
+        await db.query(`
+            UPDATE appointments
+            SET 
+                status = 'cancelled',
+                staff_notes = COALESCE($2, staff_notes),
+                updated_at = NOW()
+            WHERE id = $1
+        `, [id, reason]);
+
+        let parentDeleted = false;
+        let enrollmentArchived = false;
+
+        // 3. Si c'est un RDV d'inscription (premier RDV), supprimer le compte parent et archiver l'inscription
+        if (appointment.enrollment_id && appointment.appointment_type === 'inscription') {
+
+            // Supprimer le compte parent s'il a été créé
+            if (appointment.created_parent_user_id) {
+                try {
+                    const userCheck = await db.query(`
+                        SELECT id, email, role FROM users WHERE id = $1 AND role = 'parent'
+                    `, [appointment.created_parent_user_id]);
+
+                    if (userCheck.rows.length > 0) {
+                        await db.query(`DELETE FROM users WHERE id = $1`, [appointment.created_parent_user_id]);
+                        parentDeleted = true;
+                        console.log(`🗑️ Compte parent #${appointment.created_parent_user_id} supprimé (RDV annulé)`);
+                    }
+                } catch (deleteError) {
+                    console.error('⚠️ Erreur suppression compte parent:', deleteError);
+                }
+            }
+
+            // Archiver l'inscription
+            try {
+                await db.query(`
+                    INSERT INTO enrollments_archive (
+                        id, status, created_at, updated_at, applicant_first_name,
+                        applicant_last_name, applicant_email, new_status, admin_notes
+                    ) VALUES ($1, 'cancelled', NOW(), NOW(), $2, $3, $4, 'cancelled', $5)
+                `, [
+                    appointment.enrollment_id,
+                    appointment.applicant_first_name,
+                    appointment.applicant_last_name,
+                    appointment.applicant_email,
+                    reason || 'RDV annulé par le staff'
+                ]);
+
+                await db.query(`DELETE FROM enrollments WHERE id = $1`, [appointment.enrollment_id]);
+                enrollmentArchived = true;
+                console.log(`📦 Inscription #${appointment.enrollment_id} archivée et supprimée (RDV annulé)`);
+            } catch (archiveError) {
+                console.error('⚠️ Erreur archivage inscription:', archiveError);
+            }
+        }
+
         res.json({
             success: true,
-            message: 'Rendez-vous annulé',
-            appointment: result.rows[0]
+            message: 'Rendez-vous annulé' +
+                (parentDeleted ? ' - Compte parent supprimé' : '') +
+                (enrollmentArchived ? ' - Inscription archivée' : ''),
+            appointment: { id: parseInt(id), status: 'cancelled' },
+            parent_deleted: parentDeleted,
+            enrollment_archived: enrollmentArchived
         });
 
     } catch (error) {
