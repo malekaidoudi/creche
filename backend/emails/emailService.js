@@ -351,7 +351,8 @@ class EmailService {
 
   /**
    * Envoyer un message de contact à l'équipe
-   * Récupère l'email de contact depuis nursery_settings (contact_email)
+   * Utilise SMTP Hostinger en priorité (plus fiable pour emails internes)
+   * Fallback vers Resend si SMTP échoue
    */
   async sendContactMessage(contactData) {
     const timestamp = new Date().toLocaleDateString('fr-FR', {
@@ -363,7 +364,7 @@ class EmailService {
     });
 
     // Récupérer l'email de contact depuis la base de données
-    let contactEmail = 'contact@mima-elghalia.com'; // Valeur par défaut
+    let contactEmail = 'contact@mima-elghalia.com';
     try {
       const result = await db.query(
         "SELECT value_fr FROM nursery_settings WHERE setting_key = 'contact_email' AND is_active = true"
@@ -372,13 +373,17 @@ class EmailService {
         contactEmail = result.rows[0].value_fr;
       }
     } catch (err) {
-      console.warn('⚠️ Impossible de récupérer contact_email depuis settings, utilisation valeur par défaut');
+      console.warn('⚠️ Impossible de récupérer contact_email depuis settings');
     }
 
     console.log(`📧 Envoi message contact vers: ${contactEmail}`);
 
-    // Envoyer à l'équipe de la crèche
-    return this.sendEmail('CONTACT_MESSAGE', contactEmail, {
+    // Charger le template
+    const config = EMAIL_TYPES.CONTACT_MESSAGE;
+    const contactDataForEmail = await this.getContactData();
+    const template = await this.loadTemplate(config.template);
+    const htmlContent = this.replaceVariables(template, {
+      ...contactDataForEmail,
       sender_name: contactData.name,
       sender_email: contactData.email,
       sender_phone: contactData.phone || null,
@@ -386,6 +391,66 @@ class EmailService {
       message: contactData.message,
       timestamp: timestamp
     });
+
+    const emailData = {
+      from: `Crèche Mima Elghalia <${config.from}>`,
+      to: contactEmail,
+      subject: `${contactData.subject || 'Nouveau message'} - Contact`,
+      html: htmlContent
+    };
+
+    let emailId = null;
+    let usedSmtp = false;
+
+    // Priorité 1: SMTP Hostinger (plus fiable pour emails vers Hostinger)
+    if (smtpTransporter) {
+      console.log('📧 Tentative envoi via SMTP Hostinger...');
+      try {
+        const smtpResult = await smtpTransporter.sendMail(emailData);
+        emailId = smtpResult.messageId;
+        usedSmtp = true;
+        console.log(`✅ Email contact envoyé via SMTP Hostinger (ID: ${emailId})`);
+      } catch (smtpError) {
+        console.warn(`⚠️ SMTP Hostinger a échoué: ${smtpError.message}`);
+        // Fallback vers Resend
+        try {
+          const response = await resend.emails.send(emailData);
+          emailId = response.data?.id || response.id;
+          console.log(`✅ Email contact envoyé via Resend (fallback) (ID: ${emailId})`);
+        } catch (resendError) {
+          console.error(`❌ Resend a aussi échoué: ${resendError.message}`);
+          throw new Error(`SMTP: ${smtpError.message} | Resend: ${resendError.message}`);
+        }
+      }
+    } else {
+      // Pas de SMTP configuré, utiliser Resend
+      console.log('📧 SMTP non configuré, envoi via Resend...');
+      try {
+        const response = await resend.emails.send(emailData);
+        emailId = response.data?.id || response.id;
+        console.log(`✅ Email contact envoyé via Resend (ID: ${emailId})`);
+      } catch (resendError) {
+        console.error(`❌ Resend a échoué: ${resendError.message}`);
+        throw resendError;
+      }
+    }
+
+    // Log l'envoi
+    await this.logEmail({
+      type: config.type,
+      to: contactEmail,
+      from: config.from,
+      subject: emailData.subject,
+      status: EMAIL_STATUS.SENT,
+      resendId: emailId,
+      metadata: { ...contactData, timestamp, usedSmtp }
+    });
+
+    return {
+      success: true,
+      messageId: emailId,
+      usedSmtp
+    };
   }
 
   /**
