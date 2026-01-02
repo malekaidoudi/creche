@@ -262,8 +262,8 @@ const MailboxPage = () => {
                                     key={f.value}
                                     onClick={() => setFilter(f.value)}
                                     className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${filter === f.value
-                                            ? 'bg-primary-500 text-white'
-                                            : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                                        ? 'bg-primary-500 text-white'
+                                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                                         }`}
                                 >
                                     <f.icon className="w-4 h-4" />
@@ -406,10 +406,12 @@ const MailboxPage = () => {
                                         setShowReplyModal(true);
                                     }}
                                     className="gap-2"
-                                    disabled={selectedMessage.status === 'responded'}
                                 >
                                     <Reply className="w-4 h-4" />
-                                    {isRTL ? 'رد' : 'Répondre'}
+                                    {selectedMessage.status === 'responded'
+                                        ? (isRTL ? 'رد مرة أخرى' : 'Répondre à nouveau')
+                                        : (isRTL ? 'رد' : 'Répondre')
+                                    }
                                 </Button>
                                 <Button
                                     variant="outline"
