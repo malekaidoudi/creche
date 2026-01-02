@@ -182,34 +182,42 @@ class EmailService {
       console.log(`📧 Envoi email ${emailType} vers ${recipient}...`);
 
       let emailId = null;
-      let usedFallback = false;
+      let usedSmtp = false;
 
-      // Essayer d'abord avec Resend
-      try {
-        const response = await resend.emails.send(emailData);
-        emailId = response.data?.id || response.id;
-        console.log(`✅ Email envoyé via Resend (ID: ${emailId})`);
-      } catch (resendError) {
-        console.warn(`⚠️ Resend a échoué: ${resendError.message}`);
-
-        // Fallback vers SMTP Hostinger si configuré
-        if (smtpTransporter) {
-          console.log('🔄 Tentative avec SMTP Hostinger...');
+      // Priorité 1: SMTP Hostinger (plus fiable pour emails vers Hostinger)
+      if (smtpTransporter) {
+        console.log('📧 Tentative envoi via SMTP Hostinger...');
+        try {
+          const smtpResult = await smtpTransporter.sendMail({
+            from: emailData.from,
+            to: emailData.to,
+            subject: emailData.subject,
+            html: emailData.html
+          });
+          emailId = smtpResult.messageId;
+          usedSmtp = true;
+          console.log(`✅ Email envoyé via SMTP Hostinger (ID: ${emailId})`);
+        } catch (smtpError) {
+          console.warn(`⚠️ SMTP Hostinger a échoué: ${smtpError.message}`);
+          // Fallback vers Resend
           try {
-            const smtpResult = await smtpTransporter.sendMail({
-              from: emailData.from,
-              to: emailData.to,
-              subject: emailData.subject,
-              html: emailData.html
-            });
-            emailId = smtpResult.messageId;
-            usedFallback = true;
-            console.log(`✅ Email envoyé via SMTP Hostinger (ID: ${emailId})`);
-          } catch (smtpError) {
-            console.error(`❌ SMTP Hostinger a aussi échoué: ${smtpError.message}`);
-            throw new Error(`Resend: ${resendError.message} | SMTP: ${smtpError.message}`);
+            const response = await resend.emails.send(emailData);
+            emailId = response.data?.id || response.id;
+            console.log(`✅ Email envoyé via Resend (fallback) (ID: ${emailId})`);
+          } catch (resendError) {
+            console.error(`❌ Resend a aussi échoué: ${resendError.message}`);
+            throw new Error(`SMTP: ${smtpError.message} | Resend: ${resendError.message}`);
           }
-        } else {
+        }
+      } else {
+        // Pas de SMTP configuré, utiliser Resend
+        console.log('📧 SMTP non configuré, envoi via Resend...');
+        try {
+          const response = await resend.emails.send(emailData);
+          emailId = response.data?.id || response.id;
+          console.log(`✅ Email envoyé via Resend (ID: ${emailId})`);
+        } catch (resendError) {
+          console.error(`❌ Resend a échoué: ${resendError.message}`);
           throw resendError;
         }
       }
@@ -222,14 +230,14 @@ class EmailService {
         subject: emailData.subject,
         status: EMAIL_STATUS.SENT,
         resendId: emailId,
-        metadata: { ...variables, usedFallback }
+        metadata: { ...variables, usedSmtp }
       });
 
       return {
         success: true,
         messageId: emailId,
         type: emailType,
-        usedFallback
+        usedSmtp
       };
 
     } catch (error) {
