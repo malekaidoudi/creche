@@ -1,37 +1,48 @@
 /**
  * Service d'envoi d'emails pour les événements
- * Utilise Resend configuré avec le domaine mima-elghalia.com
+ * Utilise SMTP Hostinger
  */
 
-const { Resend } = require('resend');
+const nodemailer = require('nodemailer');
 
-// Initialiser Resend avec la clé API depuis les variables d'environnement
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Initialiser SMTP Hostinger
+let smtpTransporter = null;
+if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+  smtpTransporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: parseInt(process.env.SMTP_PORT) || 465,
+    secure: process.env.SMTP_SECURE === 'true',
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS
+    }
+  });
+}
 
 /**
  * Envoyer un email de rappel d'événement
  */
 async function sendEventReminder(event, user, reminderOffset) {
   try {
+    if (!smtpTransporter) {
+      console.warn('⚠️ SMTP non configuré, email rappel non envoyé');
+      return { success: false, error: 'SMTP non configuré' };
+    }
+
     const offsetText = formatOffset(reminderOffset);
-    
-    const { data, error } = await resend.emails.send({
-      from: 'Crèche Mima Elghalia <notifications@mima-elghalia.com>',
-      to: [user.email],
+
+    const result = await smtpTransporter.sendMail({
+      from: 'Crèche Mima Elghalia <contact@mima-elghalia.com>',
+      to: user.email,
       subject: `Rappel: ${event.title} - ${offsetText}`,
       html: generateReminderEmailHTML(event, user, offsetText),
     });
 
-    if (error) {
-      console.error('❌ Erreur envoi email rappel:', error);
-      throw error;
-    }
+    console.log('✅ Email rappel envoyé via SMTP:', result.messageId);
+    return { success: true, messageId: result.messageId };
 
-    console.log('✅ Email rappel envoyé:', data.id);
-    return { success: true, messageId: data.id };
-    
   } catch (error) {
-    console.error('❌ Erreur sendEventReminder:', error);
+    console.error('❌ Erreur sendEventReminder:', error.message);
     return { success: false, error: error.message };
   }
 }
@@ -41,23 +52,23 @@ async function sendEventReminder(event, user, reminderOffset) {
  */
 async function sendEventAssigned(event, assignedUser, creatorUser) {
   try {
-    const { data, error } = await resend.emails.send({
-      from: 'Crèche Mima Elghalia <notifications@mima-elghalia.com>',
-      to: [assignedUser.email],
+    if (!smtpTransporter) {
+      console.warn('⚠️ SMTP non configuré, email assignation non envoyé');
+      return { success: false, error: 'SMTP non configuré' };
+    }
+
+    const result = await smtpTransporter.sendMail({
+      from: 'Crèche Mima Elghalia <contact@mima-elghalia.com>',
+      to: assignedUser.email,
       subject: `Nouvelle tâche assignée: ${event.title}`,
       html: generateAssignedEmailHTML(event, assignedUser, creatorUser),
     });
 
-    if (error) {
-      console.error('❌ Erreur envoi email assignation:', error);
-      throw error;
-    }
+    console.log('✅ Email assignation envoyé via SMTP:', result.messageId);
+    return { success: true, messageId: result.messageId };
 
-    console.log('✅ Email assignation envoyé:', data.id);
-    return { success: true, messageId: data.id };
-    
   } catch (error) {
-    console.error('❌ Erreur sendEventAssigned:', error);
+    console.error('❌ Erreur sendEventAssigned:', error.message);
     return { success: false, error: error.message };
   }
 }
@@ -67,23 +78,23 @@ async function sendEventAssigned(event, assignedUser, creatorUser) {
  */
 async function sendEventOverdue(event, user) {
   try {
-    const { data, error } = await resend.emails.send({
-      from: 'Crèche Mima Elghalia <notifications@mima-elghalia.com>',
-      to: [user.email],
+    if (!smtpTransporter) {
+      console.warn('⚠️ SMTP non configuré, email retard non envoyé');
+      return { success: false, error: 'SMTP non configuré' };
+    }
+
+    const result = await smtpTransporter.sendMail({
+      from: 'Crèche Mima Elghalia <contact@mima-elghalia.com>',
+      to: user.email,
       subject: `⚠️ Événement en retard: ${event.title}`,
       html: generateOverdueEmailHTML(event, user),
     });
 
-    if (error) {
-      console.error('❌ Erreur envoi email retard:', error);
-      throw error;
-    }
+    console.log('✅ Email retard envoyé via SMTP:', result.messageId);
+    return { success: true, messageId: result.messageId };
 
-    console.log('✅ Email retard envoyé:', data.id);
-    return { success: true, messageId: data.id };
-    
   } catch (error) {
-    console.error('❌ Erreur sendEventOverdue:', error);
+    console.error('❌ Erreur sendEventOverdue:', error.message);
     return { success: false, error: error.message };
   }
 }
@@ -93,25 +104,25 @@ async function sendEventOverdue(event, user) {
  */
 async function sendBirthdayReminder(child, users, daysUntil) {
   try {
-    const emails = users.map(u => u.email);
-    
-    const { data, error } = await resend.emails.send({
-      from: 'Crèche Mima Elghalia <notifications@mima-elghalia.com>',
+    if (!smtpTransporter) {
+      console.warn('⚠️ SMTP non configuré, email anniversaire non envoyé');
+      return { success: false, error: 'SMTP non configuré' };
+    }
+
+    const emails = users.map(u => u.email).join(', ');
+
+    const result = await smtpTransporter.sendMail({
+      from: 'Crèche Mima Elghalia <contact@mima-elghalia.com>',
       to: emails,
       subject: `🎂 Anniversaire de ${child.first_name} dans ${daysUntil} jours`,
       html: generateBirthdayEmailHTML(child, daysUntil),
     });
 
-    if (error) {
-      console.error('❌ Erreur envoi email anniversaire:', error);
-      throw error;
-    }
+    console.log('✅ Email anniversaire envoyé via SMTP:', result.messageId);
+    return { success: true, messageId: result.messageId };
 
-    console.log('✅ Email anniversaire envoyé:', data.id);
-    return { success: true, messageId: data.id };
-    
   } catch (error) {
-    console.error('❌ Erreur sendBirthdayReminder:', error);
+    console.error('❌ Erreur sendBirthdayReminder:', error.message);
     return { success: false, error: error.message };
   }
 }
@@ -187,7 +198,7 @@ function generateReminderEmailHTML(event, user, offsetText) {
   const priorityLabel = getPriorityLabel(event.priority);
   const priorityColor = getPriorityColor(event.priority);
   const dateFormatted = formatDate(event.start_date);
-  
+
   return `
 <!DOCTYPE html>
 <html>
@@ -259,7 +270,7 @@ function generateAssignedEmailHTML(event, assignedUser, creatorUser) {
   const priorityLabel = getPriorityLabel(event.priority);
   const priorityColor = getPriorityColor(event.priority);
   const dateFormatted = formatDate(event.start_date);
-  
+
   return `
 <!DOCTYPE html>
 <html>
@@ -322,7 +333,7 @@ function generateAssignedEmailHTML(event, assignedUser, creatorUser) {
 function generateOverdueEmailHTML(event, user) {
   const typeLabel = getEventTypeLabel(event.type);
   const dateFormatted = formatDate(event.end_date || event.start_date);
-  
+
   return `
 <!DOCTYPE html>
 <html>
@@ -384,7 +395,7 @@ function generateOverdueEmailHTML(event, user) {
 function generateBirthdayEmailHTML(child, daysUntil) {
   const birthDate = new Date(child.birth_date);
   const age = new Date().getFullYear() - birthDate.getFullYear();
-  
+
   return `
 <!DOCTYPE html>
 <html>
