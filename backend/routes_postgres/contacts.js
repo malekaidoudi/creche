@@ -44,7 +44,7 @@ router.post('/', [
       const admins = await db.query("SELECT id FROM users WHERE role = 'admin' AND is_active = true");
       for (const admin of admins.rows) {
         await db.query(`
-          INSERT INTO notifications (user_id, type, title, message, data, created_at)
+          INSERT INTO notifications (user_id, type, title, message, metadata, created_at)
           VALUES ($1, 'contact_message', $2, $3, $4, NOW())
         `, [
           admin.id,
