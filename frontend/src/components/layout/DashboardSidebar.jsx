@@ -21,7 +21,8 @@ import {
   User,
   MessageSquare,
   Image,
-  Activity
+  Activity,
+  Mail
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -82,6 +83,13 @@ const DashboardSidebar = ({ isOpen, onClose, onCollapsedChange }) => {
       icon: MessageSquare,
       path: '/dashboard/messages',
       roles: ['admin', 'staff']
+    },
+    {
+      key: 'mailbox',
+      title: isRTL ? 'البريد' : 'Courrier',
+      icon: Mail,
+      path: '/dashboard/mailbox',
+      roles: ['admin']
     },
     {
       key: 'children',

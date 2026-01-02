@@ -2,6 +2,7 @@
 require('dotenv').config();
 
 const { Resend } = require('resend');
+const nodemailer = require('nodemailer');
 const fs = require('fs').promises;
 const path = require('path');
 const { EMAIL_TYPES, EMAIL_STATUS } = require('./emailTypes');
@@ -10,6 +11,21 @@ const SettingsService = require('../services/SettingsService');
 
 // Initialiser Resend
 const resend = new Resend(process.env.RESEND_API_KEY);
+
+// Initialiser Nodemailer (fallback SMTP Hostinger)
+let smtpTransporter = null;
+if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+  smtpTransporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: parseInt(process.env.SMTP_PORT) || 465,
+    secure: process.env.SMTP_SECURE === 'true',
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS
+    }
+  });
+  console.log('📧 SMTP Hostinger configuré comme fallback');
+}
 
 /**
  * Service d'envoi d'e-mails avec Resend
@@ -165,11 +181,38 @@ class EmailService {
 
       console.log(`📧 Envoi email ${emailType} vers ${recipient}...`);
 
-      // Envoyer via Resend
-      const response = await resend.emails.send(emailData);
+      let emailId = null;
+      let usedFallback = false;
 
-      // Extraire l'ID de la réponse (response.data.id dans Resend v6+)
-      const emailId = response.data?.id || response.id;
+      // Essayer d'abord avec Resend
+      try {
+        const response = await resend.emails.send(emailData);
+        emailId = response.data?.id || response.id;
+        console.log(`✅ Email envoyé via Resend (ID: ${emailId})`);
+      } catch (resendError) {
+        console.warn(`⚠️ Resend a échoué: ${resendError.message}`);
+
+        // Fallback vers SMTP Hostinger si configuré
+        if (smtpTransporter) {
+          console.log('🔄 Tentative avec SMTP Hostinger...');
+          try {
+            const smtpResult = await smtpTransporter.sendMail({
+              from: emailData.from,
+              to: emailData.to,
+              subject: emailData.subject,
+              html: emailData.html
+            });
+            emailId = smtpResult.messageId;
+            usedFallback = true;
+            console.log(`✅ Email envoyé via SMTP Hostinger (ID: ${emailId})`);
+          } catch (smtpError) {
+            console.error(`❌ SMTP Hostinger a aussi échoué: ${smtpError.message}`);
+            throw new Error(`Resend: ${resendError.message} | SMTP: ${smtpError.message}`);
+          }
+        } else {
+          throw resendError;
+        }
+      }
 
       // Enregistrer dans les logs
       await this.logEmail({
@@ -179,15 +222,14 @@ class EmailService {
         subject: emailData.subject,
         status: EMAIL_STATUS.SENT,
         resendId: emailId,
-        metadata: variables
+        metadata: { ...variables, usedFallback }
       });
-
-      console.log(`✅ Email envoyé avec succès (ID: ${emailId})`);
 
       return {
         success: true,
         messageId: emailId,
-        type: emailType
+        type: emailType,
+        usedFallback
       };
 
     } catch (error) {
@@ -309,6 +351,7 @@ class EmailService {
 
   /**
    * Envoyer un message de contact à l'équipe
+   * Récupère l'email de contact depuis nursery_settings (contact_email)
    */
   async sendContactMessage(contactData) {
     const timestamp = new Date().toLocaleDateString('fr-FR', {
@@ -319,8 +362,23 @@ class EmailService {
       minute: '2-digit'
     });
 
+    // Récupérer l'email de contact depuis la base de données
+    let contactEmail = 'contact@mima-elghalia.com'; // Valeur par défaut
+    try {
+      const result = await db.query(
+        "SELECT value_fr FROM nursery_settings WHERE setting_key = 'contact_email' AND is_active = true"
+      );
+      if (result.rows.length > 0 && result.rows[0].value_fr) {
+        contactEmail = result.rows[0].value_fr;
+      }
+    } catch (err) {
+      console.warn('⚠️ Impossible de récupérer contact_email depuis settings, utilisation valeur par défaut');
+    }
+
+    console.log(`📧 Envoi message contact vers: ${contactEmail}`);
+
     // Envoyer à l'équipe de la crèche
-    return this.sendEmail('CONTACT_MESSAGE', process.env.CONTACT_EMAIL || 'crechemimaelghalia@gmail.com', {
+    return this.sendEmail('CONTACT_MESSAGE', contactEmail, {
       sender_name: contactData.name,
       sender_email: contactData.email,
       sender_phone: contactData.phone || null,

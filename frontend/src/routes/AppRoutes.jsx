@@ -66,6 +66,7 @@ import ActivitiesPage from '../pages/activities/ActivitiesPage'
 // Journal d'activité (direction)
 import ActivityLogPage from '../pages/dashboard/ActivityLogPage'
 import DailyReportsPage from '../pages/dashboard/DailyReportsPage'
+import MailboxPage from '../pages/dashboard/MailboxPage'
 
 // Page de récupération d'urgence
 import RecoveryPage from '../pages/RecoveryPage'
@@ -268,6 +269,7 @@ const AppRoutes = () => {
 
                     <Route path="activity-logs" element={<ActivityLogPage />} />
                     <Route path="daily-reports" element={<DailyReportsPage />} />
+                    <Route path="mailbox" element={<MailboxPage />} />
                 </Route>
 
                 {/* 404 */}

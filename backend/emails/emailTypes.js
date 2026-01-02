@@ -40,6 +40,13 @@ const EMAIL_TYPES = {
     subject: 'Nouveau message de contact - Crèche Mima Elghalia'
   },
 
+  CONTACT_REPLY: {
+    type: 'contact_reply',
+    from: 'contact@mima-elghalia.com',
+    template: 'contact-reply.html',
+    subject: 'Réponse à votre message - Crèche Mima Elghalia'
+  },
+
   // E-mail de confirmation de rendez-vous
   APPOINTMENT_CONFIRMATION: {
     type: 'appointment_confirmation',

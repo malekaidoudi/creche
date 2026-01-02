@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Réponse à votre message</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td align="center" style="padding: 40px 0;">
+        <table role="presentation" style="width: 600px; max-width: 100%; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">
+                ✉️ Réponse à votre message
+              </h1>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px 30px;">
+              <p style="margin: 0 0 20px; color: #374151; font-size: 16px; line-height: 1.6;">
+                Bonjour <strong>{{recipient_name}}</strong>,
+              </p>
+
+              <p style="margin: 0 0 30px; color: #374151; font-size: 16px; line-height: 1.6;">
+                Nous avons bien reçu votre message et nous vous remercions de nous avoir contactés.
+              </p>
+
+              <!-- Original Message -->
+              <table role="presentation" style="width: 100%; background-color: #f9fafb; border-left: 4px solid #9ca3af; border-radius: 8px; margin-bottom: 30px;">
+                <tr>
+                  <td style="padding: 20px;">
+                    <p style="margin: 0 0 10px; color: #6b7280; font-size: 13px; font-weight: 600;">
+                      📩 Votre message original :
+                    </p>
+                    <p style="margin: 0; color: #6b7280; font-size: 14px; line-height: 1.6; font-style: italic;">
+                      "{{original_message}}"
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Reply -->
+              <table role="presentation" style="width: 100%; background-color: #ecfdf5; border-left: 4px solid #10b981; border-radius: 8px; margin-bottom: 30px;">
+                <tr>
+                  <td style="padding: 20px;">
+                    <p style="margin: 0 0 10px; color: #065f46; font-size: 13px; font-weight: 600;">
+                      💬 Notre réponse :
+                    </p>
+                    <p style="margin: 0; color: #047857; font-size: 15px; line-height: 1.8; white-space: pre-wrap;">{{reply_message}}</p>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin: 0 0 20px; color: #374151; font-size: 16px; line-height: 1.6;">
+                N'hésitez pas à nous recontacter si vous avez d'autres questions.
+              </p>
+
+              <p style="margin: 0; color: #374151; font-size: 16px; line-height: 1.6;">
+                Cordialement,<br>
+                <strong>L'équipe de la Crèche Mima Elghalia</strong>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f9fafb; padding: 30px; text-align: center; border-radius: 0 0 12px 12px; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0 0 10px; color: #6b7280; font-size: 14px;">
+                📍 8 Rue Bizerte, Medenine 4100, Tunisie
+              </p>
+              <p style="margin: 0 0 10px; color: #6b7280; font-size: 14px;">
+                📞 +216 25 95 35 32 | ✉️ contact@mima-elghalia.com
+              </p>
+              <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+                © {{year}} Crèche Mima Elghalia. Tous droits réservés.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

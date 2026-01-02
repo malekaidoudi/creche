@@ -81,6 +81,7 @@ const dailyReportsRoutes = require('./routes_postgres/dailyReports');
 const suppliesRoutes = require('./routes_postgres/supplies');
 const staffAssignmentsRoutes = require('./routes_postgres/staffAssignments');
 const dashboardStatsRoutes = require('./routes_postgres/dashboardStats');
+const contactMessagesRoutes = require('./routes_postgres/contactMessages');
 console.log('✅ Routes chargées\n');
 
 const app = express();
@@ -337,6 +338,9 @@ console.log('  ✓ /api/staff-assignments (affectations staff) 👥');
 
 app.use('/api/dashboard', dashboardStatsRoutes);
 console.log('  ✓ /api/dashboard (statistiques dashboard) 📊');
+
+app.use('/api/admin/contact-messages', contactMessagesRoutes);
+console.log('  ✓ /api/admin/contact-messages (courrier admin) 📧');
 
 console.log('\n✅ Toutes les routes montées avec succès\n');
 

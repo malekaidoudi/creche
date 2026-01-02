@@ -25,18 +25,40 @@ router.post('/', [
 
     const { name, email, phone, subject, message } = req.body;
 
-    // Enregistrer le message dans la base de données (optionnel)
+    // Enregistrer le message dans la base de données
+    let messageId = null;
     try {
-      await db.query(`
+      const insertResult = await db.query(`
         INSERT INTO contact_messages (name, email, phone, subject, message, created_at)
         VALUES ($1, $2, $3, $4, $5, NOW())
+        RETURNING id
       `, [name, email, phone || null, subject || 'Nouveau message', message]);
+      messageId = insertResult.rows[0]?.id;
+      console.log('📧 Message de contact enregistré, ID:', messageId);
     } catch (dbError) {
       console.warn('⚠️ Impossible d\'enregistrer le message en DB:', dbError.message);
-      // Continuer même si l'enregistrement échoue
     }
 
-    // Envoyer l'e-mail à l'équipe
+    // Créer une notification pour tous les admins
+    try {
+      const admins = await db.query("SELECT id FROM users WHERE role = 'admin' AND is_active = true");
+      for (const admin of admins.rows) {
+        await db.query(`
+          INSERT INTO notifications (user_id, type, title, message, data, created_at)
+          VALUES ($1, 'contact_message', $2, $3, $4, NOW())
+        `, [
+          admin.id,
+          'Nouveau message de contact',
+          `${name} vous a envoyé un message: "${(subject || message).substring(0, 50)}..."`,
+          JSON.stringify({ messageId, senderName: name, senderEmail: email })
+        ]);
+      }
+      console.log('🔔 Notifications créées pour', admins.rows.length, 'admin(s)');
+    } catch (notifError) {
+      console.warn('⚠️ Impossible de créer les notifications:', notifError.message);
+    }
+
+    // Envoyer l'e-mail à l'équipe (peut échouer si Resend est en panne)
     const emailResult = await emailService.sendContactMessage({
       name,
       email,
@@ -45,17 +67,12 @@ router.post('/', [
       message
     });
 
-    if (emailResult.success) {
-      res.json({
-        success: true,
-        message: 'Votre message a été envoyé avec succès. Nous vous répondrons dans les plus brefs délais.'
-      });
-    } else {
-      res.status(500).json({
-        success: false,
-        error: 'Erreur lors de l\'envoi du message. Veuillez réessayer plus tard.'
-      });
-    }
+    // Répondre succès même si l'email échoue (le message est enregistré en DB)
+    res.json({
+      success: true,
+      message: 'Votre message a été envoyé avec succès. Nous vous répondrons dans les plus brefs délais.',
+      emailSent: emailResult.success
+    });
 
   } catch (error) {
     console.error('❌ Erreur traitement message contact:', error);
