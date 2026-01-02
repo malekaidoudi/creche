@@ -66,6 +66,29 @@ const DashboardHeader = ({ onMenuClick }) => {
     }
   };
 
+  // Obtenir le label du poste selon le genre
+  const getPositionLabel = (position, gender) => {
+    const positions = {
+      director: { male: { fr: 'Directeur', ar: 'مدير' }, female: { fr: 'Directrice', ar: 'مديرة' } },
+      educator: { male: { fr: 'Éducateur', ar: 'مربي' }, female: { fr: 'Éducatrice', ar: 'مربية' } },
+      assistant_educator: { male: { fr: 'Assistant éducateur', ar: 'مساعد مربي' }, female: { fr: 'Assistante éducatrice', ar: 'مساعدة مربية' } },
+      nurse: { male: { fr: 'Infirmier', ar: 'ممرض' }, female: { fr: 'Infirmière', ar: 'ممرضة' } },
+      psychologist: { male: { fr: 'Psychologue', ar: 'أخصائي نفسي' }, female: { fr: 'Psychologue', ar: 'أخصائية نفسية' } },
+      cook: { male: { fr: 'Cuisinier', ar: 'طباخ' }, female: { fr: 'Cuisinière', ar: 'طباخة' } },
+      cleaning: { male: { fr: 'Agent d\'entretien', ar: 'عامل نظافة' }, female: { fr: 'Agente d\'entretien', ar: 'عاملة نظافة' } },
+      security: { male: { fr: 'Agent de sécurité', ar: 'حارس أمن' }, female: { fr: 'Agente de sécurité', ar: 'حارسة أمن' } },
+      receptionist: { male: { fr: 'Réceptionniste', ar: 'موظف استقبال' }, female: { fr: 'Réceptionniste', ar: 'موظفة استقبال' } },
+      driver: { male: { fr: 'Chauffeur', ar: 'سائق' }, female: { fr: 'Chauffeuse', ar: 'سائقة' } },
+      health: { male: { fr: 'Personnel de santé', ar: 'موظف صحة' }, female: { fr: 'Personnel de santé', ar: 'موظفة صحة' } },
+      kitchen: { male: { fr: 'Personnel de cuisine', ar: 'موظف مطبخ' }, female: { fr: 'Personnel de cuisine', ar: 'موظفة مطبخ' } },
+      other: { male: { fr: 'Autre', ar: 'آخر' }, female: { fr: 'Autre', ar: 'أخرى' } }
+    };
+
+    if (!position || !positions[position]) return null;
+    const genderKey = gender === 'female' ? 'female' : 'male';
+    return isRTL ? positions[position][genderKey].ar : positions[position][genderKey].fr;
+  };
+
   return (
     <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -154,7 +177,11 @@ const DashboardHeader = ({ onMenuClick }) => {
                   </div>
                   <div className="flex items-center space-x-2 rtl:space-x-reverse">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeColor(user?.role)}`}>
-                      {getRoleLabel(user?.role)}
+                      {/* Afficher le poste si défini, sinon le rôle générique */}
+                      {user?.staff_position && getPositionLabel(user.staff_position, user.gender)
+                        ? getPositionLabel(user.staff_position, user.gender)
+                        : getRoleLabel(user?.role)
+                      }
                     </span>
                   </div>
                 </div>

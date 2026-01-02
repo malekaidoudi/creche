@@ -19,9 +19,9 @@ router.post('/login', [
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ 
-        error: 'Données invalides', 
-        details: errors.array() 
+      return res.status(400).json({
+        error: 'Données invalides',
+        details: errors.array()
       });
     }
 
@@ -29,7 +29,7 @@ router.post('/login', [
 
     // Rechercher l'utilisateur dans PostgreSQL
     const result = await db.query(
-      'SELECT id, email, password, first_name, last_name, role, phone, profile_image, is_active FROM users WHERE email = $1',
+      'SELECT id, email, password, first_name, last_name, role, phone, profile_image, is_active, gender, staff_position FROM users WHERE email = $1',
       [email]
     );
 
@@ -52,10 +52,10 @@ router.post('/login', [
 
     // Générer le token JWT
     const token = jwt.sign(
-      { 
-        userId: user.id, 
-        email: user.email, 
-        role: user.role 
+      {
+        userId: user.id,
+        email: user.email,
+        role: user.role
       },
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN }
@@ -63,14 +63,14 @@ router.post('/login', [
 
     // Créer un log de connexion
     await createLog(
-      user.id, 
-      'login', 
+      user.id,
+      'login',
       `${user.first_name} ${user.last_name} s'est connecté au système`
     );
 
     // Retourner les données utilisateur (sans le mot de passe)
     const { password: _, ...userWithoutPassword } = user;
-    
+
     res.json({
       message: 'Connexion réussie',
       token,
@@ -93,9 +93,9 @@ router.post('/register', [
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ 
-        error: 'Données invalides', 
-        details: errors.array() 
+      return res.status(400).json({
+        error: 'Données invalides',
+        details: errors.array()
       });
     }
 
@@ -122,10 +122,10 @@ router.post('/register', [
 
     // Générer le token JWT
     const token = jwt.sign(
-      { 
-        userId: newUser.id, 
-        email: newUser.email, 
-        role: newUser.role 
+      {
+        userId: newUser.id,
+        email: newUser.email,
+        role: newUser.role
       },
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN }
@@ -147,14 +147,14 @@ router.post('/register', [
 router.get('/me', async (req, res) => {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
-    
+
     if (!token) {
       return res.status(401).json({ error: 'Token manquant' });
     }
 
     // Vérifier le token
     const decoded = jwt.verify(token, JWT_SECRET);
-    
+
     // Récupérer les informations utilisateur
     const result = await db.query(
       'SELECT id, email, first_name, last_name, role, phone, profile_image, is_active FROM users WHERE id = $1',
@@ -190,10 +190,10 @@ router.post('/create-password', [
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        error: 'Données invalides', 
-        details: errors.array() 
+        error: 'Données invalides',
+        details: errors.array()
       });
     }
 
@@ -209,9 +209,9 @@ router.post('/create-password', [
     `, [token, email]);
 
     if (enrollmentResult.rows.length === 0) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        error: 'Token invalide ou expiré' 
+        error: 'Token invalide ou expiré'
       });
     }
 
@@ -219,9 +219,9 @@ router.post('/create-password', [
 
     // Vérifier si le token n'est pas expiré
     if (new Date() > new Date(enrollment.password_token_expires)) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        error: 'Token expiré. Veuillez contacter la crèche.' 
+        error: 'Token expiré. Veuillez contacter la crèche.'
       });
     }
 
@@ -293,18 +293,18 @@ router.post('/create-password', [
 
   } catch (error) {
     console.error('Erreur création mot de passe:', error);
-    
+
     // Gérer l'erreur de duplication d'email
     if (error.code === '23505') {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        error: 'Un compte existe déjà avec cet email' 
+        error: 'Un compte existe déjà avec cet email'
       });
     }
-    
-    res.status(500).json({ 
+
+    res.status(500).json({
       success: false,
-      error: 'Erreur lors de la création du compte' 
+      error: 'Erreur lors de la création du compte'
     });
   }
 });

@@ -31,6 +31,7 @@ import api from '../../services/api';
 import { TableToListAdapter } from '../../components/mobile/adapters';
 import MobileNavigation from '../../components/mobile/MobileNavigation';
 import MobileHeader from '../../components/mobile/MobileHeader';
+import EditStaffModal from '../../components/modals/EditStaffModal';
 
 const StaffPage = () => {
   const { isRTL } = useLanguage();
@@ -45,6 +46,8 @@ const StaffPage = () => {
   const [selectedStaff, setSelectedStaff] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
   const [statsExpanded, setStatsExpanded] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [staffToEdit, setStaffToEdit] = useState(null);
 
   // Charger le personnel depuis l'API
   useEffect(() => {
@@ -105,6 +108,20 @@ const StaffPage = () => {
   const handleViewDetails = (member) => {
     setSelectedStaff(member);
     setShowDetails(true);
+  };
+
+  const handleEditStaff = (member) => {
+    console.log('🔧 handleEditStaff appelé avec:', member);
+    setStaffToEdit(member);
+    setShowEditModal(true);
+    console.log('🔧 showEditModal devrait être true maintenant');
+  };
+
+  const handleEditSuccess = (updatedStaff) => {
+    setStaff(prev => prev.map(s =>
+      s.id === updatedStaff.id ? { ...s, ...updatedStaff } : s
+    ));
+    dialog.success(isRTL ? 'تم تحديث معلومات الموظف بنجاح' : 'Informations mises à jour avec succès');
   };
 
   const getRoleBadge = (role) => {
@@ -566,6 +583,10 @@ const StaffPage = () => {
                             <Button
                               size="sm"
                               variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditStaff(member);
+                              }}
                             >
                               <Edit className="w-4 h-4" />
                             </Button>
@@ -673,6 +694,10 @@ const StaffPage = () => {
                           size="sm"
                           variant="outline"
                           className="h-8 px-2"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditStaff(member);
+                          }}
                         >
                           <Edit className="w-3.5 h-3.5" />
                         </Button>
@@ -779,7 +804,7 @@ const StaffPage = () => {
                     variant="outline"
                     onClick={() => {
                       setShowDetails(false);
-                      // Logique pour modifier
+                      handleEditStaff(selectedStaff);
                     }}
                     className="w-full justify-start"
                   >
@@ -801,6 +826,18 @@ const StaffPage = () => {
           </motion.div>
         </div>
       )}
+
+      {/* Modal d'édition du personnel */}
+      <EditStaffModal
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false);
+          setStaffToEdit(null);
+        }}
+        staff={staffToEdit}
+        onSuccess={handleEditSuccess}
+        isRTL={isRTL}
+      />
     </div>
   );
 };

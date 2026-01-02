@@ -53,18 +53,13 @@ const DashboardLayout = () => {
         />
       )}
 
-      {/* Menu latéral sur grand écran */}
-      <div className="hidden lg:block">
-        <SideMenu />
-      </div>
-
       {/* Mobile: Bottom Navigation */}
       {isMobile && <MobileNavigation />}
 
-      {/* Desktop: Floating Action Button (si pas de mobile nav) */}
+      {/* Desktop: Menu latéral OU Floating Action Button selon la préférence */}
       {!isMobile && (
         <div className="hidden lg:block">
-          <FloatingActionButton />
+          {menuType === 'side' ? <SideMenu /> : <FloatingActionButton />}
         </div>
       )}
     </div>

@@ -141,7 +141,7 @@ router.get('/', auth.authenticateToken, async (req, res) => {
 
     let sql = `
       SELECT id, email, first_name, last_name, phone, role, profile_image, 
-             is_active, password_set, created_at, updated_at
+             is_active, password_set, gender, staff_position, created_at, updated_at
       FROM users 
       WHERE 1=1
     `;
@@ -340,7 +340,7 @@ router.put('/:id', [
     }
 
     const { id } = req.params;
-    const { email, first_name, last_name, phone, role, profile_image, is_active } = req.body;
+    const { email, first_name, last_name, phone, role, profile_image, is_active, gender, staff_position } = req.body;
 
     // Vérifier si l'utilisateur existe
     const existingUser = await db.query('SELECT id FROM users WHERE id = $1', [id]);
@@ -409,6 +409,18 @@ router.put('/:id', [
       params.push(is_active);
     }
 
+    if (gender !== undefined) {
+      paramCount++;
+      updates.push(`gender = $${paramCount}`);
+      params.push(gender);
+    }
+
+    if (staff_position !== undefined) {
+      paramCount++;
+      updates.push(`staff_position = $${paramCount}`);
+      params.push(staff_position);
+    }
+
     if (updates.length === 0) {
       return res.status(400).json({
         success: false,
@@ -429,7 +441,7 @@ router.put('/:id', [
       UPDATE users 
       SET ${updates.join(', ')} 
       WHERE id = $${paramCount}
-      RETURNING id, email, first_name, last_name, phone, role, profile_image, is_active, updated_at
+      RETURNING id, email, first_name, last_name, phone, role, profile_image, is_active, gender, staff_position, updated_at
     `;
 
     const result = await db.query(sql, params);
