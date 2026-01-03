@@ -1366,13 +1366,13 @@ const DashboardSettingsPage = () => {
                             {virtualTourImages[view.id] ? (
                               <>
                                 <img
-                                  src={`${API_CONFIG.BASE_URL}${virtualTourImages[view.id]}`}
+                                  src={virtualTourImages[view.id].startsWith('http') ? virtualTourImages[view.id] : `${API_CONFIG.BASE_URL}${virtualTourImages[view.id]}`}
                                   alt={view.name}
                                   className="w-full h-full object-cover"
                                 />
                                 <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                                   <a
-                                    href={`${API_CONFIG.BASE_URL}${virtualTourImages[view.id]}`}
+                                    href={virtualTourImages[view.id].startsWith('http') ? virtualTourImages[view.id] : `${API_CONFIG.BASE_URL}${virtualTourImages[view.id]}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="p-2 bg-white rounded-full hover:bg-gray-100 transition-colors"

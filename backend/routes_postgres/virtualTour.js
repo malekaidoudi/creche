@@ -1,7 +1,7 @@
 /**
  * Routes pour la gestion des images de visite virtuelle
- * Les images sont stockées dans le dossier uploads/virtual-tour/
- * Une seule image par vue (remplacement automatique)
+ * Les images sont stockées sur Cloudinary pour persistance
+ * Fichier JSON local pour mapper les vues aux URLs Cloudinary
  */
 
 const express = require('express');
@@ -10,26 +10,54 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const sharp = require('sharp');
+const os = require('os');
+const cloudinaryService = require('../services/cloudinaryService');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 
 // Dimensions cibles pour les images (ratio 16:9)
 const TARGET_WIDTH = 1920;
 const TARGET_HEIGHT = 1080;
 
-// Dossier de stockage des images de visite virtuelle
-const UPLOAD_DIR = path.join(__dirname, '../uploads/virtual-tour');
+// Dossier Cloudinary pour les images de visite virtuelle
+const CLOUDINARY_FOLDER = 'virtual-tour';
 
-// Créer le dossier s'il n'existe pas
-if (!fs.existsSync(UPLOAD_DIR)) {
-    fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-    console.log('📁 Dossier virtual-tour créé:', UPLOAD_DIR);
+// Fichier JSON pour stocker les URLs des images (persistance locale)
+const DATA_DIR = path.join(__dirname, '../data');
+const IMAGES_JSON_PATH = path.join(DATA_DIR, 'virtual-tour-images.json');
+
+// Créer le dossier data s'il n'existe pas
+if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    console.log('📁 Dossier data créé:', DATA_DIR);
 }
+
+// Charger les images depuis le fichier JSON
+const loadImagesFromJson = () => {
+    try {
+        if (fs.existsSync(IMAGES_JSON_PATH)) {
+            const data = fs.readFileSync(IMAGES_JSON_PATH, 'utf8');
+            return JSON.parse(data);
+        }
+    } catch (error) {
+        console.error('Erreur lecture fichier JSON images:', error);
+    }
+    return {};
+};
+
+// Sauvegarder les images dans le fichier JSON
+const saveImagesToJson = (images) => {
+    try {
+        fs.writeFileSync(IMAGES_JSON_PATH, JSON.stringify(images, null, 2), 'utf8');
+        console.log('💾 Images visite virtuelle sauvegardées dans JSON');
+    } catch (error) {
+        console.error('Erreur sauvegarde fichier JSON images:', error);
+    }
+};
 
 // Liste des vues disponibles (IDs fixes)
 const VALID_VIEWS = ['entrance', 'classroom', 'playground', 'dining', 'nap', 'garden'];
 
-// Configuration Multer pour l'upload
-// Stockage temporaire en mémoire pour traitement avec sharp
+// Configuration Multer pour l'upload (stockage en mémoire)
 const storage = multer.memoryStorage();
 
 // Filtre pour n'accepter que les images
@@ -53,25 +81,16 @@ const upload = multer({
 /**
  * GET /api/virtual-tour/images
  * Récupérer la liste des images disponibles pour chaque vue
+ * Les URLs sont stockées dans un fichier JSON local, les images sur Cloudinary
  */
 router.get('/images', (req, res) => {
     try {
+        // Charger les images depuis le fichier JSON
+        const storedImages = loadImagesFromJson();
         const images = {};
 
         VALID_VIEWS.forEach(viewId => {
-            // Chercher une image existante pour cette vue
-            const extensions = ['.jpg', '.jpeg', '.png', '.webp'];
-            let foundImage = null;
-
-            for (const ext of extensions) {
-                const filePath = path.join(UPLOAD_DIR, `${viewId}${ext}`);
-                if (fs.existsSync(filePath)) {
-                    foundImage = `/uploads/virtual-tour/${viewId}${ext}`;
-                    break;
-                }
-            }
-
-            images[viewId] = foundImage;
+            images[viewId] = storedImages[viewId]?.url || null;
         });
 
         res.json({
@@ -103,22 +122,14 @@ router.get('/images/:viewId', (req, res) => {
             });
         }
 
-        // Chercher l'image existante
-        const extensions = ['.jpg', '.jpeg', '.png', '.webp'];
-        let foundImage = null;
-
-        for (const ext of extensions) {
-            const filePath = path.join(UPLOAD_DIR, `${viewId}${ext}`);
-            if (fs.existsSync(filePath)) {
-                foundImage = `/uploads/virtual-tour/${viewId}${ext}`;
-                break;
-            }
-        }
+        // Charger depuis le fichier JSON
+        const storedImages = loadImagesFromJson();
+        const imageData = storedImages[viewId];
 
         res.json({
             success: true,
             viewId,
-            image: foundImage
+            image: imageData?.url || null
         });
     } catch (error) {
         console.error('Erreur récupération image:', error);
@@ -132,7 +143,7 @@ router.get('/images/:viewId', (req, res) => {
 /**
  * POST /api/virtual-tour/images/:viewId
  * Uploader/Remplacer l'image d'une vue (Admin seulement)
- * L'image est automatiquement redimensionnée au ratio 16:9 (1920x1080) sans perte de qualité
+ * L'image est automatiquement redimensionnée au ratio 16:9 (1920x1080) et uploadée sur Cloudinary
  */
 router.post('/images/:viewId', authenticateToken, requireRole('admin'), (req, res) => {
     const { viewId } = req.params;
@@ -145,16 +156,6 @@ router.post('/images/:viewId', authenticateToken, requireRole('admin'), (req, re
         });
     }
 
-    // Supprimer l'ancienne image avant l'upload
-    const extensions = ['.jpg', '.jpeg', '.png', '.webp'];
-    extensions.forEach(ext => {
-        const oldFilePath = path.join(UPLOAD_DIR, `${viewId}${ext}`);
-        if (fs.existsSync(oldFilePath)) {
-            fs.unlinkSync(oldFilePath);
-            console.log(`🗑️ Ancienne image supprimée: ${oldFilePath}`);
-        }
-    });
-
     // Procéder à l'upload
     upload.single('image')(req, res, async (err) => {
         if (err) {
@@ -163,7 +164,7 @@ router.post('/images/:viewId', authenticateToken, requireRole('admin'), (req, re
                 if (err.code === 'LIMIT_FILE_SIZE') {
                     return res.status(400).json({
                         success: false,
-                        message: 'Fichier trop volumineux. Maximum 10MB.'
+                        message: 'Fichier trop volumineux. Maximum 15MB.'
                     });
                 }
             }
@@ -181,9 +182,8 @@ router.post('/images/:viewId', authenticateToken, requireRole('admin'), (req, re
         }
 
         try {
-            // Nom du fichier de sortie (toujours en .jpg pour optimisation)
-            const outputFilename = `${viewId}.jpg`;
-            const outputPath = path.join(UPLOAD_DIR, outputFilename);
+            // Créer un fichier temporaire pour sharp
+            const tempFilePath = path.join(os.tmpdir(), `virtual-tour-${viewId}-${Date.now()}.jpg`);
 
             // Redimensionner l'image avec sharp
             // - Ratio 16:9 (1920x1080)
@@ -198,22 +198,56 @@ router.post('/images/:viewId', authenticateToken, requireRole('admin'), (req, re
                     quality: 90,       // Haute qualité
                     mozjpeg: true      // Optimisation supplémentaire
                 })
-                .toFile(outputPath);
+                .toFile(tempFilePath);
 
-            const imageUrl = `/uploads/virtual-tour/${outputFilename}`;
+            console.log(`📐 Image redimensionnée: ${viewId} (${TARGET_WIDTH}x${TARGET_HEIGHT})`);
 
-            console.log(`✅ Image visite virtuelle uploadée et redimensionnée: ${viewId} -> ${outputFilename} (${TARGET_WIDTH}x${TARGET_HEIGHT})`);
+            // Supprimer l'ancienne image de Cloudinary si elle existe
+            const storedImages = loadImagesFromJson();
+            if (storedImages[viewId]?.publicId) {
+                console.log(`🗑️ Suppression ancienne image Cloudinary: ${storedImages[viewId].publicId}`);
+                await cloudinaryService.deleteFile(storedImages[viewId].publicId);
+            }
+
+            // Uploader vers Cloudinary avec overwrite
+            const cloudinaryResult = await cloudinaryService.uploadFileWithOverwrite(
+                tempFilePath,
+                CLOUDINARY_FOLDER,
+                viewId // public_id fixe pour chaque vue
+            );
+
+            // Supprimer le fichier temporaire
+            if (fs.existsSync(tempFilePath)) {
+                fs.unlinkSync(tempFilePath);
+            }
+
+            if (!cloudinaryResult.success) {
+                return res.status(500).json({
+                    success: false,
+                    message: 'Erreur lors de l\'upload vers Cloudinary: ' + cloudinaryResult.error
+                });
+            }
+
+            // Sauvegarder l'URL dans le fichier JSON
+            storedImages[viewId] = {
+                url: cloudinaryResult.url,
+                publicId: cloudinaryResult.publicId,
+                uploadedAt: new Date().toISOString()
+            };
+            saveImagesToJson(storedImages);
+
+            console.log(`✅ Image visite virtuelle uploadée sur Cloudinary: ${viewId} -> ${cloudinaryResult.url}`);
 
             res.json({
                 success: true,
-                message: 'Image uploadée et optimisée avec succès',
+                message: 'Image uploadée et optimisée avec succès sur Cloudinary',
                 viewId,
-                image: imageUrl,
-                filename: outputFilename,
+                image: cloudinaryResult.url,
+                publicId: cloudinaryResult.publicId,
                 dimensions: { width: TARGET_WIDTH, height: TARGET_HEIGHT }
             });
-        } catch (sharpError) {
-            console.error('Erreur traitement image:', sharpError);
+        } catch (error) {
+            console.error('Erreur traitement/upload image:', error);
             return res.status(500).json({
                 success: false,
                 message: 'Erreur lors du traitement de l\'image'
@@ -225,8 +259,9 @@ router.post('/images/:viewId', authenticateToken, requireRole('admin'), (req, re
 /**
  * DELETE /api/virtual-tour/images/:viewId
  * Supprimer l'image d'une vue (Admin seulement)
+ * Supprime de Cloudinary et du fichier JSON local
  */
-router.delete('/images/:viewId', authenticateToken, requireRole('admin'), (req, res) => {
+router.delete('/images/:viewId', authenticateToken, requireRole('admin'), async (req, res) => {
     try {
         const { viewId } = req.params;
 
@@ -237,31 +272,34 @@ router.delete('/images/:viewId', authenticateToken, requireRole('admin'), (req, 
             });
         }
 
-        // Supprimer toutes les versions de l'image
-        const extensions = ['.jpg', '.jpeg', '.png', '.webp'];
-        let deleted = false;
+        // Charger les images depuis le fichier JSON
+        const storedImages = loadImagesFromJson();
+        const imageData = storedImages[viewId];
 
-        extensions.forEach(ext => {
-            const filePath = path.join(UPLOAD_DIR, `${viewId}${ext}`);
-            if (fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
-                deleted = true;
-                console.log(`🗑️ Image supprimée: ${filePath}`);
-            }
-        });
-
-        if (deleted) {
-            res.json({
-                success: true,
-                message: 'Image supprimée avec succès',
-                viewId
-            });
-        } else {
-            res.status(404).json({
+        if (!imageData) {
+            return res.status(404).json({
                 success: false,
                 message: 'Aucune image trouvée pour cette vue'
             });
         }
+
+        // Supprimer de Cloudinary
+        if (imageData.publicId) {
+            console.log(`🗑️ Suppression image Cloudinary: ${imageData.publicId}`);
+            await cloudinaryService.deleteFile(imageData.publicId);
+        }
+
+        // Supprimer du fichier JSON
+        delete storedImages[viewId];
+        saveImagesToJson(storedImages);
+
+        console.log(`✅ Image visite virtuelle supprimée: ${viewId}`);
+
+        res.json({
+            success: true,
+            message: 'Image supprimée avec succès de Cloudinary',
+            viewId
+        });
     } catch (error) {
         console.error('Erreur suppression image:', error);
         res.status(500).json({

@@ -59,9 +59,14 @@ const VirtualTourPage = () => {
     fetchTourImages()
   }, [])
 
-  // Fonction pour obtenir l'URL de l'image (backend ou fallback)
+  // Fonction pour obtenir l'URL de l'image (Cloudinary, backend local ou fallback)
   const getImageUrl = (viewId, defaultPath) => {
     if (tourImages[viewId]) {
+      // Si l'URL commence par http(s), c'est une URL Cloudinary complète
+      if (tourImages[viewId].startsWith('http')) {
+        return tourImages[viewId]
+      }
+      // Sinon, c'est un chemin relatif local
       return `${API_CONFIG.BASE_URL}${tourImages[viewId]}`
     }
     return defaultPath

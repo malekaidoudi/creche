@@ -1,0 +1,32 @@
+{
+  "entrance": {
+    "url": "https://res.cloudinary.com/duacvppbf/image/upload/v1767432404/virtual-tour/entrance.jpg",
+    "publicId": "virtual-tour/entrance",
+    "uploadedAt": "2026-01-03T09:26:44.578Z"
+  },
+  "classroom": {
+    "url": "https://res.cloudinary.com/duacvppbf/image/upload/v1767432415/virtual-tour/classroom.jpg",
+    "publicId": "virtual-tour/classroom",
+    "uploadedAt": "2026-01-03T09:26:56.624Z"
+  },
+  "playground": {
+    "url": "https://res.cloudinary.com/duacvppbf/image/upload/v1767432419/virtual-tour/playground.jpg",
+    "publicId": "virtual-tour/playground",
+    "uploadedAt": "2026-01-03T09:26:59.935Z"
+  },
+  "dining": {
+    "url": "https://res.cloudinary.com/duacvppbf/image/upload/v1767432423/virtual-tour/dining.jpg",
+    "publicId": "virtual-tour/dining",
+    "uploadedAt": "2026-01-03T09:27:03.867Z"
+  },
+  "nap": {
+    "url": "https://res.cloudinary.com/duacvppbf/image/upload/v1767432430/virtual-tour/nap.jpg",
+    "publicId": "virtual-tour/nap",
+    "uploadedAt": "2026-01-03T09:27:11.156Z"
+  },
+  "garden": {
+    "url": "https://res.cloudinary.com/duacvppbf/image/upload/v1767432440/virtual-tour/garden.jpg",
+    "publicId": "virtual-tour/garden",
+    "uploadedAt": "2026-01-03T09:27:20.430Z"
+  }
+}
