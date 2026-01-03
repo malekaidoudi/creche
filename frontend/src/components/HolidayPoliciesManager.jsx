@@ -13,7 +13,7 @@ const HolidayPoliciesManager = () => {
     const [policies, setPolicies] = useState([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(null);
-    const [expandedSection, setExpandedSection] = useState('national');
+    const [expandedSection, setExpandedSection] = useState(null); // État initial fermé
 
     useEffect(() => {
         fetchPolicies();

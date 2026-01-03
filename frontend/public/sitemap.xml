@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  
+  <!-- Page d'accueil -->
+  <url>
+    <loc>https://mima-elghalia.com/</loc>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://mima-elghalia.com/"/>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://mima-elghalia.com/?lang=ar"/>
+    <lastmod>2026-01-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://mima-elghalia.com/images/logo.jpg</image:loc>
+      <image:title>Mima El Ghalia - Crèche et Jardin d'Enfants</image:title>
+    </image:image>
+  </url>
+  
+  <!-- Page À propos -->
+  <url>
+    <loc>https://mima-elghalia.com/about</loc>
+    <lastmod>2026-01-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <!-- Page Services -->
+  <url>
+    <loc>https://mima-elghalia.com/services</loc>
+    <lastmod>2026-01-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  
+  <!-- Page Contact -->
+  <url>
+    <loc>https://mima-elghalia.com/contact</loc>
+    <lastmod>2026-01-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <!-- Page Galerie -->
+  <url>
+    <loc>https://mima-elghalia.com/gallery</loc>
+    <lastmod>2026-01-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  
+  <!-- Page Inscription -->
+  <url>
+    <loc>https://mima-elghalia.com/enrollment</loc>
+    <lastmod>2026-01-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  
+  <!-- Page FAQ -->
+  <url>
+    <loc>https://mima-elghalia.com/faq</loc>
+    <lastmod>2026-01-02</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+</urlset>

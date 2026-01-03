@@ -82,6 +82,7 @@ const suppliesRoutes = require('./routes_postgres/supplies');
 const staffAssignmentsRoutes = require('./routes_postgres/staffAssignments');
 const dashboardStatsRoutes = require('./routes_postgres/dashboardStats');
 const contactMessagesRoutes = require('./routes_postgres/contactMessages');
+const virtualTourRoutes = require('./routes_postgres/virtualTour');
 console.log('✅ Routes chargées\n');
 
 const app = express();
@@ -341,6 +342,9 @@ console.log('  ✓ /api/dashboard (statistiques dashboard) 📊');
 
 app.use('/api/admin/contact-messages', contactMessagesRoutes);
 console.log('  ✓ /api/admin/contact-messages (courrier admin) 📧');
+
+app.use('/api/virtual-tour', virtualTourRoutes);
+console.log('  ✓ /api/virtual-tour (images visite virtuelle) 🖼️');
 
 console.log('\n✅ Toutes les routes montées avec succès\n');
 

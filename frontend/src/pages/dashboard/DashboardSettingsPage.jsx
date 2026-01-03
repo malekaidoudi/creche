@@ -21,7 +21,14 @@ import {
   Download,
   Calendar,
   RefreshCw,
-  AlertTriangle
+  AlertTriangle,
+  Camera,
+  Upload,
+  Trash2,
+  Image,
+  Eye,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useTheme } from '../../hooks/useTheme';
@@ -34,6 +41,7 @@ import DatePicker from '../../components/ui/DatePicker';
 import { convertToISO, convertFromISO } from '../../utils/dateUtils';
 import ToggleSwitch from '../../components/ui/ToggleSwitch';
 import HolidayPoliciesManager from '../../components/HolidayPoliciesManager';
+import API_CONFIG from '../../config/api';
 
 const DashboardSettingsPage = () => {
   const { isRTL, currentLanguage, toggleLanguage } = useLanguage();
@@ -49,6 +57,23 @@ const DashboardSettingsPage = () => {
   });
   const [staffList, setStaffList] = useState([]);
   const [loadingStaff, setLoadingStaff] = useState(false);
+
+  // État pour les images de visite virtuelle
+  const [virtualTourImages, setVirtualTourImages] = useState({});
+  const [loadingVirtualTour, setLoadingVirtualTour] = useState(false);
+  const [uploadingView, setUploadingView] = useState(null);
+  const [showVirtualTourSection, setShowVirtualTourSection] = useState(false); // État initial fermé
+
+  // Liste des vues de la visite virtuelle
+  const virtualTourViews = [
+    { id: 'entrance', name: isRTL ? 'المدخل الرئيسي' : 'Hall d\'entrée', icon: '🚪' },
+    { id: 'classroom', name: isRTL ? 'قاعة التعلم' : 'Salle de classe', icon: '📚' },
+    { id: 'playground', name: isRTL ? 'منطقة اللعب' : 'Aire de jeux', icon: '🎠' },
+    { id: 'dining', name: isRTL ? 'قاعة الطعام' : 'Salle à manger', icon: '🍽️' },
+    { id: 'nap', name: isRTL ? 'غرفة النوم' : 'Salle de sieste', icon: '😴' },
+    { id: 'garden', name: isRTL ? 'الحديقة' : 'Jardin', icon: '🌳' }
+  ];
+
   const [settings, setSettings] = useState({
     // Informations générales
     nurseryName: '',
@@ -198,6 +223,100 @@ const DashboardSettingsPage = () => {
 
     fetchStaffAssignments();
   }, [user?.role]);
+
+  // Charger les images de visite virtuelle
+  useEffect(() => {
+    const fetchVirtualTourImages = async () => {
+      if (user?.role !== 'admin') return;
+
+      try {
+        setLoadingVirtualTour(true);
+        const response = await api.get('/api/virtual-tour/images');
+        if (response.data.success) {
+          setVirtualTourImages(response.data.images || {});
+        }
+      } catch (error) {
+        console.error('Erreur chargement images visite virtuelle:', error);
+      } finally {
+        setLoadingVirtualTour(false);
+      }
+    };
+
+    fetchVirtualTourImages();
+  }, [user?.role]);
+
+  // Upload d'une image de visite virtuelle
+  const handleVirtualTourUpload = async (viewId, file) => {
+    if (!file) return;
+
+    try {
+      setUploadingView(viewId);
+
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await api.post(`/api/virtual-tour/images/${viewId}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      if (response.data.success) {
+        // Mettre à jour l'état local avec la nouvelle image
+        setVirtualTourImages(prev => ({
+          ...prev,
+          [viewId]: response.data.image
+        }));
+        dialog.showToast(
+          isRTL ? 'تم تحميل الصورة بنجاح' : 'Image uploadée avec succès',
+          'success'
+        );
+      }
+    } catch (error) {
+      console.error('Erreur upload image:', error);
+      dialog.showToast(
+        isRTL ? 'خطأ في تحميل الصورة' : 'Erreur lors de l\'upload',
+        'error'
+      );
+    } finally {
+      setUploadingView(null);
+    }
+  };
+
+  // Supprimer une image de visite virtuelle
+  const handleVirtualTourDelete = async (viewId) => {
+    try {
+      const confirmed = await dialog.showConfirm(
+        isRTL ? 'هل أنت متأكد من حذف هذه الصورة؟' : 'Êtes-vous sûr de vouloir supprimer cette image ?',
+        isRTL ? 'تأكيد الحذف' : 'Confirmer la suppression'
+      );
+
+      if (!confirmed) return;
+
+      setUploadingView(viewId);
+
+      const response = await api.delete(`/api/virtual-tour/images/${viewId}`);
+
+      if (response.data.success) {
+        setVirtualTourImages(prev => ({
+          ...prev,
+          [viewId]: null
+        }));
+        dialog.showToast(
+          isRTL ? 'تم حذف الصورة بنجاح' : 'Image supprimée avec succès',
+          'success'
+        );
+      }
+    } catch (error) {
+      console.error('Erreur suppression image:', error);
+      dialog.showToast(
+        isRTL ? 'خطأ في حذف الصورة' : 'Erreur lors de la suppression',
+        'error'
+      );
+    } finally {
+      setUploadingView(null);
+    }
+  };
 
   // Mettre à jour l'affectation d'un membre du staff
   const handleStaffAssignmentChange = async (staffId, ageGroup) => {
@@ -1199,11 +1318,148 @@ const DashboardSettingsPage = () => {
           </motion.div>
         </div>
 
+        {/* Gestion des images de visite virtuelle - Admin seulement */}
+        {user?.role === 'admin' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.5 }}
+          >
+            <Card>
+              <CardHeader
+                className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                onClick={() => setShowVirtualTourSection(!showVirtualTourSection)}
+              >
+                <CardTitle className="flex items-center justify-between text-base sm:text-lg">
+                  <div className="flex items-center">
+                    <Camera className="w-5 h-5 mr-2 rtl:mr-0 rtl:ml-2 flex-shrink-0" />
+                    <span className="truncate">{isRTL ? 'صور الجولة الافتراضية' : 'Images Visite Virtuelle'}</span>
+                  </div>
+                  {showVirtualTourSection ? (
+                    <ChevronUp className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                  )}
+                </CardTitle>
+              </CardHeader>
+              {showVirtualTourSection && (
+                <CardContent>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                    {isRTL
+                      ? 'قم بتحميل صور لكل منطقة في الحضانة. سيتم استبدال الصورة القديمة تلقائياً عند تحميل صورة جديدة.'
+                      : 'Uploadez une image pour chaque zone de la crèche. L\'ancienne image sera automatiquement remplacée.'}
+                  </p>
+
+                  {loadingVirtualTour ? (
+                    <div className="flex justify-center py-8">
+                      <RefreshCw className="w-8 h-8 animate-spin text-primary-500" />
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {virtualTourViews.map((view) => (
+                        <div
+                          key={view.id}
+                          className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-gray-50 dark:bg-gray-800"
+                        >
+                          {/* Aperçu de l'image */}
+                          <div className="relative h-40 bg-gray-100 dark:bg-gray-700">
+                            {virtualTourImages[view.id] ? (
+                              <>
+                                <img
+                                  src={`${API_CONFIG.BASE_URL}${virtualTourImages[view.id]}`}
+                                  alt={view.name}
+                                  className="w-full h-full object-cover"
+                                />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                  <a
+                                    href={`${API_CONFIG.BASE_URL}${virtualTourImages[view.id]}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="p-2 bg-white rounded-full hover:bg-gray-100 transition-colors"
+                                    title={isRTL ? 'عرض' : 'Voir'}
+                                  >
+                                    <Eye className="w-5 h-5 text-gray-700" />
+                                  </a>
+                                  <button
+                                    onClick={() => handleVirtualTourDelete(view.id)}
+                                    disabled={uploadingView === view.id}
+                                    className="p-2 bg-red-500 rounded-full hover:bg-red-600 transition-colors disabled:opacity-50"
+                                    title={isRTL ? 'حذف' : 'Supprimer'}
+                                  >
+                                    <Trash2 className="w-5 h-5 text-white" />
+                                  </button>
+                                </div>
+                              </>
+                            ) : (
+                              <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 dark:text-gray-500">
+                                <Image className="w-12 h-12 mb-2" />
+                                <span className="text-sm">{isRTL ? 'لا توجد صورة' : 'Aucune image'}</span>
+                              </div>
+                            )}
+
+                            {/* Indicateur de chargement */}
+                            {uploadingView === view.id && (
+                              <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                <RefreshCw className="w-8 h-8 animate-spin text-white" />
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Infos et bouton upload */}
+                          <div className="p-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                                <span>{view.icon}</span>
+                                <span className="text-sm">{view.name}</span>
+                              </span>
+                            </div>
+
+                            <label className="cursor-pointer">
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/jpg,image/png,image/webp"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    handleVirtualTourUpload(view.id, file);
+                                    e.target.value = ''; // Reset input
+                                  }
+                                }}
+                                disabled={uploadingView === view.id}
+                              />
+                              <div className="flex items-center justify-center gap-2 px-3 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors text-sm font-medium disabled:opacity-50">
+                                <Upload className="w-4 h-4" />
+                                {virtualTourImages[view.id]
+                                  ? (isRTL ? 'تغيير الصورة' : 'Changer l\'image')
+                                  : (isRTL ? 'تحميل صورة' : 'Uploader une image')
+                                }
+                              </div>
+                            </label>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                    <p className="text-xs text-blue-700 dark:text-blue-300">
+                      💡 {isRTL
+                        ? 'الصور المدعومة: JPG, PNG, WebP. الحجم الأقصى: 5 ميغابايت. سيتم عرض الصور في صفحة الجولة الافتراضية.'
+                        : 'Formats supportés: JPG, PNG, WebP. Taille max: 5MB. Les images seront affichées sur la page Visite Virtuelle.'}
+                    </p>
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+          </motion.div>
+        )}
+
         {/* Gestion des jours fériés - sur toute la largeur */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.5 }}
+          transition={{ duration: 0.6, delay: 0.6 }}
         >
           <Card>
             <CardHeader>
