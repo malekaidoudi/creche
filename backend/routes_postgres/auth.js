@@ -157,7 +157,7 @@ router.get('/me', async (req, res) => {
 
     // Récupérer les informations utilisateur
     const result = await db.query(
-      'SELECT id, email, first_name, last_name, role, phone, profile_image, is_active FROM users WHERE id = $1',
+      'SELECT id, email, first_name, last_name, role, phone, profile_image, is_active, gender, staff_position FROM users WHERE id = $1',
       [decoded.userId]
     );
 
