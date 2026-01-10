@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, CheckCircle, Clock, AlertCircle, CalendarPlus, FileText, StickyNote, Cake, User, Phone } from 'lucide-react';
+import { Calendar, CheckCircle, Clock, AlertCircle, CalendarPlus, FileText, StickyNote, Cake, User, Phone, ClipboardCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useDialogContext } from '../../contexts/DialogContext';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -174,28 +174,72 @@ const TodayTasksWidget = ({ onOpenMemoModal, onOpenTaskModal, onOpenAppointmentM
       const todayStr = today.toISOString().split('T')[0];
       today.setHours(0, 0, 0, 0);
 
-      // Charger les tâches, mémos et événements
-      const eventsResponse = await api.get('/api/events', {
-        params: { limit: 50 }
-      });
+      // 1. Charger les TÂCHES depuis la table tasks (via /api/tasks/today)
+      let tasksFromDb = [];
+      try {
+        const tasksResponse = await api.get('/api/tasks/today');
+        if (tasksResponse.data.success) {
+          tasksFromDb = (tasksResponse.data.tasks || []).map(task => ({
+            id: task.id,
+            type: 'task',
+            title: task.title,
+            description: task.description,
+            start_date: task.due_date,
+            priority: task.priority,
+            status: task.status,
+            assigned_to: task.assigned_to,
+            assigned_to_name: task.assigned_to_name,
+            assigned_to_role: task.assigned_to_role,
+            created_by: task.created_by,
+            created_by_name: task.created_by_name,
+            source: 'tasks' // Pour identifier la source
+          }));
+        }
+      } catch (error) {
+        console.log('Erreur chargement tâches:', error.message);
+      }
 
-      // Charger les RDV du jour uniquement
+      // 2. Charger les RDV du jour uniquement
       let appointments = [];
       try {
         const apptResponse = await api.get('/api/appointments/today');
         if (apptResponse.data.success) {
-          // Filtrer strictement pour aujourd'hui
           appointments = (apptResponse.data.appointments || []).filter(appt => {
             const apptDate = new Date(appt.confirmed_date || appt.proposed_date);
             apptDate.setHours(0, 0, 0, 0);
             return apptDate.getTime() === today.getTime();
+          }).map(appt => {
+            const isInscription = appt.appointment_type === 'inscription' || appt.enrollment_id;
+            return {
+              id: `appt-${appt.id}`,
+              type: 'appointment',
+              title: isInscription
+                ? `📋 RDV Inscription: ${appt.child_name || 'Enfant'}`
+                : (appt.subject || (isRTL ? 'موعد' : 'Rendez-vous')),
+              description: isInscription
+                ? `Validation du dossier d'inscription`
+                : appt.description,
+              start_date: appt.confirmed_date || appt.proposed_date,
+              priority: 'high',
+              status: appt.status,
+              metadata: {
+                parent_name: appt.parent_name,
+                parent_phone: appt.parent_phone,
+                parent_email: appt.parent_email,
+                child_name: appt.child_name,
+                appointment_id: appt.id,
+                enrollment_id: appt.enrollment_id,
+                is_inscription: isInscription,
+                appointment_type: appt.appointment_type
+              }
+            };
           });
         }
       } catch (error) {
         console.log('Pas de RDV aujourd\'hui:', error.message);
       }
 
-      // Charger les anniversaires du jour
+      // 3. Charger les anniversaires du jour
       let birthdays = [];
       try {
         const childrenResponse = await api.get('/api/children');
@@ -224,77 +268,41 @@ const TodayTasksWidget = ({ onOpenMemoModal, onOpenTaskModal, onOpenAppointmentM
         console.log('Erreur chargement anniversaires:', error.message);
       }
 
-      if (eventsResponse.data.success) {
-        // Filtrer STRICTEMENT pour aujourd'hui
-        const filtered = (eventsResponse.data.events || []).filter(event => {
-          // Types acceptés
-          if (!['task', 'memo', 'event', 'meeting'].includes(event.type)) return false;
-
-          // Exclure messages staff
-          const metadata = typeof event.metadata === 'string'
-            ? JSON.parse(event.metadata || '{}')
-            : (event.metadata || {});
-          if (metadata.from_staff === true) return false;
-
-          // Exclure complétés et annulés
-          if (event.status === 'completed' || event.status === 'cancelled') return false;
-
-          // Mémos : inclure les non-complétés créés aujourd'hui
-          if (event.type === 'memo') {
-            const createdDate = new Date(event.created_at);
-            createdDate.setHours(0, 0, 0, 0);
-            return createdDate.getTime() === today.getTime();
-          }
-
-          // Autres : STRICTEMENT aujourd'hui
-          const eventDate = new Date(event.start_date);
-          eventDate.setHours(0, 0, 0, 0);
-          return eventDate.getTime() === today.getTime();
-        });
-
-        // Convertir les RDV
-        const appointmentTasks = appointments.map(appt => {
-          const isInscription = appt.appointment_type === 'inscription' || appt.enrollment_id;
-          return {
-            id: `appt-${appt.id}`,
-            type: 'appointment',
-            title: isInscription
-              ? `📋 RDV Inscription: ${appt.child_name || 'Enfant'}`
-              : (appt.subject || (isRTL ? 'موعد' : 'Rendez-vous')),
-            description: isInscription
-              ? `Validation du dossier d'inscription`
-              : appt.description,
-            start_date: appt.confirmed_date || appt.proposed_date,
-            priority: 'high',
-            status: appt.status,
-            metadata: {
-              parent_name: appt.parent_name,
-              parent_phone: appt.parent_phone,
-              parent_email: appt.parent_email,
-              child_name: appt.child_name,
-              appointment_id: appt.id,
-              enrollment_id: appt.enrollment_id,
-              is_inscription: isInscription,
-              appointment_type: appt.appointment_type
-            }
-          };
-        });
-
-        // Combiner tout SAUF les RDV (ils ont leur propre widget maintenant)
-        const combined = [...filtered, ...birthdays];
-
-        // Trier par heure puis priorité
-        combined.sort((a, b) => {
-          const timeA = new Date(a.start_date).getTime();
-          const timeB = new Date(b.start_date).getTime();
-          if (timeA !== timeB) return timeA - timeB;
-
-          const priorityOrder = { high: 0, medium: 1, low: 2 };
-          return (priorityOrder[a.priority] || 1) - (priorityOrder[b.priority] || 1);
-        });
-
-        setTasks(combined.slice(0, 15)); // Limiter à 15
+      // 4. Charger les mémos personnels du jour
+      let memos = [];
+      try {
+        const memosResponse = await api.get('/api/personal-memos/today');
+        if (memosResponse.data.success) {
+          memos = (memosResponse.data.memos || []).map(memo => ({
+            id: `memo-${memo.id}`,
+            type: 'memo',
+            title: memo.content.substring(0, 50) + (memo.content.length > 50 ? '...' : ''),
+            description: memo.content,
+            start_date: memo.memo_date,
+            priority: 'low',
+            status: memo.is_completed ? 'completed' : 'pending',
+            source: 'personal_memos'
+          }));
+        }
+      } catch (error) {
+        console.log('Erreur chargement mémos:', error.message);
       }
+
+      // 5. Combiner tâches, RDV, anniversaires et mémos
+      const combined = [...tasksFromDb, ...appointments, ...birthdays, ...memos];
+
+      // Trier par priorité puis par date
+      combined.sort((a, b) => {
+        const priorityOrder = { urgent: 0, high: 1, medium: 2, low: 3 };
+        const priorityDiff = (priorityOrder[a.priority] || 2) - (priorityOrder[b.priority] || 2);
+        if (priorityDiff !== 0) return priorityDiff;
+
+        const timeA = new Date(a.start_date).getTime();
+        const timeB = new Date(b.start_date).getTime();
+        return timeA - timeB;
+      });
+
+      setTasks(combined.slice(0, 15)); // Limiter à 15
     } catch (error) {
       console.error('Erreur chargement tâches du jour:', error);
     } finally {

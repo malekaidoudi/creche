@@ -1,21 +1,25 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Download,
-  Upload,
-  FileText,
-  Eye,
-  Trash2,
-  Search,
-  Filter,
-  Calendar,
-  User,
-  CheckCircle,
-  XCircle,
-  Clock,
-  RefreshCw,
-  Plus,
-  Edit
+    Download,
+    Upload,
+    FileText,
+    Eye,
+    Trash2,
+    Search,
+    Filter,
+    Calendar,
+    User,
+    CheckCircle,
+    XCircle,
+    Clock,
+    RefreshCw,
+    Plus,
+    Edit,
+    Baby,
+    Archive,
+    FolderOpen,
+    ExternalLink
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -24,401 +28,608 @@ import { useDialogContext } from '../../contexts/DialogContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import documentsService from '../../services/documentsService';
 
 const DocumentsPage = () => {
-  const { user } = useAuth();
-  const isAdmin = () => user?.role === 'admin';
-  const isStaff = () => user?.role === 'staff';
-  const { isRTL } = useLanguage();
-  const dialog = useDialogContext();
-  const [loading, setLoading] = useState(true);
-  const [documents, setDocuments] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState('all');
-  const [showUploadModal, setShowUploadModal] = useState(false);
-  const [uploadLoading, setUploadLoading] = useState(false);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [uploadData, setUploadData] = useState({
-    title: '',
-    description: '',
-    document_type: 'reglement',
-    is_public: true
-  });
+    const { user } = useAuth();
+    const isAdmin = () => user?.role === 'admin';
+    const isStaff = () => user?.role === 'staff';
+    const { isRTL } = useLanguage();
+    const dialog = useDialogContext();
 
-  // Fonction pour charger les documents depuis l'API
-  const loadDocuments = async () => {
-    try {
-      setLoading(true);
-      // Simuler des données pour l'instant
-      setDocuments([
-        {
-          id: 1,
-          title: 'Règlement intérieur',
-          description: 'Règlement de la crèche Mima Elghalia',
-          document_type: 'reglement',
-          is_public: true,
-          created_at: new Date().toISOString(),
-          uploaded_by_name: 'Admin',
-          uploaded_by_lastname: 'System',
-          original_filename: 'reglement.pdf'
+    const [loading, setLoading] = useState(true);
+    const [documents, setDocuments] = useState([]);
+    const [stats, setStats] = useState({ admin: 0, children: 0, archives: 0, total: 0 });
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filterCategory, setFilterCategory] = useState('admin');
+    const [showUploadModal, setShowUploadModal] = useState(false);
+    const [uploadLoading, setUploadLoading] = useState(false);
+    const [selectedFile, setSelectedFile] = useState(null);
+    // Configuration automatique des types de documents
+    const documentTypeConfig = {
+        reglement: {
+            title: isRTL ? 'النظام الداخلي' : 'Règlement intérieur',
+            description: isRTL ? 'النظام الداخلي للحضانة - يجب توقيعه من طرف الأولياء' : 'Règlement intérieur de la crèche - à signer par les parents'
         },
-        {
-          id: 2,
-          title: 'Formulaire d\'inscription',
-          description: 'Formulaire à remplir pour l\'inscription',
-          document_type: 'formulaire',
-          is_public: true,
-          created_at: new Date().toISOString(),
-          uploaded_by_name: 'Admin',
-          uploaded_by_lastname: 'System',
-          original_filename: 'formulaire.pdf'
+        formulaire: {
+            title: isRTL ? 'نموذج التسجيل' : 'Formulaire d\'inscription',
+            description: isRTL ? 'نموذج التسجيل للأطفال الجدد' : 'Formulaire d\'inscription pour les nouveaux enfants'
+        },
+        guide: {
+            title: isRTL ? 'دليل الأولياء' : 'Guide des parents',
+            description: isRTL ? 'دليل شامل للأولياء حول سير الحضانة' : 'Guide complet pour les parents sur le fonctionnement de la crèche'
+        },
+        general: {
+            title: isRTL ? 'وثيقة عامة' : 'Document général',
+            description: isRTL ? 'وثيقة إدارية عامة' : 'Document administratif général'
         }
-      ]);
-    } catch (error) {
-      dialog.error(isRTL ? 'خطأ في تحميل الوثائق' : 'Erreur lors du chargement des documents');
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
-  useEffect(() => {
-    loadDocuments();
-  }, [filterType]);
-
-  // Fonction pour rafraîchir les données
-  const handleRefresh = () => {
-    loadDocuments();
-  };
-
-  // Fonction pour upload d'un document
-  const handleUpload = async () => {
-    if (!selectedFile || !uploadData.title) {
-      dialog.error(isRTL ? 'يرجى ملء جميع الحقول المطلوبة' : 'Veuillez remplir tous les champs requis');
-      return;
-    }
-
-    try {
-      setUploadLoading(true);
-      // Simuler l'upload pour l'instant
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      dialog.success(isRTL ? 'تم تحميل الوثيقة بنجاح' : 'Document téléversé avec succès');
-      setShowUploadModal(false);
-      setSelectedFile(null);
-      setUploadData({
-        title: '',
-        description: '',
+    const [uploadData, setUploadData] = useState({
         document_type: 'reglement',
-        is_public: true
-      });
-      loadDocuments(); // Recharger la liste
-    } catch (error) {
-      console.error('Erreur upload:', error);
-      dialog.error(error.response?.data?.message || (isRTL ? 'خطأ في تحميل الوثيقة' : 'Erreur lors du téléversement'));
-    } finally {
-      setUploadLoading(false);
-    }
-  };
+        is_public: true,
+        is_required: false
+    });
 
-  // Fonction pour supprimer un document
-  const handleDelete = async (documentId) => {
-    const confirmed = await dialog.confirm(
-      isRTL ? 'هل أنت متأكد من حذف هذه الوثيقة؟' : 'Êtes-vous sûr de vouloir supprimer ce document ?',
-      isRTL ? 'تأكيد الحذف' : 'Confirmer la suppression',
-      { type: 'danger', confirmText: isRTL ? 'حذف' : 'Supprimer', cancelText: isRTL ? 'إلغاء' : 'Annuler' }
-    );
+    // Charger les documents depuis l'API
+    const loadDocuments = async () => {
+        try {
+            setLoading(true);
 
-    if (!confirmed) return;
+            const [docsResponse, statsResponse] = await Promise.all([
+                api.get('/api/documents', { params: { type: filterCategory } }),
+                api.get('/api/documents/stats')
+            ]);
 
-    try {
-      // Simuler la suppression
-      setDocuments(prev => prev.filter(doc => doc.id !== documentId));
-      dialog.success(isRTL ? 'تم حذف الوثيقة بنجاح' : 'Document supprimé avec succès');
-    } catch (error) {
-      console.error('Erreur suppression:', error);
-      dialog.error(isRTL ? 'خطأ في حذف الوثيقة' : 'Erreur lors de la suppression');
-    }
-  };
+            if (docsResponse.data.success) {
+                setDocuments(docsResponse.data.documents || []);
+            }
 
-  // Fonction pour télécharger un document
-  const handleDownload = async (id, filename) => {
-    try {
-      // Simuler le téléchargement (silencieux)
-    } catch (error) {
-      console.error('Erreur téléchargement:', error);
-      dialog.error('Erreur lors du téléchargement');
-    }
-  };
+            if (statsResponse.data.success) {
+                setStats(statsResponse.data.stats);
+            }
+        } catch (error) {
+            console.error('Erreur chargement documents:', error);
+            dialog.error(isRTL ? 'خطأ في تحميل الوثائق' : 'Erreur lors du chargement des documents');
+        } finally {
+            setLoading(false);
+        }
+    };
 
-  // Filtrer les documents
-  const filteredDocuments = documents.filter(doc => {
-    const matchesSearch = doc.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      doc.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesSearch;
-  });
+    useEffect(() => {
+        loadDocuments();
+    }, [filterCategory]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
-  }
+    // Upload d'un document administratif
+    const handleUpload = async () => {
+        if (!selectedFile) {
+            dialog.error(isRTL ? 'يرجى اختيار ملف' : 'Veuillez sélectionner un fichier');
+            return;
+        }
 
-  return (
-    <div className="space-y-6">
+        // Récupérer le titre et la description automatiques
+        const config = documentTypeConfig[uploadData.document_type];
 
-      {/* En-tête */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            {isRTL ? 'إدارة المستندات' : 'Gestion des documents'}
-          </h1>
-          <p className="text-gray-600 dark:text-gray-300">
-            {isRTL ? 'إدارة المستندات الإدارية والملفات' : 'Gérer les documents administratifs et fichiers'}
-          </p>
-        </div>
+        try {
+            setUploadLoading(true);
 
-        <div className="flex gap-2">
+            const formData = new FormData();
+            formData.append('document', selectedFile);
+            formData.append('title', config.title);
+            formData.append('description', config.description);
+            formData.append('document_type', uploadData.document_type);
+            formData.append('is_public', uploadData.is_public);
+            formData.append('is_required', uploadData.is_required);
 
+            const response = await api.post('/api/documents/admin', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
 
-          {(isAdmin() || isStaff()) && (
-            <Button onClick={() => setShowUploadModal(true)}>
-              <Plus className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
-              {isRTL ? 'رفع مستند' : 'Ajouter document'}
-            </Button>
-          )}
-        </div>
-      </div>
+            if (response.data.success) {
+                dialog.success(isRTL ? 'تم تحميل الوثيقة بنجاح' : 'Document téléversé avec succès');
+                setShowUploadModal(false);
+                setSelectedFile(null);
+                setUploadData({
+                    document_type: 'reglement',
+                    is_public: true,
+                    is_required: false
+                });
+                loadDocuments();
+            }
+        } catch (error) {
+            console.error('Erreur upload:', error);
+            dialog.error(error.response?.data?.error || (isRTL ? 'خطأ في تحميل الوثيقة' : 'Erreur lors du téléversement'));
+        } finally {
+            setUploadLoading(false);
+        }
+    };
 
-      {/* Filtres */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Recherche */}
-            <div className="relative">
-              <Search className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input
-                type="text"
-                placeholder={isRTL ? 'البحث في المستندات...' : 'Rechercher des documents...'}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 rtl:pl-4 rtl:pr-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              />
+    // Supprimer un document administratif
+    const handleDelete = async (doc) => {
+        if (doc.category !== 'admin') {
+            dialog.error(isRTL ? 'لا يمكن حذف هذا المستند' : 'Ce document ne peut pas être supprimé');
+            return;
+        }
+
+        const confirmed = await dialog.confirm(
+            isRTL ? 'هل أنت متأكد من حذف هذه الوثيقة؟' : 'Êtes-vous sûr de vouloir supprimer ce document ?',
+            isRTL ? 'تأكيد الحذف' : 'Confirmer la suppression',
+            { type: 'danger', confirmText: isRTL ? 'حذف' : 'Supprimer', cancelText: isRTL ? 'إلغاء' : 'Annuler' }
+        );
+
+        if (!confirmed) return;
+
+        try {
+            const response = await api.delete(`/api/documents/admin/${doc.id}`);
+            if (response.data.success) {
+                dialog.success(isRTL ? 'تم حذف الوثيقة بنجاح' : 'Document supprimé avec succès');
+                loadDocuments();
+            }
+        } catch (error) {
+            console.error('Erreur suppression:', error);
+            dialog.error(isRTL ? 'خطأ في حذف الوثيقة' : 'Erreur lors de la suppression');
+        }
+    };
+
+    // Ouvrir/télécharger un document
+    const handleView = (doc) => {
+        if (!doc.cloudinary_url) {
+            dialog.error(isRTL ? 'الملف غير متوفر' : 'Fichier non disponible');
+            return;
+        }
+        // Utiliser directement l'URL Cloudinary stockée en base
+        window.open(doc.cloudinary_url, '_blank');
+    };
+
+    // Obtenir la configuration de catégorie
+    const getCategoryConfig = (category) => {
+        const configs = {
+            admin: {
+                label: isRTL ? 'إداري' : 'Administratif',
+                color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+                icon: FolderOpen
+            },
+            children: {
+                label: isRTL ? 'طفل' : 'Enfant',
+                color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+                icon: Baby
+            },
+            archives: {
+                label: isRTL ? 'أرشيف' : 'Archive',
+                color: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
+                icon: Archive
+            }
+        };
+        return configs[category] || configs.admin;
+    };
+
+    // Filtrer les documents
+    const filteredDocuments = documents.filter(doc => {
+        const matchesSearch =
+            doc.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            doc.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            doc.original_filename?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            doc.child_first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            doc.child_last_name?.toLowerCase().includes(searchTerm.toLowerCase());
+        return matchesSearch;
+    });
+
+    // Regrouper les documents enfants par nom d'enfant
+    const groupedChildrenDocs = filteredDocuments
+        .filter(doc => doc.category === 'children')
+        .reduce((groups, doc) => {
+            const childName = `${doc.child_first_name || 'Inconnu'} ${doc.child_last_name || ''}`.trim();
+            if (!groups[childName]) {
+                groups[childName] = [];
+            }
+            groups[childName].push(doc);
+            return groups;
+        }, {});
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-64">
+                <LoadingSpinner size="lg" />
             </div>
+        );
+    }
 
-            {/* Filtre par type */}
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            >
-              <option value="all">{isRTL ? 'جميع الأنواع' : 'Tous les types'}</option>
-              <option value="reglement">{isRTL ? 'اللوائح' : 'Règlements'}</option>
-              <option value="formulaire">{isRTL ? 'النماذج' : 'Formulaires'}</option>
-              <option value="general">{isRTL ? 'عام' : 'Général'}</option>
-            </select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Liste des documents */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredDocuments.map((doc) => (
-          <motion.div
-            key={doc.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center space-x-3 rtl:space-x-reverse">
-                    <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                      <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900 dark:text-white">
-                        {doc.title}
-                      </h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {doc.document_type}
-                      </p>
-                    </div>
-                  </div>
-
-                  {doc.is_public && (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300">
-                      {isRTL ? 'عام' : 'Public'}
-                    </span>
-                  )}
-                </div>
-              </CardHeader>
-
-              <CardContent>
-                {doc.description && (
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                    {doc.description}
-                  </p>
-                )}
-
-                <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-4">
-                  <span>
-                    {new Date(doc.created_at).toLocaleDateString(isRTL ? 'ar' : 'fr')}
-                  </span>
-                  <span>
-                    {doc.uploaded_by_name} {doc.uploaded_by_lastname}
-                  </span>
+    return (
+        <div className="space-y-6">
+            {/* En-tête */}
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                        {isRTL ? 'إدارة المستندات' : 'Gestion des documents'}
+                    </h1>
+                    <p className="text-gray-600 dark:text-gray-300">
+                        {isRTL ? 'إدارة المستندات الإدارية والملفات' : 'Gérer les documents administratifs et fichiers'}
+                    </p>
                 </div>
 
                 <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleDownload(doc.id, doc.original_filename)}
-                    className="flex-1"
-                  >
-                    <Download className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
-                    {isRTL ? 'تحميل' : 'Télécharger'}
-                  </Button>
-
-                  {(isAdmin() || isStaff()) && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleDelete(doc.id)}
-                      className="text-red-600 border-red-600 hover:bg-red-50"
-                    >
-                      <Trash2 className="w-4 h-4" />
+                    <Button variant="outline" onClick={loadDocuments}>
+                        <RefreshCw className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                        {isRTL ? 'تحديث' : 'Actualiser'}
                     </Button>
-                  )}
+
+                    {isAdmin() && (
+                        <Button onClick={() => setShowUploadModal(true)}>
+                            <Plus className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                            {isRTL ? 'رفع مستند إداري' : 'Ajouter document admin'}
+                        </Button>
+                    )}
                 </div>
-              </CardContent>
+            </div>
+
+            {/* Statistiques */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card className={`cursor-pointer hover:shadow-md transition-shadow ${filterCategory === 'admin' ? 'ring-2 ring-blue-500' : ''}`} onClick={() => setFilterCategory('admin')}>
+                    <CardContent className="p-4 flex items-center gap-3">
+                        <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                            <FolderOpen className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div>
+                            <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.admin}</p>
+                            <p className="text-sm text-gray-500">{isRTL ? 'إداري' : 'Administratifs'}</p>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className={`cursor-pointer hover:shadow-md transition-shadow ${filterCategory === 'children' ? 'ring-2 ring-green-500' : ''}`} onClick={() => setFilterCategory('children')}>
+                    <CardContent className="p-4 flex items-center gap-3">
+                        <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+                            <Baby className="w-5 h-5 text-green-600 dark:text-green-400" />
+                        </div>
+                        <div>
+                            <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.children}</p>
+                            <p className="text-sm text-gray-500">{isRTL ? 'وثائق الأطفال' : 'Documents enfants'}</p>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className={`cursor-pointer hover:shadow-md transition-shadow ${filterCategory === 'archives' ? 'ring-2 ring-gray-500' : ''}`} onClick={() => setFilterCategory('archives')}>
+                    <CardContent className="p-4 flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+                            <Archive className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                        </div>
+                        <div>
+                            <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.archives}</p>
+                            <p className="text-sm text-gray-500">{isRTL ? 'أرشيف' : 'Archives'}</p>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Filtres */}
+            <Card>
+                <CardContent className="p-4">
+                    <div className="flex flex-col md:flex-row gap-4">
+                        {/* Recherche */}
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                            <input
+                                type="text"
+                                placeholder={isRTL ? 'البحث في المستندات...' : 'Rechercher des documents...'}
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full pl-10 rtl:pl-4 rtl:pr-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                            />
+                        </div>
+
+                    </div>
+                </CardContent>
             </Card>
-          </motion.div>
-        ))}
-      </div>
 
-      {/* Message si aucun document */}
-      {filteredDocuments.length === 0 && (
-        <div className="text-center py-12">
-          <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-            {isRTL ? 'لا توجد مستندات' : 'Aucun document trouvé'}
-          </h3>
-          <p className="text-gray-600 dark:text-gray-400">
-            {isRTL
-              ? 'لا توجد مستندات مطابقة لمعايير البحث'
-              : 'Aucun document ne correspond aux critères de recherche'
-            }
-          </p>
+            {/* Liste des documents - Affichage selon la catégorie */}
+            {filterCategory === 'children' ? (
+                /* Affichage groupé par enfant */
+                <div className="space-y-6">
+                    {Object.entries(groupedChildrenDocs).map(([childName, docs], groupIndex) => (
+                        <Card key={childName} className="overflow-hidden">
+                            <CardHeader className="bg-green-50 dark:bg-green-900/20 border-b border-green-100 dark:border-green-800">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-green-100 dark:bg-green-900/50 rounded-full flex items-center justify-center">
+                                        <Baby className="w-5 h-5 text-green-600 dark:text-green-400" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-semibold text-gray-900 dark:text-white">{childName}</h3>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                                            {docs.length} {isRTL ? 'وثيقة' : docs.length > 1 ? 'documents' : 'document'}
+                                        </p>
+                                    </div>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="p-0">
+                                <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                                    {docs.map((doc, docIndex) => (
+                                        <div key={`${doc.id}-${docIndex}`} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 flex items-center justify-between">
+                                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                <FileText className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                                                <div className="min-w-0">
+                                                    <p className="font-medium text-gray-900 dark:text-white truncate">
+                                                        {doc.document_type}
+                                                    </p>
+                                                    <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                                                        {doc.original_filename}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2 flex-shrink-0">
+                                                <span className="text-xs text-gray-400 hidden sm:inline">
+                                                    {new Date(doc.created_at).toLocaleDateString(isRTL ? 'ar' : 'fr')}
+                                                </span>
+                                                {doc.cloudinary_url ? (
+                                                    <>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            onClick={() => handleView(doc)}
+                                                            title={isRTL ? 'عرض' : 'Voir'}
+                                                        >
+                                                            <Eye className="w-4 h-4" />
+                                                            <span className="hidden sm:inline ml-1">{isRTL ? 'عرض' : 'Voir'}</span>
+                                                        </Button>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            onClick={() => {
+                                                                const link = document.createElement('a');
+                                                                link.href = doc.cloudinary_url;
+                                                                link.download = doc.original_filename || 'document';
+                                                                link.target = '_blank';
+                                                                link.click();
+                                                            }}
+                                                            title={isRTL ? 'تحميل' : 'Télécharger'}
+                                                        >
+                                                            <Download className="w-4 h-4" />
+                                                            <span className="hidden sm:inline ml-1">{isRTL ? 'تحميل' : 'Télécharger'}</span>
+                                                        </Button>
+                                                    </>
+                                                ) : (
+                                                    <Button size="sm" variant="outline" disabled>
+                                                        <XCircle className="w-4 h-4 mr-1" />
+                                                        <span className="hidden sm:inline">{isRTL ? 'غير متوفر' : 'Non disponible'}</span>
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            ) : (
+                /* Affichage en grille pour admin et archives */
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {filteredDocuments.map((doc, index) => {
+                        const categoryConfig = getCategoryConfig(doc.category);
+                        const CategoryIcon = categoryConfig.icon;
+
+                        return (
+                            <motion.div
+                                key={`${doc.category}-${doc.id}-${index}`}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.3, delay: index * 0.05 }}
+                            >
+                                <Card className="hover:shadow-lg transition-shadow h-full">
+                                    <CardHeader className="pb-2">
+                                        <div className="flex items-start justify-between">
+                                            <div className="flex items-center space-x-3 rtl:space-x-reverse">
+                                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${doc.category === 'admin' ? 'bg-blue-100 dark:bg-blue-900/30' :
+                                                    'bg-gray-100 dark:bg-gray-700'
+                                                    }`}>
+                                                    <CategoryIcon className={`w-5 h-5 ${doc.category === 'admin' ? 'text-blue-600 dark:text-blue-400' :
+                                                        'text-gray-600 dark:text-gray-400'
+                                                        }`} />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <h3 className="font-semibold text-gray-900 dark:text-white truncate">
+                                                        {doc.title}
+                                                    </h3>
+                                                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                                                        {doc.document_type}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${categoryConfig.color}`}>
+                                                {categoryConfig.label}
+                                            </span>
+                                        </div>
+                                    </CardHeader>
+
+                                    <CardContent className="pt-2">
+                                        {doc.description && (
+                                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
+                                                {doc.description}
+                                            </p>
+                                        )}
+
+                                        <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-4">
+                                            <span className="flex items-center gap-1">
+                                                <Calendar className="w-3 h-3" />
+                                                {new Date(doc.created_at).toLocaleDateString(isRTL ? 'ar' : 'fr')}
+                                            </span>
+                                            {doc.original_filename && (
+                                                <span className="truncate max-w-[120px]" title={doc.original_filename}>
+                                                    {doc.original_filename}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <div className="flex gap-2">
+                                            {doc.cloudinary_url ? (
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={() => handleView(doc)}
+                                                    className="flex-1"
+                                                >
+                                                    <ExternalLink className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
+                                                    {isRTL ? 'عرض' : 'Voir'}
+                                                </Button>
+                                            ) : (
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    disabled
+                                                    className="flex-1"
+                                                >
+                                                    <XCircle className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
+                                                    {isRTL ? 'غير متوفر' : 'Non disponible'}
+                                                </Button>
+                                            )}
+
+                                            {isAdmin() && doc.category === 'admin' && (
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={() => handleDelete(doc)}
+                                                    className="text-red-600 border-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </motion.div>
+                        );
+                    })}
+                </div>
+            )}
+
+            {/* Message si aucun document */}
+            {(filterCategory === 'children' ? Object.keys(groupedChildrenDocs).length === 0 : filteredDocuments.length === 0) && (
+                <div className="text-center py-12">
+                    <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                        {isRTL ? 'لا توجد مستندات' : 'Aucun document trouvé'}
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400">
+                        {filterCategory === 'admin'
+                            ? (isRTL ? 'لا توجد مستندات إدارية. أضف مستندًا جديدًا.' : 'Aucun document administratif. Ajoutez-en un nouveau.')
+                            : filterCategory === 'children'
+                                ? (isRTL ? 'لا توجد وثائق أطفال. سيتم إضافتها عند الموافقة على التسجيلات.' : 'Aucun document enfant. Ils seront ajoutés lors de l\'approbation des inscriptions.')
+                                : filterCategory === 'archives'
+                                    ? (isRTL ? 'لا توجد وثائق مؤرشفة.' : 'Aucun document archivé.')
+                                    : (isRTL ? 'لا توجد مستندات مطابقة لمعايير البحث' : 'Aucun document ne correspond aux critères de recherche')
+                        }
+                    </p>
+                </div>
+            )}
+
+            {/* Modal d'upload */}
+            {showUploadModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                            {isRTL ? 'رفع مستند إداري جديد' : 'Ajouter un document administratif'}
+                        </h3>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    {isRTL ? 'نوع الوثيقة' : 'Type de document'} *
+                                </label>
+                                <select
+                                    value={uploadData.document_type}
+                                    onChange={(e) => setUploadData({ ...uploadData, document_type: e.target.value })}
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                >
+                                    <option value="reglement">{isRTL ? 'النظام الداخلي' : 'Règlement intérieur'}</option>
+                                    <option value="formulaire">{isRTL ? 'نموذج التسجيل' : 'Formulaire d\'inscription'}</option>
+                                    <option value="guide">{isRTL ? 'دليل الأولياء' : 'Guide des parents'}</option>
+                                    <option value="general">{isRTL ? 'وثيقة عامة' : 'Document général'}</option>
+                                </select>
+                                <p className="text-xs text-gray-500 mt-1">
+                                    {isRTL ? 'العنوان والوصف سيتم تعيينهما تلقائياً' : 'Le titre et la description seront définis automatiquement'}
+                                </p>
+                            </div>
+
+                            {/* Aperçu du titre et description automatiques */}
+                            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
+                                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    {isRTL ? 'العنوان:' : 'Titre:'} <span className="text-gray-900 dark:text-white">{documentTypeConfig[uploadData.document_type]?.title}</span>
+                                </p>
+                                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                    {isRTL ? 'الوصف:' : 'Description:'} {documentTypeConfig[uploadData.document_type]?.description}
+                                </p>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    {isRTL ? 'الملف' : 'Fichier'} *
+                                </label>
+                                <input
+                                    type="file"
+                                    onChange={(e) => setSelectedFile(e.target.files[0])}
+                                    accept=".pdf,.jpg,.jpeg,.png"
+                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">
+                                    {isRTL ? 'PDF, JPEG, PNG - الحد الأقصى 10 ميجابايت' : 'PDF, JPEG, PNG - Max 10 Mo'}
+                                </p>
+                            </div>
+
+                            <div className="flex items-center gap-4">
+                                <label className="flex items-center">
+                                    <input
+                                        type="checkbox"
+                                        checked={uploadData.is_public}
+                                        onChange={(e) => setUploadData({ ...uploadData, is_public: e.target.checked })}
+                                        className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                                    />
+                                    <span className="ml-2 rtl:ml-0 rtl:mr-2 text-sm text-gray-900 dark:text-white">
+                                        {isRTL ? 'عام' : 'Public'}
+                                    </span>
+                                </label>
+
+                                <label className="flex items-center">
+                                    <input
+                                        type="checkbox"
+                                        checked={uploadData.is_required}
+                                        onChange={(e) => setUploadData({ ...uploadData, is_required: e.target.checked })}
+                                        className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                                    />
+                                    <span className="ml-2 rtl:ml-0 rtl:mr-2 text-sm text-gray-900 dark:text-white">
+                                        {isRTL ? 'مطلوب للتسجيل' : 'Requis pour inscription'}
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 mt-6">
+                            <Button
+                                onClick={() => {
+                                    setShowUploadModal(false);
+                                    setSelectedFile(null);
+                                }}
+                                variant="outline"
+                                className="flex-1"
+                            >
+                                {isRTL ? 'إلغاء' : 'Annuler'}
+                            </Button>
+                            <Button
+                                onClick={handleUpload}
+                                disabled={uploadLoading || !selectedFile}
+                                className="flex-1"
+                            >
+                                {uploadLoading ? (
+                                    <RefreshCw className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2 animate-spin" />
+                                ) : (
+                                    <Upload className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                                )}
+                                {uploadLoading ? (isRTL ? 'جاري الرفع...' : 'Upload...') : (isRTL ? 'رفع' : 'Uploader')}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
-      )}
-
-      {/* Modal d'upload */}
-      {showUploadModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              {isRTL ? 'رفع مستند جديد' : 'Ajouter un nouveau document'}
-            </h3>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {isRTL ? 'العنوان' : 'Titre'}
-                </label>
-                <input
-                  type="text"
-                  value={uploadData.title}
-                  onChange={(e) => setUploadData({ ...uploadData, title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  placeholder={isRTL ? 'عنوان المستند' : 'Titre du document'}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {isRTL ? 'الوصف' : 'Description'}
-                </label>
-                <textarea
-                  value={uploadData.description}
-                  onChange={(e) => setUploadData({ ...uploadData, description: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  placeholder={isRTL ? 'وصف المستند' : 'Description du document'}
-                  rows={3}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {isRTL ? 'النوع' : 'Type'}
-                </label>
-                <select
-                  value={uploadData.document_type}
-                  onChange={(e) => setUploadData({ ...uploadData, document_type: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                >
-                  <option value="reglement">{isRTL ? 'لائحة' : 'Règlement'}</option>
-                  <option value="formulaire">{isRTL ? 'نموذج' : 'Formulaire'}</option>
-                  <option value="general">{isRTL ? 'عام' : 'Général'}</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {isRTL ? 'الملف' : 'Fichier'}
-                </label>
-                <input
-                  type="file"
-                  onChange={(e) => setSelectedFile(e.target.files[0])}
-                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                />
-              </div>
-
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="is_public"
-                  checked={uploadData.is_public}
-                  onChange={(e) => setUploadData({ ...uploadData, is_public: e.target.checked })}
-                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                />
-                <label htmlFor="is_public" className="ml-2 rtl:ml-0 rtl:mr-2 block text-sm text-gray-900 dark:text-white">
-                  {isRTL ? 'مستند عام (يمكن للجميع الوصول إليه)' : 'Document public (accessible à tous)'}
-                </label>
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <Button
-                onClick={() => setShowUploadModal(false)}
-                variant="outline"
-                className="flex-1"
-              >
-                {isRTL ? 'إلغاء' : 'Annuler'}
-              </Button>
-              <Button
-                onClick={handleUpload}
-                disabled={uploadLoading || !selectedFile || !uploadData.title}
-                className="flex-1"
-              >
-                {uploadLoading ? (
-                  <RefreshCw className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2 animate-spin" />
-                ) : (
-                  <Upload className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
-                )}
-                {uploadLoading ? (isRTL ? 'جاري الرفع...' : 'Upload...') : (isRTL ? 'رفع' : 'Uploader')}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+    );
 };
 
 export default DocumentsPage;

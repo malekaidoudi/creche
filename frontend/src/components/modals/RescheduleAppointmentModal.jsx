@@ -1,22 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, Clock } from 'lucide-react';
+import { X, Calendar, Clock, AlertTriangle } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useDialogContext } from '../../contexts/DialogContext';
 import api from '../../services/api';
 import DatePicker from '../ui/DatePicker';
 import { convertToISO, convertFromISO } from '../../utils/dateUtils';
+import { getNextWorkingDayFormatted, fetchHolidays, isWorkingDay } from '../../utils/workingDays';
 
 const RescheduleAppointmentModal = ({ isOpen, onClose, appointment, onSuccess }) => {
   const { isRTL } = useLanguage();
   const dialog = useDialogContext();
   const [formData, setFormData] = useState({
     new_date: '',
-    new_time: ''
+    new_time: '10:00'
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [holidays, setHolidays] = useState([]);
+  const [dateError, setDateError] = useState('');
 
-  // Initialiser avec la date proposée actuelle
+  // Charger les jours fériés au montage
+  useEffect(() => {
+    fetchHolidays().then(setHolidays);
+  }, []);
+
+  // Initialiser avec la date proposée actuelle ou le prochain jour ouvré
   React.useEffect(() => {
     if (appointment && appointment.proposed_date) {
       const date = new Date(appointment.proposed_date);
@@ -26,8 +34,50 @@ const RescheduleAppointmentModal = ({ isOpen, onClose, appointment, onSuccess })
         new_date: convertFromISO(dateStr),
         new_time: timeStr
       });
+    } else if (isOpen) {
+      // Si pas de date existante, utiliser le prochain jour ouvré
+      getNextWorkingDayFormatted().then(date => {
+        setFormData(prev => ({ ...prev, new_date: date }));
+      });
     }
-  }, [appointment]);
+  }, [appointment, isOpen]);
+
+  // Valider si la date sélectionnée est un jour ouvrable
+  const validateDate = (dateStr) => {
+    if (!dateStr) {
+      setDateError('');
+      return true;
+    }
+
+    // Convertir dd/mm/yyyy en Date
+    const [day, month, year] = dateStr.split('/');
+    const date = new Date(year, month - 1, day);
+
+    if (!isWorkingDay(date, holidays)) {
+      const dayOfWeek = date.getDay();
+      if (dayOfWeek === 0 || dayOfWeek === 6) {
+        setDateError(isRTL
+          ? 'لا يمكن اختيار يوم السبت أو الأحد. يرجى اختيار يوم عمل.'
+          : 'Vous ne pouvez pas choisir un samedi ou dimanche. Veuillez sélectionner un jour ouvrable.'
+        );
+      } else {
+        setDateError(isRTL
+          ? 'هذا اليوم هو عطلة رسمية. يرجى اختيار يوم عمل آخر.'
+          : 'Ce jour est un jour férié ou une période de vacances. Veuillez choisir un autre jour ouvrable.'
+        );
+      }
+      return false;
+    }
+
+    setDateError('');
+    return true;
+  };
+
+  // Valider la date quand elle change
+  const handleDateChange = (value) => {
+    setFormData({ ...formData, new_date: value });
+    validateDate(value);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -35,6 +85,11 @@ const RescheduleAppointmentModal = ({ isOpen, onClose, appointment, onSuccess })
 
     if (!formData.new_date || !formData.new_time) {
       setError(isRTL ? 'يرجى ملء جميع الحقول' : 'Veuillez remplir tous les champs');
+      return;
+    }
+
+    // Valider que c'est un jour ouvrable
+    if (!validateDate(formData.new_date)) {
       return;
     }
 
@@ -134,12 +189,21 @@ const RescheduleAppointmentModal = ({ isOpen, onClose, appointment, onSuccess })
 
             <div className="space-y-4">
               {/* Nouvelle date */}
-              <DatePicker
-                label={isRTL ? 'التاريخ الجديد' : 'Nouvelle date'}
-                required
-                value={formData.new_date}
-                onChange={(value) => setFormData({ ...formData, new_date: value })}
-              />
+              <div>
+                <DatePicker
+                  label={isRTL ? 'التاريخ الجديد' : 'Nouvelle date'}
+                  required
+                  value={formData.new_date}
+                  onChange={handleDateChange}
+                  error={dateError}
+                />
+                {dateError && (
+                  <div className="mt-2 flex items-start gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                    <AlertTriangle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+                    <p className="text-sm text-red-600 dark:text-red-400">{dateError}</p>
+                  </div>
+                )}
+              </div>
 
               {/* Nouvelle heure */}
               <div>
@@ -164,6 +228,16 @@ const RescheduleAppointmentModal = ({ isOpen, onClose, appointment, onSuccess })
                   }
                 </p>
               </div>
+
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                <p className="text-sm text-blue-800 dark:text-blue-300">
+                  <strong>{isRTL ? 'ملاحظة:' : 'Note :'}</strong>{' '}
+                  {isRTL
+                    ? 'يرجى اختيار يوم عمل فقط (من الاثنين إلى الجمعة، باستثناء العطل الرسمية).'
+                    : 'Veuillez choisir uniquement un jour ouvrable (du lundi au vendredi, hors jours fériés et vacances).'
+                  }
+                </p>
+              </div>
             </div>
 
             {/* Footer */}
@@ -178,7 +252,7 @@ const RescheduleAppointmentModal = ({ isOpen, onClose, appointment, onSuccess })
               </button>
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !!dateError}
                 className="px-3 sm:px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {loading ? (

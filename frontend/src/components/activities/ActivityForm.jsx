@@ -6,6 +6,7 @@ import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiImage, FiVideo, FiX, FiSend, FiLoader, FiCamera, FiPlay, FiVolume2 } from 'react-icons/fi';
 import { useAuth } from '../../contexts/AuthContext';
+import cloudinaryUploadService from '../../services/cloudinaryUploadService';
 
 const ActivityForm = ({ onSubmit, isRTL = false, onClose }) => {
   const { user } = useAuth();
@@ -16,6 +17,8 @@ const ActivityForm = ({ onSubmit, isRTL = false, onClose }) => {
   const [mediaType, setMediaType] = useState(null);
   const [isPinned, setIsPinned] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStage, setUploadStage] = useState(''); // 'compression', 'upload', 'saving'
   const [error, setError] = useState('');
   const [videoPlaying, setVideoPlaying] = useState(false);
   const fileInputRef = useRef(null);
@@ -29,6 +32,9 @@ const ActivityForm = ({ onSubmit, isRTL = false, onClose }) => {
     pin: isRTL ? 'تثبيت' : 'Épingler',
     publish: isRTL ? 'نشر' : 'Publier',
     publishing: isRTL ? 'جاري النشر...' : 'Publication...',
+    uploading: isRTL ? 'جاري الرفع...' : 'Téléchargement...',
+    compressing: isRTL ? 'جاري الضغط...' : 'Compression...',
+    saving: isRTL ? 'جاري الحفظ...' : 'Enregistrement...',
     cancel: isRTL ? 'إلغاء' : 'Annuler',
     titleRequired: isRTL ? 'العنوان مطلوب' : 'Le titre est requis',
     shareActivity: isRTL ? 'شارك نشاطاً مع الأولياء...' : 'Partagez une activité avec les parents...'
@@ -63,26 +69,73 @@ const ActivityForm = ({ onSubmit, isRTL = false, onClose }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!title.trim()) {
       setError(t.titleRequired);
       return;
     }
 
     setLoading(true);
+    setUploadProgress(0);
+    setUploadStage('');
     setError('');
 
     try {
-      const formData = new FormData();
-      formData.append('title', title.trim());
-      formData.append('description', description.trim());
-      formData.append('isPinned', isPinned);
-      if (media) {
-        formData.append('media', media);
+      let mediaUrl = null;
+      let mediaThumbnailUrl = null;
+      let cloudinaryPublicId = null;
+      let finalMediaType = 'none';
+
+      // Upload direct vers Cloudinary pour les vidéos volumineuses (> 10 MB)
+      if (media && mediaType === 'video' && media.size > 10 * 1024 * 1024) {
+        console.log('🚀 Upload direct Cloudinary activé (vidéo > 10 MB)');
+
+        const uploadResult = await cloudinaryUploadService.uploadToCloudinary(media, {
+          resourceType: 'video',
+          compress: true,
+          onProgress: (progress, stage) => {
+            setUploadProgress(progress);
+            setUploadStage(stage);
+          }
+        });
+
+        if (uploadResult.success) {
+          mediaUrl = uploadResult.url;
+          cloudinaryPublicId = uploadResult.publicId;
+          mediaThumbnailUrl = cloudinaryUploadService.generateVideoThumbnail(uploadResult.url);
+          finalMediaType = 'video';
+          console.log('✅ Upload Cloudinary réussi:', mediaUrl);
+        } else {
+          throw new Error('Erreur lors de l\'upload de la vidéo');
+        }
+
+        // Enregistrer l'activité avec l'URL Cloudinary
+        setUploadStage('saving');
+        setUploadProgress(95);
+
+        const formData = new FormData();
+        formData.append('title', title.trim());
+        formData.append('description', description.trim());
+        formData.append('isPinned', isPinned);
+        formData.append('mediaUrl', mediaUrl);
+        formData.append('mediaThumbnailUrl', mediaThumbnailUrl);
+        formData.append('cloudinaryPublicId', cloudinaryPublicId);
+        formData.append('mediaType', finalMediaType);
+
+        await onSubmit(formData);
+        setUploadProgress(100);
+      } else {
+        // Upload classique via backend pour les petits fichiers
+        const formData = new FormData();
+        formData.append('title', title.trim());
+        formData.append('description', description.trim());
+        formData.append('isPinned', isPinned);
+        if (media) {
+          formData.append('media', media);
+        }
+        await onSubmit(formData);
       }
 
-      await onSubmit(formData);
-      
       // Reset form
       setTitle('');
       setDescription('');
@@ -284,7 +337,12 @@ const ActivityForm = ({ onSubmit, isRTL = false, onClose }) => {
             {loading ? (
               <>
                 <FiLoader className="animate-spin" size={18} />
-                <span className="hidden sm:inline">{t.publishing}</span>
+                <span className="hidden sm:inline">
+                  {uploadStage === 'compression' && `${t.compressing} ${uploadProgress}%`}
+                  {uploadStage === 'upload' && `${t.uploading} ${uploadProgress}%`}
+                  {uploadStage === 'saving' && t.saving}
+                  {!uploadStage && t.publishing}
+                </span>
               </>
             ) : (
               <>

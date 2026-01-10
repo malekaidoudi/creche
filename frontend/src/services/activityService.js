@@ -36,12 +36,23 @@ const activityService = {
    */
   async createActivity(formData) {
     try {
+      // Log du contenu du FormData pour debug
+      console.log('📤 createActivity - Contenu FormData:');
+      for (let [key, value] of formData.entries()) {
+        if (value instanceof File) {
+          console.log(`  - ${key}: File(${value.name}, ${(value.size / 1024 / 1024).toFixed(2)} MB, ${value.type})`);
+        } else {
+          console.log(`  - ${key}: ${value}`);
+        }
+      }
+
       const response = await api.post('/api/activities', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
+      console.log('✅ createActivity - Réponse:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Erreur createActivity:', error);
+      console.error('❌ Erreur createActivity:', error);
       throw error;
     }
   },

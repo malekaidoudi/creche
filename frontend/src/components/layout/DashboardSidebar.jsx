@@ -173,22 +173,22 @@ const DashboardSidebar = ({ isOpen, onClose, onCollapsedChange }) => {
       key: 'enrollments',
       title: isRTL ? 'التسجيلات' : 'Inscriptions',
       icon: ClipboardList,
-      roles: ['admin', 'staff'],
+      roles: ['admin'],
       submenu: [
         {
           title: isRTL ? 'الطلبات المعلقة' : 'Demandes en attente',
           path: '/dashboard/pending-enrollments',
-          roles: ['admin', 'staff']
+          roles: ['admin']
         },
         {
           title: isRTL ? 'جميع التسجيلات' : 'Toutes les inscriptions',
           path: '/dashboard/enrollments',
-          roles: ['admin', 'staff']
+          roles: ['admin']
         },
         {
           title: isRTL ? 'الوثائق' : 'Documents',
           path: '/dashboard/documents',
-          roles: ['admin', 'staff']
+          roles: ['admin']
         }
       ]
     },

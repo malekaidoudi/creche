@@ -22,7 +22,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../..
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import HolidaysList from '../../components/HolidaysList';
 import TodayAbsences from '../../components/dashboard/TodayAbsences';
-import BirthdaysWidget from '../../components/widgets/BirthdaysWidget';
+import EventsWidget from '../../components/widgets/BirthdaysWidget';
 import TodayTasksWidget from '../../components/widgets/TodayTasksWidget';
 import TodayAppointmentsWidget from '../../components/widgets/TodayAppointmentsWidget';
 import OverdueTasksWidget from '../../components/widgets/OverdueTasksWidget';
@@ -381,7 +381,7 @@ const DashboardHome = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                 <TodayAppointmentsWidget />
                 <OverdueTasksWidget />
-                <BirthdaysWidget />
+                <EventsWidget />
               </div>
             </motion.div>
           </div>

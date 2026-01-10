@@ -93,7 +93,7 @@ router.post('/',
   upload.single('media'),
   async (req, res) => {
     try {
-      const { title, description, isPinned } = req.body;
+      const { title, description, isPinned, mediaUrl, mediaThumbnailUrl, cloudinaryPublicId, mediaType: directMediaType } = req.body;
 
       if (!title) {
         return res.status(400).json({ success: false, error: 'Titre requis' });
@@ -101,17 +101,50 @@ router.post('/',
 
       let mediaData = { mediaType: 'none', mediaUrl: null, mediaThumbnailUrl: null, cloudinaryPublicId: null };
 
-      // Upload du média si présent
-      if (req.file) {
+      // Cas 1: Upload direct depuis Cloudinary (vidéos volumineuses)
+      if (mediaUrl && directMediaType) {
+        console.log('☁️ Upload direct Cloudinary détecté:', {
+          mediaType: directMediaType,
+          mediaUrl: mediaUrl.substring(0, 50) + '...',
+          hasThumbnail: !!mediaThumbnailUrl
+        });
+
+        mediaData = {
+          mediaType: directMediaType,
+          mediaUrl: mediaUrl,
+          mediaThumbnailUrl: mediaThumbnailUrl || null,
+          cloudinaryPublicId: cloudinaryPublicId || null
+        };
+      }
+      // Cas 2: Upload classique via backend (petits fichiers)
+      else if (req.file) {
+        console.log('📁 Fichier reçu:', {
+          originalname: req.file.originalname,
+          mimetype: req.file.mimetype,
+          size: `${(req.file.size / 1024 / 1024).toFixed(2)} MB`,
+          path: req.file.path
+        });
+
         const isVideo = req.file.mimetype.startsWith('video/');
+        console.log(`🎬 Type de média: ${isVideo ? 'VIDÉO' : 'IMAGE'}`);
 
         // Upload vers Cloudinary avec qualité optimisée pour les vidéos
+        console.log('☁️  Début upload Cloudinary...');
+        const startTime = Date.now();
+
         const uploadResult = await cloudinaryService.uploadFile(
           req.file.path,
           'activities',
           null,
           isVideo // Passer le flag isVideo pour qualité maximale
         );
+
+        const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+        console.log(`⏱️  Upload terminé en ${duration}s - Succès: ${uploadResult.success}`);
+
+        if (!uploadResult.success) {
+          console.error('❌ Échec upload Cloudinary:', uploadResult.error);
+        }
 
         if (uploadResult.success) {
           // Pour les vidéos, générer une thumbnail JPG à partir de la première frame

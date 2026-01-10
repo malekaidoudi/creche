@@ -131,8 +131,17 @@ const TaskDetailModal = ({ isOpen, onClose, task, onComplete }) => {
                 await api.patch(`/api/appointments/${appointmentId}/status`, {
                     status: 'completed'
                 });
+            } else if (task.source === 'personal_memos' || task.type === 'memo') {
+                // Pour les mémos personnels
+                const memoId = task.id.toString().replace('memo-', '');
+                await api.patch(`/api/personal-memos/${memoId}/complete`);
+            } else if (task.source === 'tasks' || task.type === 'task') {
+                // Pour les tâches de la table tasks
+                await api.patch(`/api/tasks/${task.id}/status`, {
+                    status: 'completed'
+                });
             } else {
-                // Pour les autres types
+                // Pour les autres types (events)
                 await api.patch(`/api/events/${task.id}/status`, {
                     status: 'completed'
                 });
@@ -141,11 +150,31 @@ const TaskDetailModal = ({ isOpen, onClose, task, onComplete }) => {
             dialog.success(isRTL ? 'تم الإنهاء بنجاح' : 'Terminé avec succès');
             onComplete && onComplete(task.id);
             onClose();
+            // Émettre un événement pour rafraîchir les widgets
+            window.dispatchEvent(new CustomEvent('taskUpdated'));
+            window.dispatchEvent(new CustomEvent('memoUpdated'));
         } catch (error) {
             console.error('Erreur:', error);
             dialog.error(error.response?.data?.error || (isRTL ? 'خطأ' : 'Erreur lors de la mise à jour'));
         } finally {
             setCompleting(false);
+        }
+    };
+
+    // Extraire le lien de la description si présent
+    const extractLinkFromDescription = () => {
+        if (!task.description) return null;
+        const linkMatch = task.description.match(/🔗 Lien: (\/[^\s]+)/);
+        return linkMatch ? linkMatch[1] : null;
+    };
+
+    const taskLink = extractLinkFromDescription();
+
+    // Naviguer vers la page liée
+    const handleNavigateToLink = () => {
+        if (taskLink) {
+            onClose();
+            navigate(taskLink);
         }
     };
 
@@ -337,36 +366,49 @@ const TaskDetailModal = ({ isOpen, onClose, task, onComplete }) => {
                             </div>
 
                             {/* Actions */}
-                            <div className="p-6 pt-0 flex gap-3">
-                                {/* Bouton spécial pour RDV d'inscription */}
-                                {isInscriptionAppointment ? (
+                            <div className="p-6 pt-0 flex flex-col gap-3">
+                                {/* Bouton pour naviguer vers la page liée (si lien présent) */}
+                                {taskLink && (
                                     <button
-                                        onClick={() => setShowActionModal(true)}
-                                        className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white font-medium rounded-xl transition-all hover:shadow-lg"
+                                        onClick={handleNavigateToLink}
+                                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white font-medium rounded-xl transition-all hover:shadow-lg"
                                     >
-                                        <ClipboardCheck className="w-5 h-5" />
-                                        {isRTL ? 'التحقق من الموعد' : 'Valider le RDV'}
-                                    </button>
-                                ) : (
-                                    <button
-                                        onClick={handleComplete}
-                                        disabled={completing}
-                                        className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-medium rounded-xl transition-all hover:shadow-lg disabled:opacity-50"
-                                    >
-                                        <CheckCircle className="w-5 h-5" />
-                                        {completing
-                                            ? (isRTL ? 'جارٍ...' : 'En cours...')
-                                            : (isRTL ? 'إنهاء' : 'Terminer')
-                                        }
+                                        <FileText className="w-5 h-5" />
+                                        {isRTL ? 'الذهاب إلى الصفحة' : 'Aller à la page'}
                                     </button>
                                 )}
-                                <button
-                                    onClick={handleViewPlanning}
-                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-primary-500 to-purple-500 hover:from-primary-600 hover:to-purple-600 text-white font-medium rounded-xl transition-all hover:shadow-lg"
-                                >
-                                    <CalendarDays className="w-5 h-5" />
-                                    {isRTL ? 'عرض التخطيط' : 'Voir le planning'}
-                                </button>
+
+                                <div className="flex gap-3">
+                                    {/* Bouton spécial pour RDV d'inscription */}
+                                    {isInscriptionAppointment ? (
+                                        <button
+                                            onClick={() => setShowActionModal(true)}
+                                            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white font-medium rounded-xl transition-all hover:shadow-lg"
+                                        >
+                                            <ClipboardCheck className="w-5 h-5" />
+                                            {isRTL ? 'التحقق من الموعد' : 'Valider le RDV'}
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={handleComplete}
+                                            disabled={completing}
+                                            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-medium rounded-xl transition-all hover:shadow-lg disabled:opacity-50"
+                                        >
+                                            <CheckCircle className="w-5 h-5" />
+                                            {completing
+                                                ? (isRTL ? 'جارٍ...' : 'En cours...')
+                                                : (isRTL ? 'إنهاء' : 'Terminer')
+                                            }
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={handleViewPlanning}
+                                        className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-primary-500 to-purple-500 hover:from-primary-600 hover:to-purple-600 text-white font-medium rounded-xl transition-all hover:shadow-lg"
+                                    >
+                                        <CalendarDays className="w-5 h-5" />
+                                        {isRTL ? 'عرض التخطيط' : 'Voir le planning'}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </motion.div>

@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Calendar, Clock, MessageSquare } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import api from '../../services/api';
 import DatePicker from '../ui/DatePicker';
 import { convertToISO } from '../../utils/dateUtils';
+import { getNextWorkingDayFormatted } from '../../utils/workingDays';
 
 const RequestAppointmentModal = ({ isOpen, onClose, onSuccess }) => {
   const { isRTL } = useLanguage();
@@ -11,10 +12,19 @@ const RequestAppointmentModal = ({ isOpen, onClose, onSuccess }) => {
     title: '',
     description: '',
     preferred_date: '',
-    preferred_time: ''
+    preferred_time: '10:00'
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Initialiser la date au prochain jour ouvré à l'ouverture
+  useEffect(() => {
+    if (isOpen && !formData.preferred_date) {
+      getNextWorkingDayFormatted().then(date => {
+        setFormData(prev => ({ ...prev, preferred_date: date }));
+      });
+    }
+  }, [isOpen]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

@@ -4,6 +4,7 @@
  */
 
 const { pool } = require('../config/db_postgres');
+const cloudinaryService = require('./cloudinaryService');
 
 /**
  * Créer un rendez-vous
@@ -20,8 +21,14 @@ async function createAppointment(appointmentData, creatorId) {
       subject,
       description,
       proposed_date,
-      location = 'Crèche'
+      location = 'Crèche',
+      status = 'proposed'
     } = appointmentData;
+
+    // Déterminer si c'est le parent qui crée (demande) ou l'admin (proposition)
+    const isParentRequest = parent_id === creatorId;
+    // Les statuts valides sont: proposed, confirmed, rescheduled, completed, cancelled
+    // Pour les demandes de parent, on utilise aussi 'proposed' (proposition du parent)
 
     const result = await client.query(`
       INSERT INTO appointments 
@@ -31,33 +38,103 @@ async function createAppointment(appointmentData, creatorId) {
     `, [parent_id, child_id, creatorId, subject, description, proposed_date, location]);
 
     const appointment = result.rows[0];
-
-    // Notifier le parent
     const creator = await getUserById(creatorId);
 
-    await client.query(`
-      INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
-      VALUES ($1, $2, $3, 'appointment_proposed', $4, false)
-    `, [
-      parent_id,
-      '📅 Proposition de rendez-vous',
-      `${creator.first_name} ${creator.last_name} vous propose un rendez-vous : "${subject}"`,
-      appointment.id
-    ]);
+    if (isParentRequest) {
+      // PARENT DEMANDE UN RDV → Notifier tous les admins + créer tâche
+      console.log(`📅 Parent ${creator?.first_name} ${creator?.last_name} demande un RDV: ${subject}`);
 
-    // Marquer comme complétées toutes les tâches urgentes de RDV pour ce parent
-    await client.query(`
-      UPDATE events 
-      SET status = 'completed', updated_at = NOW()
-      WHERE type = 'task' 
-      AND status = 'pending'
-      AND metadata::jsonb @> $1::jsonb
-    `, [JSON.stringify({ is_urgent_appointment: true, parent_id: parent_id })]);
+      // Récupérer tous les admins
+      const adminsResult = await client.query(`
+        SELECT id, first_name, last_name FROM users WHERE role = 'admin' AND is_active = true
+      `);
+
+      if (adminsResult.rows.length === 0) {
+        console.warn('⚠️ Aucun admin actif trouvé pour recevoir la demande de RDV');
+      }
+
+      // Notifier chaque admin
+      for (const admin of adminsResult.rows) {
+        await client.query(`
+          INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
+          VALUES ($1, $2, $3, 'appointment_request', $4, false)
+        `, [
+          admin.id,
+          '📅 Nouvelle demande de RDV',
+          `${creator?.first_name || 'Un parent'} ${creator?.last_name || ''} demande un rendez-vous : "${subject}"`,
+          appointment.id
+        ]);
+      }
+
+      // Créer une tâche pour traiter la demande de RDV (assignée au premier admin)
+      const proposedDateFormatted = new Date(proposed_date).toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      const firstAdminId = adminsResult.rows[0]?.id || null;
+
+      if (firstAdminId) {
+        await client.query(`
+          INSERT INTO events (
+            title, 
+            description, 
+            type, 
+            status, 
+            priority, 
+            start_date, 
+            end_date, 
+            all_day,
+            created_by,
+            assigned_to,
+            metadata
+          )
+          VALUES ($1, $2, 'task', 'pending', 'high', NOW(), NOW(), true, $3, $3, $4)
+        `, [
+          `📅 Demande RDV: ${creator?.first_name || 'Parent'} ${creator?.last_name || ''}`,
+          `Demande de rendez-vous pour le ${proposedDateFormatted}. Sujet: ${subject}`,
+          firstAdminId,
+          JSON.stringify({
+            appointment_id: appointment.id,
+            parent_id: parent_id,
+            parent_name: `${creator?.first_name || ''} ${creator?.last_name || ''}`,
+            proposed_date: proposed_date,
+            is_appointment_request: true
+          })
+        ]);
+        console.log(`✅ Tâche créée et assignée à l'admin ${firstAdminId}`);
+      }
+
+      console.log(`✅ Notifications envoyées à ${adminsResult.rows.length} admin(s)`);
+
+    } else {
+      // ADMIN PROPOSE UN RDV → Notifier le parent
+      await client.query(`
+        INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
+        VALUES ($1, $2, $3, 'appointment_proposed', $4, false)
+      `, [
+        parent_id,
+        '📅 Proposition de rendez-vous',
+        `${creator?.first_name || 'L\'administration'} ${creator?.last_name || ''} vous propose un rendez-vous : "${subject}"`,
+        appointment.id
+      ]);
+
+      // Marquer comme complétées toutes les tâches urgentes de RDV pour ce parent
+      await client.query(`
+        UPDATE events 
+        SET status = 'completed', updated_at = NOW()
+        WHERE type = 'task' 
+        AND status = 'pending'
+        AND metadata::jsonb @> $1::jsonb
+      `, [JSON.stringify({ is_urgent_appointment: true, parent_id: parent_id })]);
+
+      console.log(`✅ RDV proposé par admin: ${subject} au parent ${parent_id}`);
+    }
 
     await client.query('COMMIT');
-
-    console.log(`✅ RDV créé: ${subject} avec parent ${parent_id}`);
-    console.log(`✅ Tâches urgentes RDV pour parent ${parent_id} marquées comme complétées`);
 
     return { success: true, appointment };
 
@@ -132,7 +209,7 @@ async function getTodayAppointments() {
       LEFT JOIN children c ON a.child_id = c.id
       LEFT JOIN enrollments e ON a.enrollment_id = e.id
       WHERE DATE(COALESCE(a.confirmed_date, a.proposed_date)) = CURRENT_DATE
-        AND a.status IN ('confirmed', 'proposed', 'rescheduled')
+        AND a.status IN ('confirmed', 'proposed')
       ORDER BY COALESCE(a.confirmed_date, a.proposed_date) ASC
     `);
 
@@ -248,6 +325,7 @@ async function rescheduleAppointment(appointmentId, newDate, userId) {
 
     // Notifier l'admin
     const parent = await getUserById(userId);
+    const parentName = parent ? `${parent.first_name} ${parent.last_name}` : 'Un parent';
 
     await client.query(`
       INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
@@ -255,7 +333,7 @@ async function rescheduleAppointment(appointmentId, newDate, userId) {
     `, [
       appointment.created_by,
       '🔄 Nouvelle date proposée',
-      `${parent.first_name} ${parent.last_name} propose une nouvelle date pour : "${appointment.subject}"`,
+      `${parentName} propose une nouvelle date pour : "${appointment.subject}"`,
       appointment.id
     ]);
 
@@ -276,6 +354,7 @@ async function rescheduleAppointment(appointmentId, newDate, userId) {
 
 /**
  * Marquer comme complété (admin)
+ * Si c'est un RDV d'inscription, transfère les documents vers children_documents
  */
 async function completeAppointment(appointmentId, notes) {
   try {
@@ -290,13 +369,137 @@ async function completeAppointment(appointmentId, notes) {
       return { success: false, error: 'Rendez-vous non trouvé' };
     }
 
+    const appointment = result.rows[0];
     console.log(`✅ RDV ${appointmentId} complété`);
 
-    return { success: true, appointment: result.rows[0] };
+    // Si c'est un RDV d'inscription avec un enrollment_id, transférer les documents
+    if (appointment.enrollment_id && appointment.appointment_type === 'inscription') {
+      await transferEnrollmentDocumentsToChild(appointment.enrollment_id);
+    }
+
+    return { success: true, appointment };
 
   } catch (error) {
     console.error('❌ Erreur completeAppointment:', error);
     throw error;
+  }
+}
+
+/**
+ * Transférer les documents d'inscription vers children_documents
+ */
+async function transferEnrollmentDocumentsToChild(enrollmentId) {
+  try {
+    // Récupérer l'inscription avec le child_id
+    const enrollmentResult = await pool.query(`
+      SELECT id, child_id, status FROM enrollments WHERE id = $1
+    `, [enrollmentId]);
+
+    if (enrollmentResult.rows.length === 0) {
+      console.log(`⚠️ Inscription #${enrollmentId} non trouvée pour transfert documents`);
+      return;
+    }
+
+    const enrollment = enrollmentResult.rows[0];
+
+    if (!enrollment.child_id) {
+      console.log(`⚠️ Inscription #${enrollmentId} n'a pas de child_id, transfert impossible`);
+      return;
+    }
+
+    // Récupérer les documents de l'inscription
+    const docsResult = await pool.query(`
+      SELECT * FROM enrollment_documents WHERE enrollment_id = $1
+    `, [enrollmentId]);
+
+    if (docsResult.rows.length === 0) {
+      console.log(`📄 Aucun document à transférer pour inscription #${enrollmentId}`);
+      return;
+    }
+
+    console.log(`📄 Transfert de ${docsResult.rows.length} document(s) vers enfant #${enrollment.child_id}`);
+
+    // Migrer les fichiers Cloudinary vers le dossier enfant
+    let migratedFiles = [];
+    if (cloudinaryService.isConfigured()) {
+      console.log(`☁️  Migration fichiers Cloudinary: enrollment_${enrollmentId} → child_${enrollment.child_id}`);
+      const migrationResult = await cloudinaryService.migrateEnrollmentToChild(enrollmentId, enrollment.child_id);
+      if (migrationResult.success && migrationResult.migratedFiles) {
+        migratedFiles = migrationResult.migratedFiles;
+        console.log(`✅ ${migrationResult.migratedCount} fichier(s) migré(s) sur Cloudinary`);
+      }
+    }
+
+    // Transférer chaque document
+    for (const doc of docsResult.rows) {
+      // Vérifier si le document n'existe pas déjà
+      const existsCheck = await pool.query(`
+        SELECT id FROM children_documents 
+        WHERE child_id = $1 AND document_type = $2 AND transferred_from_enrollment = $3
+      `, [enrollment.child_id, doc.document_type, enrollmentId]);
+
+      if (existsCheck.rows.length > 0) {
+        console.log(`   ⏭️ Document ${doc.document_type} déjà transféré`);
+        continue;
+      }
+
+      // Trouver la nouvelle URL si le fichier a été migré
+      let newCloudinaryUrl = doc.cloudinary_url;
+      let newCloudinaryPublicId = doc.cloudinary_public_id;
+
+      if (doc.cloudinary_public_id) {
+        const migratedFile = migratedFiles.find(f => f.oldPublicId === doc.cloudinary_public_id);
+        if (migratedFile) {
+          newCloudinaryUrl = migratedFile.newUrl;
+          newCloudinaryPublicId = migratedFile.newPublicId;
+          console.log(`   📦 URL mise à jour: ${doc.cloudinary_public_id} → ${newCloudinaryPublicId}`);
+        }
+      }
+
+      // Insérer dans children_documents avec les nouvelles URLs
+      await pool.query(`
+        INSERT INTO children_documents (
+          child_id, filename, original_filename, file_path,
+          mime_type, file_size, document_type, transferred_from_enrollment,
+          uploaded_by, uploaded_at, cloudinary_url, cloudinary_public_id
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      `, [
+        enrollment.child_id,
+        doc.filename,
+        doc.original_filename,
+        newCloudinaryUrl || doc.file_path,
+        doc.mime_type,
+        doc.file_size,
+        doc.document_type,
+        enrollmentId,
+        doc.uploaded_by,
+        doc.uploaded_at,
+        newCloudinaryUrl,
+        newCloudinaryPublicId
+      ]);
+
+      // Mettre à jour l'URL dans enrollment_documents aussi
+      if (newCloudinaryUrl !== doc.cloudinary_url) {
+        await pool.query(`
+          UPDATE enrollment_documents 
+          SET cloudinary_url = $1, cloudinary_public_id = $2
+          WHERE id = $3
+        `, [newCloudinaryUrl, newCloudinaryPublicId, doc.id]);
+      }
+
+      console.log(`   ✅ Document ${doc.document_type} transféré`);
+    }
+
+    // Mettre à jour le statut de l'inscription à 'approved' (finalisé)
+    await pool.query(`
+      UPDATE enrollments SET status = 'approved', finalized_at = NOW() WHERE id = $1
+    `, [enrollmentId]);
+
+    console.log(`✅ Inscription #${enrollmentId} finalisée, documents transférés et migrés`);
+
+  } catch (error) {
+    console.error('❌ Erreur transferEnrollmentDocumentsToChild:', error);
+    // Ne pas faire échouer le complete si le transfert échoue
   }
 }
 
@@ -349,10 +552,10 @@ async function rejectWithProposal(appointmentId, proposedDate, reason, adminId) 
 
     const appointment = apptResult.rows[0];
 
-    // 2. Annuler le RDV actuel
+    // 2. Marquer le RDV comme failed (reste visible dans les tâches admin et widget parent)
     await client.query(
       'UPDATE appointments SET status = $1, updated_at = NOW() WHERE id = $2',
-      ['cancelled', appointmentId]
+      ['failed', appointmentId]
     );
 
     // 3. Récupérer infos parent
@@ -373,7 +576,10 @@ async function rejectWithProposal(appointmentId, proposedDate, reason, adminId) 
       appointmentId
     ]);
 
-    // 5. Créer tâche urgente pour l'admin (reste jusqu'à envoi du RDV)
+    // 5. Créer tâche urgente ponctuelle (1 seul jour) pour l'admin
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+
     const taskResult = await client.query(`
       INSERT INTO events (
         title, 
@@ -383,24 +589,28 @@ async function rejectWithProposal(appointmentId, proposedDate, reason, adminId) 
         priority, 
         start_date, 
         end_date, 
+        all_day,
         created_by,
         assigned_to,
         metadata
       )
-      VALUES ($1, $2, 'task', 'pending', 'high', NOW(), $3, $4, $4, $5)
+      VALUES ($1, $2, 'task', 'pending', 'high', NOW(), $3, true, $4, $4, $5)
       RETURNING *
     `, [
-      `🚨 URGENT: Fixer RDV avec ${parent.first_name} ${parent.last_name}`,
-      `Rendez-vous refusé. Nouvelle date proposée: ${new Date(proposedDate).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}. Cette tâche reste affichée jusqu'à l'envoi du nouveau rendez-vous au parent.`,
-      proposedDate,
+      `🚨 Fixer RDV: ${parent.first_name} ${parent.last_name}`,
+      `RDV refusé. Proposer nouvelle date au parent. Cliquez pour créer un nouveau RDV ou marquer comme traité.`,
+      today.toISOString(),
       adminId,
       JSON.stringify({
         appointment_id: appointmentId,
         parent_id: appointment.parent_id,
+        child_id: appointment.child_id,
         parent_name: `${parent.first_name} ${parent.last_name}`,
         proposed_date: proposedDate,
         reason: reason,
-        is_urgent_appointment: true
+        is_urgent_appointment: true,
+        can_create_rdv: true,
+        can_mark_done: true
       })
     ]);
 

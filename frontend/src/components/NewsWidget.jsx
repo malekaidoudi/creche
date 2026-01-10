@@ -182,6 +182,8 @@ const NewsWidget = ({ onNavigate, focusId = null }) => {
             iconColor="primary"
             loading={loading}
             noPadding
+            maxItems={4}
+            itemHeight={72}
         >
             {news.length === 0 ? (
                 <WidgetEmptyState

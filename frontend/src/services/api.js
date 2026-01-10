@@ -19,11 +19,12 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`
     }
 
-    // Si c'est un FormData, supprimer le Content-Type pour laisser le navigateur le gérer
+    // Si c'est un FormData, supprimer le Content-Type et augmenter le timeout pour les uploads
     if (config.data instanceof FormData) {
       delete config.headers['Content-Type'];
+      // Timeout de 5 minutes pour les uploads de fichiers volumineux (vidéos)
+      config.timeout = 300000;
     }
-
 
     return config
   },
@@ -93,12 +94,47 @@ export const apiRequest = {
   delete: (url, config = {}) => api.delete(url, config),
 }
 
-// Fonction pour uploader des fichiers
+// Fonction pour uploader des fichiers (endpoint générique /api/uploads)
 export const uploadFile = (file, onProgress = null) => {
   const formData = new FormData()
   formData.append('file', file)
 
   return api.post('/api/uploads', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+    onUploadProgress: (progressEvent) => {
+      if (onProgress) {
+        const percentCompleted = Math.round(
+          (progressEvent.loaded * 100) / progressEvent.total
+        )
+        onProgress(percentCompleted)
+      }
+    },
+  })
+}
+
+/**
+ * Fonction utilitaire générique pour uploader un fichier vers n'importe quel endpoint
+ * @param {string} endpoint - L'URL de l'endpoint (ex: '/api/documents/children/5')
+ * @param {File} file - Le fichier à uploader
+ * @param {Object} additionalData - Données supplémentaires à envoyer (ex: { document_type: 'carnet_medical' })
+ * @param {string} fileFieldName - Nom du champ pour le fichier (défaut: 'document')
+ * @param {Function} onProgress - Callback pour la progression
+ * @returns {Promise} - Réponse de l'API
+ */
+export const uploadToEndpoint = (endpoint, file, additionalData = {}, fileFieldName = 'document', onProgress = null) => {
+  const formData = new FormData()
+  formData.append(fileFieldName, file)
+
+  // Ajouter les données supplémentaires
+  Object.keys(additionalData).forEach(key => {
+    if (additionalData[key] !== null && additionalData[key] !== undefined) {
+      formData.append(key, additionalData[key])
+    }
+  })
+
+  return api.post(endpoint, formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },

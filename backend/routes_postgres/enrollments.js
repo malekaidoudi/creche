@@ -7,6 +7,7 @@ const upload = require('../middleware/upload');
 const db = require('../config/db_postgres');
 const path = require('path');
 const fs = require('fs');
+const taskService = require('../services/taskService');
 
 // =====================================================
 // ROUTES PUBLIQUES (VISITEURS)
@@ -45,6 +46,229 @@ router.post('/', [
   }
   next();
 }, enrollmentsController.createEnrollment);
+
+/**
+ * POST /api/enrollments/check-child
+ * Vérifier si un enfant existe déjà dans enrollments (étape 1)
+ * Vérifie par nom + prénom + date de naissance
+ * Route publique pour validation en temps réel du formulaire
+ */
+router.post('/check-child', [
+  body('child_first_name').notEmpty().withMessage('Prénom de l\'enfant requis'),
+  body('child_last_name').notEmpty().withMessage('Nom de l\'enfant requis'),
+  body('child_birth_date').notEmpty().withMessage('Date de naissance requise')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Données invalides',
+        details: errors.array()
+      });
+    }
+
+    const { child_first_name, child_last_name, child_birth_date } = req.body;
+    const normalizedFirstName = child_first_name.toLowerCase().trim();
+    const normalizedLastName = child_last_name.toLowerCase().trim();
+
+    console.log('👶 Check-child reçu:', { child_first_name, child_last_name, child_birth_date });
+
+    // Vérifier dans la table enrollments si un enfant avec même nom/prénom/date existe
+    // Utiliser TO_DATE pour parser la date de manière sécurisée
+    const enrollmentCheck = await db.query(
+      `SELECT id, child_first_name, child_last_name, child_birth_date, 
+              applicant_first_name, applicant_last_name, applicant_email, status 
+       FROM enrollments 
+       WHERE LOWER(TRIM(COALESCE(child_first_name, ''))) = $1 
+         AND LOWER(TRIM(COALESCE(child_last_name, ''))) = $2 
+         AND child_birth_date IS NOT NULL
+         AND DATE(child_birth_date) = DATE($3)
+         AND status IN ('pending', 'in_progress')`,
+      [normalizedFirstName, normalizedLastName, child_birth_date]
+    );
+
+    if (enrollmentCheck.rows.length > 0) {
+      const existingEnrollment = enrollmentCheck.rows[0];
+      console.log('📋 Dossier existant trouvé:', existingEnrollment.id);
+
+      return res.json({
+        success: true,
+        exists: true,
+        type: 'pending_child',
+        message: 'Un dossier d\'inscription pour cet enfant est déjà en cours de traitement. Veuillez patienter, nous vous contacterons prochainement.',
+        suggestion: 'redirect_home',
+        enrollmentId: existingEnrollment.id,
+        parentName: `${existingEnrollment.applicant_first_name} ${existingEnrollment.applicant_last_name}`
+      });
+    }
+
+    // Vérifier aussi dans la table children (enfants déjà inscrits)
+    const childCheck = await db.query(
+      `SELECT c.id, c.first_name, c.last_name, c.date_of_birth
+       FROM children c
+       WHERE LOWER(TRIM(COALESCE(c.first_name, ''))) = $1 
+         AND LOWER(TRIM(COALESCE(c.last_name, ''))) = $2 
+         AND c.date_of_birth IS NOT NULL
+         AND DATE(c.date_of_birth) = DATE($3)`,
+      [normalizedFirstName, normalizedLastName, child_birth_date]
+    );
+
+    if (childCheck.rows.length > 0) {
+      console.log('👶 Enfant déjà inscrit trouvé:', childCheck.rows[0].id);
+
+      return res.json({
+        success: true,
+        exists: true,
+        type: 'already_enrolled',
+        message: 'Cet enfant est déjà inscrit à la crèche. Si vous êtes le parent, connectez-vous à votre espace.',
+        suggestion: 'login',
+        childId: childCheck.rows[0].id
+      });
+    }
+
+    // Enfant non trouvé - peut continuer
+    res.json({
+      success: true,
+      exists: false,
+      message: 'Enfant disponible pour inscription'
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur vérification enfant:', error.message);
+    console.error('❌ Stack:', error.stack);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la vérification',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/enrollments/check-email
+ * Vérifier si un email existe déjà dans users ou enrollments
+ * Route publique pour validation en temps réel du formulaire
+ */
+router.post('/check-email', [
+  body('email').isEmail().withMessage('Email valide requis'),
+  body('first_name').notEmpty().withMessage('Prénom requis'),
+  body('last_name').notEmpty().withMessage('Nom requis'),
+  body('child_first_name').optional(),
+  body('child_last_name').optional()
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Données invalides',
+        details: errors.array()
+      });
+    }
+
+    const { email, first_name, last_name, child_first_name, child_last_name } = req.body;
+    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedFirstName = first_name.toLowerCase().trim();
+    const normalizedLastName = last_name.toLowerCase().trim();
+    const normalizedChildFirstName = child_first_name ? child_first_name.toLowerCase().trim() : null;
+    const normalizedChildLastName = child_last_name ? child_last_name.toLowerCase().trim() : null;
+
+    console.log('📧 Check-email reçu:', { email, first_name, last_name });
+
+    // 1. D'ABORD vérifier dans users (parents avec compte existant) - PRIORITAIRE
+    const userCheck = await db.query(
+      `SELECT id, first_name, last_name, email FROM users WHERE LOWER(email) = $1`,
+      [normalizedEmail]
+    );
+
+    console.log('👤 Utilisateur trouvé dans users:', userCheck.rows.length > 0 ? userCheck.rows[0] : 'Aucun');
+
+    if (userCheck.rows.length > 0) {
+      const existingUser = userCheck.rows[0];
+      const dbFirstName = existingUser.first_name?.toLowerCase().trim() || '';
+      const dbLastName = existingUser.last_name?.toLowerCase().trim() || '';
+      const nameMatches = dbFirstName === normalizedFirstName && dbLastName === normalizedLastName;
+
+      console.log('🔍 Comparaison noms users:', { dbFirstName, dbLastName, normalizedFirstName, normalizedLastName, nameMatches });
+
+      if (nameMatches) {
+        // Même personne - suggérer d'ajouter un enfant depuis l'espace parent
+        return res.json({
+          success: true,
+          exists: true,
+          type: 'registered_parent',
+          message: 'Vous êtes déjà inscrit comme parent. Connectez-vous à votre espace parent pour ajouter un nouvel enfant.',
+          suggestion: 'add_child_from_space',
+          redirect: '/mon-espace/ajouter-enfant'
+        });
+      } else {
+        // Email utilisé par quelqu'un d'autre dans users - BLOQUER
+        return res.json({
+          success: true,
+          exists: true,
+          type: 'email_taken',
+          message: 'Cet email est déjà utilisé par un autre compte. Veuillez utiliser une autre adresse email.',
+          suggestion: 'use_different_email'
+        });
+      }
+    }
+
+    // 2. Ensuite vérifier dans enrollments (demandes en cours)
+    const enrollmentCheck = await db.query(
+      `SELECT id, applicant_first_name, applicant_last_name, applicant_email, status 
+       FROM enrollments 
+       WHERE LOWER(applicant_email) = $1 AND status IN ('pending', 'in_progress')`,
+      [normalizedEmail]
+    );
+
+    console.log('📋 Enrollments trouvés:', enrollmentCheck.rows.length);
+
+    if (enrollmentCheck.rows.length > 0) {
+      const existingEnrollment = enrollmentCheck.rows[0];
+      const enrollmentFirstName = existingEnrollment.applicant_first_name?.toLowerCase().trim() || '';
+      const enrollmentLastName = existingEnrollment.applicant_last_name?.toLowerCase().trim() || '';
+      const parentNameMatches = enrollmentFirstName === normalizedFirstName && enrollmentLastName === normalizedLastName;
+
+      console.log('🔍 Comparaison parent enrollment:', { enrollmentFirstName, enrollmentLastName, normalizedFirstName, normalizedLastName, parentNameMatches });
+
+      if (parentNameMatches) {
+        // Même parent avec dossier en cours - laisser continuer pour un autre enfant
+        console.log('✅ Même parent - peut inscrire un autre enfant');
+        return res.json({
+          success: true,
+          exists: false,
+          type: 'same_parent',
+          message: 'Vous pouvez continuer l\'inscription pour un autre enfant.',
+          suggestion: 'continue'
+        });
+      } else {
+        // Infos parent différentes = Email utilisé par quelqu'un d'autre
+        return res.json({
+          success: true,
+          exists: true,
+          type: 'email_taken',
+          message: 'Cet email est déjà utilisé dans une autre demande d\'inscription. Veuillez utiliser une autre adresse email.',
+          suggestion: 'use_different_email'
+        });
+      }
+    }
+
+    // Email disponible
+    res.json({
+      success: true,
+      exists: false,
+      message: 'Email disponible'
+    });
+
+  } catch (error) {
+    console.error('Erreur vérification email:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la vérification de l\'email'
+    });
+  }
+});
 
 /**
  * POST /api/enrollments/:id/documents
@@ -263,11 +487,11 @@ router.get('/:id',
 
 /**
  * POST /api/enrollments/:id/approve
- * Approuver un dossier avec date RDV (admin/staff)
+ * Approuver un dossier avec date RDV (admin uniquement)
  */
 router.post('/:id/approve',
   auth.authenticateToken,
-  auth.requireRole('admin', 'staff'),
+  auth.requireRole('admin'),
   [
     body('appointment_date').notEmpty().withMessage('Date de rendez-vous requise')
   ],
@@ -287,11 +511,11 @@ router.post('/:id/approve',
 
 /**
  * PUT /api/enrollments/:id/reject
- * Rejeter un dossier avec 4 types (admin/staff)
+ * Rejeter un dossier avec 4 types (admin uniquement)
  */
 router.put('/:id/reject',
   auth.authenticateToken,
-  auth.requireRole('admin', 'staff'),
+  auth.requireRole('admin'),
   [
     body('rejection_type').isIn(['age_depasse', 'maladie_contagieuse', 'dossier_manquant', 'autre']).withMessage('Type de rejet invalide'),
     body('custom_reason').optional().isString(),
@@ -339,7 +563,7 @@ router.post('/:id/choose-appointment',
  */
 router.put('/:id/status',
   auth.authenticateToken,
-  auth.requireRole('staff', 'admin'),
+  auth.requireRole('admin'),
   [
     body('status').isIn(['pending', 'in_progress', 'approved', 'rejected_incomplete', 'rejected_deleted', 'archived'])
   ],
@@ -544,6 +768,164 @@ router.get('/:id/documents',
       res.status(500).json({
         success: false,
         error: 'Erreur lors de la récupération des documents'
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/enrollments/add-child
+ * Demande d'inscription d'un nouvel enfant par un parent existant
+ * Authentification requise (parent)
+ */
+router.post('/add-child',
+  auth.authenticateToken,
+  auth.requireRole('parent'),
+  upload.fields([
+    { name: 'carnet_medical', maxCount: 1 },
+    { name: 'acte_naissance', maxCount: 1 },
+    { name: 'certificat_medical', maxCount: 1 }
+  ]),
+  [
+    body('child_first_name').notEmpty().withMessage('Prénom de l\'enfant requis'),
+    body('child_last_name').notEmpty().withMessage('Nom de l\'enfant requis'),
+    body('child_birth_date').isDate().withMessage('Date de naissance valide requise'),
+    body('child_gender').isIn(['M', 'F', 'Autre']).withMessage('Genre invalide')
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          error: 'Données invalides',
+          details: errors.array()
+        });
+      }
+
+      const parentId = req.user.userId || req.user.id;
+      const { child_first_name, child_last_name, child_birth_date, child_gender, medical_info } = req.body;
+
+      // Récupérer les infos du parent
+      const parentResult = await db.query(
+        'SELECT id, first_name, last_name, email, phone FROM users WHERE id = $1',
+        [parentId]
+      );
+
+      if (parentResult.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: 'Parent non trouvé'
+        });
+      }
+
+      const parent = parentResult.rows[0];
+
+      // Créer l'enfant
+      const childResult = await db.query(`
+        INSERT INTO children (
+          first_name, last_name, birth_date, gender, medical_info, parent_id, is_active, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, true, NOW())
+        RETURNING id
+      `, [child_first_name, child_last_name, child_birth_date, child_gender, medical_info || null, parentId]);
+
+      const childId = childResult.rows[0].id;
+
+      // Créer la demande d'inscription
+      const enrollmentResult = await db.query(`
+        INSERT INTO enrollments (
+          applicant_first_name, applicant_last_name, applicant_email, applicant_phone,
+          child_first_name, child_last_name, child_birth_date, child_gender,
+          child_id, parent_id, status, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'pending', NOW())
+        RETURNING id, status
+      `, [
+        parent.first_name, parent.last_name, parent.email, parent.phone,
+        child_first_name, child_last_name, child_birth_date, child_gender,
+        childId, parentId
+      ]);
+
+      const enrollment = enrollmentResult.rows[0];
+
+      // Upload des documents si fournis (méthode unifiée)
+      const files = req.files || {};
+      const cloudinaryService = require('../services/cloudinaryService');
+
+      for (const docType of ['carnet_medical', 'acte_naissance', 'certificat_medical']) {
+        if (files[docType] && files[docType][0]) {
+          const file = files[docType][0];
+          try {
+            // Upload vers Cloudinary avec la méthode unifiée
+            const uploadResult = await cloudinaryService.uploadEnrollmentDocument(
+              file.buffer,
+              enrollment.id,
+              docType
+            );
+
+            if (uploadResult.success) {
+              // Sauvegarder en base
+              await db.query(`
+                INSERT INTO enrollment_documents (
+                  enrollment_id, document_type, original_filename, file_path,
+                  mime_type, file_size, cloudinary_url, cloudinary_public_id, uploaded_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+              `, [
+                enrollment.id,
+                docType,
+                file.originalname,
+                uploadResult.url,
+                file.mimetype,
+                file.size,
+                uploadResult.url,
+                uploadResult.publicId
+              ]);
+            }
+          } catch (uploadError) {
+            console.error(`Erreur upload ${docType}:`, uploadError);
+          }
+        }
+      }
+
+      // Créer une tâche pour l'admin dans la table TASKS
+      // La tâche est créée le jour de l'inscription (même si jour non ouvrable)
+      try {
+        const adminResult = await db.query(`SELECT id FROM users WHERE role = 'admin' ORDER BY id LIMIT 1`);
+        const adminId = adminResult.rows.length > 0 ? adminResult.rows[0].id : null;
+
+        if (adminId) {
+          const now = new Date();
+
+          const taskResult = await taskService.createTask({
+            title: `📋 Traiter dossier inscription #${enrollment.id}`,
+            description: `Demande d'ajout d'enfant par ${parent.first_name} ${parent.last_name} (parent existant). Email: ${parent.email}. Lien: /dashboard/pending-enrollments`,
+            assigned_to: adminId,
+            due_date: now,
+            priority: 'high'
+          }, adminId);
+
+          if (taskResult.success) {
+            console.log(`✅ Tâche créée dans table TASKS - ID: ${taskResult.task.id}, dossier #${enrollment.id}`);
+          }
+        }
+      } catch (taskError) {
+        console.error('⚠️ Erreur création tâche:', taskError.message);
+      }
+
+      res.status(201).json({
+        success: true,
+        message: 'Demande d\'inscription envoyée avec succès',
+        enrollment: {
+          id: enrollment.id,
+          status: enrollment.status,
+          child_id: childId
+        }
+      });
+
+    } catch (error) {
+      console.error('Erreur ajout enfant:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Erreur lors de la demande d\'inscription'
       });
     }
   }

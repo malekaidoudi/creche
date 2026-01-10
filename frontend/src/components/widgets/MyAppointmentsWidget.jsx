@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, Plus, CheckCircle, XCircle, AlertCircle, Check } from 'lucide-react';
+import { Calendar, Clock, Plus, CheckCircle, XCircle, AlertCircle, Check, Phone, Info } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import api from '../../services/api';
 import { useDialogContext } from '../../contexts/DialogContext';
@@ -10,10 +10,23 @@ const MyAppointmentsWidget = ({ onRequestAppointment, onRescheduleAppointment })
   const dialog = useDialogContext();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [crechePhone, setCrechePhone] = useState('');
 
   useEffect(() => {
     loadAppointments();
+    loadCrechePhone();
   }, []);
+
+  const loadCrechePhone = async () => {
+    try {
+      const response = await api.get('/api/nursery-settings');
+      if (response.data?.settings?.phone) {
+        setCrechePhone(response.data.settings.phone);
+      }
+    } catch (error) {
+      console.error('Erreur chargement téléphone crèche:', error);
+    }
+  };
 
   const loadAppointments = async () => {
     try {
@@ -23,9 +36,9 @@ const MyAppointmentsWidget = ({ onRequestAppointment, onRescheduleAppointment })
       if (response.data.success) {
         const allAppointments = response.data.appointments || [];
 
-        // Filtrer: exclure les annulés ET les terminés
+        // Filtrer: exclure les annulés ET les terminés (mais garder les refusés)
         const activeAppointments = allAppointments.filter(apt => {
-          // Exclure les RDV annulés et terminés
+          // Exclure les RDV annulés et terminés, mais garder les refusés pour que le parent soit informé
           return apt.status !== 'cancelled' && apt.status !== 'completed';
         });
 
@@ -102,7 +115,7 @@ const MyAppointmentsWidget = ({ onRequestAppointment, onRescheduleAppointment })
         border: 'border-green-200 dark:border-green-800'
       },
       rescheduled: {
-        label: isRTL ? 'إعادة جدولة' : 'Replanifié',
+        label: isRTL ? 'في انتظار التأكيد' : 'En attente de validation',
         icon: AlertCircle,
         color: 'text-orange-600 dark:text-orange-400',
         bg: 'bg-orange-50 dark:bg-orange-900/20',
@@ -121,6 +134,13 @@ const MyAppointmentsWidget = ({ onRequestAppointment, onRescheduleAppointment })
         color: 'text-red-600 dark:text-red-400',
         bg: 'bg-red-50 dark:bg-red-900/20',
         border: 'border-red-200 dark:border-red-800'
+      },
+      failed: {
+        label: isRTL ? 'فشل' : 'À reprogrammer',
+        icon: AlertCircle,
+        color: 'text-orange-600 dark:text-orange-400',
+        bg: 'bg-orange-50 dark:bg-orange-900/20',
+        border: 'border-orange-200 dark:border-orange-800'
       }
     };
     return configs[status] || configs.proposed;
@@ -225,6 +245,64 @@ const MyAppointmentsWidget = ({ onRequestAppointment, onRescheduleAppointment })
                           <Calendar className="w-3 h-3" />
                           <span>{isRTL ? 'تاريخ آخر' : 'Autre date'}</span>
                         </button>
+                      </div>
+                    )}
+
+                    {/* Message pour RDV en attente de validation (rescheduled) */}
+                    {appointment.status === 'rescheduled' && (
+                      <div className="mt-3 p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+                        <div className="flex items-start gap-2">
+                          <Info className="w-4 h-4 text-orange-500 mt-0.5 shrink-0" />
+                          <div>
+                            <p className="text-sm text-orange-800 dark:text-orange-300 font-medium">
+                              {isRTL ? 'موعدك في انتظار التأكيد' : 'Votre RDV est en attente de validation'}
+                            </p>
+                            <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                              {isRTL
+                                ? 'سيتم الرد عليك قريبًا. للاستفسار، اتصل بالحضانة:'
+                                : 'Vous serez informé prochainement. Pour toute question, contactez la crèche :'
+                              }
+                            </p>
+                            {crechePhone && (
+                              <a
+                                href={`tel:${crechePhone}`}
+                                className="inline-flex items-center gap-1 mt-2 text-sm font-semibold text-orange-700 dark:text-orange-300 hover:underline"
+                              >
+                                <Phone className="w-3 h-3" />
+                                {crechePhone}
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Message pour RDV failed (à reprogrammer) */}
+                    {appointment.status === 'failed' && (
+                      <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                        <div className="flex items-start gap-2">
+                          <XCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+                          <div>
+                            <p className="text-sm text-red-800 dark:text-red-300 font-medium">
+                              {isRTL ? 'تم رفض موعدك' : 'Votre RDV a été refusé'}
+                            </p>
+                            <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                              {isRTL
+                                ? 'سنقوم بتحديد موعد جديد قريبًا. إذا كنت ترغب في الاتصال بنا:'
+                                : 'Nous allons fixer un nouveau RDV bientôt. Si vous souhaitez nous appeler :'
+                              }
+                            </p>
+                            {crechePhone && (
+                              <a
+                                href={`tel:${crechePhone}`}
+                                className="inline-flex items-center gap-1 mt-2 text-sm font-semibold text-red-700 dark:text-red-300 hover:underline"
+                              >
+                                <Phone className="w-3 h-3" />
+                                {crechePhone}
+                              </a>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>

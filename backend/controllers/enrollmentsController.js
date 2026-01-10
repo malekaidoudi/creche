@@ -10,6 +10,33 @@ const emailService = require('../emails/emailService');
 const cloudinaryService = require('../services/cloudinaryService');
 const { createLog } = require('../routes_postgres/logs');
 
+/**
+ * Marquer automatiquement la tâche d'inscription comme complétée
+ * quand le dossier est traité (approuvé ou rejeté)
+ */
+async function completeEnrollmentTask(enrollmentId) {
+  try {
+    // Chercher la tâche liée à ce dossier d'inscription
+    const taskResult = await db.query(`
+      UPDATE tasks 
+      SET status = 'completed', completed_at = NOW()
+      WHERE title LIKE $1 AND status != 'completed'
+      RETURNING id, title
+    `, [`%Traiter dossier inscription #${enrollmentId}%`]);
+
+    if (taskResult.rows.length > 0) {
+      console.log(`✅ Tâche #${taskResult.rows[0].id} marquée comme complétée (dossier #${enrollmentId} traité)`);
+      return { success: true, taskId: taskResult.rows[0].id };
+    } else {
+      console.log(`ℹ️ Aucune tâche en attente trouvée pour le dossier #${enrollmentId}`);
+      return { success: true, taskId: null };
+    }
+  } catch (error) {
+    console.error(`❌ Erreur lors de la complétion de la tâche pour dossier #${enrollmentId}:`, error.message);
+    return { success: false, error: error.message };
+  }
+}
+
 // Créer le dossier uploads si nécessaire
 const uploadsDir = path.join(__dirname, '../uploads/enrollments');
 if (!fs.existsSync(uploadsDir)) {
@@ -65,6 +92,44 @@ const enrollmentsController = {
         );
       } catch (logError) {
         console.error('⚠️ Erreur création log activité:', logError);
+      }
+
+      // Créer une tâche automatique pour l'admin dans la table TASKS
+      // La tâche est créée le jour de l'inscription, même si c'est un jour non ouvrable
+      // Si non traitée, elle apparaîtra dans "Tâches en retard" le lendemain
+      try {
+        // Récupérer l'ID de l'admin principal (role = 'admin')
+        const adminResult = await db.query(`SELECT id FROM users WHERE role = 'admin' ORDER BY id LIMIT 1`);
+        const adminId = adminResult.rows.length > 0 ? adminResult.rows[0].id : null;
+
+        console.log(`📋 Création tâche TASKS pour admin ID: ${adminId}, dossier #${enrollment.id}`);
+
+        if (adminId) {
+          // Créer dans la table TASKS (visible dans le widget Tâches du jour)
+          // Note: La description contient le lien vers la page des inscriptions en attente
+          const taskResult = await db.query(`
+            INSERT INTO tasks (
+              title, description, assigned_to, created_by, 
+              due_date, priority, status, created_at
+            ) VALUES ($1, $2, $3, $4, $5, 'high', 'pending', NOW())
+            RETURNING id
+          `, [
+            `📋 Traiter dossier inscription #${enrollment.id}`,
+            `Nouvelle demande d'inscription pour ${child_first_name} ${child_last_name || ''} (parent: ${applicant_first_name} ${applicant_last_name}). Email: ${applicant_email}.\n\n🔗 Lien: /dashboard/pending-enrollments`,
+            adminId,
+            adminId,
+            new Date() // due_date = aujourd'hui
+          ]);
+
+          if (taskResult.rows.length > 0) {
+            console.log(`✅ Tâche créée dans table TASKS - ID: ${taskResult.rows[0].id}, dossier #${enrollment.id}`);
+          }
+        } else {
+          console.warn('⚠️ Aucun admin trouvé pour créer la tâche');
+        }
+      } catch (taskError) {
+        console.error('⚠️ Erreur création tâche automatique:', taskError.message);
+        console.error('⚠️ Stack:', taskError.stack);
       }
 
       // Envoyer email de confirmation (async, ne pas bloquer la réponse)
@@ -125,14 +190,16 @@ const enrollmentsController = {
 
       // Vérifier si l'email n'existe pas déjà dans users
       const emailCheck = await db.query(
-        'SELECT id FROM users WHERE email = $1',
+        'SELECT id, first_name, last_name FROM users WHERE email = $1',
         [enrollmentData.applicant_email]
       );
 
       if (emailCheck.rows.length > 0) {
+        const existingUser = emailCheck.rows[0];
         return res.status(409).json({
           success: false,
-          error: 'Un compte existe déjà avec cet email'
+          error: `Un compte existe déjà avec cet email (${existingUser.first_name} ${existingUser.last_name}). Si ce parent souhaite inscrire un autre enfant, utilisez la fonction "Ajouter un enfant" depuis son profil.`,
+          existingUserId: existingUser.id
         });
       }
 
@@ -267,42 +334,12 @@ const enrollmentsController = {
         }
       }).catch(err => console.error('❌ Erreur envoi email approbation:', err));
 
-      // Supprimer les documents d'inscription de Cloudinary (après approbation, ils ne sont plus nécessaires)
-      // Cette opération est effectuée de manière asynchrone pour ne pas bloquer la réponse
-      (async () => {
-        try {
-          // Récupérer tous les documents avec cloudinary_public_id
-          const documentsResult = await db.query(`
-            SELECT id, cloudinary_public_id, original_filename
-            FROM enrollment_documents
-            WHERE enrollment_id = $1 AND cloudinary_public_id IS NOT NULL
-          `, [id]);
+      // NOTE: Les documents restent dans enrollment_documents et seront copiés vers children_documents
+      // lors de la finalisation de l'inscription (quand l'enfant est créé dans la table children)
+      console.log(`📄 Documents d'inscription conservés pour le dossier #${id} (seront transférés à la finalisation)`);
 
-          if (documentsResult.rows.length > 0) {
-            console.log(`🗑️  Suppression de ${documentsResult.rows.length} document(s) Cloudinary pour le dossier #${id}`);
-
-            for (const doc of documentsResult.rows) {
-              const deleteResult = await cloudinaryService.deleteFile(doc.cloudinary_public_id);
-              if (deleteResult.success) {
-                console.log(`   ✅ Document supprimé: ${doc.original_filename}`);
-                // Mettre à jour la base pour indiquer que le fichier Cloudinary a été supprimé
-                await db.query(`
-                  UPDATE enrollment_documents
-                  SET cloudinary_url = NULL, cloudinary_public_id = NULL
-                  WHERE id = $1
-                `, [doc.id]);
-              } else {
-                console.warn(`   ⚠️ Échec suppression: ${doc.original_filename}`, deleteResult.error);
-              }
-            }
-
-            console.log(`✅ Nettoyage Cloudinary terminé pour dossier #${id}`);
-          }
-        } catch (cleanupError) {
-          console.error('❌ Erreur nettoyage Cloudinary:', cleanupError);
-          // On ne fait pas échouer l'approbation si le nettoyage échoue
-        }
-      })();
+      // Marquer automatiquement la tâche d'inscription comme complétée
+      completeEnrollmentTask(id);
 
       res.json({
         success: true,
@@ -505,7 +542,26 @@ const enrollmentsController = {
           enrollment,
           custom_reason || 'Votre demande ne peut pas être acceptée pour le moment.'
         ).catch(err => console.error('❌ Erreur envoi email rejet:', err));
+
+        // Supprimer le dossier Cloudinary complet (rejet définitif)
+        (async () => {
+          try {
+            console.log(`🗑️ Suppression dossier Cloudinary pour rejet définitif #${id}`);
+            const deleteResult = await cloudinaryService.deleteFolder(id, 'enrollment');
+            if (deleteResult.success) {
+              console.log(`✅ Dossier Cloudinary supprimé: ${deleteResult.deletedCount} fichier(s)`);
+            }
+            // Supprimer les documents de la base
+            await db.query('DELETE FROM enrollment_documents WHERE enrollment_id = $1', [id]);
+            console.log(`✅ Documents supprimés de la base pour rejet #${id}`);
+          } catch (cleanupError) {
+            console.error('❌ Erreur suppression documents rejet:', cleanupError);
+          }
+        })();
       }
+
+      // Marquer automatiquement la tâche d'inscription comme complétée
+      completeEnrollmentTask(id);
 
       res.json({
         success: true,
@@ -633,16 +689,16 @@ const enrollmentsController = {
         });
 
         try {
-          // Upload vers Cloudinary si configuré
+          // Upload vers Cloudinary si configuré (nouvelle méthode unifiée)
           let cloudinaryUrl = null;
           let cloudinaryPublicId = null;
 
           if (cloudinaryService.isConfigured()) {
-            console.log('☁️  Upload vers Cloudinary:', file.originalname);
-            const uploadResult = await cloudinaryService.uploadFile(
+            console.log('☁️  Upload vers Cloudinary (méthode unifiée):', file.originalname);
+            const uploadResult = await cloudinaryService.uploadEnrollmentDocument(
               file.path,
-              'enrollments',
-              `enrollment_${id}_${fieldName}_${Date.now()}`
+              id,
+              fieldName
             );
 
             if (uploadResult.success) {

@@ -41,6 +41,7 @@ const MonthlyPlanningPage = () => {
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showAppointmentModal, setShowAppointmentModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
+  const [prefilledParentId, setPrefilledParentId] = useState(null);
   const [showDayEventsModal, setShowDayEventsModal] = useState(false);
   const [dayEvents, setDayEvents] = useState([]);
   const [selectedDayDate, setSelectedDayDate] = useState(null);
@@ -562,6 +563,32 @@ const MonthlyPlanningPage = () => {
       {/* Calendar */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
         <style>{`
+          /* Dark mode support pour FullCalendar */
+          .dark .fc-col-header-cell-cushion,
+          .dark .fc-daygrid-day-number {
+            color: #e5e7eb !important;
+          }
+          .dark .fc-toolbar-title {
+            color: #f3f4f6 !important;
+          }
+          .dark .fc-scrollgrid,
+          .dark .fc-scrollgrid td,
+          .dark .fc-scrollgrid th {
+            border-color: #374151 !important;
+          }
+          .dark .fc-daygrid-day {
+            background-color: transparent !important;
+          }
+          .dark .fc-day-today {
+            background-color: rgba(59, 130, 246, 0.1) !important;
+          }
+          .dark .fc-col-header {
+            background-color: #1f2937 !important;
+          }
+          .dark .fc-col-header-cell {
+            background-color: #1f2937 !important;
+          }
+          
           /* Header calendrier - Centrage et taille responsive */
           @media (max-width: 1023px) {
             .fc-toolbar {
@@ -685,9 +712,9 @@ const MonthlyPlanningPage = () => {
             editable={false}
             selectable={true}
             selectMirror={true}
-            dayMaxEvents={false}
+            dayMaxEvents={3}
             weekends={true}
-            eventDisplay="block"
+            eventDisplay="auto"
             displayEventTime={true}
             displayEventEnd={true}
             nowIndicator={true}
@@ -888,9 +915,13 @@ const MonthlyPlanningPage = () => {
       {/* Modal Rendez-vous */}
       <CreateAppointmentModal
         isOpen={showAppointmentModal}
-        onClose={() => setShowAppointmentModal(false)}
+        onClose={() => {
+          setShowAppointmentModal(false);
+          setPrefilledParentId(null);
+        }}
         onSuccess={handleModalSuccess}
         prefilledDate={selectedDate}
+        prefilledParentId={prefilledParentId}
       />
 
       {/* Modal de détails d'événement */}
@@ -1015,8 +1046,46 @@ const MonthlyPlanningPage = () => {
                 )}
               </div>
 
-              {/* Actions de statut */}
+              {/* Actions spéciales pour tâche urgente RDV */}
+              {selectedEvent.metadata?.is_urgent_appointment && selectedEvent.status === 'pending' && (
+                <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-3 uppercase">
+                    {isRTL ? 'إجراءات' : 'Actions'}
+                  </p>
+                  <div className="space-y-2">
+                    {/* Bouton créer nouveau RDV */}
+                    <button
+                      onClick={() => {
+                        setShowDetailModal(false);
+                        setSelectedDate(selectedEvent.metadata?.proposed_date || new Date().toISOString().split('T')[0]);
+                        setPrefilledParentId(selectedEvent.metadata?.parent_id || null);
+                        setShowAppointmentModal(true);
+                      }}
+                      className="w-full px-4 py-3 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 shadow-md"
+                    >
+                      <Calendar className="w-4 h-4" />
+                      {isRTL ? 'إنشاء موعد جديد' : 'Créer nouveau RDV'}
+                    </button>
+                    {/* Bouton marquer comme traité */}
+                    <button
+                      onClick={() => handleStatusChange('completed')}
+                      className="w-full px-4 py-2 bg-green-100 hover:bg-green-200 dark:bg-green-900/50 dark:hover:bg-green-900 text-green-700 dark:text-green-300 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                    >
+                      <CheckCircle className="w-4 h-4" />
+                      {isRTL ? 'تم التعامل معه' : 'Marquer comme traité'}
+                    </button>
+                  </div>
+                  {selectedEvent.metadata?.parent_name && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-3 text-center">
+                      {isRTL ? 'الوالد:' : 'Parent:'} {selectedEvent.metadata.parent_name}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Actions de statut standard */}
               {selectedEvent.status && selectedEvent.status !== 'completed' && selectedEvent.status !== 'cancelled' &&
+                !selectedEvent.metadata?.is_urgent_appointment &&
                 !String(selectedEvent.id).startsWith('birthday-') && !String(selectedEvent.id).startsWith('holiday-') && (
                   <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
                     <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-3 uppercase">

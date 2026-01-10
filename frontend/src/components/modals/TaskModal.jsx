@@ -82,28 +82,28 @@ export default function TaskModal({ isOpen, onClose, onSuccess, task = null }) {
     try {
       setLoading(true);
 
+      // Utiliser la table TASKS (pas events) pour les tâches
       const payload = {
         title: formData.title,
         description: formData.description,
-        type: 'task',
         priority: formData.priority,
         assigned_to: parseInt(formData.assigned_to),
-        start_date: formData.start_date ? `${convertToISO(formData.start_date)}T00:00:00` : null,
-        end_date: formData.end_date ? `${convertToISO(formData.end_date)}T23:59:59` : null,
-        status: task?.status || 'pending'
+        due_date: formData.start_date ? `${convertToISO(formData.start_date)}T00:00:00` : new Date().toISOString()
       };
 
       let response;
       if (isEditMode) {
-        // Modification
-        response = await api.patch(`/api/events/${task.id}`, payload);
+        // Modification - utiliser /api/tasks/:id
+        response = await api.patch(`/api/tasks/${task.id}`, payload);
       } else {
-        // Création
-        response = await api.post('/api/events', payload);
+        // Création - utiliser /api/tasks
+        response = await api.post('/api/tasks', payload);
       }
 
       if (response.data.success) {
         dialog.success(isEditMode ? 'Tâche modifiée avec succès' : 'Tâche créée avec succès');
+        // Émettre un événement pour rafraîchir les widgets
+        window.dispatchEvent(new CustomEvent('taskUpdated'));
         onSuccess?.();
         onClose();
       }

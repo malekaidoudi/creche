@@ -87,12 +87,10 @@ const DatePicker = ({
                 <input
                     ref={inputRef}
                     type="text"
-                    datepicker="true"
-                    datepicker-autohide="true"
-                    datepicker-format="dd/mm/yyyy"
-                    value={value}
+                    readOnly
+                    value={value || ''}
                     placeholder={placeholder || (isRTL ? 'اختر التاريخ' : 'Sélectionner une date')}
-                    className={`
+                    className={`cursor-pointer
             block w-full px-4 py-3 
             border rounded-lg 
             !bg-white dark:!bg-gray-700 

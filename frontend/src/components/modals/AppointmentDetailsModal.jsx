@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Calendar, Clock, MapPin, User, FileText, Check, CalendarX2 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useDialogContext } from '../../contexts/DialogContext';
+import { useAuth } from '../../hooks/useAuth';
 import api from '../../services/api';
 import DatePicker from '../ui/DatePicker';
 import { convertToISO } from '../../utils/dateUtils';
@@ -14,6 +15,7 @@ import { convertToISO } from '../../utils/dateUtils';
 const AppointmentDetailsModal = ({ isOpen, onClose, appointment, onSuccess }) => {
     const { isRTL } = useLanguage();
     const dialog = useDialogContext();
+    const { user } = useAuth();
     const [showReschedule, setShowReschedule] = useState(false);
     const [newDate, setNewDate] = useState('');
     const [newTime, setNewTime] = useState('');
@@ -59,7 +61,7 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointment, onSuccess }) =>
         }
     };
 
-    // Proposer une autre date
+    // Proposer une autre date (admin utilise reject-with-proposal, parent utilise reschedule)
     const handleReschedule = async () => {
         if (!newDate || !newTime) {
             dialog.error(isRTL ? 'يرجى اختيار تاريخ ووقت' : 'Veuillez sélectionner une date et une heure');
@@ -79,9 +81,19 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointment, onSuccess }) =>
 
             const proposedDateTime = `${isoDate}T${newTime}:00`;
 
-            const response = await api.patch(`/api/appointments/${appointment.id}/reschedule`, {
-                proposed_date: proposedDateTime
-            });
+            let response;
+            if (user?.role === 'admin' || user?.role === 'staff') {
+                // Admin/Staff: utiliser reject-with-proposal
+                response = await api.post(`/api/appointments/${appointment.id}/reject-with-proposal`, {
+                    proposed_date: proposedDateTime,
+                    reason: 'Nouvelle date proposée par l\'administration'
+                });
+            } else {
+                // Parent: utiliser reschedule
+                response = await api.patch(`/api/appointments/${appointment.id}/reschedule`, {
+                    new_date: proposedDateTime
+                });
+            }
 
             if (response.data.success) {
                 dialog.success(isRTL ? 'تم اقتراح تاريخ جديد بنجاح' : 'Nouvelle date proposée avec succès');

@@ -259,7 +259,7 @@ const MobileParentSpace = ({
                                 <MobileCard
                                     key={child.id}
                                     title={`${child.first_name} ${child.last_name}`}
-                                    subtitle={child.parent_name || child.age_display || (isRTL ? 'طفل' : 'Enfant')}
+                                    subtitle={child.age_display || (isRTL ? 'مسجل' : 'Inscrit')}
                                     icon={Baby}
                                     iconColor="blue"
                                     badge={getStatusBadge(child.enrollment_status)}

@@ -9,41 +9,41 @@
  */
 
 import React from 'react';
-import { useFooterData } from '../../hooks/useOptimizedSettings';
+import { useFooterData } from '../../hooks/useOptimizedSettings.jsx';
 import { useLanguage } from '../../hooks/useLanguage';
 import { MapPin, Phone, Mail, Clock, Facebook, Instagram } from 'lucide-react';
 
 const OptimizedPublicFooter = () => {
   const { isRTL } = useLanguage();
   const currentLang = isRTL ? 'ar' : 'fr';
-  
+
   // Hook optimisé avec cache intelligent
-  const { 
-    data: footerSettings, 
-    isLoading, 
+  const {
+    data: footerSettings,
+    isLoading,
     isError,
-    error 
+    error
   } = useFooterData(currentLang);
 
   // Données de fallback en cas d'erreur
   const fallbackData = {
-    nursery_name: { 
-      value: isRTL ? 'حضانة ميما الغالية' : 'Crèche Mima Elghalia' 
+    nursery_name: {
+      value: isRTL ? 'حضانة ميما الغالية' : 'Crèche Mima Elghalia'
     },
-    nursery_description: { 
-      value: isRTL 
-        ? 'بيئة آمنة ومحبة لنمو طفلك وتطوره' 
-        : 'Un environnement sûr et bienveillant pour l\'épanouissement de votre enfant' 
+    nursery_description: {
+      value: isRTL
+        ? 'بيئة آمنة ومحبة لنمو طفلك وتطوره'
+        : 'Un environnement sûr et bienveillant pour l\'épanouissement de votre enfant'
     },
-    address: { 
-      value: isRTL 
-        ? '8 شارع بنزرت، مدنين 4100، تونس' 
-        : '8 Rue Bizerte, Medenine 4100, Tunisie' 
+    address: {
+      value: isRTL
+        ? '8 شارع بنزرت، مدنين 4100، تونس'
+        : '8 Rue Bizerte, Medenine 4100, Tunisie'
     },
     phone: { value: '+216 25 95 35 32' },
     email: { value: 'contact@mimaelghalia.tn' },
-    working_hours_weekdays: { 
-      value: isRTL ? 'الإثنين-الجمعة: 07:00-18:00' : 'Lun-Ven: 07:00-18:00' 
+    working_hours_weekdays: {
+      value: isRTL ? 'الإثنين-الجمعة: 07:00-18:00' : 'Lun-Ven: 07:00-18:00'
     },
     facebook_url: { value: 'https://facebook.com/crechemimaelghalia' },
     instagram_url: { value: 'https://instagram.com/crechemimaelghalia' }
@@ -78,7 +78,7 @@ const OptimizedPublicFooter = () => {
     <footer className="bg-gray-900 text-white py-12" dir={isRTL ? 'rtl' : 'ltr'}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          
+
           {/* 🏢 Informations de la crèche */}
           <div className="space-y-4">
             <h3 className="text-xl font-bold text-white">
@@ -87,7 +87,7 @@ const OptimizedPublicFooter = () => {
             <p className="text-gray-300 leading-relaxed">
               {settings.nursery_description?.value || fallbackData.nursery_description.value}
             </p>
-            
+
             {/* Indicateur de cache */}
             {!isError && (
               <div className="flex items-center text-xs text-gray-400">
@@ -95,7 +95,7 @@ const OptimizedPublicFooter = () => {
                 {isRTL ? 'محدث من الذاكرة المؤقتة' : 'Données mises en cache'}
               </div>
             )}
-            
+
             {isError && (
               <div className="flex items-center text-xs text-yellow-400">
                 <div className="w-2 h-2 bg-yellow-400 rounded-full mr-2"></div>
@@ -109,7 +109,7 @@ const OptimizedPublicFooter = () => {
             <h4 className="text-lg font-semibold text-white">
               {isRTL ? 'معلومات الاتصال' : 'Contact'}
             </h4>
-            
+
             <div className="space-y-3">
               <div className="flex items-start space-x-3 rtl:space-x-reverse">
                 <MapPin className="w-5 h-5 text-primary-400 mt-0.5 flex-shrink-0" />
@@ -117,10 +117,10 @@ const OptimizedPublicFooter = () => {
                   {settings.address?.value || fallbackData.address.value}
                 </span>
               </div>
-              
+
               <div className="flex items-center space-x-3 rtl:space-x-reverse">
                 <Phone className="w-5 h-5 text-primary-400 flex-shrink-0" />
-                <a 
+                <a
                   href={`tel:${settings.phone?.value || fallbackData.phone.value}`}
                   className="text-gray-300 hover:text-white transition-colors text-sm"
                   dir="ltr"
@@ -128,10 +128,10 @@ const OptimizedPublicFooter = () => {
                   {settings.phone?.value || fallbackData.phone.value}
                 </a>
               </div>
-              
+
               <div className="flex items-center space-x-3 rtl:space-x-reverse">
                 <Mail className="w-5 h-5 text-primary-400 flex-shrink-0" />
-                <a 
+                <a
                   href={`mailto:${settings.email?.value || fallbackData.email.value}`}
                   className="text-gray-300 hover:text-white transition-colors text-sm"
                 >
@@ -146,7 +146,7 @@ const OptimizedPublicFooter = () => {
             <h4 className="text-lg font-semibold text-white">
               {isRTL ? 'ساعات العمل' : 'Horaires'}
             </h4>
-            
+
             <div className="flex items-start space-x-3 rtl:space-x-reverse">
               <Clock className="w-5 h-5 text-primary-400 mt-0.5 flex-shrink-0" />
               <div className="text-gray-300 text-sm leading-relaxed">
@@ -193,12 +193,12 @@ const OptimizedPublicFooter = () => {
             © 2024 {settings.nursery_name?.value || fallbackData.nursery_name.value}. {' '}
             {isRTL ? 'جميع الحقوق محفوظة.' : 'Tous droits réservés.'}
           </p>
-          
+
           {/* Debug info en développement */}
           {process.env.NODE_ENV === 'development' && (
             <div className="mt-2 text-xs text-gray-500">
-              Cache: {isError ? 'Fallback' : 'Active'} | 
-              Lang: {currentLang} | 
+              Cache: {isError ? 'Fallback' : 'Active'} |
+              Lang: {currentLang} |
               Keys: {Object.keys(settings).length}
             </div>
           )}

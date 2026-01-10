@@ -1,16 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, FileText, AlertCircle } from 'lucide-react';
-import axios from 'axios';
+import api from '../../services/api';
 import { useDialogContext } from '../../contexts/DialogContext';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3003/api';
 
 export default function MemoModal({ isOpen, onClose, onSuccess }) {
   const dialog = useDialogContext();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    description: '',
-    priority: 'medium'
+    content: ''
   });
   const firstInputRef = useRef(null);
 
@@ -24,40 +21,32 @@ export default function MemoModal({ isOpen, onClose, onSuccess }) {
     e.preventDefault();
 
     // Validation
-    if (!formData.description.trim()) {
-      dialog.error('La description est requise');
+    if (!formData.content.trim()) {
+      dialog.error('Le contenu est requis');
       return;
     }
 
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
 
+      // Utiliser l'API personal-memos (table personal_memos)
       const payload = {
-        title: 'Mémo personnel',
-        description: formData.description,
-        type: 'memo',
-        priority: formData.priority,
-        assigned_to: user.userId || user.id,
-        start_date: new Date().toISOString(),
-        status: 'pending'
+        content: formData.content,
+        memo_date: new Date().toISOString().split('T')[0] // Date du jour
       };
 
-      const response = await axios.post(
-        `${API_URL}/events`,
-        payload,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const response = await api.post('/api/personal-memos', payload);
 
       if (response.data.success) {
         dialog.success('Mémo créé avec succès');
+        // Émettre un événement pour rafraîchir les widgets
+        window.dispatchEvent(new CustomEvent('memoUpdated'));
         onSuccess?.();
         handleClose();
       }
     } catch (error) {
       console.error('Erreur création mémo:', error);
-      dialog.error(error.response?.data?.message || 'Erreur lors de la création du mémo');
+      dialog.error(error.response?.data?.error || 'Erreur lors de la création du mémo');
     } finally {
       setLoading(false);
     }
@@ -65,8 +54,7 @@ export default function MemoModal({ isOpen, onClose, onSuccess }) {
 
   const handleClose = () => {
     setFormData({
-      description: '',
-      priority: 'medium'
+      content: ''
     });
     onClose();
   };
@@ -91,38 +79,21 @@ export default function MemoModal({ isOpen, onClose, onSuccess }) {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 space-y-4">
-          {/* Description */}
+          {/* Contenu du mémo */}
           <div>
             <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               <FileText className="w-4 h-4" />
-              Description *
+              Contenu *
             </label>
             <textarea
               ref={firstInputRef}
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              value={formData.content}
+              onChange={(e) => setFormData({ ...formData, content: e.target.value })}
               placeholder="Notez votre mémo ici..."
               rows={6}
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
               required
             />
-          </div>
-
-          {/* Priorité */}
-          <div>
-            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              <AlertCircle className="w-4 h-4" />
-              Priorité
-            </label>
-            <select
-              value={formData.priority}
-              onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            >
-              <option value="low">🟢 Basse</option>
-              <option value="medium">🟡 Moyenne</option>
-              <option value="high">🔴 Haute</option>
-            </select>
           </div>
         </form>
 

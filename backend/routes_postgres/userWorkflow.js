@@ -142,19 +142,28 @@ router.post('/create-parent', auth.authenticateToken, auth.requireRole('admin'),
         );
         const children = childrenResult.rows;
 
-        // 8. Envoyer l'email avec le mot de passe temporaire
+        // 8. Générer un token pour la création de mot de passe
+        const passwordToken = crypto.randomBytes(32).toString('hex');
+        const tokenExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 jours
+
+        // Sauvegarder le token dans la base
+        await pool.query(`
+            UPDATE users 
+            SET password_token = $1, password_token_expires = $2, password_set = false
+            WHERE id = $3
+        `, [passwordToken, tokenExpires, newUser.id]);
+
+        // 9. Envoyer l'email avec le lien de création de mot de passe
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        const createPasswordUrl = `${frontendUrl}/create-password?token=${passwordToken}&email=${encodeURIComponent(email)}`;
+        const childName = children.map(c => `${c.first_name} ${c.last_name}`).join(', ');
+
         try {
-            await emailService.sendEmail({
-                to: email,
-                subject: `Bienvenue à la crèche Mima Elghalia - Vos identifiants`,
-                template: 'parent-welcome',
-                data: {
-                    parentName: `${first_name} ${last_name}`,
-                    childrenNames: children.map(c => `${c.first_name} ${c.last_name}`).join(', '),
-                    email: email,
-                    tempPassword: tempPasswordPlain,
-                    loginUrl: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login`
-                }
+            await emailService.sendEmail('PARENT_WELCOME', email, {
+                parentName: `${first_name} ${last_name}`,
+                childName: childName,
+                createPasswordUrl: createPasswordUrl,
+                expiresIn: '7 jours'
             });
             console.log(`✅ Email envoyé à ${email}`);
         } catch (emailError) {
@@ -163,10 +172,10 @@ router.post('/create-parent', auth.authenticateToken, auth.requireRole('admin'),
 
         res.status(201).json({
             success: true,
-            message: 'Compte parent créé avec succès',
+            message: 'Compte parent créé avec succès. Un email avec le lien de création de mot de passe a été envoyé.',
             user: newUser,
             children: children,
-            tempPassword: tempPasswordPlain // Pour affichage admin uniquement
+            passwordLink: createPasswordUrl // Pour affichage admin si besoin
         });
 
     } catch (error) {
@@ -265,16 +274,12 @@ router.post('/create-staff', auth.authenticateToken, auth.requireRole('admin'), 
         };
 
         try {
-            await emailService.sendEmail({
-                to: email,
-                subject: `Bienvenue dans l'équipe de la crèche Mima Elghalia`,
-                template: 'staff-welcome',
-                data: {
-                    staffName: `${first_name} ${last_name}`,
-                    position: positionLabels[staff_position] || staff_position,
-                    createPasswordUrl,
-                    expiresIn: '7 jours'
-                }
+            // Utiliser la bonne signature: sendEmail(emailType, recipient, variables)
+            await emailService.sendEmail('STAFF_WELCOME', email, {
+                staffName: `${first_name} ${last_name}`,
+                position: positionLabels[staff_position] || staff_position,
+                createPasswordUrl,
+                expiresIn: '7 jours'
             });
             console.log(`✅ Email envoyé à ${email}`);
         } catch (emailError) {
@@ -485,15 +490,11 @@ router.post('/register-parent', [
 
         // 5. Envoyer email de confirmation
         try {
-            await emailService.sendEmail({
-                to: email,
-                subject: 'Bienvenue à la crèche Mima Elghalia',
-                template: 'parent-registration-confirmation',
-                data: {
-                    parentName: `${first_name} ${last_name}`,
-                    childName: associatedChild ? `${associatedChild.first_name} ${associatedChild.last_name}` : null,
-                    needsChildAssociation: child_already_enrolled && !associatedChild
-                }
+            // Utiliser la bonne signature: sendEmail(emailType, recipient, variables)
+            await emailService.sendEmail('PARENT_REGISTRATION_CONFIRMATION', email, {
+                parentName: `${first_name} ${last_name}`,
+                childName: associatedChild ? `${associatedChild.first_name} ${associatedChild.last_name}` : null,
+                needsChildAssociation: child_already_enrolled && !associatedChild
             });
         } catch (emailError) {
             console.error('⚠️ Erreur envoi email:', emailError);
@@ -570,16 +571,13 @@ router.post('/resend-password-link', auth.authenticateToken, auth.requireRole('a
         const createPasswordUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/create-password?token=${passwordToken}&email=${encodeURIComponent(user.email)}`;
 
         try {
-            await emailService.sendEmail({
-                to: user.email,
-                subject: 'Nouveau lien de création de mot de passe - Crèche Mima Elghalia',
-                template: 'resend-password-link',
-                data: {
-                    userName: `${user.first_name} ${user.last_name}`,
-                    createPasswordUrl,
-                    expiresIn: '7 jours'
-                }
+            // Utiliser la bonne signature: sendEmail(emailType, recipient, variables)
+            await emailService.sendEmail('RESEND_PASSWORD_LINK', user.email, {
+                userName: `${user.first_name} ${user.last_name}`,
+                createPasswordUrl,
+                expiresIn: '7 jours'
             });
+            console.log(`✅ Email de renvoi de lien envoyé à ${user.email}`);
         } catch (emailError) {
             console.error('⚠️ Erreur envoi email:', emailError);
         }

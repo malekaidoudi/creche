@@ -5,6 +5,7 @@ import { useDialogContext } from '../../contexts/DialogContext';
 import api from '../../services/api';
 import DatePicker from '../ui/DatePicker';
 import { convertToISO } from '../../utils/dateUtils';
+import { getNextWorkingDayFormatted } from '../../utils/workingDays';
 
 const CreateAppointmentModal = ({ isOpen, onClose, onSuccess, prefilledParentId, prefilledDate }) => {
   const { isRTL } = useLanguage();
@@ -16,7 +17,7 @@ const CreateAppointmentModal = ({ isOpen, onClose, onSuccess, prefilledParentId,
     subject: '',
     description: '',
     proposed_date: '',
-    proposed_time: '',
+    proposed_time: '10:00',
     location: 'Crèche'
   });
   const [loading, setLoading] = useState(false);
@@ -39,6 +40,11 @@ const CreateAppointmentModal = ({ isOpen, onClose, onSuccess, prefilledParentId,
           proposed_date: dateStr,
           proposed_time: timeStr
         }));
+      } else {
+        // Si pas de date pré-remplie, utiliser le prochain jour ouvré
+        getNextWorkingDayFormatted().then(date => {
+          setFormData(prev => ({ ...prev, proposed_date: date }));
+        });
       }
       setTimeout(() => firstInputRef.current?.focus(), 100);
     }

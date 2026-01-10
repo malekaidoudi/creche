@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Calendar, Clock, AlertCircle, Send } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useDialogContext } from '../../contexts/DialogContext';
 import api from '../../services/api';
+import { getNextWorkingDayFormatted } from '../../utils/workingDays';
 
 const RejectWithProposalModal = ({ isOpen, onClose, appointment, onSuccess }) => {
   const { isRTL } = useLanguage();
@@ -11,9 +12,21 @@ const RejectWithProposalModal = ({ isOpen, onClose, appointment, onSuccess }) =>
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     proposed_date: '',
-    proposed_time: '',
+    proposed_time: '10:00',
     reason: ''
   });
+
+  // Initialiser la date au prochain jour ouvré à l'ouverture
+  useEffect(() => {
+    if (isOpen && !formData.proposed_date) {
+      getNextWorkingDayFormatted().then(date => {
+        // Convertir dd/mm/yyyy en yyyy-mm-dd pour l'input date
+        const parts = date.split('/');
+        const isoDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
+        setFormData(prev => ({ ...prev, proposed_date: isoDate }));
+      });
+    }
+  }, [isOpen]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

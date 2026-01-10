@@ -30,19 +30,19 @@ const documentsService = {
   uploadDocument: async (documentData, file) => {
     try {
       const formData = new FormData()
-      
+
       // Ajouter les données du document
       Object.keys(documentData).forEach(key => {
         if (documentData[key] !== null && documentData[key] !== undefined) {
           formData.append(key, documentData[key])
         }
       })
-      
+
       // Ajouter le fichier
       if (file) {
         formData.append('document', file)
       }
-      
+
       const response = await api.post('/api/documents', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'

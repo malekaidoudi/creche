@@ -453,7 +453,7 @@ const PendingEnrollmentsPage = () => {
                         {isRTL ? 'الوثائق' : 'Documents'} ({parseInt(enrollment.documents_count) || 0})
                       </Button>
 
-                      {(isAdmin() || isStaff()) && (
+                      {isAdmin() && (
                         <>
                           <Button
                             size="sm"
@@ -525,8 +525,8 @@ const PendingEnrollmentsPage = () => {
                       </div>
                     </div>
 
-                    {/* Boutons Mobile en bas */}
-                    {(isAdmin() || isStaff()) && (
+                    {/* Boutons Mobile en bas - Admin uniquement */}
+                    {isAdmin() && (
                       <div className="flex gap-2 mt-4 pt-3 border-t border-gray-100 dark:border-gray-700">
                         <Button
                           size="sm"
@@ -561,7 +561,7 @@ const PendingEnrollmentsPage = () => {
       {/* Modal des documents - Responsive */}
       {showDocumentsModal && selectedEnrollment && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-xl w-full sm:max-w-2xl max-h-[90vh] sm:max-h-[85vh] overflow-hidden flex flex-col">
+          <div className="bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-xl w-full sm:max-w-3xl max-h-[90vh] sm:max-h-[85vh] overflow-hidden flex flex-col">
             {/* Header sticky */}
             <div className="sticky top-0 bg-white dark:bg-gray-800 p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
               <div className="flex items-center justify-between">
@@ -593,14 +593,15 @@ const PendingEnrollmentsPage = () => {
                 <div className="space-y-3">
                   {selectedEnrollment.files.map((document) => (
                     <div key={document.id} className="border border-gray-200 dark:border-gray-600 rounded-xl p-3 sm:p-4">
-                      {/* Layout mobile: empilé / Desktop: côte à côte */}
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
-                        <div className="flex items-start sm:items-center space-x-3 rtl:space-x-reverse">
+                      {/* Layout: infos à gauche, boutons à droite */}
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                        {/* Infos document */}
+                        <div className="flex items-start sm:items-center space-x-3 rtl:space-x-reverse flex-1 min-w-0">
                           <div className="text-blue-600 flex-shrink-0 mt-0.5 sm:mt-0">
                             {getDocumentIcon(getDocumentTypeFromFilename(document.filename))}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <h5 className="font-medium text-gray-900 dark:text-white text-sm sm:text-base truncate">
+                            <h5 className="font-medium text-gray-900 dark:text-white text-sm sm:text-base break-all sm:truncate">
                               {document.original_filename || document.original_name || document.filename}
                             </h5>
                             <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-gray-500 mt-1">
@@ -614,13 +615,12 @@ const PendingEnrollmentsPage = () => {
                           </div>
                         </div>
 
-                        {/* Boutons - pleine largeur sur mobile */}
-                        <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                        {/* Boutons - alignés à droite, ne rétrécissent pas */}
+                        <div className="flex items-center gap-2 flex-shrink-0">
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => handleViewDocument(document)}
-                            className="flex-1 sm:flex-initial"
                           >
                             <Eye className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
                             {isRTL ? 'عرض' : 'Voir'}
@@ -630,7 +630,6 @@ const PendingEnrollmentsPage = () => {
                             size="sm"
                             variant="outline"
                             onClick={() => handleDownloadDocument(document)}
-                            className="flex-1 sm:flex-initial"
                           >
                             <Download className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
                             {isRTL ? 'تحميل' : 'Télécharger'}
@@ -652,13 +651,14 @@ const PendingEnrollmentsPage = () => {
 
             {/* Footer sticky */}
             <div className="sticky bottom-0 bg-white dark:bg-gray-800 p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
-              <Button
-                variant="outline"
-                onClick={() => setShowDocumentsModal(false)}
-                className="w-full sm:w-auto sm:ml-auto block"
-              >
-                {isRTL ? 'إغلاق' : 'Fermer'}
-              </Button>
+              <div className="flex justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowDocumentsModal(false)}
+                >
+                  {isRTL ? 'إغلاق' : 'Fermer'}
+                </Button>
+              </div>
             </div>
           </div>
         </div>

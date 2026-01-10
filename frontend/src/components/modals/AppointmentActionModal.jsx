@@ -16,6 +16,7 @@ import {
 import { useLanguage } from '../../hooks/useLanguage';
 import { useDialogContext } from '../../contexts/DialogContext';
 import DatePicker from '../ui/DatePicker';
+import api from '../../services/api';
 
 /**
  * Modal pour gérer les actions sur un RDV
@@ -58,17 +59,11 @@ const AppointmentActionModal = ({
     const handleValidate = async () => {
         setLoading(true);
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`/api/appointments/${appointment.id}/validate`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ staff_notes: notes })
+            const response = await api.post(`/api/appointments/${appointment.id}/validate`, {
+                staff_notes: notes
             });
 
-            const data = await response.json();
+            const data = response.data;
 
             if (data.success) {
                 dialog.success(isRTL ? 'تم التحقق من الموعد بنجاح' : 'RDV validé - Inscription finalisée');
@@ -103,21 +98,13 @@ const AppointmentActionModal = ({
                 appointmentDateTime = dateObj.toISOString();
             }
 
-            const token = localStorage.getItem('token');
-            const response = await fetch(`/api/appointments/${appointment.id}/failed`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    outcome,
-                    staff_notes: notes,
-                    new_appointment_date: appointmentDateTime
-                })
+            const response = await api.post(`/api/appointments/${appointment.id}/failed`, {
+                outcome,
+                staff_notes: notes,
+                new_appointment_date: appointmentDateTime
             });
 
-            const data = await response.json();
+            const data = response.data;
 
             if (data.success) {
                 if (outcome === 'reschedule') {
@@ -146,17 +133,11 @@ const AppointmentActionModal = ({
     const handleComplete = async () => {
         setLoading(true);
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(`/api/appointments/${appointment.id}/complete`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ staff_notes: notes })
+            const response = await api.post(`/api/appointments/${appointment.id}/complete`, {
+                staff_notes: notes
             });
 
-            const data = await response.json();
+            const data = response.data;
 
             if (data.success) {
                 dialog.success(isRTL ? 'تم إنهاء الموعد' : 'RDV terminé');

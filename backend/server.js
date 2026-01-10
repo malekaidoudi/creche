@@ -46,23 +46,15 @@ const userRoutes = require('./routes_postgres/users');
 const childrenRoutes = require('./routes_postgres/children');
 const enrollmentRoutes = require('./routes_postgres/enrollments');
 const attendanceRoutes = require('./routes_postgres/attendance');
-const uploadRoutes = require('./routes_postgres/uploads');
-const documentsRoutes = require('./routes_postgres/documents');
-const reportsRoutes = require('./routes_postgres/reports');
-const settingsRoutes = require('./routes_postgres/settings');
 const logsRoutes = require('./routes_postgres/logs');
-const newsRoutes = require('./routes_postgres/news');
 const contactRoutes = require('./routes_postgres/contacts');
 const healthRoutes = require('./routes_postgres/health');
-const publicEnrollmentsRoutes = require('./routes_postgres/publicEnrollments');
 const setupRoutes = require('./routes_postgres/setup');
 const profileRoutes = require('./routes_postgres/profile');
 const absenceRequestsRoutes = require('./routes_postgres/absenceRequests');
 const nurserySettingsRoutes = require('./routes_postgres/nurserySettings');
 const notificationsRoutes = require('./routes_postgres/notifications');
-const fixUserRoleRoutes = require('./routes_postgres/fixUserRole');
 const userChildrenRoutes = require('./routes_postgres/userChildren');
-const absencesRoutes = require('./routes_postgres/absences');
 const holidaysRoutes = require('./routes_postgres/holidays');
 const scheduleSettingsRoutes = require('./routes_postgres/schedule-settings');
 const eventsRoutes = require('./routes_postgres/events');
@@ -83,6 +75,10 @@ const staffAssignmentsRoutes = require('./routes_postgres/staffAssignments');
 const dashboardStatsRoutes = require('./routes_postgres/dashboardStats');
 const contactMessagesRoutes = require('./routes_postgres/contactMessages');
 const virtualTourRoutes = require('./routes_postgres/virtualTour');
+const paymentAlertsRoutes = require('./routes_postgres/paymentAlerts');
+const documentsRoutes = require('./routes_postgres/documents');
+const cloudinaryRoutes = require('./routes_postgres/cloudinary');
+const cloudinaryExplorerRoutes = require('./routes_postgres/cloudinaryExplorer');
 console.log('✅ Routes chargées\n');
 
 const app = express();
@@ -231,23 +227,8 @@ console.log('  ✓ /api/enrollments');
 app.use('/api/attendance', attendanceRoutes);
 console.log('  ✓ /api/attendance');
 
-app.use('/api/uploads', uploadRoutes);
-console.log('  ✓ /api/uploads');
-
-app.use('/api/documents', documentsRoutes);
-console.log('  ✓ /api/documents');
-
-app.use('/api/reports', reportsRoutes);
-console.log('  ✓ /api/reports');
-
-app.use('/api/settings', settingsRoutes);
-console.log('  ✓ /api/settings');
-
 app.use('/api/logs', logsRoutes);
 console.log('  ✓ /api/logs');
-
-app.use('/api/news', newsRoutes);
-console.log('  ✓ /api/news');
 
 app.use('/api/contacts', contactRoutes);
 app.use('/api/contact', contactRoutes); // Alias pour compatibilité
@@ -255,9 +236,6 @@ console.log('  ✓ /api/contacts + /api/contact');
 
 app.use('/api/health', healthRoutes);
 console.log('  ✓ /api/health');
-
-app.use('/api/public-enrollments', publicEnrollmentsRoutes);
-console.log('  ✓ /api/public-enrollments');
 
 app.use('/api/setup', setupRoutes);
 console.log('  ✓ /api/setup');
@@ -281,14 +259,8 @@ console.log('  ✓ /api/holidays');
 app.use('/api/schedule-settings', scheduleSettingsRoutes);
 console.log('  ✓ /api/schedule-settings');
 
-app.use('/api/fix-user-role', fixUserRoleRoutes);
-console.log('  ✓ /api/fix-user-role');
-
 app.use('/api/user', userChildrenRoutes);
 console.log('  ✓ /api/user');
-
-app.use('/api/absences', absencesRoutes);
-console.log('  ✓ /api/absences');
 
 // Routes des événements (v2.2.0)
 app.use('/api/events', eventsRoutes);
@@ -345,6 +317,18 @@ console.log('  ✓ /api/admin/contact-messages (courrier admin) 📧');
 
 app.use('/api/virtual-tour', virtualTourRoutes);
 console.log('  ✓ /api/virtual-tour (images visite virtuelle) 🖼️');
+
+app.use('/api/payment-alerts', paymentAlertsRoutes);
+console.log('  ✓ /api/payment-alerts (alertes de paiement) 💰');
+
+app.use('/api/documents', documentsRoutes);
+console.log('  ✓ /api/documents (gestion documents) 📄');
+
+app.use('/api/cloudinary', cloudinaryRoutes);
+console.log('  ✓ /api/cloudinary (upload direct) ☁️');
+
+app.use('/api/cloudinary-explorer', cloudinaryExplorerRoutes);
+console.log('  ✓ /api/cloudinary-explorer (explorateur stockage) 🗂️');
 
 console.log('\n✅ Toutes les routes montées avec succès\n');
 
@@ -440,7 +424,7 @@ app.use((error, req, res, next) => {
 // DÉMARRAGE DU SERVEUR
 // ═══════════════════════════════════════════════════════════════════════════
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log('═══════════════════════════════════════════════════════════════');
   console.log('✅ SERVEUR DÉMARRÉ AVEC SUCCÈS !');
   console.log('═══════════════════════════════════════════════════════════════');
@@ -473,6 +457,11 @@ app.listen(PORT, () => {
     console.error('❌ Erreur démarrage job backup:', error.message);
   }
 });
+
+// Timeout serveur pour les uploads volumineux (5 minutes)
+server.timeout = 300000;
+server.keepAliveTimeout = 300000;
+server.headersTimeout = 310000;
 
 // Gestion propre de l'arrêt
 process.on('SIGTERM', () => {

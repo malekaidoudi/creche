@@ -26,6 +26,7 @@ import ChildDetailsPage from '../pages/parent/ChildDetailsPage'
 import ChildMedicalPage from '../pages/parent/ChildMedicalPage'
 import ChildEmergencyContactsPage from '../pages/parent/ChildEmergencyContactsPage'
 import ChildDailyReportsPage from '../pages/parent/ChildDailyReportsPage'
+import AddChildPage from '../pages/parent/AddChildPage'
 
 // Pages staff
 import AbsenceManagementPage from '../pages/staff/AbsenceManagementPage'
@@ -44,7 +45,7 @@ import MonthlyPlanningPage from '../pages/dashboard/MonthlyPlanningPage'
 import DashboardHome from '../pages/dashboard/DashboardHome'
 import UnifiedProfilePage from '../pages/UnifiedProfilePage'
 import ChildrenPage from '../pages/dashboard/ChildrenPage'
-import AddChildPage from '../pages/dashboard/AddChildPage'
+import DashboardAddChildPage from '../pages/dashboard/AddChildPage'
 import EnrollmentsPage from '../pages/dashboard/EnrollmentsPage'
 import AttendancePage from '../pages/dashboard/AttendancePage'
 import DocumentsPage from '../pages/dashboard/DocumentsPage'
@@ -67,6 +68,7 @@ import ActivitiesPage from '../pages/activities/ActivitiesPage'
 import ActivityLogPage from '../pages/dashboard/ActivityLogPage'
 import DailyReportsPage from '../pages/dashboard/DailyReportsPage'
 import MailboxPage from '../pages/dashboard/MailboxPage'
+import CloudinaryExplorerPage from '../pages/dashboard/CloudinaryExplorerPage'
 
 // Page de récupération d'urgence
 import RecoveryPage from '../pages/RecoveryPage'
@@ -178,6 +180,14 @@ const AppRoutes = () => {
                             </ProtectedRoute>
                         }
                     />
+                    <Route
+                        path="mon-espace/ajouter-enfant"
+                        element={
+                            <ProtectedRoute roles={['parent']}>
+                                <AddChildPage />
+                            </ProtectedRoute>
+                        }
+                    />
 
                     {/* Routes enfant */}
                     <Route
@@ -225,7 +235,7 @@ const AppRoutes = () => {
                 >
                     <Route index element={<DashboardHome />} />
                     <Route path="children" element={<ChildrenPage />} />
-                    <Route path="children/add" element={<AddChildPage />} />
+                    <Route path="children/add" element={<DashboardAddChildPage />} />
                     <Route path="enrollments" element={<EnrollmentsPage />} />
                     <Route path="pending-enrollments" element={<PendingEnrollmentsPage />} />
                     <Route path="enrollments/today" element={<EnrollmentsPage />} />
@@ -270,6 +280,7 @@ const AppRoutes = () => {
                     <Route path="activity-logs" element={<ActivityLogPage />} />
                     <Route path="daily-reports" element={<DailyReportsPage />} />
                     <Route path="mailbox" element={<MailboxPage />} />
+                    <Route path="storage" element={<CloudinaryExplorerPage />} />
                 </Route>
 
                 {/* 404 */}

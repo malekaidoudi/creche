@@ -313,14 +313,16 @@ exports.completeAppointment = async (req, res) => {
         const { id } = req.params;
         const { staff_notes } = req.body;
 
-        // 1. Récupérer le RDV et l'inscription complète
+        // 1. Récupérer le RDV et l'inscription complète avec TOUTES les données de l'enfant
         const appointmentCheck = await db.query(`
             SELECT a.*, 
                    e.id as enrollment_id, e.status as enrollment_status,
                    e.parent_id, e.child_id, e.enrollment_date, e.lunch_assistance,
                    e.regulation_accepted, e.admin_notes as e_admin_notes,
                    e.created_at as e_created_at, e.applicant_first_name,
-                   e.applicant_last_name, e.applicant_email, e.approved_by, e.approved_at
+                   e.applicant_last_name, e.applicant_email, e.approved_by, e.approved_at,
+                   e.child_first_name, e.child_last_name, e.child_birth_date, e.child_gender,
+                   e.child_medical_info, e.created_parent_user_id
             FROM appointments a
             LEFT JOIN enrollments e ON a.enrollment_id = e.id
             WHERE a.id = $1
@@ -348,10 +350,97 @@ exports.completeAppointment = async (req, res) => {
             RETURNING *
         `, [id, staff_notes]);
 
-        // 3. Si c'est un RDV d'inscription, archiver et supprimer l'inscription
+        let createdChildId = null;
+
+        // 3. Si c'est un RDV d'inscription, CRÉER L'ENFANT puis archiver l'inscription
         if (appointment.enrollment_id && appointment.appointment_type === 'inscription') {
 
-            // Archiver l'inscription dans enrollments_archive
+            // 3a. CRÉER L'ENFANT dans la table children
+            const parentId = appointment.created_parent_user_id || appointment.parent_id;
+
+            if (appointment.child_first_name) {
+                console.log(`👶 Création de l'enfant: ${appointment.child_first_name} ${appointment.child_last_name || ''}`);
+
+                // Mapper le genre vers les valeurs acceptées par la contrainte (male/female)
+                let gender = 'male'; // valeur par défaut
+                const rawGender = (appointment.child_gender || '').toLowerCase();
+                if (rawGender === 'f' || rawGender === 'female' || rawGender === 'fille' || rawGender === 'féminin') {
+                    gender = 'female';
+                } else if (rawGender === 'm' || rawGender === 'male' || rawGender === 'garçon' || rawGender === 'masculin') {
+                    gender = 'male';
+                }
+
+                const childResult = await db.query(`
+                    INSERT INTO children (
+                        first_name, last_name, birth_date, gender, 
+                        medical_info, parent_id, is_active, created_at
+                    ) VALUES ($1, $2, $3, $4, $5, $6, true, NOW())
+                    RETURNING id, first_name, last_name
+                `, [
+                    appointment.child_first_name,
+                    appointment.child_last_name || '',
+                    appointment.child_birth_date,
+                    gender,
+                    appointment.child_medical_info || null,
+                    parentId
+                ]);
+
+                createdChildId = childResult.rows[0].id;
+                console.log(`✅ Enfant créé avec ID: ${createdChildId}`);
+
+                // Mettre à jour le RDV avec le child_id
+                await db.query(`
+                    UPDATE appointments SET child_id = $1 WHERE id = $2
+                `, [createdChildId, id]);
+
+                // Transférer les documents d'inscription vers children_documents
+                const docsResult = await db.query(`
+                    SELECT * FROM enrollment_documents WHERE enrollment_id = $1
+                `, [appointment.enrollment_id]);
+
+                if (docsResult.rows.length > 0) {
+                    console.log(`📄 Transfert de ${docsResult.rows.length} document(s) vers l'enfant #${createdChildId}`);
+
+                    for (const doc of docsResult.rows) {
+                        await db.query(`
+                            INSERT INTO children_documents (
+                                child_id, filename, original_filename, file_path,
+                                mime_type, file_size, document_type, transferred_from_enrollment,
+                                uploaded_by, uploaded_at, cloudinary_url, cloudinary_public_id
+                            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                            ON CONFLICT DO NOTHING
+                        `, [
+                            createdChildId,
+                            doc.filename,
+                            doc.original_filename,
+                            doc.file_path,
+                            doc.mime_type,
+                            doc.file_size,
+                            doc.document_type,
+                            appointment.enrollment_id,
+                            doc.uploaded_by,
+                            doc.uploaded_at,
+                            doc.cloudinary_url,
+                            doc.cloudinary_public_id
+                        ]);
+                    }
+                    console.log(`✅ Documents transférés vers l'enfant`);
+                }
+
+                // Créer une notification pour le parent
+                if (parentId) {
+                    await db.query(`
+                        INSERT INTO notifications (user_id, title, message, type, is_read, created_at)
+                        VALUES ($1, $2, $3, 'enrollment_completed', false, NOW())
+                    `, [
+                        parentId,
+                        '🎉 Inscription finalisée !',
+                        `L'inscription de ${appointment.child_first_name} à la crèche Mima Elghalia est maintenant complète. Bienvenue !`
+                    ]);
+                }
+            }
+
+            // 3b. Archiver l'inscription dans enrollments_archive
             await db.query(`
                 INSERT INTO enrollments_archive (
                     id, parent_id, child_id, enrollment_date, status,
@@ -366,8 +455,8 @@ exports.completeAppointment = async (req, res) => {
                 )
             `, [
                 appointment.enrollment_id,
-                appointment.parent_id,
-                appointment.child_id,
+                parentId,
+                createdChildId,
                 appointment.enrollment_date || new Date(),
                 appointment.lunch_assistance || false,
                 appointment.regulation_accepted || false,
@@ -384,16 +473,19 @@ exports.completeAppointment = async (req, res) => {
 
             console.log(`📦 Inscription #${appointment.enrollment_id} archivée dans enrollments_archive`);
 
-            // Supprimer l'inscription de la table enrollments
+            // 3c. Supprimer l'inscription de la table enrollments
             await db.query(`DELETE FROM enrollments WHERE id = $1`, [appointment.enrollment_id]);
 
-            console.log(`✅ Inscription #${appointment.enrollment_id} supprimée de enrollments (finalisée avec succès)`);
+            console.log(`✅ Inscription #${appointment.enrollment_id} finalisée - Enfant #${createdChildId} créé`);
         }
 
         res.json({
             success: true,
-            message: 'Rendez-vous validé avec succès - Inscription finalisée et archivée',
+            message: createdChildId
+                ? `Rendez-vous validé - Enfant ${appointment.child_first_name} ajouté à la crèche !`
+                : 'Rendez-vous validé avec succès',
             appointment: result.rows[0],
+            childId: createdChildId,
             archived: true
         });
 

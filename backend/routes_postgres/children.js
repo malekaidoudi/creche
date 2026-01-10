@@ -7,6 +7,7 @@ const logger = require('../utils/logger');
 const apiResponse = require('../utils/apiResponse');
 const upload = require('../middleware/upload');
 const path = require('path');
+const cloudinaryService = require('../services/cloudinaryService');
 
 // GET /api/children/simple - Liste simple des enfants avec parent_id (pour messages)
 router.get('/simple', auth.authenticateToken, async (req, res) => {
@@ -141,15 +142,14 @@ router.get('/parent/:parentId', async (req, res) => {
   try {
     const { parentId } = req.params;
 
+    // Utiliser directement children.parent_id - simple et efficace
     const sql = `
       SELECT c.id, c.first_name, c.last_name, c.birth_date, c.gender, 
              c.medical_info, c.emergency_contact_name, c.emergency_contact_phone, 
              c.photo_url, c.is_active, c.created_at,
-             e.status as enrollment_status,
              EXTRACT(YEAR FROM AGE(c.birth_date)) as age
       FROM children c
-      JOIN enrollments e ON c.id = e.child_id
-      WHERE e.parent_id = $1 AND c.is_active = true
+      WHERE c.parent_id = $1 AND c.is_active = true
       ORDER BY c.created_at DESC
     `;
 
@@ -164,6 +164,73 @@ router.get('/parent/:parentId', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Erreur lors de la récupération des enfants du parent'
+    });
+  }
+});
+
+// GET /api/children/birthdays/month - Anniversaires du mois en cours
+router.get('/birthdays/month', async (req, res) => {
+  try {
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1; // JavaScript months are 0-indexed
+
+    const sql = `
+      SELECT 
+        c.id,
+        c.first_name,
+        c.last_name,
+        c.birth_date,
+        c.gender,
+        c.photo_url,
+        c.parent_id,
+        EXTRACT(DAY FROM c.birth_date) as birth_day,
+        EXTRACT(YEAR FROM AGE(c.birth_date)) as age,
+        u.first_name as parent_first_name,
+        u.last_name as parent_last_name
+      FROM children c
+      LEFT JOIN users u ON c.parent_id = u.id
+      WHERE c.is_active = true 
+        AND EXTRACT(MONTH FROM c.birth_date) = $1
+      ORDER BY EXTRACT(DAY FROM c.birth_date) ASC
+    `;
+
+    const result = await pool.query(sql, [currentMonth]);
+
+    // Calculer les jours restants et formater les données
+    const children = result.rows.map(child => {
+      const birthDay = parseInt(child.birth_day);
+      const today = now.getDate();
+      let daysUntil = birthDay - today;
+
+      // Si l'anniversaire est passé ce mois, il est dans le passé
+      const isPast = daysUntil < 0;
+      const isToday = daysUntil === 0;
+
+      return {
+        ...child,
+        child_name: `${child.first_name} ${child.last_name}`,
+        child_gender: child.gender,
+        child_photo_url: child.photo_url,
+        child_birth_date: child.birth_date,
+        child_id: child.id,
+        days_until: daysUntil,
+        is_today: isToday,
+        is_past: isPast,
+        start_date: `${now.getFullYear()}-${String(currentMonth).padStart(2, '0')}-${String(birthDay).padStart(2, '0')}`
+      };
+    });
+
+    res.json({
+      success: true,
+      children,
+      month: currentMonth,
+      year: now.getFullYear()
+    });
+  } catch (error) {
+    console.error('Erreur anniversaires du mois:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération des anniversaires'
     });
   }
 });
@@ -675,6 +742,51 @@ router.post('/', [
       console.warn('⚠️ Erreur création enrollment automatique:', enrollmentError.message);
     }
 
+    // Créer une entrée dans children_documents avec note "Dossier non disponible"
+    try {
+      await pool.query(
+        `INSERT INTO children_documents (child_id, filename, original_filename, file_path, mime_type, file_size, document_type, uploaded_at, notes)
+         VALUES ($1, 'dossier_non_disponible.txt', 'Dossier non disponible', 'non_disponible', 'text/plain', 0, 'dossier_complet', NOW(), 'Dossier non disponible - Documents à fournir')`,
+        [newChild.id]
+      );
+      console.log(`📄 Entrée document créée pour l'enfant ${first_name} ${last_name}`);
+    } catch (docError) {
+      console.warn('⚠️ Erreur création document automatique:', docError.message);
+    }
+
+    // Créer automatiquement un événement anniversaire pour cette année et l'année prochaine
+    try {
+      const birthDate = new Date(birth_date);
+      const currentYear = new Date().getFullYear();
+
+      // Créer les anniversaires pour l'année en cours et l'année prochaine
+      for (let year of [currentYear, currentYear + 1]) {
+        const birthdayDate = new Date(year, birthDate.getMonth(), birthDate.getDate());
+
+        // Vérifier si l'événement existe déjà
+        const existingEvent = await pool.query(
+          `SELECT id FROM events WHERE child_id = $1 AND type = 'birthday' AND DATE(start_date) = $2`,
+          [newChild.id, birthdayDate.toISOString().split('T')[0]]
+        );
+
+        if (existingEvent.rows.length === 0) {
+          await pool.query(
+            `INSERT INTO events (title, type, start_date, all_day, status, priority, child_id, created_by, color)
+             VALUES ($1, 'birthday', $2, true, 'pending', 'low', $3, $4, '#ec4899')`,
+            [
+              `🎂 Anniversaire de ${first_name}`,
+              birthdayDate,
+              newChild.id,
+              req.user?.id || 1
+            ]
+          );
+        }
+      }
+      console.log(`🎂 Événements anniversaire créés pour ${first_name} ${last_name}`);
+    } catch (eventError) {
+      console.warn('⚠️ Erreur création événement anniversaire:', eventError.message);
+    }
+
     res.status(201).json({
       success: true,
       message: 'Enfant créé avec succès',
@@ -838,7 +950,7 @@ router.put('/:id', [
 });
 
 // DELETE /api/children/:id - Supprimer un enfant (soft delete)
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', auth.authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -851,6 +963,61 @@ router.delete('/:id', async (req, res) => {
       });
     }
 
+    const child = existingChild.rows[0];
+
+    // Archiver les documents de l'enfant avant de le désactiver
+    const docsResult = await pool.query(
+      'SELECT * FROM children_documents WHERE child_id = $1',
+      [id]
+    );
+
+    if (docsResult.rows.length > 0) {
+      console.log(`📦 Archivage de ${docsResult.rows.length} document(s) pour l'enfant ${child.first_name} ${child.last_name}`);
+
+      // Archiver le dossier Cloudinary (renommer avec préfixe archived_)
+      if (cloudinaryService.isConfigured()) {
+        console.log(`☁️  Archivage dossier Cloudinary: child_${id} → archived_child_${id}`);
+        const archiveResult = await cloudinaryService.archiveChildFolder(id);
+        if (archiveResult.success) {
+          console.log(`✅ Dossier Cloudinary archivé: ${archiveResult.archivedCount} fichier(s)`);
+
+          // Mettre à jour les URLs dans les documents avant archivage
+          for (const doc of docsResult.rows) {
+            const archivedFile = archiveResult.archivedFiles?.find(f => f.old === doc.cloudinary_public_id);
+            if (archivedFile) {
+              doc.cloudinary_public_id = archivedFile.new;
+              doc.cloudinary_url = doc.cloudinary_url?.replace(`/child_${id}/`, `/archived_child_${id}/`);
+            }
+          }
+        }
+      }
+
+      for (const doc of docsResult.rows) {
+        // Insérer dans archived_documents avec les nouvelles URLs
+        await pool.query(`
+          INSERT INTO archived_documents (
+            child_first_name, child_last_name, document_type,
+            original_filename, cloudinary_url, cloudinary_public_id,
+            file_size, mime_type, archived_by, archived_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+        `, [
+          child.first_name,
+          child.last_name,
+          doc.document_type,
+          doc.original_filename,
+          doc.cloudinary_url,
+          doc.cloudinary_public_id,
+          doc.file_size,
+          doc.mime_type,
+          req.user?.id || null
+        ]);
+      }
+
+      // Supprimer les documents de children_documents
+      await pool.query('DELETE FROM children_documents WHERE child_id = $1', [id]);
+      console.log(`✅ Documents archivés pour l'enfant #${id}`);
+    }
+
     // Soft delete - désactiver l'enfant
     await pool.query(
       'UPDATE children SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = $1',
@@ -859,7 +1026,7 @@ router.delete('/:id', async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Enfant désactivé avec succès'
+      message: 'Enfant désactivé et documents archivés avec succès'
     });
 
   } catch (error) {

@@ -13,6 +13,7 @@ import DatePicker from '../../components/ui/DatePicker';
 import childrenService from '../../services/childrenService';
 import { convertToISO, calculateAge } from '../../utils/dateUtils';
 import DocumentScanner from '../../components/ui/DocumentScanner';
+import { uploadToEndpoint } from '../../services/api';
 
 const AddChildPage = () => {
   const { user } = useAuth();
@@ -69,6 +70,22 @@ const AddChildPage = () => {
       const response = await childrenService.createChild(childData);
 
       if (response.success) {
+        const childId = response.child.id;
+
+        // Uploader les documents si présents (utilise uploadToEndpoint générique)
+        const docsToUpload = Object.entries(documents).filter(([_, file]) => file !== null);
+        if (docsToUpload.length > 0) {
+          console.log(`📄 Upload de ${docsToUpload.length} document(s) pour l'enfant #${childId}`);
+          for (const [docType, file] of docsToUpload) {
+            try {
+              await uploadToEndpoint(`/api/documents/children/${childId}`, file, { document_type: docType });
+              console.log(`✅ Document ${docType} uploadé`);
+            } catch (docError) {
+              console.error(`❌ Erreur upload ${docType}:`, docError);
+            }
+          }
+        }
+
         // Afficher les informations de succès avec instructions
         setCreatedChild(response.child);
         setShowSuccessInfo(true);

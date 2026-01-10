@@ -182,6 +182,7 @@ router.post('/logout', (req, res) => {
 });
 
 // POST /api/auth/create-password - Création mot de passe après approbation
+// Le compte parent est déjà créé lors de l'approbation, cette API met à jour le mot de passe
 router.post('/create-password', [
   body('token').notEmpty().withMessage('Token requis'),
   body('email').isEmail().withMessage('Email invalide'),
@@ -199,7 +200,70 @@ router.post('/create-password', [
 
     const { token, email, password } = req.body;
 
-    // Vérifier le token et récupérer l'enrollment
+    // 1. Chercher d'abord dans la table users (nouveau workflow - compte déjà créé)
+    const userResult = await db.query(`
+      SELECT id, email, first_name, last_name, role, password_token_expires, password_set
+      FROM users 
+      WHERE password_token = $1 AND email = $2 AND is_active = true
+    `, [token, email]);
+
+    if (userResult.rows.length > 0) {
+      // Nouveau workflow: le compte existe déjà, on met à jour le mot de passe
+      const user = userResult.rows[0];
+
+      // Vérifier si le token n'est pas expiré
+      if (user.password_token_expires && new Date() > new Date(user.password_token_expires)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Token expiré. Veuillez contacter la crèche pour obtenir un nouveau lien.'
+        });
+      }
+
+      // Vérifier si le mot de passe n'a pas déjà été défini
+      if (user.password_set) {
+        return res.status(400).json({
+          success: false,
+          error: 'Le mot de passe a déjà été défini pour ce compte.'
+        });
+      }
+
+      // Hasher et mettre à jour le mot de passe
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      await db.query(`
+        UPDATE users 
+        SET password = $1, 
+            password_set = true, 
+            password_token = NULL, 
+            password_token_expires = NULL,
+            updated_at = NOW()
+        WHERE id = $2
+      `, [hashedPassword, user.id]);
+
+      // Générer un JWT pour connexion automatique
+      const jwtToken = jwt.sign(
+        { userId: user.id, email: user.email, role: user.role },
+        JWT_SECRET,
+        { expiresIn: JWT_EXPIRES_IN }
+      );
+
+      console.log(`✅ Mot de passe créé pour ${user.email} (ID: ${user.id})`);
+
+      return res.json({
+        success: true,
+        message: 'Mot de passe créé avec succès',
+        token: jwtToken,
+        user: {
+          id: user.id,
+          email: user.email,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          role: user.role
+        }
+      });
+    }
+
+    // 2. Fallback: ancien workflow via enrollments (pour compatibilité)
     const enrollmentResult = await db.query(`
       SELECT id, applicant_email, applicant_first_name, applicant_last_name, 
              applicant_phone, child_first_name, child_last_name, 
@@ -229,10 +293,10 @@ router.post('/create-password', [
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Créer le compte parent
-    const userResult = await db.query(`
+    const newUserResult = await db.query(`
       INSERT INTO users (
-        email, password, first_name, last_name, phone, role, is_active, created_at
-      ) VALUES ($1, $2, $3, $4, $5, 'parent', true, NOW())
+        email, password, first_name, last_name, phone, role, password_set, is_active, created_at
+      ) VALUES ($1, $2, $3, $4, $5, 'parent', true, true, NOW())
       RETURNING id, email, first_name, last_name, role
     `, [
       email,
@@ -242,29 +306,9 @@ router.post('/create-password', [
       enrollment.applicant_phone
     ]);
 
-    const user = userResult.rows[0];
+    const newUser = newUserResult.rows[0];
 
-    // Créer l'enfant et l'associer au parent
-    const childResult = await db.query(`
-      INSERT INTO children (
-        first_name, last_name, birth_date, gender, created_at
-      ) VALUES ($1, $2, $3, 'M', NOW())
-      RETURNING id
-    `, [
-      enrollment.child_first_name,
-      enrollment.child_last_name,
-      new Date() // TODO: Récupérer la vraie date de naissance depuis enrollment
-    ]);
-
-    const childId = childResult.rows[0].id;
-
-    // Associer l'enfant au parent
-    await db.query(`
-      INSERT INTO user_children (user_id, child_id, relationship, created_at)
-      VALUES ($1, $2, 'parent', NOW())
-    `, [user.id, childId]);
-
-    // Invalider le token
+    // Invalider le token dans enrollments
     await db.query(`
       UPDATE enrollments 
       SET password_token = NULL, password_token_expires = NULL
@@ -273,7 +317,7 @@ router.post('/create-password', [
 
     // Générer un JWT pour connexion automatique
     const jwtToken = jwt.sign(
-      { userId: user.id, email: user.email, role: user.role },
+      { userId: newUser.id, email: newUser.email, role: newUser.role },
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN }
     );
@@ -283,11 +327,11 @@ router.post('/create-password', [
       message: 'Compte créé avec succès',
       token: jwtToken,
       user: {
-        id: user.id,
-        email: user.email,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        role: user.role
+        id: newUser.id,
+        email: newUser.email,
+        first_name: newUser.first_name,
+        last_name: newUser.last_name,
+        role: newUser.role
       }
     });
 

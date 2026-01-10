@@ -250,14 +250,14 @@ const AbsenceRequestPage = () => {
 
               <CardContent>
                 {absenceRequests.length === 0 ? (
-                  <div className="text-center py-8">
+                  <div className="text-center py-8" style={{ minHeight: '300px' }}>
                     <AlertCircle className="w-12 h-12 mx-auto text-gray-400 mb-4" />
                     <p className="text-gray-500">
                       {isRTL ? 'لا توجد طلبات سابقة' : 'Aucune demande précédente'}
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-4 overflow-y-auto" style={{ maxHeight: '400px', minHeight: '300px' }}>
                     {absenceRequests.map((request) => (
                       <div
                         key={request.id}

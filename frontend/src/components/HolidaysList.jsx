@@ -113,6 +113,8 @@ const HolidaysList = ({ userRole = 'parent', showFilters = false }) => {
       badge={upcomingHolidays.length}
       iconColor="blue"
       loading={loading}
+      maxItems={4}
+      itemHeight={64}
     >
       {/* Filtres */}
       {filterButtons}

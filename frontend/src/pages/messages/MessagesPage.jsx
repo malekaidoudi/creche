@@ -272,37 +272,16 @@ export default function MessagesPage() {
       const token = localStorage.getItem('token');
       const currentUserId = currentUser?.userId || currentUser?.id;
 
-      const response = await axios.get(`${API_URL}/staff-messages`, {
+      // Optimisation: Une seule requête API avec le paramètre contactId
+      const response = await axios.get(`${API_URL}/staff-messages/conversation/${contactId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
       if (response.data.success) {
         const messages = response.data.messages || [];
+        messages.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
-        const filtered = messages.filter(m =>
-          (m.sender_id === currentUserId && m.recipient_id === contactId) ||
-          (m.sender_id === contactId && m.recipient_id === currentUserId)
-        );
-
-        const allConversations = [];
-        for (const msg of filtered) {
-          const convResponse = await axios.get(
-            `${API_URL}/staff-messages/${msg.id}/conversation`,
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-          if (convResponse.data.success) {
-            const filteredConv = convResponse.data.conversation.filter(cm =>
-              (cm.sender_id === currentUserId && cm.recipient_id === contactId) ||
-              (cm.sender_id === contactId && cm.recipient_id === currentUserId)
-            );
-            allConversations.push(...filteredConv);
-          }
-        }
-
-        const unique = Array.from(new Map(allConversations.map(m => [m.id, m])).values());
-        unique.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-
-        setConversation(unique);
+        setConversation(messages);
 
         // Mise à jour du cache
         const contact = contacts.find(c => c.id === contactId);
@@ -313,7 +292,7 @@ export default function MessagesPage() {
             [cacheKey]: {
               contactId: contactId,
               contactName: contact.first_name + ' ' + contact.last_name,
-              messages: unique,
+              messages: messages,
               timestamp: Date.now()
             }
           }));
@@ -321,6 +300,25 @@ export default function MessagesPage() {
       }
     } catch (error) {
       console.error('Erreur chargement conversation:', error);
+      // Fallback: charger tous les messages et filtrer côté client
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(`${API_URL}/staff-messages`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (response.data.success) {
+          const messages = response.data.messages || [];
+          const filtered = messages.filter(m =>
+            (m.sender_id === currentUserId && m.recipient_id === contactId) ||
+            (m.sender_id === contactId && m.recipient_id === currentUserId)
+          );
+          filtered.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+          setConversation(filtered);
+        }
+      } catch (fallbackError) {
+        console.error('Erreur fallback conversation:', fallbackError);
+      }
     }
   }
 

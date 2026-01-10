@@ -18,6 +18,8 @@ import { Loader2 } from 'lucide-react';
  * @param {string} [props.iconColor] - Couleur de l'icône (défaut: blue)
  * @param {string} [props.className] - Classes CSS additionnelles
  * @param {boolean} [props.noPadding] - Désactiver le padding du contenu
+ * @param {number} [props.maxItems] - Nombre max d'items visibles avant scroll (défaut: 4)
+ * @param {number} [props.itemHeight] - Hauteur approximative d'un item en px (défaut: 60)
  */
 const WidgetCard = ({
     icon: Icon,
@@ -29,8 +31,12 @@ const WidgetCard = ({
     loading = false,
     iconColor = 'blue',
     className = '',
-    noPadding = false
+    noPadding = false,
+    maxItems = 4,
+    itemHeight = 60
 }) => {
+    // Calculer la hauteur max du contenu (4 items par défaut, scroll à partir du 5ème)
+    const maxContentHeight = maxItems * itemHeight;
     // Couleurs d'icône disponibles
     const iconColors = {
         blue: 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30',
@@ -105,8 +111,11 @@ const WidgetCard = ({
                 </div>
             </div>
 
-            {/* Contenu */}
-            <div className={`flex-1 overflow-y-auto ${noPadding ? '' : 'p-4'}`}>
+            {/* Contenu avec hauteur fixe et scroll si > maxItems */}
+            <div
+                className={`overflow-y-auto ${noPadding ? '' : 'p-4'}`}
+                style={{ height: `${maxContentHeight}px`, minHeight: `${maxContentHeight}px` }}
+            >
                 {children}
             </div>
         </div>

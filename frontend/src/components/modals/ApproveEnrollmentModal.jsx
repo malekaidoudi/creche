@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Calendar, Clock, CheckCircle, Check } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -6,6 +6,7 @@ import { useDialogContext } from '../../contexts/DialogContext';
 import api from '../../services/api';
 import DatePicker from '../ui/DatePicker';
 import { convertToISO } from '../../utils/dateUtils';
+import { getNextWorkingDayFormatted } from '../../utils/workingDays';
 
 const ApproveEnrollmentModal = ({ isOpen, onClose, enrollment, onApprove }) => {
   const { isRTL } = useLanguage();
@@ -13,6 +14,15 @@ const ApproveEnrollmentModal = ({ isOpen, onClose, enrollment, onApprove }) => {
   const [appointmentDate, setAppointmentDate] = useState('');
   const [appointmentTime, setAppointmentTime] = useState('10:00');
   const [loading, setLoading] = useState(false);
+
+  // Charger la date par défaut (prochain jour ouvré) à l'ouverture du modal
+  useEffect(() => {
+    if (isOpen && !appointmentDate) {
+      getNextWorkingDayFormatted().then(date => {
+        setAppointmentDate(date);
+      });
+    }
+  }, [isOpen]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -49,11 +59,9 @@ const ApproveEnrollmentModal = ({ isOpen, onClose, enrollment, onApprove }) => {
       onClose();
     } catch (error) {
       console.error('Erreur approbation:', error);
-      dialog.error(
-        isRTL
-          ? 'حدث خطأ أثناء قبول الطلب'
-          : 'Erreur lors de l\'approbation du dossier'
-      );
+      // Afficher le message d'erreur du serveur si disponible (ex: email déjà existant)
+      const errorMessage = error.response?.data?.error || (isRTL ? 'حدث خطأ أثناء قبول الطلب' : 'Erreur lors de l\'approbation du dossier');
+      dialog.error(errorMessage);
     } finally {
       setLoading(false);
     }

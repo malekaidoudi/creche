@@ -7,7 +7,8 @@ import {
   Bell,
   Home,
   ChevronLeft,
-  FileText
+  FileText,
+  Plus
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -311,17 +312,28 @@ const MySpacePage = () => {
                               {child.first_name} {child.last_name}
                             </p>
                             <p className="text-xs text-gray-500 dark:text-gray-400">
-                              {child.enrollment_status === 'approved'
-                                ? (isRTL ? 'مقبول' : 'Approuvé')
-                                : child.enrollment_status === 'pending'
-                                  ? (isRTL ? 'في الانتظار' : 'En attente')
-                                  : (isRTL ? 'غير محدد' : 'Non défini')
-                              }
+                              {child.age_display || (
+                                child.enrollment_status === 'approved'
+                                  ? (isRTL ? 'مقبول' : 'Inscrit')
+                                  : child.enrollment_status === 'pending'
+                                    ? (isRTL ? 'في الانتظار' : 'En attente')
+                                    : (isRTL ? 'مسجل' : 'Inscrit')
+                              )}
                             </p>
                           </div>
                         </div>
                       </div>
                     ))}
+                    {/* Bouton Ajouter un enfant */}
+                    <Link
+                      to="/mon-espace/ajouter-enfant"
+                      className="flex items-center justify-center gap-2 p-3 rounded-lg border-2 border-dashed border-primary-300 dark:border-primary-700 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
+                    >
+                      <Plus className="w-5 h-5" />
+                      <span className="font-medium">
+                        {isRTL ? 'إضافة طفل جديد' : 'Ajouter un enfant'}
+                      </span>
+                    </Link>
                   </div>
                 )}
               </WidgetCard>

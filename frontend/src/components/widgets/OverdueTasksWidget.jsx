@@ -54,10 +54,29 @@ const OverdueTasksWidget = () => {
       if (showToast) setRefreshing(true);
       else setLoading(true);
 
-      const response = await api.get('/api/events/views/overdue');
+      // Charger depuis /api/tasks/overdue (table tasks)
+      const response = await api.get('/api/tasks/overdue');
 
       if (response.data.success) {
-        setTasks((response.data.events || []).slice(0, 10)); // Limiter à 10
+        // Mapper les tâches pour avoir le bon format
+        const mappedTasks = (response.data.tasks || []).map(task => ({
+          id: task.id,
+          type: 'task',
+          title: task.title,
+          description: task.description,
+          start_date: task.due_date,
+          due_date: task.due_date,
+          priority: task.priority,
+          status: task.status,
+          assigned_to: task.assigned_to,
+          assigned_to_name: task.assigned_to_name,
+          assigned_to_role: task.assigned_to_role,
+          created_by: task.created_by,
+          created_by_name: task.created_by_name,
+          days_overdue: task.days_overdue,
+          source: 'tasks'
+        }));
+        setTasks(mappedTasks.slice(0, 10)); // Limiter à 10
       } else {
         setTasks([]);
       }

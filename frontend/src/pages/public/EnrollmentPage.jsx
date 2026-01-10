@@ -14,6 +14,7 @@ import DatePicker from '../../components/ui/DatePicker'
 import api from '../../services/api'
 import { convertToISO } from '../../utils/dateUtils'
 import userWorkflowService from '../../services/userWorkflowService'
+import { getNextWorkingDayFormatted } from '../../utils/workingDays'
 
 const EnrollmentPage = () => {
   const { isRTL } = useLanguage();
@@ -48,6 +49,14 @@ const EnrollmentPage = () => {
   })
   const [documentErrors, setDocumentErrors] = useState({})
 
+  // États pour la vérification d'email
+  const [emailCheckResult, setEmailCheckResult] = useState(null)
+  const [emailCheckLoading, setEmailCheckLoading] = useState(false)
+
+  // États pour la vérification d'enfant (étape 1)
+  const [childCheckResult, setChildCheckResult] = useState(null)
+  const [childCheckLoading, setChildCheckLoading] = useState(false)
+
   // Redirection pour les utilisateurs connectés
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -61,6 +70,21 @@ const EnrollmentPage = () => {
     }
   }, [isAuthenticated, user, navigate]);
 
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    watch,
+    reset,
+    setValue
+  } = useForm()
+
+  // Initialiser la date d'inscription souhaitée au prochain jour ouvré
+  useEffect(() => {
+    getNextWorkingDayFormatted().then(date => {
+      setValue('enrollment_date', date);
+    });
+  }, [setValue]);
 
   // Si l'utilisateur est connecté, afficher un message de redirection
   if (isAuthenticated) {
@@ -75,15 +99,6 @@ const EnrollmentPage = () => {
       </div>
     );
   }
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    watch,
-    reset,
-    setValue
-  } = useForm()
 
   // ==================== FONCTIONS MODE PARENT ====================
 
@@ -218,12 +233,78 @@ const EnrollmentPage = () => {
     return Object.keys(errors).length === 0
   }
 
-  // Gestion du scroll du règlement
+  // Gestion du scroll du règlement - une seule fois suffit pour débloquer
   const handleRegulationScroll = () => {
-    if (regulationRef.current) {
+    if (regulationRef.current && !regulationScrolled) {
       const { scrollTop, scrollHeight, clientHeight } = regulationRef.current
       const scrolledToBottom = scrollTop + clientHeight >= scrollHeight - 10
-      setRegulationScrolled(scrolledToBottom)
+      if (scrolledToBottom) {
+        setRegulationScrolled(true) // Une fois atteint, reste débloqué
+      }
+    }
+  }
+
+  // Vérification de l'enfant à l'étape 1 (nom + prénom + date de naissance)
+  const checkChildExists = async (childFirstName, childLastName, childBirthDate) => {
+    if (!childFirstName || !childLastName || !childBirthDate) return null
+
+    try {
+      setChildCheckLoading(true)
+      setChildCheckResult(null)
+
+      const response = await api.post('/api/enrollments/check-child', {
+        child_first_name: childFirstName,
+        child_last_name: childLastName,
+        child_birth_date: childBirthDate
+      })
+
+      if (response.data.success) {
+        setChildCheckResult(response.data)
+        return response.data
+      }
+      return null
+    } catch (error) {
+      console.error('Erreur vérification enfant:', error)
+      setChildCheckResult(null)
+      return null
+    } finally {
+      setChildCheckLoading(false)
+    }
+  }
+
+  // Vérification de l'email avec infos parent ET enfant
+  const checkEmailExists = async (email, firstName, lastName, childFirstName = null, childLastName = null) => {
+    if (!email || !firstName || !lastName) return null
+
+    try {
+      setEmailCheckLoading(true)
+      setEmailCheckResult(null)
+
+      const payload = {
+        email: email,
+        first_name: firstName,
+        last_name: lastName
+      }
+
+      // Ajouter les infos enfant si disponibles
+      if (childFirstName && childLastName) {
+        payload.child_first_name = childFirstName
+        payload.child_last_name = childLastName
+      }
+
+      const response = await api.post('/api/enrollments/check-email', payload)
+
+      if (response.data.success) {
+        setEmailCheckResult(response.data)
+        return response.data
+      }
+      return null
+    } catch (error) {
+      console.error('Erreur vérification email:', error)
+      setEmailCheckResult(null)
+      return null
+    } finally {
+      setEmailCheckLoading(false)
     }
   }
 
@@ -324,10 +405,102 @@ const EnrollmentPage = () => {
     }
   }
 
-  const nextStep = (e) => {
+  const nextStep = async (e) => {
     // Empêcher la soumission du formulaire
     if (e) {
       e.preventDefault()
+    }
+
+    // Validation spéciale pour l'étape 1 (vérification enfant)
+    if (step === 1) {
+      const childFirstName = watch('child_first_name')
+      const childLastName = watch('child_last_name')
+      const birthDate = watch('birth_date')
+
+      // Vérifier que les champs sont remplis
+      if (!childFirstName || !childLastName || !birthDate) {
+        dialog.error(isRTL ? 'يرجى ملء جميع الحقول المطلوبة' : 'Veuillez remplir tous les champs requis')
+        return
+      }
+
+      // Convertir la date dd/mm/yyyy en yyyy-mm-dd pour l'API
+      const convertToISO = (dateStr) => {
+        if (!dateStr) return null
+        const parts = dateStr.split('/')
+        if (parts.length === 3) {
+          return `${parts[2]}-${parts[1]}-${parts[0]}`
+        }
+        return dateStr
+      }
+
+      // Vérifier si l'enfant existe déjà
+      const result = await checkChildExists(childFirstName, childLastName, convertToISO(birthDate))
+
+      if (result?.exists) {
+        // Cas 1: Dossier en cours pour cet enfant
+        if (result.type === 'pending_child') {
+          dialog.success(
+            isRTL
+              ? 'ملف التسجيل لهذا الطفل قيد المعالجة. سنتواصل معكم قريباً.'
+              : 'Un dossier d\'inscription pour cet enfant est déjà en cours de traitement. Nous vous contacterons prochainement.',
+            {
+              title: isRTL ? 'ملف موجود' : 'Dossier existant',
+              confirmText: isRTL ? 'العودة للصفحة الرئيسية' : 'Retour à l\'accueil',
+              onConfirm: () => navigate('/')
+            }
+          )
+          return
+        }
+
+        // Cas 2: Enfant déjà inscrit à la crèche
+        if (result.type === 'already_enrolled') {
+          dialog.info(
+            isRTL
+              ? 'هذا الطفل مسجل بالفعل في الحضانة. إذا كنت الوالد، يرجى تسجيل الدخول.'
+              : 'Cet enfant est déjà inscrit à la crèche. Si vous êtes le parent, connectez-vous à votre espace.',
+            {
+              title: isRTL ? 'طفل مسجل' : 'Enfant déjà inscrit',
+              confirmText: isRTL ? 'تسجيل الدخول' : 'Se connecter',
+              onConfirm: () => navigate('/login')
+            }
+          )
+          return
+        }
+      }
+    }
+
+    // Validation spéciale pour l'étape 2 (vérification email)
+    if (step === 2) {
+      const email = watch('parent_email')
+      const firstName = watch('parent_first_name')
+      const lastName = watch('parent_last_name')
+
+      // Vérifier que les champs sont remplis
+      if (!email || !firstName || !lastName) {
+        dialog.error(isRTL ? 'يرجى ملء جميع الحقول المطلوبة' : 'Veuillez remplir tous les champs requis')
+        return
+      }
+
+      // Vérifier l'email (la vérification enfant est faite à l'étape 1)
+      const result = await checkEmailExists(email, firstName, lastName)
+
+      // Gérer les différents cas de réponse
+      if (result?.exists) {
+        // Cas 1: Email utilisé par quelqu'un d'autre
+        if (result.type === 'email_taken') {
+          dialog.error(result.message)
+          return
+        }
+
+        // Cas 2: Parent déjà inscrit (compte existant)
+        if (result.type === 'registered_parent') {
+          dialog.info(isRTL
+            ? 'أنت مسجل بالفعل. يرجى تسجيل الدخول لإضافة طفل جديد.'
+            : 'Vous êtes déjà inscrit. Veuillez vous connecter pour ajouter un nouvel enfant.')
+          return
+        }
+      }
+      // same_parent ou email disponible - continuer normalement
     }
 
     // Validation spéciale pour l'étape des documents
@@ -826,9 +999,101 @@ const EnrollmentPage = () => {
                       label={isRTL ? 'تاريخ الميلاد' : 'Date de naissance'}
                       required
                       value={watch('birth_date')}
-                      onChange={(value) => setValue('birth_date', value)}
+                      onChange={(value) => {
+                        setValue('birth_date', value)
+                        // Vérifier si l'enfant existe après saisie de la date
+                        const childFirstName = watch('child_first_name')
+                        const childLastName = watch('child_last_name')
+                        if (childFirstName && childLastName && value) {
+                          // Convertir dd/mm/yyyy en yyyy-mm-dd
+                          const parts = value.split('/')
+                          if (parts.length === 3) {
+                            const isoDate = `${parts[2]}-${parts[1]}-${parts[0]}`
+                            checkChildExists(childFirstName, childLastName, isoDate)
+                          }
+                        }
+                      }}
                       error={errors.birth_date?.message}
                     />
+
+                    {/* Indicateur de chargement */}
+                    {childCheckLoading && (
+                      <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mt-2">
+                        <div className="w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+                        {isRTL ? 'جاري التحقق...' : 'Vérification en cours...'}
+                      </div>
+                    )}
+
+                    {/* Modal pour enfant existant */}
+                    {childCheckResult?.exists && (
+                      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden">
+                          {/* Header */}
+                          <div className={`p-6 ${childCheckResult.type === 'pending_child'
+                            ? 'bg-yellow-50 dark:bg-yellow-900/30'
+                            : 'bg-blue-50 dark:bg-blue-900/30'
+                            }`}>
+                            <div className="flex items-center gap-4">
+                              <div className={`p-3 rounded-full ${childCheckResult.type === 'pending_child'
+                                ? 'bg-yellow-100 dark:bg-yellow-800'
+                                : 'bg-blue-100 dark:bg-blue-800'
+                                }`}>
+                                <AlertCircle className={`w-8 h-8 ${childCheckResult.type === 'pending_child'
+                                  ? 'text-yellow-600 dark:text-yellow-400'
+                                  : 'text-blue-600 dark:text-blue-400'
+                                  }`} />
+                              </div>
+                              <h3 className={`text-xl font-bold ${childCheckResult.type === 'pending_child'
+                                ? 'text-yellow-900 dark:text-yellow-200'
+                                : 'text-blue-900 dark:text-blue-200'
+                                }`}>
+                                {childCheckResult.type === 'pending_child'
+                                  ? (isRTL ? 'ملف موجود' : 'Dossier existant')
+                                  : (isRTL ? 'طفل مسجل' : 'Enfant déjà inscrit')
+                                }
+                              </h3>
+                            </div>
+                          </div>
+
+                          {/* Body */}
+                          <div className="p-6">
+                            <p className="text-gray-700 dark:text-gray-300 text-base leading-relaxed">
+                              {childCheckResult.message}
+                            </p>
+                          </div>
+
+                          {/* Footer avec 2 boutons */}
+                          <div className="p-6 pt-0 flex flex-col sm:flex-row gap-3">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                // Vider les champs enfant et rester sur la page
+                                setValue('child_first_name', '')
+                                setValue('child_last_name', '')
+                                setValue('birth_date', '')
+                                setChildCheckResult(null)
+                              }}
+                              className="flex-1 px-4 py-3 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                            >
+                              {isRTL ? 'تسجيل طفل آخر' : 'Inscrire un autre enfant'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => navigate(childCheckResult.type === 'pending_child' ? '/' : '/login')}
+                              className={`flex-1 px-4 py-3 rounded-xl font-medium text-white transition-colors ${childCheckResult.type === 'pending_child'
+                                ? 'bg-yellow-500 hover:bg-yellow-600'
+                                : 'bg-blue-500 hover:bg-blue-600'
+                                }`}
+                            >
+                              {childCheckResult.type === 'pending_child'
+                                ? (isRTL ? 'العودة للصفحة الرئيسية' : 'Retour à l\'accueil')
+                                : (isRTL ? 'تسجيل الدخول' : 'Se connecter')
+                              }
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -982,21 +1247,72 @@ const EnrollmentPage = () => {
                     </div>
                   </div>
 
-                  {/* Email */}
+                  {/* Email avec vérification en temps réel */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       {isRTL ? 'البريد الإلكتروني' : 'Email'} *
                     </label>
-                    <input
-                      type="email"
-                      className={`w-full px-4 py-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent ${errors.parent_email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
-                      placeholder={isRTL ? 'البريد الإلكتروني' : 'votre.email@exemple.com'}
-                      {...register('parent_email', {
-                        required: isRTL ? 'البريد الإلكتروني مطلوب' : 'L\'email est requis'
-                      })}
-                    />
+                    <div className="relative">
+                      <input
+                        type="email"
+                        className={`w-full px-4 py-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent ${errors.parent_email || (emailCheckResult?.exists && emailCheckResult?.type === 'email_taken') ? 'border-red-500' : emailCheckResult?.exists === false ? 'border-green-500' : 'border-gray-300 dark:border-gray-600'}`}
+                        placeholder={isRTL ? 'البريد الإلكتروني' : 'votre.email@exemple.com'}
+                        {...register('parent_email', {
+                          required: isRTL ? 'البريد الإلكتروني مطلوب' : 'L\'email est requis',
+                          pattern: {
+                            value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                            message: isRTL ? 'البريد الإلكتروني غير صالح' : 'Email invalide'
+                          }
+                        })}
+                        onBlur={(e) => {
+                          const email = e.target.value
+                          const firstName = watch('parent_first_name')
+                          const lastName = watch('parent_last_name')
+                          if (email && firstName && lastName) {
+                            checkEmailExists(email, firstName, lastName)
+                          }
+                        }}
+                      />
+                      {emailCheckLoading && (
+                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                          <div className="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+                        </div>
+                      )}
+                    </div>
                     {errors.parent_email && (
                       <p className="text-red-500 text-sm mt-1">{errors.parent_email.message}</p>
+                    )}
+
+                    {/* Messages de vérification d'email */}
+                    {emailCheckResult && emailCheckResult.exists && (
+                      <div className={`mt-3 p-4 rounded-lg ${emailCheckResult.type === 'registered_parent'
+                        ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800'
+                        : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+                        }`}>
+                        <div className="flex items-start space-x-3 rtl:space-x-reverse">
+                          <AlertCircle className={`w-5 h-5 mt-0.5 flex-shrink-0 ${emailCheckResult.type === 'registered_parent'
+                            ? 'text-blue-600 dark:text-blue-400'
+                            : 'text-red-600 dark:text-red-400'
+                            }`} />
+                          <div className="flex-1">
+                            <p className={`text-sm font-medium ${emailCheckResult.type === 'registered_parent'
+                              ? 'text-blue-900 dark:text-blue-300'
+                              : 'text-red-900 dark:text-red-300'
+                              }`}>
+                              {emailCheckResult.message}
+                            </p>
+                            {emailCheckResult.type === 'registered_parent' && (
+                              <Link
+                                to="/login"
+                                className="inline-flex items-center mt-2 text-sm font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                              >
+                                {isRTL ? 'تسجيل الدخول إلى حسابي' : 'Se connecter à mon espace'}
+                                <ChevronRight className="w-4 h-4 ml-1 rtl:mr-1 rtl:ml-0 rtl:rotate-180" />
+                              </Link>
+                            )}
+                          </div>
+                        </div>
+                      </div>
                     )}
                   </div>
 
@@ -1045,8 +1361,8 @@ const EnrollmentPage = () => {
                             </h3>
                             <p className="text-sm text-gray-600 dark:text-gray-300">
                               {isRTL
-                                ? 'رسوم إضافية: 20 دينار تونسي شهرياً'
-                                : 'Frais supplémentaires : 20 TND par mois'
+                                ? 'يحتاج طفلي إلى مساعدة في تناول الطعام'
+                                : 'Mon enfant a besoin d\'aide pour manger'
                               }
                             </p>
                           </div>
@@ -1135,7 +1451,19 @@ const EnrollmentPage = () => {
                       </div>
                       <button
                         type="button"
-                        onClick={() => window.open('/creche/reg-interne-mimaelghalia.pdf', '_blank')}
+                        onClick={async () => {
+                          try {
+                            const response = await api.get('/api/documents/public/reglement');
+                            if (response.data.success && response.data.url) {
+                              window.open(response.data.url, '_blank');
+                            } else {
+                              dialog.error(isRTL ? 'النظام الداخلي غير متوفر حاليا' : 'Règlement non disponible actuellement');
+                            }
+                          } catch (error) {
+                            console.error('Erreur téléchargement règlement:', error);
+                            dialog.error(isRTL ? 'خطأ في تحميل النظام الداخلي' : 'Erreur lors du téléchargement du règlement');
+                          }
+                        }}
                         className="flex items-center justify-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors whitespace-nowrap text-sm sm:text-base"
                       >
                         <Download className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />

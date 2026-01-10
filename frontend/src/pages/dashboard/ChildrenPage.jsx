@@ -190,7 +190,7 @@ const ChildrenPage = () => {
       first_name: child.first_name || '',
       last_name: child.last_name || '',
       birth_date: child.birth_date ? child.birth_date.split('T')[0] : '',
-      gender: child.gender || 'M',
+      gender: child.gender || 'male',
       medical_info: child.medical_info || '',
       emergency_contact_name: child.emergency_contact_name || '',
       emergency_contact_phone: child.emergency_contact_phone || '',
@@ -689,7 +689,7 @@ const ChildrenPage = () => {
                           {child.first_name} {child.last_name}
                         </CardTitle>
                         <CardDescription className="text-xs xs:text-sm">
-                          {calculateAge(child.birth_date)} • {child.gender === 'M' ? (isRTL ? 'ذكر' : 'Garçon') : (isRTL ? 'أنثى' : 'Fille')}
+                          {calculateAge(child.birth_date)} • {child.gender === 'male' ? (isRTL ? 'ذكر' : 'Garçon') : (isRTL ? 'أنثى' : 'Fille')}
                         </CardDescription>
                       </div>
                     </div>
@@ -993,7 +993,7 @@ const ChildrenPage = () => {
                     {isRTL ? 'الجنس' : 'Genre'}
                   </label>
                   <p className="mt-1 text-sm text-gray-900 dark:text-white">
-                    {selectedChild.gender === 'M' ? (isRTL ? 'ذكر' : 'Garçon') : (isRTL ? 'أنثى' : 'Fille')}
+                    {selectedChild.gender === 'male' ? (isRTL ? 'ذكر' : 'Garçon') : (isRTL ? 'أنثى' : 'Fille')}
                   </p>
                 </div>
 

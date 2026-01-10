@@ -76,7 +76,7 @@ router.get('/today', auth.authenticateToken, async (req, res) => {
  */
 router.get('/overdue', auth.authenticateToken, async (req, res) => {
   try {
-    const result = await taskService.getOverdueTasks();
+    const result = await taskService.getOverdueTasks(req.user.userId, req.user.role);
 
     res.json(result);
 
