@@ -188,40 +188,41 @@ router.get('/info', async (req, res) => {
  */
 router.get('/test-smtp', async (req, res) => {
   try {
-    const smtpConfig = {
-      host: process.env.SMTP_HOST || 'NON DÉFINI',
-      port: process.env.SMTP_PORT || 'NON DÉFINI',
-      secure: process.env.SMTP_SECURE || 'NON DÉFINI',
-      user: process.env.SMTP_USER || 'NON DÉFINI',
-      passConfigured: !!process.env.SMTP_PASS
+    const emailConfig = {
+      provider: process.env.RESEND_API_KEY ? 'resend' : (process.env.SMTP_HOST ? 'smtp' : 'none'),
+      resend_configured: !!process.env.RESEND_API_KEY,
+      smtp_host: process.env.SMTP_HOST || 'NON DÉFINI',
+      smtp_port: process.env.SMTP_PORT || 'NON DÉFINI',
+      smtp_user: process.env.SMTP_USER || 'NON DÉFINI',
+      smtp_pass_configured: !!process.env.SMTP_PASS
     };
 
-    console.log('🔧 Test SMTP - Configuration:', smtpConfig);
+    console.log('🔧 Test Email - Configuration:', emailConfig);
 
     // Tester l'envoi d'un email
     const testResult = await emailService.sendContactMessage({
-      name: 'Test SMTP',
+      name: 'Test Email',
       email: 'test@diagnostic.com',
-      subject: 'Test SMTP Diagnostic',
+      subject: 'Test Email Diagnostic',
       message: `Test envoyé le ${new Date().toLocaleString('fr-FR')}`
     });
 
     res.json({
       success: true,
-      smtpConfig,
+      emailConfig,
       emailResult: testResult
     });
 
   } catch (error) {
-    console.error('❌ Erreur test SMTP:', error);
+    console.error('❌ Erreur test email:', error);
     res.json({
       success: false,
       error: error.message,
-      smtpConfig: {
-        host: process.env.SMTP_HOST || 'NON DÉFINI',
-        port: process.env.SMTP_PORT || 'NON DÉFINI',
-        user: process.env.SMTP_USER || 'NON DÉFINI',
-        passConfigured: !!process.env.SMTP_PASS
+      emailConfig: {
+        provider: process.env.RESEND_API_KEY ? 'resend' : (process.env.SMTP_HOST ? 'smtp' : 'none'),
+        resend_configured: !!process.env.RESEND_API_KEY,
+        smtp_host: process.env.SMTP_HOST || 'NON DÉFINI',
+        smtp_port: process.env.SMTP_PORT || 'NON DÉFINI'
       }
     });
   }

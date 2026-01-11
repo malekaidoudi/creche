@@ -2,17 +2,28 @@
 require('dotenv').config();
 
 const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 const fs = require('fs').promises;
 const path = require('path');
 const { EMAIL_TYPES, EMAIL_STATUS } = require('./emailTypes');
 const db = require('../config/db_postgres');
 const SettingsService = require('../services/SettingsService');
 
-// Initialiser SMTP Hostinger
+// Initialiser le service d'email (Resend prioritaire, SMTP en fallback)
+let resendClient = null;
 let smtpTransporter = null;
-if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+let emailProvider = 'none';
+
+// Option 1: Resend (API HTTP - recommandé pour Render)
+if (process.env.RESEND_API_KEY) {
+  resendClient = new Resend(process.env.RESEND_API_KEY);
+  emailProvider = 'resend';
+  console.log('📧 Resend API configuré');
+}
+// Option 2: SMTP Hostinger (fallback)
+else if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
   const smtpPort = parseInt(process.env.SMTP_PORT) || 587;
-  const isSecure = smtpPort === 465; // SSL sur 465, STARTTLS sur 587
+  const isSecure = smtpPort === 465;
 
   smtpTransporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
@@ -22,16 +33,15 @@ if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS
     },
-    tls: {
-      rejectUnauthorized: false // Accepter les certificats auto-signés
-    },
-    connectionTimeout: 30000, // 30 secondes
+    tls: { rejectUnauthorized: false },
+    connectionTimeout: 30000,
     greetingTimeout: 15000,
     socketTimeout: 30000
   });
-  console.log(`📧 SMTP Hostinger configuré (port ${smtpPort}, secure: ${isSecure})`);
+  emailProvider = 'smtp';
+  console.log(`📧 SMTP Hostinger configuré (port ${smtpPort})`);
 } else {
-  console.warn('⚠️ SMTP non configuré - les emails ne seront pas envoyés');
+  console.warn('⚠️ Aucun service email configuré (RESEND_API_KEY ou SMTP)');
 }
 
 /**
@@ -147,12 +157,12 @@ class EmailService {
   }
 
   /**
-   * Envoyer un e-mail via SMTP Hostinger
+   * Envoyer un e-mail via Resend API ou SMTP
    */
   async sendEmail(emailType, recipient, variables = {}) {
     try {
-      if (!smtpTransporter) {
-        throw new Error('SMTP non configuré - vérifiez SMTP_HOST, SMTP_USER, SMTP_PASS');
+      if (emailProvider === 'none') {
+        throw new Error('Aucun service email configuré (RESEND_API_KEY ou SMTP)');
       }
 
       const config = EMAIL_TYPES[emailType];
@@ -186,12 +196,22 @@ class EmailService {
         html: htmlContent
       };
 
-      console.log(`📧 Envoi email ${emailType} vers ${recipient}...`);
+      console.log(`📧 Envoi email ${emailType} vers ${recipient} via ${emailProvider}...`);
 
-      // Envoyer via SMTP Hostinger
-      const result = await smtpTransporter.sendMail(emailData);
-      const emailId = result.messageId;
-      console.log(`✅ Email envoyé via SMTP Hostinger (ID: ${emailId})`);
+      let emailId;
+
+      // Envoyer via Resend API (prioritaire)
+      if (emailProvider === 'resend') {
+        const result = await resendClient.emails.send(emailData);
+        emailId = result.data?.id || result.id;
+        console.log(`✅ Email envoyé via Resend (ID: ${emailId})`);
+      }
+      // Envoyer via SMTP (fallback)
+      else if (emailProvider === 'smtp') {
+        const result = await smtpTransporter.sendMail(emailData);
+        emailId = result.messageId;
+        console.log(`✅ Email envoyé via SMTP (ID: ${emailId})`);
+      }
 
       // Enregistrer dans les logs
       await this.logEmail({
@@ -207,7 +227,8 @@ class EmailService {
       return {
         success: true,
         messageId: emailId,
-        type: emailType
+        type: emailType,
+        provider: emailProvider
       };
 
     } catch (error) {
@@ -328,7 +349,7 @@ class EmailService {
   }
 
   /**
-   * Envoyer un message de contact à l'équipe via SMTP Hostinger
+   * Envoyer un message de contact à l'équipe via Resend ou SMTP
    */
   async sendContactMessage(contactData) {
     const timestamp = new Date().toLocaleDateString('fr-FR', {
@@ -352,7 +373,11 @@ class EmailService {
       console.warn('⚠️ Impossible de récupérer contact_email depuis settings');
     }
 
-    console.log(`📧 Envoi message contact vers: ${contactEmail}`);
+    console.log(`📧 Envoi message contact vers: ${contactEmail} via ${emailProvider}`);
+
+    if (emailProvider === 'none') {
+      throw new Error('Aucun service email configuré');
+    }
 
     // Charger le template
     const config = EMAIL_TYPES.CONTACT_MESSAGE;
@@ -375,14 +400,20 @@ class EmailService {
       html: htmlContent
     };
 
-    if (!smtpTransporter) {
-      throw new Error('SMTP non configuré');
-    }
+    let emailId;
 
-    // Envoyer via SMTP Hostinger
-    const result = await smtpTransporter.sendMail(emailData);
-    const emailId = result.messageId;
-    console.log(`✅ Email contact envoyé via SMTP Hostinger (ID: ${emailId})`);
+    // Envoyer via Resend API (prioritaire)
+    if (emailProvider === 'resend') {
+      const result = await resendClient.emails.send(emailData);
+      emailId = result.data?.id || result.id;
+      console.log(`✅ Email contact envoyé via Resend (ID: ${emailId})`);
+    }
+    // Envoyer via SMTP (fallback)
+    else if (emailProvider === 'smtp') {
+      const result = await smtpTransporter.sendMail(emailData);
+      emailId = result.messageId;
+      console.log(`✅ Email contact envoyé via SMTP (ID: ${emailId})`);
+    }
 
     // Log l'envoi
     await this.logEmail({
