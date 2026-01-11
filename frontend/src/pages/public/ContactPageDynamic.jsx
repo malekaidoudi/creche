@@ -19,7 +19,7 @@ import { useDialogContext } from '../../contexts/DialogContext'
 import api from '../../services/api'
 
 const ContactPageDynamic = () => {
-    // Hook pour la langue
+    // Hook pour la langue - v2.0 contact form fix
     const { isRTL } = useLanguage()
     const dialog = useDialogContext();
 
