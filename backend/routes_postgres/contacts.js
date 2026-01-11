@@ -58,20 +58,24 @@ router.post('/', [
       console.warn('⚠️ Impossible de créer les notifications:', notifError.message);
     }
 
-    // Envoyer l'e-mail à l'équipe (peut échouer si Resend est en panne)
-    const emailResult = await emailService.sendContactMessage({
+    // Répondre immédiatement au client (message enregistré en DB)
+    res.json({
+      success: true,
+      message: 'Votre message a été envoyé avec succès. Nous vous répondrons dans les plus brefs délais.',
+      messageId
+    });
+
+    // Envoyer l'e-mail en arrière-plan (non-bloquant)
+    emailService.sendContactMessage({
       name,
       email,
       phone,
       subject,
       message
-    });
-
-    // Répondre succès même si l'email échoue (le message est enregistré en DB)
-    res.json({
-      success: true,
-      message: 'Votre message a été envoyé avec succès. Nous vous répondrons dans les plus brefs délais.',
-      emailSent: emailResult.success
+    }).then(result => {
+      console.log('📧 Email envoyé:', result.success ? 'OK' : 'Échec');
+    }).catch(err => {
+      console.warn('⚠️ Erreur envoi email:', err.message);
     });
 
   } catch (error) {
