@@ -28,6 +28,12 @@ const ContactPageDynamic = () => {
     const [submitted, setSubmitted] = useState(false)
     const [contactData, setContactData] = useState(null)
     const [isLoading, setIsLoading] = useState(true)
+    const [formData, setFormData] = useState({
+        name: '',
+        email: '',
+        subject: '',
+        message: ''
+    })
 
     // Charger les données
     useEffect(() => {
@@ -92,18 +98,31 @@ const ContactPageDynamic = () => {
         setLoading(true)
 
         try {
-            await new Promise(resolve => setTimeout(resolve, 1000))
-            setSubmitted(true)
-            dialog.success(isRTL ? 'تم إرسال رسالتك بنجاح' : 'Message envoyé avec succès')
-            setTimeout(() => {
-                setSubmitted(false)
-                e.target.reset()
-            }, 3000)
+            // Envoyer les données à l'API
+            const response = await api.post('/api/contacts', formData)
+
+            if (response.data.success) {
+                setSubmitted(true)
+                dialog.success(isRTL ? 'تم إرسال رسالتك بنجاح' : 'Message envoyé avec succès')
+                // Réinitialiser le formulaire après 3 secondes
+                setTimeout(() => {
+                    setSubmitted(false)
+                    setFormData({ name: '', email: '', subject: '', message: '' })
+                }, 3000)
+            } else {
+                throw new Error(response.data.error || 'Erreur')
+            }
         } catch (error) {
+            console.error('Erreur envoi message:', error)
             dialog.error(isRTL ? 'خطأ في إرسال الرسالة' : 'Erreur lors de l\'envoi du message')
         } finally {
             setLoading(false)
         }
+    }
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target
+        setFormData(prev => ({ ...prev, [name]: value }))
     }
 
     // Affichage de chargement
@@ -265,6 +284,9 @@ const ContactPageDynamic = () => {
                                                 </label>
                                                 <input
                                                     type="text"
+                                                    name="name"
+                                                    value={formData.name}
+                                                    onChange={handleInputChange}
                                                     required
                                                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                                 />
@@ -275,6 +297,9 @@ const ContactPageDynamic = () => {
                                                 </label>
                                                 <input
                                                     type="email"
+                                                    name="email"
+                                                    value={formData.email}
+                                                    onChange={handleInputChange}
                                                     required
                                                     className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                                 />
@@ -287,6 +312,9 @@ const ContactPageDynamic = () => {
                                             </label>
                                             <input
                                                 type="text"
+                                                name="subject"
+                                                value={formData.subject}
+                                                onChange={handleInputChange}
                                                 required
                                                 className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                                             />
@@ -297,6 +325,9 @@ const ContactPageDynamic = () => {
                                                 {isRTL ? 'الرسالة' : 'Message'}
                                             </label>
                                             <textarea
+                                                name="message"
+                                                value={formData.message}
+                                                onChange={handleInputChange}
                                                 rows="5"
                                                 required
                                                 className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none"
