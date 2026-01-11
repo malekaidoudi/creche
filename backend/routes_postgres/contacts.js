@@ -182,4 +182,49 @@ router.get('/info', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/contacts/test-smtp
+ * Tester la configuration SMTP (admin seulement)
+ */
+router.get('/test-smtp', async (req, res) => {
+  try {
+    const smtpConfig = {
+      host: process.env.SMTP_HOST || 'NON DÉFINI',
+      port: process.env.SMTP_PORT || 'NON DÉFINI',
+      secure: process.env.SMTP_SECURE || 'NON DÉFINI',
+      user: process.env.SMTP_USER || 'NON DÉFINI',
+      passConfigured: !!process.env.SMTP_PASS
+    };
+
+    console.log('🔧 Test SMTP - Configuration:', smtpConfig);
+
+    // Tester l'envoi d'un email
+    const testResult = await emailService.sendContactMessage({
+      name: 'Test SMTP',
+      email: 'test@diagnostic.com',
+      subject: 'Test SMTP Diagnostic',
+      message: `Test envoyé le ${new Date().toLocaleString('fr-FR')}`
+    });
+
+    res.json({
+      success: true,
+      smtpConfig,
+      emailResult: testResult
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur test SMTP:', error);
+    res.json({
+      success: false,
+      error: error.message,
+      smtpConfig: {
+        host: process.env.SMTP_HOST || 'NON DÉFINI',
+        port: process.env.SMTP_PORT || 'NON DÉFINI',
+        user: process.env.SMTP_USER || 'NON DÉFINI',
+        passConfigured: !!process.env.SMTP_PASS
+      }
+    });
+  }
+});
+
 module.exports = router;
