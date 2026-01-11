@@ -11,16 +11,25 @@ const SettingsService = require('../services/SettingsService');
 // Initialiser SMTP Hostinger
 let smtpTransporter = null;
 if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+  const smtpPort = parseInt(process.env.SMTP_PORT) || 587;
+  const isSecure = smtpPort === 465; // SSL sur 465, STARTTLS sur 587
+
   smtpTransporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT) || 465,
-    secure: process.env.SMTP_SECURE === 'true',
+    port: smtpPort,
+    secure: isSecure,
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS
-    }
+    },
+    tls: {
+      rejectUnauthorized: false // Accepter les certificats auto-signés
+    },
+    connectionTimeout: 30000, // 30 secondes
+    greetingTimeout: 15000,
+    socketTimeout: 30000
   });
-  console.log('📧 SMTP Hostinger configuré');
+  console.log(`📧 SMTP Hostinger configuré (port ${smtpPort}, secure: ${isSecure})`);
 } else {
   console.warn('⚠️ SMTP non configuré - les emails ne seront pas envoyés');
 }
