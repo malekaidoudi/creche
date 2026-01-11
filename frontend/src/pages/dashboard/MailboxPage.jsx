@@ -296,12 +296,14 @@ const MailboxPage = () => {
                                     key={message.id}
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
-                                    onClick={() => handleSelectMessage(message)}
                                     className={`p-4 cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-800 ${selectedMessage?.id === message.id ? 'bg-primary-50 dark:bg-primary-900/20' : ''
-                                        } ${message.status === 'new' ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''}`}
+                                        } ${message.status === 'new' ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''} group`}
                                 >
                                     <div className="flex items-start justify-between gap-2">
-                                        <div className="flex-1 min-w-0">
+                                        <div
+                                            className="flex-1 min-w-0"
+                                            onClick={() => handleSelectMessage(message)}
+                                        >
                                             <div className="flex items-center gap-2">
                                                 {message.status === 'new' && (
                                                     <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
@@ -318,9 +320,21 @@ const MailboxPage = () => {
                                             </p>
                                         </div>
                                         <div className="flex flex-col items-end gap-1">
-                                            <span className="text-xs text-gray-500 whitespace-nowrap">
-                                                {formatDate(message.created_at)}
-                                            </span>
+                                            <div className="flex items-center gap-1">
+                                                <span className="text-xs text-gray-500 whitespace-nowrap">
+                                                    {formatDate(message.created_at)}
+                                                </span>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDelete(message.id);
+                                                    }}
+                                                    className="p-1 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity rounded hover:bg-red-50 dark:hover:bg-red-900/20"
+                                                    title={isRTL ? 'حذف' : 'Supprimer'}
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
                                             <StatusBadge status={message.status} />
                                         </div>
                                     </div>
