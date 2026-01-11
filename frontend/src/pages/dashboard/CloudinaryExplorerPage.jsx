@@ -24,7 +24,12 @@ import {
     Loader2,
     Database,
     Zap,
-    Clock
+    Clock,
+    Move,
+    Copy,
+    Edit,
+    FolderPlus,
+    MoreVertical
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -50,6 +55,18 @@ const CloudinaryExplorerPage = () => {
     const [selectedResource, setSelectedResource] = useState(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
     const [resourceType, setResourceType] = useState('all');
+
+    // États pour les modals de gestion de fichiers
+    const [showMoveModal, setShowMoveModal] = useState(false);
+    const [showCopyModal, setShowCopyModal] = useState(false);
+    const [showRenameModal, setShowRenameModal] = useState(false);
+    const [showCreateFolderModal, setShowCreateFolderModal] = useState(false);
+    const [targetFolder, setTargetFolder] = useState('');
+    const [newName, setNewName] = useState('');
+    const [newFolderName, setNewFolderName] = useState('');
+    const [actionLoading, setActionLoading] = useState(false);
+    const [allFolders, setAllFolders] = useState([]);
+    const [showContextMenu, setShowContextMenu] = useState(null);
 
     const formatBytes = (bytes) => {
         if (!bytes || bytes === 0) return '0 B';
@@ -208,6 +225,190 @@ const CloudinaryExplorerPage = () => {
         }
     };
 
+    // Charger tous les dossiers pour le sélecteur de destination
+    const loadAllFolders = async () => {
+        try {
+            const response = await api.get('/api/cloudinary-explorer/folders');
+            if (response.data.success) {
+                const rootFolders = response.data.folders || [];
+                const allFoldersList = [{ name: '/ (Racine)', path: '' }];
+
+                // Ajouter les dossiers racine et leurs sous-dossiers
+                for (const folder of rootFolders) {
+                    allFoldersList.push({ name: folder.name, path: folder.path || folder.name });
+                    // Charger les sous-dossiers
+                    try {
+                        const subResponse = await api.get(`/api/cloudinary-explorer/folders/${encodeURIComponent(folder.path || folder.name)}`);
+                        if (subResponse.data.success && subResponse.data.folders) {
+                            for (const subFolder of subResponse.data.folders) {
+                                allFoldersList.push({
+                                    name: `  └ ${subFolder.name}`,
+                                    path: subFolder.path || `${folder.name}/${subFolder.name}`
+                                });
+                            }
+                        }
+                    } catch (e) {
+                        // Ignorer les erreurs de sous-dossiers
+                    }
+                }
+                setAllFolders(allFoldersList);
+            }
+        } catch (error) {
+            console.error('Erreur chargement dossiers:', error);
+        }
+    };
+
+    // Déplacer un fichier
+    const handleMoveFile = async () => {
+        if (!selectedResource) return;
+
+        try {
+            setActionLoading(true);
+            const response = await api.post('/api/cloudinary-explorer/move', {
+                publicId: selectedResource.publicId,
+                targetFolder: targetFolder
+            });
+
+            if (response.data.success) {
+                dialog.success(isRTL ? 'تم نقل الملف' : 'Fichier déplacé');
+                setShowMoveModal(false);
+                setSelectedResource(null);
+                setTargetFolder('');
+                loadResources(currentPath);
+            }
+        } catch (error) {
+            console.error('Erreur déplacement:', error);
+            dialog.error(error.response?.data?.error || (isRTL ? 'خطأ في النقل' : 'Erreur lors du déplacement'));
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    // Copier un fichier
+    const handleCopyFile = async () => {
+        if (!selectedResource) return;
+
+        try {
+            setActionLoading(true);
+            const response = await api.post('/api/cloudinary-explorer/copy', {
+                publicId: selectedResource.publicId,
+                targetFolder: targetFolder
+            });
+
+            if (response.data.success) {
+                dialog.success(isRTL ? 'تم نسخ الملف' : 'Fichier copié');
+                setShowCopyModal(false);
+                setTargetFolder('');
+                loadResources(currentPath);
+            }
+        } catch (error) {
+            console.error('Erreur copie:', error);
+            dialog.error(error.response?.data?.error || (isRTL ? 'خطأ في النسخ' : 'Erreur lors de la copie'));
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    // Renommer un fichier
+    const handleRenameFile = async () => {
+        if (!selectedResource || !newName.trim()) return;
+
+        try {
+            setActionLoading(true);
+            const response = await api.put('/api/cloudinary-explorer/rename', {
+                publicId: selectedResource.publicId,
+                newName: newName.trim()
+            });
+
+            if (response.data.success) {
+                dialog.success(isRTL ? 'تم تغيير الاسم' : 'Fichier renommé');
+                setShowRenameModal(false);
+                setSelectedResource(null);
+                setNewName('');
+                loadResources(currentPath);
+            }
+        } catch (error) {
+            console.error('Erreur renommage:', error);
+            dialog.error(error.response?.data?.error || (isRTL ? 'خطأ في تغيير الاسم' : 'Erreur lors du renommage'));
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    // Créer un dossier
+    const handleCreateFolder = async () => {
+        if (!newFolderName.trim()) return;
+
+        try {
+            setActionLoading(true);
+            const folderPath = currentPath ? `${currentPath}/${newFolderName.trim()}` : newFolderName.trim();
+            const response = await api.post('/api/cloudinary-explorer/create-folder', {
+                folderPath: folderPath
+            });
+
+            if (response.data.success) {
+                dialog.success(isRTL ? 'تم إنشاء المجلد' : 'Dossier créé');
+                setShowCreateFolderModal(false);
+                setNewFolderName('');
+                loadFolders(currentPath);
+            }
+        } catch (error) {
+            console.error('Erreur création dossier:', error);
+            dialog.error(error.response?.data?.error || (isRTL ? 'خطأ في إنشاء المجلد' : 'Erreur lors de la création du dossier'));
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    // Supprimer un dossier
+    const handleDeleteFolder = async (folderPath) => {
+        const confirmed = await dialog.confirm(
+            isRTL ? 'هل أنت متأكد من حذف هذا المجلد وجميع محتوياته؟' : 'Êtes-vous sûr de vouloir supprimer ce dossier et tout son contenu ?',
+            isRTL ? 'تأكيد الحذف' : 'Confirmer la suppression',
+            { type: 'danger' }
+        );
+
+        if (!confirmed) return;
+
+        try {
+            setActionLoading(true);
+            const response = await api.delete(`/api/cloudinary-explorer/folder/${encodeURIComponent(folderPath)}`);
+
+            if (response.data.success) {
+                dialog.success(isRTL ? 'تم حذف المجلد' : 'Dossier supprimé');
+                loadFolders(currentPath);
+                loadStats();
+            }
+        } catch (error) {
+            console.error('Erreur suppression dossier:', error);
+            dialog.error(error.response?.data?.error || (isRTL ? 'خطأ في حذف المجلد' : 'Erreur lors de la suppression du dossier'));
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    // Ouvrir le modal de déplacement
+    const openMoveModal = () => {
+        loadAllFolders();
+        setTargetFolder('');
+        setShowMoveModal(true);
+    };
+
+    // Ouvrir le modal de copie
+    const openCopyModal = () => {
+        loadAllFolders();
+        setTargetFolder('');
+        setShowCopyModal(true);
+    };
+
+    // Ouvrir le modal de renommage
+    const openRenameModal = () => {
+        if (selectedResource) {
+            setNewName(selectedResource.filename || '');
+            setShowRenameModal(true);
+        }
+    };
+
     const refresh = useCallback(() => {
         loadStats();
         loadFolders(currentPath);
@@ -266,6 +467,10 @@ const CloudinaryExplorerPage = () => {
                 </div>
 
                 <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => setShowCreateFolderModal(true)}>
+                        <FolderPlus className="w-4 h-4 mr-2" />
+                        {isRTL ? 'مجلد جديد' : 'Nouveau dossier'}
+                    </Button>
                     <Button variant="outline" onClick={refresh} disabled={loading}>
                         <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                         {isRTL ? 'تحديث' : 'Actualiser'}
@@ -485,13 +690,27 @@ const CloudinaryExplorerPage = () => {
                                                         key={folder.path || folder.name}
                                                         whileHover={{ scale: 1.02 }}
                                                         whileTap={{ scale: 0.98 }}
-                                                        onClick={() => navigateToFolder(folder.path || folder.name)}
-                                                        className="flex items-center gap-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-900/30 transition-colors"
+                                                        className="relative group flex items-center gap-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-900/30 transition-colors"
                                                     >
-                                                        <FolderOpen className="w-8 h-8 text-yellow-500" />
-                                                        <span className="font-medium text-gray-900 dark:text-white truncate">
-                                                            {folder.name}
-                                                        </span>
+                                                        <div
+                                                            className="flex items-center gap-3 flex-1"
+                                                            onClick={() => navigateToFolder(folder.path || folder.name)}
+                                                        >
+                                                            <FolderOpen className="w-8 h-8 text-yellow-500" />
+                                                            <span className="font-medium text-gray-900 dark:text-white truncate">
+                                                                {folder.name}
+                                                            </span>
+                                                        </div>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleDeleteFolder(folder.path || folder.name);
+                                                            }}
+                                                            className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 transition-all"
+                                                            title={isRTL ? 'حذف المجلد' : 'Supprimer le dossier'}
+                                                        >
+                                                            <Trash2 className="w-4 h-4 text-red-500" />
+                                                        </button>
                                                     </motion.div>
                                                 ))}
                                             </div>
@@ -786,6 +1005,38 @@ const CloudinaryExplorerPage = () => {
                                             <Download className="w-4 h-4 mr-2" />
                                             {isRTL ? 'تحميل' : 'Télécharger'}
                                         </Button>
+
+                                        {/* Nouvelles actions de gestion */}
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={openMoveModal}
+                                                disabled={actionLoading}
+                                            >
+                                                <Move className="w-4 h-4 mr-1" />
+                                                {isRTL ? 'نقل' : 'Déplacer'}
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={openCopyModal}
+                                                disabled={actionLoading}
+                                            >
+                                                <Copy className="w-4 h-4 mr-1" />
+                                                {isRTL ? 'نسخ' : 'Copier'}
+                                            </Button>
+                                        </div>
+                                        <Button
+                                            variant="outline"
+                                            className="w-full"
+                                            onClick={openRenameModal}
+                                            disabled={actionLoading}
+                                        >
+                                            <Edit className="w-4 h-4 mr-2" />
+                                            {isRTL ? 'إعادة تسمية' : 'Renommer'}
+                                        </Button>
+
                                         <Button
                                             variant="destructive"
                                             className="w-full"
@@ -813,6 +1064,157 @@ const CloudinaryExplorerPage = () => {
                     </Card>
                 </div>
             </div>
+
+            {/* Modal Déplacer */}
+            {showMoveModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                            <Move className="w-5 h-5 text-blue-500" />
+                            {isRTL ? 'نقل الملف' : 'Déplacer le fichier'}
+                        </h3>
+                        <p className="text-sm text-gray-500 mb-4">
+                            {selectedResource?.filename}
+                        </p>
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                {isRTL ? 'المجلد الوجهة' : 'Dossier de destination'}
+                            </label>
+                            <select
+                                value={targetFolder}
+                                onChange={(e) => setTargetFolder(e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            >
+                                {allFolders.map((folder) => (
+                                    <option key={folder.path} value={folder.path}>
+                                        {folder.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="flex gap-3">
+                            <Button variant="outline" className="flex-1" onClick={() => setShowMoveModal(false)}>
+                                {isRTL ? 'إلغاء' : 'Annuler'}
+                            </Button>
+                            <Button className="flex-1" onClick={handleMoveFile} disabled={actionLoading}>
+                                {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Move className="w-4 h-4 mr-2" />}
+                                {isRTL ? 'نقل' : 'Déplacer'}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Copier */}
+            {showCopyModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                            <Copy className="w-5 h-5 text-green-500" />
+                            {isRTL ? 'نسخ الملف' : 'Copier le fichier'}
+                        </h3>
+                        <p className="text-sm text-gray-500 mb-4">
+                            {selectedResource?.filename}
+                        </p>
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                {isRTL ? 'المجلد الوجهة' : 'Dossier de destination'}
+                            </label>
+                            <select
+                                value={targetFolder}
+                                onChange={(e) => setTargetFolder(e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            >
+                                {allFolders.map((folder) => (
+                                    <option key={folder.path} value={folder.path}>
+                                        {folder.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="flex gap-3">
+                            <Button variant="outline" className="flex-1" onClick={() => setShowCopyModal(false)}>
+                                {isRTL ? 'إلغاء' : 'Annuler'}
+                            </Button>
+                            <Button className="flex-1" onClick={handleCopyFile} disabled={actionLoading}>
+                                {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
+                                {isRTL ? 'نسخ' : 'Copier'}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Renommer */}
+            {showRenameModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                            <Edit className="w-5 h-5 text-orange-500" />
+                            {isRTL ? 'إعادة تسمية الملف' : 'Renommer le fichier'}
+                        </h3>
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                {isRTL ? 'الاسم الجديد' : 'Nouveau nom'}
+                            </label>
+                            <input
+                                type="text"
+                                value={newName}
+                                onChange={(e) => setNewName(e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                placeholder={isRTL ? 'أدخل الاسم الجديد' : 'Entrez le nouveau nom'}
+                            />
+                        </div>
+                        <div className="flex gap-3">
+                            <Button variant="outline" className="flex-1" onClick={() => setShowRenameModal(false)}>
+                                {isRTL ? 'إلغاء' : 'Annuler'}
+                            </Button>
+                            <Button className="flex-1" onClick={handleRenameFile} disabled={actionLoading || !newName.trim()}>
+                                {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Edit className="w-4 h-4 mr-2" />}
+                                {isRTL ? 'تغيير الاسم' : 'Renommer'}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Créer dossier */}
+            {showCreateFolderModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                            <FolderPlus className="w-5 h-5 text-yellow-500" />
+                            {isRTL ? 'إنشاء مجلد جديد' : 'Créer un nouveau dossier'}
+                        </h3>
+                        {currentPath && (
+                            <p className="text-sm text-gray-500 mb-2">
+                                {isRTL ? 'داخل:' : 'Dans:'} {currentPath}
+                            </p>
+                        )}
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                {isRTL ? 'اسم المجلد' : 'Nom du dossier'}
+                            </label>
+                            <input
+                                type="text"
+                                value={newFolderName}
+                                onChange={(e) => setNewFolderName(e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                placeholder={isRTL ? 'أدخل اسم المجلد' : 'Entrez le nom du dossier'}
+                            />
+                        </div>
+                        <div className="flex gap-3">
+                            <Button variant="outline" className="flex-1" onClick={() => setShowCreateFolderModal(false)}>
+                                {isRTL ? 'إلغاء' : 'Annuler'}
+                            </Button>
+                            <Button className="flex-1" onClick={handleCreateFolder} disabled={actionLoading || !newFolderName.trim()}>
+                                {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <FolderPlus className="w-4 h-4 mr-2" />}
+                                {isRTL ? 'إنشاء' : 'Créer'}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -33,6 +33,7 @@ import MobileNavigation from '../../components/mobile/MobileNavigation';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { useDialogContext } from '../../contexts/DialogContext';
 import childrenService from '../../services/childrenService';
+import api from '../../services/api';
 import userService from '../../services/userService';
 import { documentService } from '../../services/documentService';
 import approvalService from '../../services/approvalService';
@@ -213,23 +214,90 @@ const ChildrenPage = () => {
       setActionLoading(child.id);
 
       // Appel API pour désactiver le parent
-      const response = await fetch(`/api/children/${child.id}/deactivate-parent`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const response = await api.put(`/api/children/${child.id}/deactivate-parent`);
 
-      if (response.ok) {
+      if (response.data?.success) {
         dialog.success(isRTL ? 'تم إلغاء تفعيل حساب الوالد بنجاح' : 'Compte parent désactivé avec succès');
         loadChildren(); // Recharger la liste
       } else {
-        throw new Error('Erreur lors de la désactivation');
+        throw new Error(response.data?.error || 'Erreur lors de la désactivation');
       }
     } catch (error) {
       console.error('Erreur lors de la désactivation:', error);
       dialog.error(isRTL ? 'خطأ في إلغاء تفعيل الحساب' : 'Erreur lors de la désactivation du compte');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Fonction pour supprimer (archiver) un enfant
+  const handleDelete = async (childId) => {
+    const child = children.find(c => c.id === childId);
+    if (!child) return;
+
+    // Première confirmation : archiver l'enfant
+    const confirmed = await dialog.confirm(
+      isRTL
+        ? `هل أنت متأكد من حذف ${child.first_name} ${child.last_name || ''}؟ سيتم أرشفة الطفل.`
+        : `Êtes-vous sûr de vouloir archiver ${child.first_name} ${child.last_name || ''} ? L'enfant sera désactivé mais ses données seront conservées.`,
+      isRTL ? 'تأكيد الحذف' : 'Confirmer l\'archivage',
+      { type: 'danger', confirmText: isRTL ? 'حذف' : 'Archiver', cancelText: isRTL ? 'إلغاء' : 'Annuler' }
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setActionLoading(childId);
+
+      // Archiver l'enfant avec option de désactiver le parent si c'est le dernier enfant
+      // Note: Axios DELETE avec body nécessite la clé 'data'
+      const requestData = {
+        reason: 'Archivé via dashboard',
+        checkParentDeactivation: true
+      };
+      console.log('📤 Envoi DELETE avec body:', requestData);
+      const response = await api.delete(`/api/children/${childId}`, {
+        data: requestData
+      });
+      console.log('📥 Réponse DELETE:', response.data);
+
+      if (response.data?.success) {
+        // Si le parent n'a plus d'enfants actifs, proposer de le désactiver
+        if (response.data?.parentHasNoOtherChildren && response.data?.parentId) {
+          const parentName = response.data.parentName || 'le parent';
+          const deactivateParent = await dialog.confirm(
+            isRTL
+              ? `${parentName} ليس لديه أطفال آخرين. هل تريد إلغاء تفعيل حسابه؟`
+              : `${parentName} n'a plus d'autres enfants actifs. Voulez-vous désactiver son compte ?`,
+            isRTL ? 'إلغاء تفعيل الحساب' : 'Désactiver le compte parent',
+            { type: 'warning', confirmText: isRTL ? 'إلغاء التفعيل' : 'Désactiver', cancelText: isRTL ? 'لا' : 'Non' }
+          );
+
+          if (deactivateParent) {
+            try {
+              console.log(`📤 Envoi PUT deactivate-parent pour enfant ${childId}`);
+              const deactivateResponse = await api.put(`/api/children/${childId}/deactivate-parent`);
+              console.log(`📥 Réponse deactivate-parent:`, deactivateResponse.data);
+              dialog.success(isRTL ? 'تم أرشفة الطفل وإلغاء تفعيل حساب الوالد' : 'Enfant archivé et compte parent désactivé');
+            } catch (parentError) {
+              console.error('❌ Erreur désactivation parent:', parentError);
+              console.error('❌ Détails:', parentError.response?.data);
+              dialog.error(isRTL ? 'خطأ في إلغاء تفعيل حساب الوالد' : 'Erreur lors de la désactivation du compte parent');
+            }
+          } else {
+            console.log('ℹ️ Utilisateur a choisi de ne pas désactiver le parent');
+            dialog.success(isRTL ? 'تم أرشفة الطفل بنجاح' : 'Enfant archivé avec succès');
+          }
+        } else {
+          dialog.success(isRTL ? 'تم أرشفة الطفل بنجاح' : 'Enfant archivé avec succès');
+        }
+        loadChildren();
+      } else {
+        throw new Error(response.data?.error || 'Erreur lors de l\'archivage');
+      }
+    } catch (error) {
+      console.error('Erreur lors de l\'archivage:', error);
+      dialog.error(error.response?.data?.error || (isRTL ? 'خطأ في أرشفة الطفل' : 'Erreur lors de l\'archivage de l\'enfant'));
     } finally {
       setActionLoading(null);
     }
@@ -810,7 +878,7 @@ const ChildrenPage = () => {
                             <Button
                               size="sm"
                               variant="destructive"
-                              onClick={() => handleDeactivateParent(child)}
+                              onClick={() => handleDelete(child.id)}
                               disabled={actionLoading === child.id}
                               className="flex-shrink-0"
                             >

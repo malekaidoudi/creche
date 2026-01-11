@@ -19,7 +19,10 @@ import {
     Baby,
     Archive,
     FolderOpen,
-    ExternalLink
+    ExternalLink,
+    AlertCircle,
+    ChevronDown,
+    ChevronUp
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -44,6 +47,19 @@ const DocumentsPage = () => {
     const [showUploadModal, setShowUploadModal] = useState(false);
     const [uploadLoading, setUploadLoading] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
+
+    // État pour les enfants avec dossier incomplet
+    const [childrenWithMissingDocs, setChildrenWithMissingDocs] = useState([]);
+    const [showChildUploadModal, setShowChildUploadModal] = useState(false);
+    const [selectedChild, setSelectedChild] = useState(null);
+    // 3 fichiers séparés pour les documents enfant
+    const [childDocuments, setChildDocuments] = useState({
+        acte_naissance: null,
+        carnet_medical: null,
+        certificat_medical: null
+    });
+    // État pour les cartes pliables (enfants avec dossier complet)
+    const [expandedChildren, setExpandedChildren] = useState({});
     // Configuration automatique des types de documents
     const documentTypeConfig = {
         reglement: {
@@ -82,6 +98,23 @@ const DocumentsPage = () => {
 
             if (docsResponse.data.success) {
                 setDocuments(docsResponse.data.documents || []);
+
+                // Identifier les enfants avec dossier incomplet (placeholder "dossier_complet" sans URL)
+                if (filterCategory === 'children') {
+                    const childrenDocs = docsResponse.data.documents || [];
+                    console.log('📄 Documents enfants chargés:', childrenDocs.length);
+
+                    // Chercher les placeholders "Dossier non disponible"
+                    const missingDocs = childrenDocs.filter(doc => {
+                        const isPlaceholder = doc.document_type === 'dossier_complet' && !doc.cloudinary_url;
+                        const hasNote = doc.notes?.includes('Documents à fournir') || doc.description?.includes('Documents à fournir');
+                        const isNonDisponible = doc.original_filename === 'Dossier non disponible' || doc.title?.includes('Dossier non disponible');
+                        return isPlaceholder || isNonDisponible || hasNote;
+                    });
+
+                    console.log('⚠️ Dossiers incomplets trouvés:', missingDocs.length, missingDocs);
+                    setChildrenWithMissingDocs(missingDocs);
+                }
             }
 
             if (statsResponse.data.success) {
@@ -92,6 +125,49 @@ const DocumentsPage = () => {
             dialog.error(isRTL ? 'خطأ في تحميل الوثائق' : 'Erreur lors du chargement des documents');
         } finally {
             setLoading(false);
+        }
+    };
+
+    // Upload documents pour un enfant avec dossier incomplet (3 fichiers)
+    const handleChildDocumentUpload = async () => {
+        const hasAnyFile = childDocuments.acte_naissance || childDocuments.carnet_medical || childDocuments.certificat_medical;
+
+        if (!hasAnyFile || !selectedChild) {
+            dialog.error(isRTL ? 'يرجى اختيار ملف واحد على الأقل' : 'Veuillez sélectionner au moins un fichier');
+            return;
+        }
+
+        try {
+            setUploadLoading(true);
+            let uploadedCount = 0;
+
+            // Upload chaque document séparément
+            for (const [docType, file] of Object.entries(childDocuments)) {
+                if (file) {
+                    const formData = new FormData();
+                    formData.append('document', file);
+                    formData.append('document_type', docType);
+
+                    await api.post(`/api/documents/children/${selectedChild.child_id}`, formData, {
+                        headers: { 'Content-Type': 'multipart/form-data' }
+                    });
+                    uploadedCount++;
+                }
+            }
+
+            dialog.success(isRTL
+                ? `تم تحميل ${uploadedCount} وثيقة بنجاح`
+                : `${uploadedCount} document(s) ajouté(s) avec succès`
+            );
+            setShowChildUploadModal(false);
+            setChildDocuments({ acte_naissance: null, carnet_medical: null, certificat_medical: null });
+            setSelectedChild(null);
+            loadDocuments();
+        } catch (error) {
+            console.error('Erreur upload document enfant:', error);
+            dialog.error(error.response?.data?.error || (isRTL ? 'خطأ في تحميل الوثيقة' : 'Erreur lors du téléversement'));
+        } finally {
+            setUploadLoading(false);
         }
     };
 
@@ -213,15 +289,48 @@ const DocumentsPage = () => {
         return matchesSearch;
     });
 
+    // Documents requis pour un dossier complet
+    const REQUIRED_DOCS = ['acte_naissance', 'carnet_medical', 'certificat_medical'];
+
     // Regrouper les documents enfants par nom d'enfant
     const groupedChildrenDocs = filteredDocuments
         .filter(doc => doc.category === 'children')
         .reduce((groups, doc) => {
             const childName = `${doc.child_first_name || 'Inconnu'} ${doc.child_last_name || ''}`.trim();
             if (!groups[childName]) {
-                groups[childName] = [];
+                groups[childName] = {
+                    docs: [],
+                    child_id: doc.child_id,
+                    child_first_name: doc.child_first_name,
+                    child_last_name: doc.child_last_name
+                };
             }
-            groups[childName].push(doc);
+            groups[childName].docs.push(doc);
+            return groups;
+        }, {});
+
+    // Calculer les documents manquants pour chaque enfant
+    const getChildMissingDocs = (childDocs) => {
+        const existingTypes = childDocs
+            .filter(doc => doc.cloudinary_url) // Seulement les vrais documents (pas les placeholders)
+            .map(doc => doc.document_type);
+        return REQUIRED_DOCS.filter(type => !existingTypes.includes(type));
+    };
+
+    // Regrouper les documents archivés par nom d'enfant
+    const groupedArchivesDocs = filteredDocuments
+        .filter(doc => doc.category === 'archives')
+        .reduce((groups, doc) => {
+            const childName = `${doc.child_first_name || 'Inconnu'} ${doc.child_last_name || ''}`.trim();
+            if (!groups[childName]) {
+                groups[childName] = {
+                    docs: [],
+                    child_first_name: doc.child_first_name,
+                    child_last_name: doc.child_last_name,
+                    archived_at: doc.archived_at
+                };
+            }
+            groups[childName].docs.push(doc);
             return groups;
         }, {});
 
@@ -321,83 +430,226 @@ const DocumentsPage = () => {
             </Card>
 
             {/* Liste des documents - Affichage selon la catégorie */}
-            {filterCategory === 'children' ? (
-                /* Affichage groupé par enfant */
+            {filterCategory === 'archives' ? (
+                /* Affichage groupé par enfant pour les archives */
                 <div className="space-y-6">
-                    {Object.entries(groupedChildrenDocs).map(([childName, docs], groupIndex) => (
-                        <Card key={childName} className="overflow-hidden">
-                            <CardHeader className="bg-green-50 dark:bg-green-900/20 border-b border-green-100 dark:border-green-800">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-green-100 dark:bg-green-900/50 rounded-full flex items-center justify-center">
-                                        <Baby className="w-5 h-5 text-green-600 dark:text-green-400" />
-                                    </div>
-                                    <div>
-                                        <h3 className="font-semibold text-gray-900 dark:text-white">{childName}</h3>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                                            {docs.length} {isRTL ? 'وثيقة' : docs.length > 1 ? 'documents' : 'document'}
-                                        </p>
-                                    </div>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="p-0">
-                                <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                                    {docs.map((doc, docIndex) => (
-                                        <div key={`${doc.id}-${docIndex}`} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 flex items-center justify-between">
-                                            <div className="flex items-center gap-3 flex-1 min-w-0">
-                                                <FileText className="w-5 h-5 text-gray-400 flex-shrink-0" />
-                                                <div className="min-w-0">
-                                                    <p className="font-medium text-gray-900 dark:text-white truncate">
-                                                        {doc.document_type}
-                                                    </p>
-                                                    <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
-                                                        {doc.original_filename}
-                                                    </p>
-                                                </div>
+                    {Object.entries(groupedArchivesDocs).map(([childName, childData], groupIndex) => {
+                        const docsCount = childData.docs.length;
+                        const isExpanded = expandedChildren[`archive_${childName}`] ?? false; // Par défaut plié
+
+                        return (
+                            <Card key={`archive-${childName}`} className="overflow-hidden">
+                                <CardHeader
+                                    className="border-b cursor-pointer transition-colors bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/30"
+                                    onClick={() => setExpandedChildren(prev => ({ ...prev, [`archive_${childName}`]: !isExpanded }))}
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full flex items-center justify-center bg-red-100 dark:bg-red-900/50">
+                                                <Archive className="w-4 h-4 text-red-600 dark:text-red-400" />
                                             </div>
-                                            <div className="flex items-center gap-2 flex-shrink-0">
-                                                <span className="text-xs text-gray-400 hidden sm:inline">
-                                                    {new Date(doc.created_at).toLocaleDateString(isRTL ? 'ar' : 'fr')}
-                                                </span>
-                                                {doc.cloudinary_url ? (
-                                                    <>
-                                                        <Button
-                                                            size="sm"
-                                                            variant="outline"
-                                                            onClick={() => handleView(doc)}
-                                                            title={isRTL ? 'عرض' : 'Voir'}
-                                                        >
-                                                            <Eye className="w-4 h-4" />
-                                                            <span className="hidden sm:inline ml-1">{isRTL ? 'عرض' : 'Voir'}</span>
-                                                        </Button>
-                                                        <Button
-                                                            size="sm"
-                                                            variant="outline"
-                                                            onClick={() => {
-                                                                const link = document.createElement('a');
-                                                                link.href = doc.cloudinary_url;
-                                                                link.download = doc.original_filename || 'document';
-                                                                link.target = '_blank';
-                                                                link.click();
-                                                            }}
-                                                            title={isRTL ? 'تحميل' : 'Télécharger'}
-                                                        >
-                                                            <Download className="w-4 h-4" />
-                                                            <span className="hidden sm:inline ml-1">{isRTL ? 'تحميل' : 'Télécharger'}</span>
-                                                        </Button>
-                                                    </>
-                                                ) : (
-                                                    <Button size="sm" variant="outline" disabled>
-                                                        <XCircle className="w-4 h-4 mr-1" />
-                                                        <span className="hidden sm:inline">{isRTL ? 'غير متوفر' : 'Non disponible'}</span>
-                                                    </Button>
-                                                )}
+                                            <div>
+                                                <h3 className="font-medium text-gray-900 dark:text-white text-sm">{childName}</h3>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                    {isRTL ? `${docsCount} وثيقة مؤرشفة` : `${docsCount} document(s) archivé(s)`}
+                                                </p>
                                             </div>
                                         </div>
-                                    ))}
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
+                                        <div className="flex items-center gap-2">
+                                            {isExpanded
+                                                ? <ChevronUp className="w-4 h-4 text-red-500" />
+                                                : <ChevronDown className="w-4 h-4 text-red-500" />
+                                            }
+                                        </div>
+                                    </div>
+                                </CardHeader>
+                                {isExpanded && (
+                                    <CardContent className="p-0">
+                                        <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                                            {childData.docs.map((doc, docIndex) => (
+                                                <div key={`${doc.id}-${docIndex}`} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 flex items-center justify-between">
+                                                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                        <FileText className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                                                        <div className="min-w-0">
+                                                            <p className="font-medium text-gray-900 dark:text-white truncate">
+                                                                {doc.document_type || doc.title}
+                                                            </p>
+                                                            <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                                                                {doc.original_filename}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                                        <span className="text-xs text-gray-400 hidden sm:inline">
+                                                            {new Date(doc.archived_at || doc.created_at).toLocaleDateString(isRTL ? 'ar' : 'fr')}
+                                                        </span>
+                                                        {doc.cloudinary_url ? (
+                                                            <>
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    onClick={() => handleView(doc)}
+                                                                    title={isRTL ? 'عرض' : 'Voir'}
+                                                                >
+                                                                    <Eye className="w-4 h-4" />
+                                                                    <span className="hidden sm:inline ml-1">{isRTL ? 'عرض' : 'Voir'}</span>
+                                                                </Button>
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    onClick={() => {
+                                                                        const link = document.createElement('a');
+                                                                        link.href = doc.cloudinary_url;
+                                                                        link.download = doc.original_filename || 'document';
+                                                                        link.target = '_blank';
+                                                                        link.click();
+                                                                    }}
+                                                                    title={isRTL ? 'تحميل' : 'Télécharger'}
+                                                                >
+                                                                    <Download className="w-4 h-4" />
+                                                                    <span className="hidden sm:inline ml-1">{isRTL ? 'تحميل' : 'Télécharger'}</span>
+                                                                </Button>
+                                                            </>
+                                                        ) : (
+                                                            <Button size="sm" variant="outline" disabled>
+                                                                <XCircle className="w-4 h-4 mr-1" />
+                                                                <span className="hidden sm:inline">{isRTL ? 'غير متوفر' : 'Non disponible'}</span>
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </CardContent>
+                                )}
+                            </Card>
+                        );
+                    })}
+                </div>
+            ) : filterCategory === 'children' ? (
+                /* Affichage groupé par enfant */
+                <div className="space-y-6">
+                    {Object.entries(groupedChildrenDocs).map(([childName, childData], groupIndex) => {
+                        const missingDocs = getChildMissingDocs(childData.docs);
+                        const hasAllDocs = missingDocs.length === 0;
+                        const realDocsCount = childData.docs.filter(d => d.cloudinary_url).length;
+                        const isExpanded = expandedChildren[childName] ?? !hasAllDocs; // Par défaut: déplié si incomplet, plié si complet
+
+                        return (
+                            <Card key={childName} className="overflow-hidden">
+                                <CardHeader
+                                    className={`border-b cursor-pointer transition-colors ${hasAllDocs ? 'bg-green-50 dark:bg-green-900/20 border-green-100 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/30' : 'bg-orange-50 dark:bg-orange-900/20 border-orange-100 dark:border-orange-800'}`}
+                                    onClick={() => hasAllDocs && setExpandedChildren(prev => ({ ...prev, [childName]: !isExpanded }))}
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${hasAllDocs ? 'bg-green-100 dark:bg-green-900/50' : 'bg-orange-100 dark:bg-orange-900/50'}`}>
+                                                <Baby className={`w-4 h-4 ${hasAllDocs ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400'}`} />
+                                            </div>
+                                            <div>
+                                                <h3 className="font-medium text-gray-900 dark:text-white text-sm">{childName}</h3>
+                                                <p className={`text-xs ${hasAllDocs ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400'}`}>
+                                                    {hasAllDocs
+                                                        ? (isRTL ? `الملف مكتمل ✓ (${realDocsCount})` : `Dossier complet ✓ (${realDocsCount} docs)`)
+                                                        : (isRTL ? `${missingDocs.length} وثيقة مفقودة` : `${missingDocs.length} document(s) manquant(s)`)
+                                                    }
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {!hasAllDocs && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setSelectedChild({
+                                                            child_id: childData.child_id,
+                                                            child_first_name: childData.child_first_name,
+                                                            child_last_name: childData.child_last_name,
+                                                            missingDocs: missingDocs
+                                                        });
+                                                        setChildDocuments({
+                                                            acte_naissance: null,
+                                                            carnet_medical: null,
+                                                            certificat_medical: null
+                                                        });
+                                                        setShowChildUploadModal(true);
+                                                    }}
+                                                    className="px-2 py-1 text-xs bg-orange-500 hover:bg-orange-600 text-white rounded flex items-center gap-1"
+                                                >
+                                                    <Plus className="w-3 h-3" />
+                                                    {isRTL ? 'إضافة' : 'Ajouter'}
+                                                </button>
+                                            )}
+                                            {hasAllDocs && (
+                                                isExpanded
+                                                    ? <ChevronUp className="w-4 h-4 text-green-600 dark:text-green-400" />
+                                                    : <ChevronDown className="w-4 h-4 text-green-600 dark:text-green-400" />
+                                            )}
+                                        </div>
+                                    </div>
+                                </CardHeader>
+                                {(isExpanded || !hasAllDocs) && (
+                                    <CardContent className="p-0">
+                                        <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                                            {childData.docs.filter(doc => doc.cloudinary_url).map((doc, docIndex) => (
+                                                <div key={`${doc.id}-${docIndex}`} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 flex items-center justify-between">
+                                                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                                                        <FileText className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                                                        <div className="min-w-0">
+                                                            <p className="font-medium text-gray-900 dark:text-white truncate">
+                                                                {doc.document_type}
+                                                            </p>
+                                                            <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                                                                {doc.original_filename}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                                        <span className="text-xs text-gray-400 hidden sm:inline">
+                                                            {new Date(doc.created_at).toLocaleDateString(isRTL ? 'ar' : 'fr')}
+                                                        </span>
+                                                        {doc.cloudinary_url ? (
+                                                            <>
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    onClick={() => handleView(doc)}
+                                                                    title={isRTL ? 'عرض' : 'Voir'}
+                                                                >
+                                                                    <Eye className="w-4 h-4" />
+                                                                    <span className="hidden sm:inline ml-1">{isRTL ? 'عرض' : 'Voir'}</span>
+                                                                </Button>
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    onClick={() => {
+                                                                        const link = document.createElement('a');
+                                                                        link.href = doc.cloudinary_url;
+                                                                        link.download = doc.original_filename || 'document';
+                                                                        link.target = '_blank';
+                                                                        link.click();
+                                                                    }}
+                                                                    title={isRTL ? 'تحميل' : 'Télécharger'}
+                                                                >
+                                                                    <Download className="w-4 h-4" />
+                                                                    <span className="hidden sm:inline ml-1">{isRTL ? 'تحميل' : 'Télécharger'}</span>
+                                                                </Button>
+                                                            </>
+                                                        ) : (
+                                                            <Button size="sm" variant="outline" disabled>
+                                                                <XCircle className="w-4 h-4 mr-1" />
+                                                                <span className="hidden sm:inline">{isRTL ? 'غير متوفر' : 'Non disponible'}</span>
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </CardContent>
+                                )}
+                            </Card>
+                        );
+                    })}
                 </div>
             ) : (
                 /* Affichage en grille pour admin et archives */
@@ -502,24 +754,28 @@ const DocumentsPage = () => {
             )}
 
             {/* Message si aucun document */}
-            {(filterCategory === 'children' ? Object.keys(groupedChildrenDocs).length === 0 : filteredDocuments.length === 0) && (
-                <div className="text-center py-12">
-                    <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                        {isRTL ? 'لا توجد مستندات' : 'Aucun document trouvé'}
-                    </h3>
-                    <p className="text-gray-600 dark:text-gray-400">
-                        {filterCategory === 'admin'
-                            ? (isRTL ? 'لا توجد مستندات إدارية. أضف مستندًا جديدًا.' : 'Aucun document administratif. Ajoutez-en un nouveau.')
-                            : filterCategory === 'children'
-                                ? (isRTL ? 'لا توجد وثائق أطفال. سيتم إضافتها عند الموافقة على التسجيلات.' : 'Aucun document enfant. Ils seront ajoutés lors de l\'approbation des inscriptions.')
-                                : filterCategory === 'archives'
-                                    ? (isRTL ? 'لا توجد وثائق مؤرشفة.' : 'Aucun document archivé.')
-                                    : (isRTL ? 'لا توجد مستندات مطابقة لمعايير البحث' : 'Aucun document ne correspond aux critères de recherche')
-                        }
-                    </p>
-                </div>
-            )}
+            {(filterCategory === 'children'
+                ? Object.keys(groupedChildrenDocs).length === 0
+                : filterCategory === 'archives'
+                    ? Object.keys(groupedArchivesDocs).length === 0
+                    : filteredDocuments.length === 0) && (
+                    <div className="text-center py-12">
+                        <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                            {isRTL ? 'لا توجد مستندات' : 'Aucun document trouvé'}
+                        </h3>
+                        <p className="text-gray-600 dark:text-gray-400">
+                            {filterCategory === 'admin'
+                                ? (isRTL ? 'لا توجد مستندات إدارية. أضف مستندًا جديدًا.' : 'Aucun document administratif. Ajoutez-en un nouveau.')
+                                : filterCategory === 'children'
+                                    ? (isRTL ? 'لا توجد وثائق أطفال. سيتم إضافتها عند الموافقة على التسجيلات.' : 'Aucun document enfant. Ils seront ajoutés lors de l\'approbation des inscriptions.')
+                                    : filterCategory === 'archives'
+                                        ? (isRTL ? 'لا توجد وثائق مؤرشفة.' : 'Aucun document archivé.')
+                                        : (isRTL ? 'لا توجد مستندات مطابقة لمعايير البحث' : 'Aucun document ne correspond aux critères de recherche')
+                            }
+                        </p>
+                    </div>
+                )}
 
             {/* Modal d'upload */}
             {showUploadModal && (
@@ -623,6 +879,116 @@ const DocumentsPage = () => {
                                     <Upload className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
                                 )}
                                 {uploadLoading ? (isRTL ? 'جاري الرفع...' : 'Upload...') : (isRTL ? 'رفع' : 'Uploader')}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal d'upload pour enfant avec documents manquants */}
+            {showChildUploadModal && selectedChild && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-lg mx-4">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                            {isRTL ? 'إضافة الوثائق المفقودة' : 'Ajouter les documents manquants'}
+                        </h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                            {isRTL ? 'لـ' : 'Pour'} <span className="font-medium text-gray-900 dark:text-white">{selectedChild.child_first_name} {selectedChild.child_last_name}</span>
+                        </p>
+
+                        <div className="space-y-4">
+                            {/* Acte de naissance - affiché seulement si manquant */}
+                            {(!selectedChild.missingDocs || selectedChild.missingDocs.includes('acte_naissance')) && (
+                                <div className="p-3 border border-orange-200 dark:border-orange-700 rounded-lg bg-orange-50 dark:bg-orange-900/10">
+                                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        <FileText className="w-4 h-4 text-blue-500" />
+                                        {isRTL ? 'شهادة الميلاد' : 'Acte de naissance'}
+                                    </label>
+                                    <input
+                                        type="file"
+                                        onChange={(e) => setChildDocuments(prev => ({ ...prev, acte_naissance: e.target.files[0] }))}
+                                        accept=".pdf,.jpg,.jpeg,.png"
+                                        className="w-full text-sm px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                    />
+                                    {childDocuments.acte_naissance && (
+                                        <p className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
+                                            <CheckCircle className="w-3 h-3" /> {childDocuments.acte_naissance.name}
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Carnet médical - affiché seulement si manquant */}
+                            {(!selectedChild.missingDocs || selectedChild.missingDocs.includes('carnet_medical')) && (
+                                <div className="p-3 border border-orange-200 dark:border-orange-700 rounded-lg bg-orange-50 dark:bg-orange-900/10">
+                                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        <FileText className="w-4 h-4 text-green-500" />
+                                        {isRTL ? 'الدفتر الطبي' : 'Carnet médical'}
+                                    </label>
+                                    <input
+                                        type="file"
+                                        onChange={(e) => setChildDocuments(prev => ({ ...prev, carnet_medical: e.target.files[0] }))}
+                                        accept=".pdf,.jpg,.jpeg,.png"
+                                        className="w-full text-sm px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                    />
+                                    {childDocuments.carnet_medical && (
+                                        <p className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
+                                            <CheckCircle className="w-3 h-3" /> {childDocuments.carnet_medical.name}
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Certificat médical - affiché seulement si manquant */}
+                            {(!selectedChild.missingDocs || selectedChild.missingDocs.includes('certificat_medical')) && (
+                                <div className="p-3 border border-orange-200 dark:border-orange-700 rounded-lg bg-orange-50 dark:bg-orange-900/10">
+                                    <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        <FileText className="w-4 h-4 text-purple-500" />
+                                        {isRTL ? 'الشهادة الطبية' : 'Certificat médical'}
+                                    </label>
+                                    <input
+                                        type="file"
+                                        onChange={(e) => setChildDocuments(prev => ({ ...prev, certificat_medical: e.target.files[0] }))}
+                                        accept=".pdf,.jpg,.jpeg,.png"
+                                        className="w-full text-sm px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                    />
+                                    {childDocuments.certificat_medical && (
+                                        <p className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
+                                            <CheckCircle className="w-3 h-3" /> {childDocuments.certificat_medical.name}
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Info */}
+                            <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                                {isRTL ? 'PDF, JPEG, PNG - الحد الأقصى 10 ميجابايت لكل ملف' : 'PDF, JPEG, PNG - Max 10 Mo par fichier'}
+                            </p>
+                        </div>
+
+                        <div className="flex gap-3 mt-6">
+                            <Button
+                                onClick={() => {
+                                    setShowChildUploadModal(false);
+                                    setChildDocuments({ acte_naissance: null, carnet_medical: null, certificat_medical: null });
+                                    setSelectedChild(null);
+                                }}
+                                variant="outline"
+                                className="flex-1"
+                            >
+                                {isRTL ? 'إلغاء' : 'Annuler'}
+                            </Button>
+                            <Button
+                                onClick={handleChildDocumentUpload}
+                                disabled={uploadLoading || (!childDocuments.acte_naissance && !childDocuments.carnet_medical && !childDocuments.certificat_medical)}
+                                className="flex-1 bg-orange-500 hover:bg-orange-600"
+                            >
+                                {uploadLoading ? (
+                                    <RefreshCw className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2 animate-spin" />
+                                ) : (
+                                    <Upload className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                                )}
+                                {uploadLoading ? (isRTL ? 'جاري الرفع...' : 'Upload...') : (isRTL ? 'رفع الوثائق' : 'Ajouter')}
                             </Button>
                         </div>
                     </div>

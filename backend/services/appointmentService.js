@@ -1,13 +1,69 @@
 /**
- * SERVICE RENDEZ-VOUS
- * Gestion des RDV admin ↔ parent
+ * SERVICE RENDEZ-VOUS v2
+ * Workflow simplifié de négociation RDV admin ↔ parent
+ * 
+ * WORKFLOW:
+ * 1. Création: Admin ou Parent crée → status=proposed, pending_response_from=autre partie
+ * 2. Réponse:
+ *    - Accepte → status=confirmed, notifications aux deux
+ *    - Contre-propose → status=counter_proposed, nouvelle date proposée
+ * 3. Boucle: Tant que contre-proposition → retour étape 2
+ * 4. Confirmation: Dès acceptation → status=confirmed
+ * 
+ * TÂCHES (admin seulement):
+ * - Créées automatiquement quand admin doit répondre
+ * - Marquées complètes quand le RDV change de statut
  */
 
 const { pool } = require('../config/db_postgres');
 const cloudinaryService = require('./cloudinaryService');
 
+// ============================================================================
+// HELPERS
+// ============================================================================
+
+async function getUserById(userId) {
+  try {
+    const result = await pool.query(
+      'SELECT id, email, first_name, last_name, role FROM users WHERE id = $1',
+      [userId]
+    );
+    return result.rows[0] || null;
+  } catch (error) {
+    console.error('❌ Erreur getUserById:', error);
+    return null;
+  }
+}
+
+async function getAdmins(client) {
+  const result = await client.query(`
+    SELECT id, first_name, last_name, email 
+    FROM users 
+    WHERE role = 'admin' AND is_active = true
+  `);
+  return result.rows;
+}
+
+function formatDate(date) {
+  return new Date(date).toLocaleDateString('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+// ============================================================================
+// CRÉATION RDV
+// ============================================================================
+
 /**
- * Créer un rendez-vous
+ * Créer un rendez-vous (admin ou parent)
+ * → Notifie l'autre partie
+ * → Crée une tâche si c'est l'admin qui doit répondre
+ * Compatible avec ancienne et nouvelle structure de table
  */
 async function createAppointment(appointmentData, creatorId) {
   const client = await pool.connect();
@@ -21,121 +77,72 @@ async function createAppointment(appointmentData, creatorId) {
       subject,
       description,
       proposed_date,
-      location = 'Crèche',
-      status = 'proposed'
+      location = 'Crèche'
     } = appointmentData;
 
-    // Déterminer si c'est le parent qui crée (demande) ou l'admin (proposition)
-    const isParentRequest = parent_id === creatorId;
-    // Les statuts valides sont: proposed, confirmed, rescheduled, completed, cancelled
-    // Pour les demandes de parent, on utilise aussi 'proposed' (proposition du parent)
+    const creator = await getUserById(creatorId);
+    const isParentCreator = parent_id === creatorId;
+
+    // Créer le RDV avec la nouvelle structure
+    const pendingResponseFrom = isParentCreator ? 'admin' : 'parent';
+    console.log('📅 Création RDV:', { parent_id, child_id, creatorId, subject, proposed_date, location, pendingResponseFrom });
 
     const result = await client.query(`
       INSERT INTO appointments 
-      (parent_id, child_id, created_by, subject, description, proposed_date, location, status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, 'proposed')
+      (parent_id, child_id, created_by, subject, description, proposed_date, location, status, pending_response_from, last_proposed_by, proposal_history)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, 'proposed', $8, $3, $9)
       RETURNING *
-    `, [parent_id, child_id, creatorId, subject, description, proposed_date, location]);
+    `, [
+      parent_id, child_id, creatorId, subject, description, proposed_date, location,
+      pendingResponseFrom,
+      JSON.stringify([{ date: new Date().toISOString(), proposed_by: creatorId, proposed_date }])
+    ]);
 
     const appointment = result.rows[0];
-    const creator = await getUserById(creatorId);
+    const formattedDate = formatDate(proposed_date);
 
-    if (isParentRequest) {
-      // PARENT DEMANDE UN RDV → Notifier tous les admins + créer tâche
-      console.log(`📅 Parent ${creator?.first_name} ${creator?.last_name} demande un RDV: ${subject}`);
+    if (isParentCreator) {
+      // PARENT CRÉE → Notifier admins + créer tâche admin
+      console.log(`📅 Parent ${creator?.first_name} ${creator?.last_name} propose un RDV: ${subject}`);
 
-      // Récupérer tous les admins
-      const adminsResult = await client.query(`
-        SELECT id, first_name, last_name FROM users WHERE role = 'admin' AND is_active = true
-      `);
-
-      if (adminsResult.rows.length === 0) {
-        console.warn('⚠️ Aucun admin actif trouvé pour recevoir la demande de RDV');
-      }
+      const admins = await getAdmins(client);
 
       // Notifier chaque admin
-      for (const admin of adminsResult.rows) {
+      for (const admin of admins) {
         await client.query(`
           INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
-          VALUES ($1, $2, $3, 'appointment_request', $4, false)
+          VALUES ($1, $2, $3, 'appointment_proposed', $4, false)
         `, [
           admin.id,
-          '📅 Nouvelle demande de RDV',
-          `${creator?.first_name || 'Un parent'} ${creator?.last_name || ''} demande un rendez-vous : "${subject}"`,
+          '📅 Nouvelle proposition de RDV',
+          `${creator?.first_name || 'Un parent'} ${creator?.last_name || ''} propose un RDV le ${formattedDate} : "${subject}"`,
           appointment.id
         ]);
       }
 
-      // Créer une tâche pour traiter la demande de RDV (assignée au premier admin)
-      const proposedDateFormatted = new Date(proposed_date).toLocaleDateString('fr-FR', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-
-      const firstAdminId = adminsResult.rows[0]?.id || null;
-
-      if (firstAdminId) {
-        await client.query(`
-          INSERT INTO events (
-            title, 
-            description, 
-            type, 
-            status, 
-            priority, 
-            start_date, 
-            end_date, 
-            all_day,
-            created_by,
-            assigned_to,
-            metadata
-          )
-          VALUES ($1, $2, 'task', 'pending', 'high', NOW(), NOW(), true, $3, $3, $4)
-        `, [
-          `📅 Demande RDV: ${creator?.first_name || 'Parent'} ${creator?.last_name || ''}`,
-          `Demande de rendez-vous pour le ${proposedDateFormatted}. Sujet: ${subject}`,
-          firstAdminId,
-          JSON.stringify({
-            appointment_id: appointment.id,
-            parent_id: parent_id,
-            parent_name: `${creator?.first_name || ''} ${creator?.last_name || ''}`,
-            proposed_date: proposed_date,
-            is_appointment_request: true
-          })
-        ]);
-        console.log(`✅ Tâche créée et assignée à l'admin ${firstAdminId}`);
+      // Créer tâche pour le premier admin
+      if (admins.length > 0) {
+        await createAppointmentTask(client, appointment, admins[0].id, 'respond');
       }
 
-      console.log(`✅ Notifications envoyées à ${adminsResult.rows.length} admin(s)`);
+      console.log(`✅ Notifications envoyées à ${admins.length} admin(s) + tâche créée`);
 
     } else {
-      // ADMIN PROPOSE UN RDV → Notifier le parent
+      // ADMIN CRÉE → Notifier le parent seulement (pas de tâche pour parent)
       await client.query(`
         INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
         VALUES ($1, $2, $3, 'appointment_proposed', $4, false)
       `, [
         parent_id,
         '📅 Proposition de rendez-vous',
-        `${creator?.first_name || 'L\'administration'} ${creator?.last_name || ''} vous propose un rendez-vous : "${subject}"`,
+        `L'administration vous propose un RDV le ${formattedDate} : "${subject}"`,
         appointment.id
       ]);
 
-      // Marquer comme complétées toutes les tâches urgentes de RDV pour ce parent
-      await client.query(`
-        UPDATE events 
-        SET status = 'completed', updated_at = NOW()
-        WHERE type = 'task' 
-        AND status = 'pending'
-        AND metadata::jsonb @> $1::jsonb
-      `, [JSON.stringify({ is_urgent_appointment: true, parent_id: parent_id })]);
-
-      console.log(`✅ RDV proposé par admin: ${subject} au parent ${parent_id}`);
+      console.log(`✅ RDV proposé par admin au parent ${parent_id}`);
     }
 
     await client.query('COMMIT');
-
     return { success: true, appointment };
 
   } catch (error) {
@@ -147,6 +154,306 @@ async function createAppointment(appointmentData, creatorId) {
   }
 }
 
+// ============================================================================
+// CONFIRMER RDV
+// ============================================================================
+
+/**
+ * Confirmer un RDV (accepter la proposition)
+ * → Notifie les deux parties
+ * → Marque la tâche comme complète
+ */
+async function confirmAppointment(appointmentId, userId, userRole) {
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    // Récupérer le RDV
+    const apptResult = await client.query(
+      'SELECT * FROM appointments WHERE id = $1',
+      [appointmentId]
+    );
+
+    if (apptResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return { success: false, error: 'Rendez-vous non trouvé' };
+    }
+
+    const appointment = apptResult.rows[0];
+
+    // Vérifier que c'est bien à cette personne de répondre (si colonne existe)
+    if (appointment.pending_response_from) {
+      const expectedResponder = appointment.pending_response_from;
+      const actualResponder = userRole === 'parent' ? 'parent' : 'admin';
+
+      if (expectedResponder !== actualResponder) {
+        await client.query('ROLLBACK');
+        return {
+          success: false,
+          error: `C'est à ${expectedResponder === 'admin' ? 'l\'administration' : 'au parent'} de répondre`
+        };
+      }
+    }
+
+    // Mettre à jour le RDV (compatible ancienne et nouvelle structure)
+    let result;
+    try {
+      result = await client.query(`
+        UPDATE appointments
+        SET status = 'confirmed', 
+            confirmed_date = proposed_date,
+            pending_response_from = NULL,
+            updated_at = NOW()
+        WHERE id = $1
+        RETURNING *
+      `, [appointmentId]);
+    } catch (e) {
+      // Fallback pour ancienne structure
+      result = await client.query(`
+        UPDATE appointments
+        SET status = 'confirmed', 
+            confirmed_date = proposed_date,
+            updated_at = NOW()
+        WHERE id = $1
+        RETURNING *
+      `, [appointmentId]);
+    }
+
+    const updatedAppointment = result.rows[0];
+    const confirmer = await getUserById(userId);
+    const formattedDate = formatDate(updatedAppointment.confirmed_date);
+
+    // Notifier les DEUX parties
+    // 1. Notifier le parent
+    await client.query(`
+      INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
+      VALUES ($1, $2, $3, 'appointment_confirmed', $4, false)
+    `, [
+      updatedAppointment.parent_id,
+      '✅ Rendez-vous confirmé',
+      `Le RDV "${updatedAppointment.subject}" est confirmé pour le ${formattedDate}`,
+      appointmentId
+    ]);
+
+    // 2. Notifier les admins
+    const admins = await getAdmins(client);
+    for (const admin of admins) {
+      if (admin.id !== userId) { // Ne pas notifier celui qui confirme
+        await client.query(`
+          INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
+          VALUES ($1, $2, $3, 'appointment_confirmed', $4, false)
+        `, [
+          admin.id,
+          '✅ Rendez-vous confirmé',
+          `${confirmer?.first_name || 'Quelqu\'un'} a confirmé le RDV "${updatedAppointment.subject}" pour le ${formattedDate}`,
+          appointmentId
+        ]);
+      }
+    }
+
+    // Marquer les tâches liées comme complètes
+    await completeAppointmentTasks(client, appointmentId);
+
+    await client.query('COMMIT');
+    console.log(`✅ RDV ${appointmentId} confirmé par ${userRole}`);
+
+    return { success: true, appointment: updatedAppointment };
+
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('❌ Erreur confirmAppointment:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+// ============================================================================
+// CONTRE-PROPOSER UNE DATE
+// ============================================================================
+
+/**
+ * Proposer une autre date (contre-proposition)
+ * → Notifie l'autre partie
+ * → Crée une tâche si c'est l'admin qui doit répondre
+ * Compatible avec ancienne et nouvelle structure de table
+ */
+async function counterProposeDate(appointmentId, newDate, userId, userRole) {
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    // Récupérer le RDV
+    const apptResult = await client.query(
+      'SELECT * FROM appointments WHERE id = $1',
+      [appointmentId]
+    );
+
+    if (apptResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return { success: false, error: 'Rendez-vous non trouvé' };
+    }
+
+    const appointment = apptResult.rows[0];
+    const proposer = await getUserById(userId);
+    const isParent = userRole === 'parent';
+
+    // Mettre à jour le RDV (compatible ancienne et nouvelle structure)
+    let result;
+    try {
+      const newPendingResponseFrom = isParent ? 'admin' : 'parent';
+      const history = appointment.proposal_history || [];
+      history.push({ date: new Date().toISOString(), proposed_by: userId, proposed_date: newDate });
+
+      result = await client.query(`
+        UPDATE appointments
+        SET status = 'counter_proposed',
+            proposed_date = $1,
+            pending_response_from = $2,
+            last_proposed_by = $3,
+            proposal_history = $4,
+            updated_at = NOW()
+        WHERE id = $5
+        RETURNING *
+      `, [newDate, newPendingResponseFrom, userId, JSON.stringify(history), appointmentId]);
+    } catch (e) {
+      // Fallback pour ancienne structure (utilise 'rescheduled' au lieu de 'counter_proposed')
+      result = await client.query(`
+        UPDATE appointments
+        SET status = 'rescheduled',
+            proposed_date = $1,
+            updated_at = NOW()
+        WHERE id = $2
+        RETURNING *
+      `, [newDate, appointmentId]);
+    }
+
+    const updatedAppointment = result.rows[0];
+    const formattedDate = formatDate(newDate);
+
+    if (isParent) {
+      // PARENT CONTRE-PROPOSE → Notifier admins + créer tâche
+      const admins = await getAdmins(client);
+
+      for (const admin of admins) {
+        await client.query(`
+          INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
+          VALUES ($1, $2, $3, 'appointment_counter_proposed', $4, false)
+        `, [
+          admin.id,
+          '🔄 Nouvelle date proposée',
+          `${proposer?.first_name || 'Un parent'} propose une autre date : ${formattedDate}`,
+          appointmentId
+        ]);
+      }
+
+      // Marquer anciennes tâches complètes et créer nouvelle
+      await completeAppointmentTasks(client, appointmentId);
+      if (admins.length > 0) {
+        await createAppointmentTask(client, updatedAppointment, admins[0].id, 'respond');
+      }
+
+    } else {
+      // ADMIN CONTRE-PROPOSE → Notifier parent seulement
+      await client.query(`
+        INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
+        VALUES ($1, $2, $3, 'appointment_counter_proposed', $4, false)
+      `, [
+        appointment.parent_id,
+        '🔄 Nouvelle date proposée',
+        `L'administration propose une autre date : ${formattedDate}`,
+        appointmentId
+      ]);
+
+      // Marquer anciennes tâches complètes
+      await completeAppointmentTasks(client, appointmentId);
+    }
+
+    await client.query('COMMIT');
+    console.log(`✅ RDV ${appointmentId}: nouvelle date proposée par ${userRole}`);
+
+    return { success: true, appointment: updatedAppointment };
+
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('❌ Erreur counterProposeDate:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+// ============================================================================
+// GESTION DES TÂCHES
+// ============================================================================
+
+/**
+ * Créer une tâche pour un RDV (admin seulement)
+ */
+async function createAppointmentTask(client, appointment, adminId, action = 'respond') {
+  const formattedDate = formatDate(appointment.proposed_date);
+
+  // Récupérer le nom du parent
+  const parentResult = await client.query(
+    'SELECT first_name, last_name FROM users WHERE id = $1',
+    [appointment.parent_id]
+  );
+  const parent = parentResult.rows[0];
+  const parentName = parent ? `${parent.first_name} ${parent.last_name}` : 'Parent';
+
+  const title = action === 'respond'
+    ? `📅 RDV à confirmer: ${parentName}`
+    : `📅 RDV en attente: ${parentName}`;
+
+  const description = `Proposition de RDV pour le ${formattedDate}. Sujet: ${appointment.subject}. Confirmez ou proposez une autre date.`;
+
+  await client.query(`
+    INSERT INTO events (
+      title, description, type, status, priority,
+      start_date, end_date, all_day,
+      created_by, assigned_to, metadata
+    )
+    VALUES ($1, $2, 'task', 'pending', 'high', NOW(), NOW(), true, $3, $3, $4)
+  `, [
+    title,
+    description,
+    adminId,
+    JSON.stringify({
+      appointment_id: appointment.id,
+      parent_id: appointment.parent_id,
+      parent_name: parentName,
+      proposed_date: appointment.proposed_date,
+      is_appointment_task: true
+    })
+  ]);
+
+  console.log(`📋 Tâche RDV créée pour admin ${adminId}`);
+}
+
+/**
+ * Marquer les tâches d'un RDV comme complètes
+ */
+async function completeAppointmentTasks(client, appointmentId) {
+  const result = await client.query(`
+    UPDATE events 
+    SET status = 'completed', updated_at = NOW()
+    WHERE type = 'task' 
+      AND status = 'pending'
+      AND metadata::jsonb @> $1::jsonb
+    RETURNING id
+  `, [JSON.stringify({ appointment_id: appointmentId, is_appointment_task: true })]);
+
+  if (result.rows.length > 0) {
+    console.log(`✅ ${result.rows.length} tâche(s) RDV marquée(s) complète(s)`);
+  }
+}
+
+// ============================================================================
+// AUTRES FONCTIONS
+// ============================================================================
+
 /**
  * Récupérer les rendez-vous
  */
@@ -154,6 +461,7 @@ async function getAppointments(userId, role, filters = {}) {
   try {
     const { status } = filters;
 
+    // Requête compatible avec l'ancienne et nouvelle structure de table
     let query = `
       SELECT 
         a.*,
@@ -168,7 +476,6 @@ async function getAppointments(userId, role, filters = {}) {
     const params = [];
     let paramCount = 0;
 
-    // Filtrer selon le rôle
     if (role === 'parent') {
       paramCount++;
       query += ` AND a.parent_id = $${paramCount}`;
@@ -184,7 +491,6 @@ async function getAppointments(userId, role, filters = {}) {
     query += ` ORDER BY COALESCE(a.confirmed_date, a.proposed_date) DESC`;
 
     const result = await pool.query(query, params);
-
     return { success: true, appointments: result.rows };
 
   } catch (error) {
@@ -194,22 +500,56 @@ async function getAppointments(userId, role, filters = {}) {
 }
 
 /**
- * Récupérer les RDV d'aujourd'hui (admin)
+ * Récupérer un RDV par ID
  */
-async function getTodayAppointments() {
+async function getAppointmentById(appointmentId, userId, role) {
   try {
     const result = await pool.query(`
       SELECT 
         a.*,
-        COALESCE(u.first_name || ' ' || u.last_name, a.parent_first_name || ' ' || a.parent_last_name) as parent_name,
-        COALESCE(c.first_name || ' ' || c.last_name, a.child_first_name || ' ' || a.child_last_name) as child_name,
-        e.status as enrollment_status
+        u.first_name || ' ' || u.last_name as parent_name,
+        u.email as parent_email,
+        c.first_name || ' ' || c.last_name as child_name
       FROM appointments a
       LEFT JOIN users u ON a.parent_id = u.id
       LEFT JOIN children c ON a.child_id = c.id
-      LEFT JOIN enrollments e ON a.enrollment_id = e.id
+      WHERE a.id = $1
+    `, [appointmentId]);
+
+    if (result.rows.length === 0) {
+      return { success: false, error: 'Rendez-vous non trouvé' };
+    }
+
+    const appointment = result.rows[0];
+
+    if (role === 'parent' && appointment.parent_id !== userId) {
+      return { success: false, error: 'Accès non autorisé' };
+    }
+
+    return { success: true, appointment };
+
+  } catch (error) {
+    console.error('❌ Erreur getAppointmentById:', error);
+    throw error;
+  }
+}
+
+/**
+ * RDV d'aujourd'hui (admin)
+ */
+async function getTodayAppointments() {
+  try {
+    // Compatible avec ancienne et nouvelle structure (rescheduled ou counter_proposed)
+    const result = await pool.query(`
+      SELECT 
+        a.*,
+        COALESCE(u.first_name || ' ' || u.last_name, a.parent_first_name || ' ' || a.parent_last_name) as parent_name,
+        COALESCE(c.first_name || ' ' || c.last_name, a.child_first_name || ' ' || a.child_last_name) as child_name
+      FROM appointments a
+      LEFT JOIN users u ON a.parent_id = u.id
+      LEFT JOIN children c ON a.child_id = c.id
       WHERE DATE(COALESCE(a.confirmed_date, a.proposed_date)) = CURRENT_DATE
-        AND a.status IN ('confirmed', 'proposed')
+        AND a.status IN ('confirmed', 'proposed', 'counter_proposed', 'rescheduled')
       ORDER BY COALESCE(a.confirmed_date, a.proposed_date) ASC
     `);
 
@@ -222,88 +562,51 @@ async function getTodayAppointments() {
 }
 
 /**
- * Confirmer un rendez-vous (parent ou admin)
+ * RDV en attente de réponse (pour cron job)
+ * Compatible avec ancienne structure (sans pending_response_from)
  */
-async function confirmAppointment(appointmentId, confirmedDate, userId, userRole = 'parent') {
-  const client = await pool.connect();
-
+async function getPendingAppointments() {
   try {
-    await client.query('BEGIN');
-
-    // Si admin, pas de vérification parent_id
-    let query, params;
-    if (userRole === 'admin' || userRole === 'staff') {
-      query = `
-        UPDATE appointments
-        SET confirmed_date = $1, status = 'confirmed', updated_at = NOW()
-        WHERE id = $2
-        RETURNING *
-      `;
-      params = [confirmedDate, appointmentId];
-    } else {
-      query = `
-        UPDATE appointments
-        SET confirmed_date = $1, status = 'confirmed', updated_at = NOW()
-        WHERE id = $2 AND parent_id = $3
-        RETURNING *
-      `;
-      params = [confirmedDate, appointmentId, userId];
+    // Essayer d'abord avec la nouvelle structure
+    let result;
+    try {
+      result = await pool.query(`
+        SELECT 
+          a.*,
+          u.first_name || ' ' || u.last_name as parent_name,
+          u.email as parent_email
+        FROM appointments a
+        LEFT JOIN users u ON a.parent_id = u.id
+        WHERE a.status IN ('proposed', 'counter_proposed')
+          AND a.pending_response_from IS NOT NULL
+        ORDER BY a.updated_at ASC
+      `);
+    } catch (e) {
+      // Fallback pour ancienne structure (sans pending_response_from)
+      result = await pool.query(`
+        SELECT 
+          a.*,
+          u.first_name || ' ' || u.last_name as parent_name,
+          u.email as parent_email
+        FROM appointments a
+        LEFT JOIN users u ON a.parent_id = u.id
+        WHERE a.status IN ('proposed', 'rescheduled')
+        ORDER BY a.updated_at ASC
+      `);
     }
 
-    const result = await client.query(query, params);
-
-    if (result.rows.length === 0) {
-      await client.query('ROLLBACK');
-      return { success: false, error: 'Rendez-vous non trouvé' };
-    }
-
-    const appointment = result.rows[0];
-
-    // Notifier selon qui confirme
-    if (userRole === 'admin' || userRole === 'staff') {
-      // Admin confirme → notifier le parent
-      await client.query(`
-        INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
-        VALUES ($1, $2, $3, 'appointment_confirmed', $4, false)
-      `, [
-        appointment.parent_id,
-        '✅ Rendez-vous confirmé',
-        `Votre rendez-vous "${appointment.subject}" a été confirmé par l'administration.`,
-        appointment.id
-      ]);
-    } else {
-      // Parent confirme → notifier l'admin
-      const parent = await getUserById(userId);
-      await client.query(`
-        INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
-        VALUES ($1, $2, $3, 'appointment_confirmed', $4, false)
-      `, [
-        appointment.created_by,
-        '✅ Rendez-vous confirmé',
-        `${parent.first_name} ${parent.last_name} a confirmé le rendez-vous : "${appointment.subject}"`,
-        appointment.id
-      ]);
-    }
-
-    await client.query('COMMIT');
-
-    console.log(`✅ RDV ${appointmentId} confirmé par ${userRole}`);
-
-    return { success: true, appointment };
+    return { success: true, appointments: result.rows };
 
   } catch (error) {
-    await client.query('ROLLBACK');
-    console.error('❌ Erreur confirmAppointment:', error);
+    console.error('❌ Erreur getPendingAppointments:', error);
     throw error;
-  } finally {
-    client.release();
   }
 }
 
 /**
- * Proposer une nouvelle date (parent)
+ * Annuler un RDV
  */
-async function rescheduleAppointment(appointmentId, newDate, userId) {
+async function cancelAppointment(appointmentId, userId) {
   const client = await pool.connect();
 
   try {
@@ -311,10 +614,10 @@ async function rescheduleAppointment(appointmentId, newDate, userId) {
 
     const result = await client.query(`
       UPDATE appointments
-      SET proposed_date = $1, status = 'rescheduled', updated_at = NOW()
-      WHERE id = $2 AND parent_id = $3
+      SET status = 'cancelled', pending_response_from = NULL, updated_at = NOW()
+      WHERE id = $1
       RETURNING *
-    `, [newDate, appointmentId, userId]);
+    `, [appointmentId]);
 
     if (result.rows.length === 0) {
       await client.query('ROLLBACK');
@@ -322,30 +625,30 @@ async function rescheduleAppointment(appointmentId, newDate, userId) {
     }
 
     const appointment = result.rows[0];
+    const canceller = await getUserById(userId);
 
-    // Notifier l'admin
-    const parent = await getUserById(userId);
-    const parentName = parent ? `${parent.first_name} ${parent.last_name}` : 'Un parent';
-
+    // Notifier l'autre partie
     await client.query(`
       INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
-      VALUES ($1, $2, $3, 'appointment_rescheduled', $4, false)
+      VALUES ($1, $2, $3, 'appointment_cancelled', $4, false)
     `, [
-      appointment.created_by,
-      '🔄 Nouvelle date proposée',
-      `${parentName} propose une nouvelle date pour : "${appointment.subject}"`,
-      appointment.id
+      appointment.parent_id,
+      '❌ Rendez-vous annulé',
+      `Le RDV "${appointment.subject}" a été annulé`,
+      appointmentId
     ]);
 
-    await client.query('COMMIT');
+    // Marquer tâches complètes
+    await completeAppointmentTasks(client, appointmentId);
 
-    console.log(`✅ RDV ${appointmentId} replanifié`);
+    await client.query('COMMIT');
+    console.log(`✅ RDV ${appointmentId} annulé`);
 
     return { success: true, appointment };
 
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('❌ Erreur rescheduleAppointment:', error);
+    console.error('❌ Erreur cancelAppointment:', error);
     throw error;
   } finally {
     client.release();
@@ -354,13 +657,12 @@ async function rescheduleAppointment(appointmentId, newDate, userId) {
 
 /**
  * Marquer comme complété (admin)
- * Si c'est un RDV d'inscription, transfère les documents vers children_documents
  */
 async function completeAppointment(appointmentId, notes) {
   try {
     const result = await pool.query(`
       UPDATE appointments
-      SET status = 'completed', notes = $1, updated_at = NOW()
+      SET status = 'completed', notes = $1, pending_response_from = NULL, updated_at = NOW()
       WHERE id = $2
       RETURNING *
     `, [notes, appointmentId]);
@@ -369,15 +671,8 @@ async function completeAppointment(appointmentId, notes) {
       return { success: false, error: 'Rendez-vous non trouvé' };
     }
 
-    const appointment = result.rows[0];
     console.log(`✅ RDV ${appointmentId} complété`);
-
-    // Si c'est un RDV d'inscription avec un enrollment_id, transférer les documents
-    if (appointment.enrollment_id && appointment.appointment_type === 'inscription') {
-      await transferEnrollmentDocumentsToChild(appointment.enrollment_id);
-    }
-
-    return { success: true, appointment };
+    return { success: true, appointment: result.rows[0] };
 
   } catch (error) {
     console.error('❌ Erreur completeAppointment:', error);
@@ -386,329 +681,14 @@ async function completeAppointment(appointmentId, notes) {
 }
 
 /**
- * Transférer les documents d'inscription vers children_documents
- */
-async function transferEnrollmentDocumentsToChild(enrollmentId) {
-  try {
-    // Récupérer l'inscription avec le child_id
-    const enrollmentResult = await pool.query(`
-      SELECT id, child_id, status FROM enrollments WHERE id = $1
-    `, [enrollmentId]);
-
-    if (enrollmentResult.rows.length === 0) {
-      console.log(`⚠️ Inscription #${enrollmentId} non trouvée pour transfert documents`);
-      return;
-    }
-
-    const enrollment = enrollmentResult.rows[0];
-
-    if (!enrollment.child_id) {
-      console.log(`⚠️ Inscription #${enrollmentId} n'a pas de child_id, transfert impossible`);
-      return;
-    }
-
-    // Récupérer les documents de l'inscription
-    const docsResult = await pool.query(`
-      SELECT * FROM enrollment_documents WHERE enrollment_id = $1
-    `, [enrollmentId]);
-
-    if (docsResult.rows.length === 0) {
-      console.log(`📄 Aucun document à transférer pour inscription #${enrollmentId}`);
-      return;
-    }
-
-    console.log(`📄 Transfert de ${docsResult.rows.length} document(s) vers enfant #${enrollment.child_id}`);
-
-    // Migrer les fichiers Cloudinary vers le dossier enfant
-    let migratedFiles = [];
-    if (cloudinaryService.isConfigured()) {
-      console.log(`☁️  Migration fichiers Cloudinary: enrollment_${enrollmentId} → child_${enrollment.child_id}`);
-      const migrationResult = await cloudinaryService.migrateEnrollmentToChild(enrollmentId, enrollment.child_id);
-      if (migrationResult.success && migrationResult.migratedFiles) {
-        migratedFiles = migrationResult.migratedFiles;
-        console.log(`✅ ${migrationResult.migratedCount} fichier(s) migré(s) sur Cloudinary`);
-      }
-    }
-
-    // Transférer chaque document
-    for (const doc of docsResult.rows) {
-      // Vérifier si le document n'existe pas déjà
-      const existsCheck = await pool.query(`
-        SELECT id FROM children_documents 
-        WHERE child_id = $1 AND document_type = $2 AND transferred_from_enrollment = $3
-      `, [enrollment.child_id, doc.document_type, enrollmentId]);
-
-      if (existsCheck.rows.length > 0) {
-        console.log(`   ⏭️ Document ${doc.document_type} déjà transféré`);
-        continue;
-      }
-
-      // Trouver la nouvelle URL si le fichier a été migré
-      let newCloudinaryUrl = doc.cloudinary_url;
-      let newCloudinaryPublicId = doc.cloudinary_public_id;
-
-      if (doc.cloudinary_public_id) {
-        const migratedFile = migratedFiles.find(f => f.oldPublicId === doc.cloudinary_public_id);
-        if (migratedFile) {
-          newCloudinaryUrl = migratedFile.newUrl;
-          newCloudinaryPublicId = migratedFile.newPublicId;
-          console.log(`   📦 URL mise à jour: ${doc.cloudinary_public_id} → ${newCloudinaryPublicId}`);
-        }
-      }
-
-      // Insérer dans children_documents avec les nouvelles URLs
-      await pool.query(`
-        INSERT INTO children_documents (
-          child_id, filename, original_filename, file_path,
-          mime_type, file_size, document_type, transferred_from_enrollment,
-          uploaded_by, uploaded_at, cloudinary_url, cloudinary_public_id
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-      `, [
-        enrollment.child_id,
-        doc.filename,
-        doc.original_filename,
-        newCloudinaryUrl || doc.file_path,
-        doc.mime_type,
-        doc.file_size,
-        doc.document_type,
-        enrollmentId,
-        doc.uploaded_by,
-        doc.uploaded_at,
-        newCloudinaryUrl,
-        newCloudinaryPublicId
-      ]);
-
-      // Mettre à jour l'URL dans enrollment_documents aussi
-      if (newCloudinaryUrl !== doc.cloudinary_url) {
-        await pool.query(`
-          UPDATE enrollment_documents 
-          SET cloudinary_url = $1, cloudinary_public_id = $2
-          WHERE id = $3
-        `, [newCloudinaryUrl, newCloudinaryPublicId, doc.id]);
-      }
-
-      console.log(`   ✅ Document ${doc.document_type} transféré`);
-    }
-
-    // Mettre à jour le statut de l'inscription à 'approved' (finalisé)
-    await pool.query(`
-      UPDATE enrollments SET status = 'approved', finalized_at = NOW() WHERE id = $1
-    `, [enrollmentId]);
-
-    console.log(`✅ Inscription #${enrollmentId} finalisée, documents transférés et migrés`);
-
-  } catch (error) {
-    console.error('❌ Erreur transferEnrollmentDocumentsToChild:', error);
-    // Ne pas faire échouer le complete si le transfert échoue
-  }
-}
-
-/**
- * Annuler un rendez-vous
- */
-async function cancelAppointment(appointmentId) {
-  try {
-    const result = await pool.query(`
-      UPDATE appointments
-      SET status = 'cancelled', updated_at = NOW()
-      WHERE id = $1
-      RETURNING *
-    `, [appointmentId]);
-
-    if (result.rows.length === 0) {
-      return { success: false, error: 'Rendez-vous non trouvé' };
-    }
-
-    console.log(`✅ RDV ${appointmentId} annulé`);
-
-    return { success: true, appointment: result.rows[0] };
-
-  } catch (error) {
-    console.error('❌ Erreur cancelAppointment:', error);
-    throw error;
-  }
-}
-
-/**
- * Refuser RDV et proposer nouvelle date (admin)
- * Crée une tâche urgente pour l'admin jusqu'à envoi du nouveau RDV
- */
-async function rejectWithProposal(appointmentId, proposedDate, reason, adminId) {
-  const client = await pool.connect();
-
-  try {
-    await client.query('BEGIN');
-
-    // 1. Récupérer le RDV
-    const apptResult = await client.query(
-      'SELECT * FROM appointments WHERE id = $1',
-      [appointmentId]
-    );
-
-    if (apptResult.rows.length === 0) {
-      await client.query('ROLLBACK');
-      return { success: false, error: 'Rendez-vous non trouvé' };
-    }
-
-    const appointment = apptResult.rows[0];
-
-    // 2. Marquer le RDV comme failed (reste visible dans les tâches admin et widget parent)
-    await client.query(
-      'UPDATE appointments SET status = $1, updated_at = NOW() WHERE id = $2',
-      ['failed', appointmentId]
-    );
-
-    // 3. Récupérer infos parent
-    const parentResult = await client.query(
-      'SELECT first_name, last_name FROM users WHERE id = $1',
-      [appointment.parent_id]
-    );
-    const parent = parentResult.rows[0];
-
-    // 4. Créer notification pour le parent
-    await client.query(`
-      INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
-      VALUES ($1, $2, $3, 'appointment_rejected', $4, false)
-    `, [
-      appointment.parent_id,
-      '❌ Rendez-vous refusé',
-      `Votre rendez-vous du ${new Date(appointment.proposed_date).toLocaleDateString('fr-FR')} a été refusé. Nouvelle date proposée : ${new Date(proposedDate).toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}. ${reason ? `Raison: ${reason}` : ''}`,
-      appointmentId
-    ]);
-
-    // 5. Créer tâche urgente ponctuelle (1 seul jour) pour l'admin
-    const today = new Date();
-    today.setHours(23, 59, 59, 999);
-
-    const taskResult = await client.query(`
-      INSERT INTO events (
-        title, 
-        description, 
-        type, 
-        status, 
-        priority, 
-        start_date, 
-        end_date, 
-        all_day,
-        created_by,
-        assigned_to,
-        metadata
-      )
-      VALUES ($1, $2, 'task', 'pending', 'high', NOW(), $3, true, $4, $4, $5)
-      RETURNING *
-    `, [
-      `🚨 Fixer RDV: ${parent.first_name} ${parent.last_name}`,
-      `RDV refusé. Proposer nouvelle date au parent. Cliquez pour créer un nouveau RDV ou marquer comme traité.`,
-      today.toISOString(),
-      adminId,
-      JSON.stringify({
-        appointment_id: appointmentId,
-        parent_id: appointment.parent_id,
-        child_id: appointment.child_id,
-        parent_name: `${parent.first_name} ${parent.last_name}`,
-        proposed_date: proposedDate,
-        reason: reason,
-        is_urgent_appointment: true,
-        can_create_rdv: true,
-        can_mark_done: true
-      })
-    ]);
-
-    await client.query('COMMIT');
-
-    console.log(`✅ RDV ${appointmentId} refusé avec proposition. Tâche urgente créée: ${taskResult.rows[0].id}`);
-
-    return {
-      success: true,
-      appointment: appointment,
-      task: taskResult.rows[0],
-      message: 'RDV refusé, nouvelle date proposée au parent et tâche urgente créée'
-    };
-
-  } catch (error) {
-    await client.query('ROLLBACK');
-    console.error('❌ Erreur rejectWithProposal:', error);
-    throw error;
-  } finally {
-    client.release();
-  }
-}
-
-/**
- * Récupérer un utilisateur par ID
- */
-async function getUserById(userId) {
-  try {
-    const result = await pool.query(
-      'SELECT id, email, first_name, last_name, role FROM users WHERE id = $1',
-      [userId]
-    );
-    return result.rows[0] || null;
-  } catch (error) {
-    console.error('❌ Erreur getUserById:', error);
-    return null;
-  }
-}
-
-/**
- * Récupérer un rendez-vous par ID
- */
-async function getAppointmentById(appointmentId, userId, role) {
-  try {
-    const query = `
-      SELECT 
-        a.*,
-        u.first_name || ' ' || u.last_name as parent_name,
-        u.email as parent_email,
-        c.first_name || ' ' || c.last_name as child_name
-      FROM appointments a
-      LEFT JOIN users u ON a.parent_id = u.id
-      LEFT JOIN children c ON a.child_id = c.id
-      WHERE a.id = $1
-    `;
-
-    const result = await pool.query(query, [appointmentId]);
-
-    if (result.rows.length === 0) {
-      return {
-        success: false,
-        error: 'Rendez-vous non trouvé'
-      };
-    }
-
-    const appointment = result.rows[0];
-
-    // Vérifier les permissions
-    if (role === 'parent' && appointment.parent_id !== userId) {
-      return {
-        success: false,
-        error: 'Accès non autorisé'
-      };
-    }
-
-    return {
-      success: true,
-      appointment
-    };
-
-  } catch (error) {
-    console.error('❌ Erreur getAppointmentById:', error);
-    throw error;
-  }
-}
-
-/**
- * Mettre à jour le statut d'un rendez-vous
+ * Mettre à jour le statut
  */
 async function updateAppointmentStatus(appointmentId, status, userId) {
   try {
-    const validStatuses = ['proposed', 'confirmed', 'rescheduled', 'completed', 'cancelled', 'failed', 'no_show'];
+    const validStatuses = ['proposed', 'counter_proposed', 'confirmed', 'completed', 'cancelled', 'failed', 'no_show'];
 
     if (!validStatuses.includes(status)) {
-      return {
-        success: false,
-        error: `Statut invalide. Valeurs acceptées: ${validStatuses.join(', ')}`
-      };
+      return { success: false, error: `Statut invalide. Valeurs acceptées: ${validStatuses.join(', ')}` };
     }
 
     const result = await pool.query(`
@@ -719,18 +699,11 @@ async function updateAppointmentStatus(appointmentId, status, userId) {
     `, [status, appointmentId]);
 
     if (result.rows.length === 0) {
-      return {
-        success: false,
-        error: 'Rendez-vous non trouvé'
-      };
+      return { success: false, error: 'Rendez-vous non trouvé' };
     }
 
     console.log(`✅ Statut RDV #${appointmentId} mis à jour: ${status}`);
-
-    return {
-      success: true,
-      appointment: result.rows[0]
-    };
+    return { success: true, appointment: result.rows[0] };
 
   } catch (error) {
     console.error('❌ Erreur updateAppointmentStatus:', error);
@@ -738,15 +711,19 @@ async function updateAppointmentStatus(appointmentId, status, userId) {
   }
 }
 
+// ============================================================================
+// EXPORTS
+// ============================================================================
+
 module.exports = {
   createAppointment,
   getAppointments,
   getAppointmentById,
   getTodayAppointments,
+  getPendingAppointments,
   confirmAppointment,
-  rescheduleAppointment,
+  counterProposeDate,
   completeAppointment,
   cancelAppointment,
-  rejectWithProposal,
   updateAppointmentStatus
 };

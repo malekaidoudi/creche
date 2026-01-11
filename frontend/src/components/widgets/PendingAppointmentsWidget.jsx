@@ -21,9 +21,22 @@ const PendingAppointmentsWidget = ({ onUpdate }) => {
   const loadPendingAppointments = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/api/appointments?status=rescheduled');
+      // Charger tous les RDV puis filtrer ceux en attente de réponse admin
+      const response = await api.get('/api/appointments');
       if (response.data.success) {
-        setAppointments(response.data.appointments || []);
+        // Filtrer les RDV où l'admin doit répondre
+        // Compatible avec nouvelle structure (pending_response_from) et ancienne (status rescheduled/proposed créé par parent)
+        const pendingForAdmin = (response.data.appointments || []).filter(apt => {
+          // Nouvelle structure: pending_response_from === 'admin'
+          if (apt.pending_response_from === 'admin') {
+            return apt.status === 'proposed' || apt.status === 'counter_proposed';
+          }
+          // Ancienne structure: status rescheduled ou proposed créé par parent
+          if (apt.status === 'rescheduled') return true;
+          if (apt.status === 'proposed' && apt.created_by === apt.parent_id) return true;
+          return false;
+        });
+        setAppointments(pendingForAdmin);
       }
     } catch (error) {
       console.error('Erreur chargement RDV en attente:', error);
@@ -101,10 +114,10 @@ const PendingAppointmentsWidget = ({ onUpdate }) => {
             </div>
             <div>
               <h3 className="text-lg font-semibold text-white">
-                {isRTL ? 'مواعيد في انتظار التأكيد' : 'Rendez-vous à valider'}
+                {isRTL ? 'مواعيد في انتظار ردك' : 'RDV en attente de votre réponse'}
               </h3>
               <p className="text-sm text-orange-100">
-                {isRTL ? 'تم إعادة جدولتها من قبل الآباء' : 'Replanifiés par les parents'}
+                {isRTL ? 'قم بالتأكيد أو اقتراح تاريخ آخر' : 'Confirmez ou proposez une autre date'}
               </p>
             </div>
           </div>

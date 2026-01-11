@@ -61,7 +61,7 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointment, onSuccess }) =>
         }
     };
 
-    // Proposer une autre date (admin utilise reject-with-proposal, parent utilise reschedule)
+    // Proposer une autre date (utilise counter-propose pour tous les rôles)
     const handleReschedule = async () => {
         if (!newDate || !newTime) {
             dialog.error(isRTL ? 'يرجى اختيار تاريخ ووقت' : 'Veuillez sélectionner une date et une heure');
@@ -81,19 +81,10 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointment, onSuccess }) =>
 
             const proposedDateTime = `${isoDate}T${newTime}:00`;
 
-            let response;
-            if (user?.role === 'admin' || user?.role === 'staff') {
-                // Admin/Staff: utiliser reject-with-proposal
-                response = await api.post(`/api/appointments/${appointment.id}/reject-with-proposal`, {
-                    proposed_date: proposedDateTime,
-                    reason: 'Nouvelle date proposée par l\'administration'
-                });
-            } else {
-                // Parent: utiliser reschedule
-                response = await api.patch(`/api/appointments/${appointment.id}/reschedule`, {
-                    new_date: proposedDateTime
-                });
-            }
+            // Utiliser la nouvelle route counter-propose pour tous les rôles
+            const response = await api.patch(`/api/appointments/${appointment.id}/counter-propose`, {
+                proposed_date: proposedDateTime
+            });
 
             if (response.data.success) {
                 dialog.success(isRTL ? 'تم اقتراح تاريخ جديد بنجاح' : 'Nouvelle date proposée avec succès');
@@ -218,14 +209,28 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointment, onSuccess }) =>
                                     </p>
                                     <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${appointment.status === 'confirmed'
                                         ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                                        : appointment.status === 'pending'
-                                            ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
-                                            : 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
+                                        : appointment.status === 'proposed'
+                                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+                                            : appointment.status === 'counter_proposed'
+                                                ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400'
+                                                : appointment.status === 'cancelled'
+                                                    ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                                                    : 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
                                         }`}>
                                         {appointment.status === 'confirmed' && (isRTL ? 'مؤكد' : 'Confirmé')}
-                                        {appointment.status === 'pending' && (isRTL ? 'قيد الانتظار' : 'En attente')}
+                                        {appointment.status === 'proposed' && (isRTL ? 'مقترح' : 'Proposé')}
+                                        {appointment.status === 'counter_proposed' && (isRTL ? 'تاريخ جديد مقترح' : 'Contre-proposition')}
                                         {appointment.status === 'cancelled' && (isRTL ? 'ملغى' : 'Annulé')}
+                                        {appointment.status === 'completed' && (isRTL ? 'مكتمل' : 'Terminé')}
                                     </span>
+                                    {appointment.pending_response_from && (
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                                            {appointment.pending_response_from === 'admin'
+                                                ? (isRTL ? 'في انتظار رد الإدارة' : 'En attente de réponse de l\'administration')
+                                                : (isRTL ? 'في انتظار ردك' : 'En attente de votre réponse')
+                                            }
+                                        </p>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -267,7 +272,15 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointment, onSuccess }) =>
 
                 {/* Footer */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 px-4 sm:px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex-shrink-0">
-                    {!showReschedule ? (
+                    {/* RDV dans un état final - afficher seulement le bouton Fermer */}
+                    {['confirmed', 'completed', 'cancelled', 'failed', 'no_show'].includes(appointment.status) ? (
+                        <button
+                            onClick={onClose}
+                            className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors flex items-center justify-center gap-2"
+                        >
+                            <span className="text-sm sm:text-base">{isRTL ? 'إغلاق' : 'Fermer'}</span>
+                        </button>
+                    ) : !showReschedule ? (
                         <>
                             <button
                                 onClick={() => setShowReschedule(true)}
@@ -279,7 +292,7 @@ const AppointmentDetailsModal = ({ isOpen, onClose, appointment, onSuccess }) =>
                             </button>
                             <button
                                 onClick={handleValidate}
-                                disabled={loading || appointment.status === 'confirmed'}
+                                disabled={loading}
                                 className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 order-1 sm:order-2"
                             >
                                 {loading ? (

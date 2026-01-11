@@ -42,10 +42,9 @@ const RejectWithProposalModal = ({ isOpen, onClose, appointment, onSuccess }) =>
       // Combiner date et heure
       const proposedDateTime = `${formData.proposed_date}T${formData.proposed_time}:00`;
 
-      // Refuser le RDV actuel et proposer nouvelle date
-      const response = await api.post(`/api/appointments/${appointment.id}/reject-with-proposal`, {
-        proposed_date: proposedDateTime,
-        reason: formData.reason || 'Date non disponible'
+      // Contre-proposer une nouvelle date
+      const response = await api.patch(`/api/appointments/${appointment.id}/counter-propose`, {
+        proposed_date: proposedDateTime
       });
 
       if (response.data.success) {
@@ -89,7 +88,7 @@ const RejectWithProposalModal = ({ isOpen, onClose, appointment, onSuccess }) =>
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-white">
-                    {isRTL ? 'رفض وإقتراح تاريخ بديل' : 'Refuser et proposer une date'}
+                    {isRTL ? 'إقتراح تاريخ بديل' : 'Proposer une date'}
                   </h2>
                   <p className="text-red-100 text-sm">
                     {isRTL ? 'إقترح تاريخ جديد للوالد' : 'Proposez une nouvelle date au parent'}
@@ -183,7 +182,7 @@ const RejectWithProposalModal = ({ isOpen, onClose, appointment, onSuccess }) =>
                   onClick={onClose}
                   className="flex-1 px-4 py-3 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-medium transition-colors"
                 >
-                  {isRTL ? 'إلغاء' : 'Annuler'}
+                  {isRTL ? 'لاحقا' : 'Plus tard'}
                 </button>
                 <button
                   type="submit"

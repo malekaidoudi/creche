@@ -776,6 +776,8 @@ router.get('/:id/documents',
 /**
  * POST /api/enrollments/add-child
  * Demande d'inscription d'un nouvel enfant par un parent existant
+ * WORKFLOW: Crée seulement l'inscription (pending). L'enfant sera créé à la validation du RDV.
+ * Limite: Maximum 3 enfants par parent
  * Authentification requise (parent)
  */
 router.post('/add-child',
@@ -821,28 +823,45 @@ router.post('/add-child',
 
       const parent = parentResult.rows[0];
 
-      // Créer l'enfant
-      const childResult = await db.query(`
-        INSERT INTO children (
-          first_name, last_name, birth_date, gender, medical_info, parent_id, is_active, created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, true, NOW())
-        RETURNING id
-      `, [child_first_name, child_last_name, child_birth_date, child_gender, medical_info || null, parentId]);
+      // Vérifier le nombre d'enfants existants (max 3)
+      const childrenCountResult = await db.query(
+        'SELECT COUNT(*) as count FROM children WHERE parent_id = $1 AND is_active = true',
+        [parentId]
+      );
+      const currentChildrenCount = parseInt(childrenCountResult.rows[0].count, 10);
 
-      const childId = childResult.rows[0].id;
+      // Vérifier aussi les inscriptions en cours (pending/in_progress) pour ce parent
+      const pendingEnrollmentsResult = await db.query(
+        `SELECT COUNT(*) as count FROM enrollments 
+         WHERE parent_id = $1 AND status IN ('pending', 'in_progress')`,
+        [parentId]
+      );
+      const pendingCount = parseInt(pendingEnrollmentsResult.rows[0].count, 10);
 
-      // Créer la demande d'inscription
+      const totalChildren = currentChildrenCount + pendingCount;
+
+      if (totalChildren >= 3) {
+        return res.status(400).json({
+          success: false,
+          error: 'Vous avez atteint le nombre maximum d\'enfants autorisés (3)',
+          currentChildren: currentChildrenCount,
+          pendingEnrollments: pendingCount
+        });
+      }
+
+      // NE PAS créer l'enfant maintenant - il sera créé à la validation du RDV
+      // Créer seulement la demande d'inscription (comme pour le formulaire visiteur)
       const enrollmentResult = await db.query(`
         INSERT INTO enrollments (
           applicant_first_name, applicant_last_name, applicant_email, applicant_phone,
           child_first_name, child_last_name, child_birth_date, child_gender,
-          child_id, parent_id, status, created_at
+          child_medical_info, parent_id, status, created_at
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'pending', NOW())
         RETURNING id, status
       `, [
         parent.first_name, parent.last_name, parent.email, parent.phone,
         child_first_name, child_last_name, child_birth_date, child_gender,
-        childId, parentId
+        medical_info || null, parentId
       ]);
 
       const enrollment = enrollmentResult.rows[0];
@@ -913,11 +932,11 @@ router.post('/add-child',
 
       res.status(201).json({
         success: true,
-        message: 'Demande d\'inscription envoyée avec succès',
+        message: 'Demande d\'inscription envoyée avec succès. Un rendez-vous vous sera proposé.',
         enrollment: {
           id: enrollment.id,
-          status: enrollment.status,
-          child_id: childId
+          status: enrollment.status
+          // child_id sera créé après validation du RDV
         }
       });
 

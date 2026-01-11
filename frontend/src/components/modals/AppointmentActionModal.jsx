@@ -59,8 +59,8 @@ const AppointmentActionModal = ({
     const handleValidate = async () => {
         setLoading(true);
         try {
-            const response = await api.post(`/api/appointments/${appointment.id}/validate`, {
-                staff_notes: notes
+            const response = await api.patch(`/api/appointments/${appointment.id}/complete`, {
+                notes: notes
             });
 
             const data = response.data;

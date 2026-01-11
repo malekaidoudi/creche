@@ -35,7 +35,7 @@ const cloudinaryService = {
       }
 
       const timestamp = Date.now();
-      const folder = `enrollments/child_${childId}`;
+      const folder = `children/child_${childId}`;
       const publicId = `${documentType}_${timestamp}`;
 
       const uploadOptions = {
@@ -94,10 +94,10 @@ const cloudinaryService = {
         return { success: false, error: 'Cloudinary non configuré' };
       }
 
-      const sourceFolder = `enrollments/child_${childId}`;
-      const targetFolder = `enrollments/archived_child_${childId}`;
+      const sourceFolder = `children/child_${childId}`;
+      const targetFolder = `archives/child_${childId}`;
 
-      console.log(`📦 Archivage dossier enfant #${childId}...`);
+      console.log(`📦 Archivage dossier enfant #${childId} (children → archives)...`);
 
       // Lister tous les fichiers du dossier source
       const resources = await cloudinary.api.resources({
@@ -159,9 +159,20 @@ const cloudinaryService = {
         return { success: false, error: 'Cloudinary non configuré' };
       }
 
-      const folder = folderType === 'child'
-        ? `enrollments/child_${id}`
-        : `enrollments/enrollment_${id}`;
+      let folder;
+      switch (folderType) {
+        case 'enrollment':
+          folder = `enrollments/enrollment_${id}`;
+          break;
+        case 'child':
+          folder = `children/child_${id}`;
+          break;
+        case 'archive':
+          folder = `archives/child_${id}`;
+          break;
+        default:
+          folder = id; // Chemin complet passé directement
+      }
 
       console.log(`🗑️ Suppression dossier ${folder}...`);
 
@@ -295,9 +306,9 @@ const cloudinaryService = {
       }
 
       const sourceFolder = `enrollments/enrollment_${enrollmentId}`;
-      const targetFolder = `enrollments/child_${childId}`;
+      const targetFolder = `children/child_${childId}`;
 
-      console.log(`📦 Migration documents inscription #${enrollmentId} → enfant #${childId}...`);
+      console.log(`📦 Migration documents inscription #${enrollmentId} → enfant #${childId} (enrollments → children)...`);
 
       // Lister tous les fichiers du dossier source
       let allResources = [];
@@ -645,6 +656,7 @@ const cloudinaryService = {
 
   /**
    * Lister les dossiers racine dans Cloudinary
+   * Inclut les dossiers attendus même s'ils sont vides
    * @returns {Promise<Object>} - Liste des dossiers
    */
   listFolders: async (path = '') => {
@@ -654,10 +666,40 @@ const cloudinaryService = {
       }
 
       const result = await cloudinary.api.root_folders();
+      const existingFolders = result.folders || [];
+
+      // Dossiers attendus dans la structure
+      const expectedFolders = [
+        'admin_documents',
+        'activities',
+        'virtual-tour',
+        'profiles',
+        'enrollments',
+        'children',
+        'archives'
+      ];
+
+      // Fusionner les dossiers existants avec les dossiers attendus
+      const existingNames = existingFolders.map(f => f.name);
+      const allFolders = [...existingFolders];
+
+      for (const folderName of expectedFolders) {
+        if (!existingNames.includes(folderName)) {
+          allFolders.push({
+            name: folderName,
+            path: folderName,
+            external_id: null,
+            empty: true // Marqueur pour indiquer que le dossier est vide/virtuel
+          });
+        }
+      }
+
+      // Trier par nom
+      allFolders.sort((a, b) => a.name.localeCompare(b.name));
 
       return {
         success: true,
-        folders: result.folders || []
+        folders: allFolders
       };
 
     } catch (error) {
@@ -854,6 +896,152 @@ const cloudinaryService = {
 
     } catch (error) {
       console.error('❌ Erreur suppression dossier Cloudinary:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  },
+
+  /**
+   * Déplacer un fichier vers un autre dossier
+   * @param {string} publicId - ID public du fichier
+   * @param {string} targetFolder - Dossier de destination
+   * @returns {Promise<Object>} - Résultat du déplacement
+   */
+  moveFile: async (publicId, targetFolder) => {
+    try {
+      if (!cloudinaryService.isConfigured()) {
+        return { success: false, error: 'Cloudinary non configuré' };
+      }
+
+      const filename = publicId.split('/').pop();
+      const newPublicId = targetFolder ? `${targetFolder}/${filename}` : filename;
+
+      console.log(`📦 Déplacement fichier: ${publicId} → ${newPublicId}`);
+
+      const result = await cloudinary.uploader.rename(publicId, newPublicId, {
+        overwrite: false,
+        invalidate: true
+      });
+
+      return {
+        success: true,
+        newPublicId: result.public_id,
+        url: result.secure_url
+      };
+
+    } catch (error) {
+      console.error('❌ Erreur déplacement fichier Cloudinary:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  },
+
+  /**
+   * Copier un fichier vers un autre dossier
+   * @param {string} publicId - ID public du fichier source
+   * @param {string} targetFolder - Dossier de destination
+   * @returns {Promise<Object>} - Résultat de la copie
+   */
+  copyFile: async (publicId, targetFolder) => {
+    try {
+      if (!cloudinaryService.isConfigured()) {
+        return { success: false, error: 'Cloudinary non configuré' };
+      }
+
+      const filename = publicId.split('/').pop();
+      const timestamp = Date.now();
+      const newPublicId = targetFolder ? `${targetFolder}/${filename}_copy_${timestamp}` : `${filename}_copy_${timestamp}`;
+
+      console.log(`📋 Copie fichier: ${publicId} → ${newPublicId}`);
+
+      // Récupérer l'URL du fichier source
+      const sourceResource = await cloudinary.api.resource(publicId);
+
+      // Uploader une copie
+      const result = await cloudinary.uploader.upload(sourceResource.secure_url, {
+        public_id: newPublicId,
+        resource_type: sourceResource.resource_type,
+        overwrite: false
+      });
+
+      return {
+        success: true,
+        newPublicId: result.public_id,
+        url: result.secure_url
+      };
+
+    } catch (error) {
+      console.error('❌ Erreur copie fichier Cloudinary:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  },
+
+  /**
+   * Créer un nouveau dossier
+   * @param {string} folderPath - Chemin du dossier à créer
+   * @returns {Promise<Object>} - Résultat de la création
+   */
+  createFolder: async (folderPath) => {
+    try {
+      if (!cloudinaryService.isConfigured()) {
+        return { success: false, error: 'Cloudinary non configuré' };
+      }
+
+      console.log(`📁 Création dossier: ${folderPath}`);
+
+      const result = await cloudinary.api.create_folder(folderPath);
+
+      return {
+        success: true,
+        folder: result
+      };
+
+    } catch (error) {
+      console.error('❌ Erreur création dossier Cloudinary:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  },
+
+  /**
+   * Renommer un fichier
+   * @param {string} publicId - ID public du fichier
+   * @param {string} newName - Nouveau nom du fichier
+   * @returns {Promise<Object>} - Résultat du renommage
+   */
+  renameFile: async (publicId, newName) => {
+    try {
+      if (!cloudinaryService.isConfigured()) {
+        return { success: false, error: 'Cloudinary non configuré' };
+      }
+
+      const folder = publicId.split('/').slice(0, -1).join('/');
+      const newPublicId = folder ? `${folder}/${newName}` : newName;
+
+      console.log(`✏️ Renommage fichier: ${publicId} → ${newPublicId}`);
+
+      const result = await cloudinary.uploader.rename(publicId, newPublicId, {
+        overwrite: false,
+        invalidate: true
+      });
+
+      return {
+        success: true,
+        newPublicId: result.public_id,
+        url: result.secure_url
+      };
+
+    } catch (error) {
+      console.error('❌ Erreur renommage fichier Cloudinary:', error);
       return {
         success: false,
         error: error.message

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useForm } from 'react-hook-form'
@@ -28,6 +28,8 @@ const AddChildPage = () => {
     const navigate = useNavigate()
 
     const [loading, setLoading] = useState(false)
+    const [checkingLimit, setCheckingLimit] = useState(true)
+    const [canAddChild, setCanAddChild] = useState(true)
     const [step, setStep] = useState(1)
     const [regulationScrolled, setRegulationScrolled] = useState(false)
     const regulationRef = useRef(null)
@@ -47,6 +49,29 @@ const AddChildPage = () => {
         watch,
         setValue
     } = useForm()
+
+    // Vérifier la limite d'enfants au chargement
+    useEffect(() => {
+        const checkChildrenLimit = async () => {
+            try {
+                const response = await api.get('/api/children/my-count')
+                if (response.data?.success) {
+                    if (!response.data.canAddChild) {
+                        setCanAddChild(false)
+                        dialog.error(isRTL
+                            ? 'لقد وصلت إلى الحد الأقصى للأطفال (3 أطفال)'
+                            : 'Vous avez atteint la limite de 3 enfants')
+                        setTimeout(() => navigate('/mon-espace'), 2000)
+                    }
+                }
+            } catch (error) {
+                console.error('Erreur vérification limite:', error)
+            } finally {
+                setCheckingLimit(false)
+            }
+        }
+        checkChildrenLimit()
+    }, [])
 
     // Gestion des documents
     const handleDocumentChange = (documentType, file) => {
@@ -163,6 +188,35 @@ const AddChildPage = () => {
         window.scrollTo({ top: 0, behavior: 'smooth' })
     }
 
+    // Afficher le chargement pendant la vérification de la limite
+    if (checkingLimit) {
+        return (
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+                <LoadingSpinner />
+            </div>
+        )
+    }
+
+    // Bloquer l'accès si limite atteinte
+    if (!canAddChild) {
+        return (
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+                <div className="text-center p-8">
+                    <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                        {isRTL ? 'الحد الأقصى للأطفال' : 'Limite atteinte'}
+                    </h2>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">
+                        {isRTL ? 'لقد وصلت إلى الحد الأقصى (3 أطفال)' : 'Vous avez atteint la limite de 3 enfants'}
+                    </p>
+                    <p className="text-sm text-gray-500 dark:text-gray-500">
+                        {isRTL ? 'جاري إعادة التوجيه...' : 'Redirection en cours...'}
+                    </p>
+                </div>
+            </div>
+        )
+    }
+
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
             <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -193,10 +247,10 @@ const AddChildPage = () => {
                         {[1, 2, 3].map((stepNumber) => (
                             <div key={stepNumber} className="flex items-center flex-1">
                                 <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium ${step === stepNumber
-                                        ? 'bg-primary-600 text-white'
-                                        : step > stepNumber
-                                            ? 'bg-green-500 text-white'
-                                            : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                                    ? 'bg-primary-600 text-white'
+                                    : step > stepNumber
+                                        ? 'bg-green-500 text-white'
+                                        : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
                                     }`}>
                                     {step > stepNumber ? <CheckCircle className="w-5 h-5" /> : stepNumber}
                                 </div>

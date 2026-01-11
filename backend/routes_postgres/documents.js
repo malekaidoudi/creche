@@ -351,7 +351,7 @@ router.post('/children/:childId',
                 console.log('📤 Tentative upload vers Cloudinary:', file.path);
                 const uploadResult = await cloudinaryService.uploadFile(
                     file.path,
-                    `children/${childId}`
+                    `children/child_${childId}`
                 );
                 console.log('📤 Résultat upload Cloudinary:', uploadResult);
                 if (uploadResult.success) {

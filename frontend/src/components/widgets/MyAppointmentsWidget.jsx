@@ -98,28 +98,35 @@ const MyAppointmentsWidget = ({ onRequestAppointment, onRescheduleAppointment })
     onRescheduleAppointment?.(appointment);
   };
 
-  const getStatusConfig = (status) => {
+  const getStatusConfig = (status, pendingResponseFrom) => {
+    // Si c'est au parent de répondre, afficher "À confirmer"
+    const needsParentAction = pendingResponseFrom === 'parent';
+
     const configs = {
       proposed: {
-        label: isRTL ? 'في انتظار التأكيد' : 'En attente de validation',
-        icon: AlertCircle,
-        color: 'text-blue-600 dark:text-blue-400',
-        bg: 'bg-blue-50 dark:bg-blue-900/20',
-        border: 'border-blue-200 dark:border-blue-800'
+        label: needsParentAction
+          ? (isRTL ? 'في انتظار ردك' : 'À confirmer')
+          : (isRTL ? 'في انتظار الرد' : 'En attente de réponse'),
+        icon: needsParentAction ? AlertCircle : Clock,
+        color: needsParentAction ? 'text-orange-600 dark:text-orange-400' : 'text-blue-600 dark:text-blue-400',
+        bg: needsParentAction ? 'bg-orange-50 dark:bg-orange-900/20' : 'bg-blue-50 dark:bg-blue-900/20',
+        border: needsParentAction ? 'border-orange-200 dark:border-orange-800' : 'border-blue-200 dark:border-blue-800'
+      },
+      counter_proposed: {
+        label: needsParentAction
+          ? (isRTL ? 'تاريخ جديد - في انتظار ردك' : 'Nouvelle date - À confirmer')
+          : (isRTL ? 'تاريخ جديد - في انتظار الرد' : 'Nouvelle date - En attente'),
+        icon: needsParentAction ? AlertCircle : Clock,
+        color: needsParentAction ? 'text-orange-600 dark:text-orange-400' : 'text-purple-600 dark:text-purple-400',
+        bg: needsParentAction ? 'bg-orange-50 dark:bg-orange-900/20' : 'bg-purple-50 dark:bg-purple-900/20',
+        border: needsParentAction ? 'border-orange-200 dark:border-orange-800' : 'border-purple-200 dark:border-purple-800'
       },
       confirmed: {
-        label: isRTL ? 'مؤكد' : 'Validé',
+        label: isRTL ? 'مؤكد' : 'Confirmé',
         icon: CheckCircle,
         color: 'text-green-600 dark:text-green-400',
         bg: 'bg-green-50 dark:bg-green-900/20',
         border: 'border-green-200 dark:border-green-800'
-      },
-      rescheduled: {
-        label: isRTL ? 'في انتظار التأكيد' : 'En attente de validation',
-        icon: AlertCircle,
-        color: 'text-orange-600 dark:text-orange-400',
-        bg: 'bg-orange-50 dark:bg-orange-900/20',
-        border: 'border-orange-200 dark:border-orange-800'
       },
       completed: {
         label: isRTL ? 'مكتمل' : 'Terminé',
@@ -136,11 +143,11 @@ const MyAppointmentsWidget = ({ onRequestAppointment, onRescheduleAppointment })
         border: 'border-red-200 dark:border-red-800'
       },
       failed: {
-        label: isRTL ? 'فشل' : 'À reprogrammer',
-        icon: AlertCircle,
-        color: 'text-orange-600 dark:text-orange-400',
-        bg: 'bg-orange-50 dark:bg-orange-900/20',
-        border: 'border-orange-200 dark:border-orange-800'
+        label: isRTL ? 'فشل' : 'Échoué',
+        icon: XCircle,
+        color: 'text-red-600 dark:text-red-400',
+        bg: 'bg-red-50 dark:bg-red-900/20',
+        border: 'border-red-200 dark:border-red-800'
       }
     };
     return configs[status] || configs.proposed;
@@ -184,8 +191,9 @@ const MyAppointmentsWidget = ({ onRequestAppointment, onRescheduleAppointment })
       ) : (
         <div className="space-y-3">
           {appointments.map((appointment) => {
-            const statusConfig = getStatusConfig(appointment.status);
+            const statusConfig = getStatusConfig(appointment.status, appointment.pending_response_from);
             const StatusIcon = statusConfig.icon;
+            const needsParentAction = appointment.pending_response_from === 'parent';
 
             return (
               <div
@@ -222,8 +230,8 @@ const MyAppointmentsWidget = ({ onRequestAppointment, onRescheduleAppointment })
                       </div>
                     </div>
 
-                    {/* Boutons d'action pour RDV proposé */}
-                    {appointment.status === 'proposed' && (
+                    {/* Boutons d'action quand c'est au parent de répondre */}
+                    {needsParentAction && (appointment.status === 'proposed' || appointment.status === 'counter_proposed') && (
                       <div className="flex items-center gap-2 pt-2 border-t border-gray-200 dark:border-gray-600">
                         <button
                           onClick={(e) => {
@@ -233,7 +241,7 @@ const MyAppointmentsWidget = ({ onRequestAppointment, onRescheduleAppointment })
                           className="flex-1 flex items-center justify-center gap-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded transition-colors"
                         >
                           <Check className="w-3 h-3" />
-                          <span>{isRTL ? 'تأكيد' : 'Valider'}</span>
+                          <span>{isRTL ? 'تأكيد' : 'Confirmer'}</span>
                         </button>
                         <button
                           onClick={(e) => {
@@ -248,25 +256,25 @@ const MyAppointmentsWidget = ({ onRequestAppointment, onRescheduleAppointment })
                       </div>
                     )}
 
-                    {/* Message pour RDV en attente de validation (rescheduled) */}
-                    {appointment.status === 'rescheduled' && (
-                      <div className="mt-3 p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+                    {/* Message quand c'est à l'admin de répondre */}
+                    {!needsParentAction && (appointment.status === 'proposed' || appointment.status === 'counter_proposed') && (
+                      <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                         <div className="flex items-start gap-2">
-                          <Info className="w-4 h-4 text-orange-500 mt-0.5 shrink-0" />
+                          <Clock className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
                           <div>
-                            <p className="text-sm text-orange-800 dark:text-orange-300 font-medium">
-                              {isRTL ? 'موعدك في انتظار التأكيد' : 'Votre RDV est en attente de validation'}
+                            <p className="text-sm text-blue-800 dark:text-blue-300 font-medium">
+                              {isRTL ? 'في انتظار رد الإدارة' : 'En attente de réponse de l\'administration'}
                             </p>
-                            <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                            <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
                               {isRTL
-                                ? 'سيتم الرد عليك قريبًا. للاستفسار، اتصل بالحضانة:'
-                                : 'Vous serez informé prochainement. Pour toute question, contactez la crèche :'
+                                ? 'سيتم الرد عليك قريبًا. للاستفسار:'
+                                : 'Vous serez informé prochainement. Pour toute question :'
                               }
                             </p>
                             {crechePhone && (
                               <a
                                 href={`tel:${crechePhone}`}
-                                className="inline-flex items-center gap-1 mt-2 text-sm font-semibold text-orange-700 dark:text-orange-300 hover:underline"
+                                className="inline-flex items-center gap-1 mt-2 text-sm font-semibold text-blue-700 dark:text-blue-300 hover:underline"
                               >
                                 <Phone className="w-3 h-3" />
                                 {crechePhone}
@@ -277,31 +285,14 @@ const MyAppointmentsWidget = ({ onRequestAppointment, onRescheduleAppointment })
                       </div>
                     )}
 
-                    {/* Message pour RDV failed (à reprogrammer) */}
-                    {appointment.status === 'failed' && (
-                      <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                    {/* Message pour RDV confirmé */}
+                    {appointment.status === 'confirmed' && (
+                      <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
                         <div className="flex items-start gap-2">
-                          <XCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
-                          <div>
-                            <p className="text-sm text-red-800 dark:text-red-300 font-medium">
-                              {isRTL ? 'تم رفض موعدك' : 'Votre RDV a été refusé'}
-                            </p>
-                            <p className="text-xs text-red-600 dark:text-red-400 mt-1">
-                              {isRTL
-                                ? 'سنقوم بتحديد موعد جديد قريبًا. إذا كنت ترغب في الاتصال بنا:'
-                                : 'Nous allons fixer un nouveau RDV bientôt. Si vous souhaitez nous appeler :'
-                              }
-                            </p>
-                            {crechePhone && (
-                              <a
-                                href={`tel:${crechePhone}`}
-                                className="inline-flex items-center gap-1 mt-2 text-sm font-semibold text-red-700 dark:text-red-300 hover:underline"
-                              >
-                                <Phone className="w-3 h-3" />
-                                {crechePhone}
-                              </a>
-                            )}
-                          </div>
+                          <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
+                          <p className="text-sm text-green-800 dark:text-green-300 font-medium">
+                            {isRTL ? 'موعدك مؤكد!' : 'Votre RDV est confirmé !'}
+                          </p>
                         </div>
                       </div>
                     )}

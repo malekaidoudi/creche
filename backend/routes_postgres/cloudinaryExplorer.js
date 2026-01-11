@@ -91,7 +91,7 @@ router.get('/resources', auth.authenticateToken, auth.requireRole('admin'), asyn
 router.get('/all-resources', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
     try {
         const { folder, max_results } = req.query;
-        const maxRes = parseInt(max_results) || 100;
+        const maxRes = parseInt(max_results) || 500; // Augmenté à 500 pour voir plus de fichiers
 
         // Récupérer les 3 types de ressources en parallèle
         const [images, videos, raw] = await Promise.all([
@@ -182,6 +182,106 @@ router.delete('/folder/:path(*)', auth.authenticateToken, auth.requireRole('admi
         res.json({ success: true, message: 'Dossier supprimé' });
     } catch (error) {
         console.error('❌ Erreur DELETE /api/cloudinary-explorer/folder:', error);
+        res.status(500).json({ success: false, error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/cloudinary-explorer/move
+ * Déplacer un fichier vers un autre dossier
+ */
+router.post('/move', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
+    try {
+        const { publicId, targetFolder } = req.body;
+
+        if (!publicId) {
+            return res.status(400).json({ success: false, error: 'publicId requis' });
+        }
+
+        const result = await cloudinaryService.moveFile(publicId, targetFolder || '');
+
+        if (!result.success) {
+            return res.status(500).json(result);
+        }
+
+        res.json({ success: true, message: 'Fichier déplacé', newPublicId: result.newPublicId });
+    } catch (error) {
+        console.error('❌ Erreur POST /api/cloudinary-explorer/move:', error);
+        res.status(500).json({ success: false, error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/cloudinary-explorer/copy
+ * Copier un fichier vers un autre dossier
+ */
+router.post('/copy', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
+    try {
+        const { publicId, targetFolder } = req.body;
+
+        if (!publicId) {
+            return res.status(400).json({ success: false, error: 'publicId requis' });
+        }
+
+        const result = await cloudinaryService.copyFile(publicId, targetFolder || '');
+
+        if (!result.success) {
+            return res.status(500).json(result);
+        }
+
+        res.json({ success: true, message: 'Fichier copié', newPublicId: result.newPublicId });
+    } catch (error) {
+        console.error('❌ Erreur POST /api/cloudinary-explorer/copy:', error);
+        res.status(500).json({ success: false, error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * POST /api/cloudinary-explorer/create-folder
+ * Créer un nouveau dossier
+ */
+router.post('/create-folder', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
+    try {
+        const { folderPath } = req.body;
+
+        if (!folderPath) {
+            return res.status(400).json({ success: false, error: 'Chemin du dossier requis' });
+        }
+
+        const result = await cloudinaryService.createFolder(folderPath);
+
+        if (!result.success) {
+            return res.status(500).json(result);
+        }
+
+        res.json({ success: true, message: 'Dossier créé', folder: result.folder });
+    } catch (error) {
+        console.error('❌ Erreur POST /api/cloudinary-explorer/create-folder:', error);
+        res.status(500).json({ success: false, error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * PUT /api/cloudinary-explorer/rename
+ * Renommer un fichier
+ */
+router.put('/rename', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
+    try {
+        const { publicId, newName } = req.body;
+
+        if (!publicId || !newName) {
+            return res.status(400).json({ success: false, error: 'publicId et newName requis' });
+        }
+
+        const result = await cloudinaryService.renameFile(publicId, newName);
+
+        if (!result.success) {
+            return res.status(500).json(result);
+        }
+
+        res.json({ success: true, message: 'Fichier renommé', newPublicId: result.newPublicId });
+    } catch (error) {
+        console.error('❌ Erreur PUT /api/cloudinary-explorer/rename:', error);
         res.status(500).json({ success: false, error: 'Erreur serveur' });
     }
 });

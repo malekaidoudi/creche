@@ -40,6 +40,48 @@ router.get('/simple', auth.authenticateToken, async (req, res) => {
   }
 });
 
+// GET /api/children/my-count - Nombre d'enfants du parent connecté (pour limite 3 enfants)
+router.get('/my-count', auth.authenticateToken, async (req, res) => {
+  try {
+    const parentId = req.user.userId || req.user.id;
+
+    // Compter les enfants actifs du parent
+    const childrenResult = await pool.query(
+      'SELECT COUNT(*) as count FROM children WHERE parent_id = $1 AND is_active = true',
+      [parentId]
+    );
+    const childrenCount = parseInt(childrenResult.rows[0].count, 10);
+
+    // Compter les inscriptions en cours (pending/in_progress)
+    const pendingResult = await pool.query(
+      `SELECT COUNT(*) as count FROM enrollments 
+       WHERE parent_id = $1 AND status IN ('pending', 'in_progress')`,
+      [parentId]
+    );
+    const pendingCount = parseInt(pendingResult.rows[0].count, 10);
+
+    const totalCount = childrenCount + pendingCount;
+    const maxChildren = 3;
+    const canAddChild = totalCount < maxChildren;
+
+    res.json({
+      success: true,
+      childrenCount,
+      pendingCount,
+      totalCount,
+      maxChildren,
+      canAddChild,
+      remaining: Math.max(0, maxChildren - totalCount)
+    });
+  } catch (error) {
+    console.error('Erreur comptage enfants:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors du comptage des enfants'
+    });
+  }
+});
+
 // GET /api/children/available - Enfants disponibles (sans parent)
 router.get('/available', async (req, res) => {
   try {
@@ -351,26 +393,50 @@ router.put('/:id/associate-parent', auth.authenticateToken, async (req, res) => 
 });
 
 // PUT /api/children/:id/deactivate-parent - Désactiver le compte parent d'un enfant
-router.put('/:id/deactivate-parent', async (req, res) => {
+router.put('/:id/deactivate-parent', auth.authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Désactiver l'inscription
-    const sql = `
-      UPDATE enrollments 
-      SET status = 'rejected', updated_at = NOW()
-      WHERE child_id = $1
-      RETURNING *
-    `;
+    // 1. Récupérer le parent_id de l'enfant
+    const childResult = await pool.query(
+      'SELECT parent_id FROM children WHERE id = $1',
+      [id]
+    );
 
-    const result = await pool.query(sql, [id]);
+    if (childResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Enfant non trouvé'
+      });
+    }
+
+    const parentId = childResult.rows[0].parent_id;
+
+    if (!parentId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Aucun parent associé à cet enfant'
+      });
+    }
+
+    // 2. Désactiver le compte utilisateur du parent
+    await pool.query(
+      'UPDATE users SET is_active = false, updated_at = NOW() WHERE id = $1',
+      [parentId]
+    );
+
+    // Note: Les inscriptions sont déjà archivées dans enrollments_archive lors de l'archivage de l'enfant
+    // Pas besoin de modifier la table enrollments ici
+
+    console.log(`✅ Compte parent #${parentId} désactivé suite à l'archivage de l'enfant #${id}`);
 
     res.json({
       success: true,
-      message: 'Compte parent désactivé avec succès'
+      message: 'Compte parent désactivé avec succès',
+      parentId: parentId
     });
   } catch (error) {
-    console.error('Erreur désactivation parent:', error);
+    console.error('❌ Erreur désactivation parent:', error);
     res.status(500).json({
       success: false,
       error: 'Erreur lors de la désactivation du parent'
@@ -624,13 +690,16 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// POST /api/children - Créer un nouvel enfant
+// POST /api/children - Créer un nouvel enfant (via dashboard admin)
+// Utilise le service centralisé childLifecycleService
 router.post('/', [
   body('first_name').notEmpty().withMessage('Prénom requis'),
   body('last_name').notEmpty().withMessage('Nom requis'),
   body('birth_date').isISO8601().withMessage('Date de naissance invalide'),
   body('gender').isIn(['male', 'female', 'M', 'F']).withMessage('Genre invalide')
 ], async (req, res) => {
+  const childLifecycleService = require('../services/childLifecycleService');
+
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -645,152 +714,101 @@ router.post('/', [
       first_name,
       last_name,
       birth_date,
-      gender: rawGender,
+      gender,
       medical_info,
       emergency_contact_name,
       emergency_contact_phone,
-      photo_url
+      photo_url,
+      parent_id
     } = req.body;
 
-    // Normaliser le genre (M/F → male/female)
-    const gender = rawGender === 'M' ? 'male' : rawGender === 'F' ? 'female' : rawGender;
-
-    // Vérifier si un enfant avec le même nom, prénom et date de naissance existe déjà
-    const duplicateCheck = await pool.query(
-      `SELECT id, first_name, last_name, birth_date FROM children 
-       WHERE LOWER(first_name) = LOWER($1) 
-       AND LOWER(last_name) = LOWER($2) 
-       AND birth_date = $3 
-       AND is_active = true`,
-      [first_name, last_name, birth_date]
+    // Utiliser le service centralisé pour créer l'enfant
+    const result = await childLifecycleService.createChild(
+      {
+        first_name,
+        last_name,
+        birth_date,
+        gender,
+        medical_info,
+        emergency_contact_name,
+        emergency_contact_phone,
+        photo_url,
+        parent_id
+      },
+      {
+        created_by: req.user?.id,
+        transfer_documents: false, // Pas de documents à transférer (création directe)
+        create_birthday_event: true,
+        create_notification: !!parent_id, // Notification seulement si parent associé
+        archive_enrollment: false // Pas d'inscription à archiver
+      }
     );
 
-    if (duplicateCheck.rows.length > 0) {
+    if (!result.success) {
       return res.status(400).json({
         success: false,
-        error: 'Un enfant avec le même nom, prénom et date de naissance existe déjà',
-        duplicate: duplicateCheck.rows[0]
+        error: result.error,
+        duplicate: result.duplicate
       });
     }
 
-    // Insérer le nouvel enfant
-    const result = await pool.query(
-      `INSERT INTO children (first_name, last_name, birth_date, gender, medical_info, 
-                            emergency_contact_name, emergency_contact_phone, photo_url, is_active) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
-       RETURNING id, first_name, last_name, birth_date, gender, medical_info, 
-                 emergency_contact_name, emergency_contact_phone, photo_url, 
-                 is_active, created_at`,
-      [first_name, last_name, birth_date, gender, medical_info,
-        emergency_contact_name, emergency_contact_phone, photo_url, true]
-    );
-
-    const newChild = result.rows[0];
-
-    // Créer automatiquement une inscription (enrollment) avec statut 'approved'
-    // pour que l'enfant apparaisse dans la page inscriptions
+    // Créer une entrée dans enrollments_archive pour traçabilité
     try {
-      // Vérifier si une inscription existe déjà pour cet enfant
-      const existingEnrollment = await pool.query(
-        'SELECT id FROM enrollments WHERE child_id = $1',
-        [newChild.id]
-      );
-
-      if (existingEnrollment.rows.length === 0) {
-        // Récupérer les infos du parent si parent_id est fourni dans la requête
-        let parentInfo = {
-          first_name: 'Ajouté via',
-          last_name: 'Dashboard',
-          email: 'dashboard@creche.local',
-          phone: null
-        };
-
-        // Si un parent_id est fourni dans le body, récupérer ses infos
-        if (req.body.parent_id) {
-          const parentResult = await pool.query(
-            'SELECT first_name, last_name, email, phone FROM users WHERE id = $1',
-            [req.body.parent_id]
-          );
-          if (parentResult.rows[0]) {
-            parentInfo = parentResult.rows[0];
-          }
-        }
-
-        // Créer l'inscription avec les vraies données
-        await pool.query(
-          `INSERT INTO enrollments (
-            child_id, child_first_name, child_last_name, child_birth_date, child_gender,
-            applicant_first_name, applicant_last_name, applicant_email, applicant_phone,
-            status, created_at, updated_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'approved', NOW(), NOW())`,
-          [
-            newChild.id,
-            first_name,
-            last_name,
-            birth_date,
-            gender,
-            parentInfo.first_name,
-            parentInfo.last_name,
-            parentInfo.email,
-            parentInfo.phone
-          ]
+      let parentInfo = { first_name: 'Inscription directe', last_name: 'via Dashboard', email: null };
+      if (parent_id) {
+        const parentResult = await pool.query(
+          'SELECT first_name, last_name, email FROM users WHERE id = $1',
+          [parent_id]
         );
-        console.log(`✅ Inscription créée automatiquement pour l'enfant ${first_name} ${last_name}`);
+        if (parentResult.rows[0]) parentInfo = parentResult.rows[0];
       }
-    } catch (enrollmentError) {
-      // Log l'erreur mais ne pas bloquer la création de l'enfant
-      console.warn('⚠️ Erreur création enrollment automatique:', enrollmentError.message);
-    }
 
-    // Créer une entrée dans children_documents avec note "Dossier non disponible"
-    try {
       await pool.query(
-        `INSERT INTO children_documents (child_id, filename, original_filename, file_path, mime_type, file_size, document_type, uploaded_at, notes)
-         VALUES ($1, 'dossier_non_disponible.txt', 'Dossier non disponible', 'non_disponible', 'text/plain', 0, 'dossier_complet', NOW(), 'Dossier non disponible - Documents à fournir')`,
-        [newChild.id]
+        `INSERT INTO enrollments_archive (
+          child_id, parent_id, enrollment_date, status, new_status,
+          applicant_first_name, applicant_last_name, applicant_email,
+          admin_notes, created_at, updated_at, approved_by, approved_at
+        ) VALUES ($1, $2, NOW(), 'approved', 'approved', $3, $4, $5, $6, NOW(), NOW(), $7, NOW())`,
+        [
+          result.childId,
+          parent_id || null,
+          parentInfo.first_name,
+          parentInfo.last_name,
+          parentInfo.email,
+          'Inscription directe à la crèche - Enfant ajouté via le dashboard admin',
+          req.user?.id || 1
+        ]
       );
-      console.log(`📄 Entrée document créée pour l'enfant ${first_name} ${last_name}`);
-    } catch (docError) {
-      console.warn('⚠️ Erreur création document automatique:', docError.message);
+    } catch (archiveError) {
+      console.warn('⚠️ Erreur création archive inscription:', archiveError.message);
     }
 
-    // Créer automatiquement un événement anniversaire pour cette année et l'année prochaine
+    // Créer une tâche admin pour compléter le dossier
     try {
-      const birthDate = new Date(birth_date);
-      const currentYear = new Date().getFullYear();
+      const adminResult = await pool.query(`SELECT id FROM users WHERE role = 'admin' ORDER BY id LIMIT 1`);
+      const adminId = adminResult.rows.length > 0 ? adminResult.rows[0].id : req.user?.id || 1;
 
-      // Créer les anniversaires pour l'année en cours et l'année prochaine
-      for (let year of [currentYear, currentYear + 1]) {
-        const birthdayDate = new Date(year, birthDate.getMonth(), birthDate.getDate());
-
-        // Vérifier si l'événement existe déjà
-        const existingEvent = await pool.query(
-          `SELECT id FROM events WHERE child_id = $1 AND type = 'birthday' AND DATE(start_date) = $2`,
-          [newChild.id, birthdayDate.toISOString().split('T')[0]]
-        );
-
-        if (existingEvent.rows.length === 0) {
-          await pool.query(
-            `INSERT INTO events (title, type, start_date, all_day, status, priority, child_id, created_by, color)
-             VALUES ($1, 'birthday', $2, true, 'pending', 'low', $3, $4, '#ec4899')`,
-            [
-              `🎂 Anniversaire de ${first_name}`,
-              birthdayDate,
-              newChild.id,
-              req.user?.id || 1
-            ]
-          );
-        }
-      }
-      console.log(`🎂 Événements anniversaire créés pour ${first_name} ${last_name}`);
-    } catch (eventError) {
-      console.warn('⚠️ Erreur création événement anniversaire:', eventError.message);
+      await pool.query(
+        `INSERT INTO tasks (
+          title, description, assigned_to, created_by, 
+          due_date, priority, status, created_at
+        ) VALUES ($1, $2, $3, $4, $5, 'medium', 'pending', NOW())`,
+        [
+          `📄 Compléter le dossier de ${first_name} ${last_name}`,
+          `Documents manquants pour l'enfant ${first_name} ${last_name} (ID: ${result.childId}).\n\n🔗 Accéder aux documents: /dashboard/documents\n\nDocuments requis:\n- Carnet médical\n- Acte de naissance\n- Certificat médical`,
+          adminId,
+          req.user?.id || adminId,
+          new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+        ]
+      );
+    } catch (taskError) {
+      console.warn('⚠️ Erreur création tâche documents:', taskError.message);
     }
 
     res.status(201).json({
       success: true,
       message: 'Enfant créé avec succès',
-      child: newChild
+      child: result.child
     });
 
   } catch (error) {
@@ -950,90 +968,117 @@ router.put('/:id', [
 });
 
 // DELETE /api/children/:id - Supprimer un enfant (soft delete)
+// Utilise le service centralisé childLifecycleService
 router.delete('/:id', auth.authenticateToken, async (req, res) => {
+  const childLifecycleService = require('../services/childLifecycleService');
+
   try {
     const { id } = req.params;
+    const { reason, checkParentDeactivation } = req.body;
 
-    // Vérifier si l'enfant existe
-    const existingChild = await pool.query('SELECT id, first_name, last_name FROM children WHERE id = $1', [id]);
-    if (existingChild.rows.length === 0) {
+    console.log(`🗑️ DELETE /api/children/${id} - Début archivage`);
+    console.log(`📋 Body reçu:`, { reason, checkParentDeactivation, rawBody: req.body });
+
+    // Récupérer les infos de l'enfant AVANT l'archivage (incluant parent_id)
+    const childResult = await pool.query(`
+      SELECT c.first_name, c.last_name, c.parent_id, u.first_name as parent_first_name, u.last_name as parent_last_name
+      FROM children c
+      LEFT JOIN users u ON c.parent_id = u.id
+      WHERE c.id = $1
+    `, [id]);
+
+    if (childResult.rows.length === 0) {
       return res.status(404).json({
         success: false,
         error: 'Enfant non trouvé'
       });
     }
+    const childInfo = childResult.rows[0];
+    const parentId = childInfo.parent_id;
 
-    const child = existingChild.rows[0];
+    // Récupérer les documents AVANT l'archivage
+    const docsResult = await pool.query('SELECT * FROM children_documents WHERE child_id = $1', [id]);
 
-    // Archiver les documents de l'enfant avant de le désactiver
-    const docsResult = await pool.query(
-      'SELECT * FROM children_documents WHERE child_id = $1',
-      [id]
-    );
+    // Utiliser le service centralisé pour supprimer/archiver l'enfant
+    const result = await childLifecycleService.deleteChild(parseInt(id), {
+      archive: true,
+      deleted_by: req.user?.id,
+      reason: reason || 'Archivé via dashboard'
+    });
 
-    if (docsResult.rows.length > 0) {
-      console.log(`📦 Archivage de ${docsResult.rows.length} document(s) pour l'enfant ${child.first_name} ${child.last_name}`);
-
-      // Archiver le dossier Cloudinary (renommer avec préfixe archived_)
-      if (cloudinaryService.isConfigured()) {
-        console.log(`☁️  Archivage dossier Cloudinary: child_${id} → archived_child_${id}`);
-        const archiveResult = await cloudinaryService.archiveChildFolder(id);
-        if (archiveResult.success) {
-          console.log(`✅ Dossier Cloudinary archivé: ${archiveResult.archivedCount} fichier(s)`);
-
-          // Mettre à jour les URLs dans les documents avant archivage
-          for (const doc of docsResult.rows) {
-            const archivedFile = archiveResult.archivedFiles?.find(f => f.old === doc.cloudinary_public_id);
-            if (archivedFile) {
-              doc.cloudinary_public_id = archivedFile.new;
-              doc.cloudinary_url = doc.cloudinary_url?.replace(`/child_${id}/`, `/archived_child_${id}/`);
-            }
-          }
-        }
-      }
-
-      for (const doc of docsResult.rows) {
-        // Insérer dans archived_documents avec les nouvelles URLs
-        await pool.query(`
-          INSERT INTO archived_documents (
-            child_first_name, child_last_name, document_type,
-            original_filename, cloudinary_url, cloudinary_public_id,
-            file_size, mime_type, archived_by, archived_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
-        `, [
-          child.first_name,
-          child.last_name,
-          doc.document_type,
-          doc.original_filename,
-          doc.cloudinary_url,
-          doc.cloudinary_public_id,
-          doc.file_size,
-          doc.mime_type,
-          req.user?.id || null
-        ]);
-      }
-
-      // Supprimer les documents de children_documents
-      await pool.query('DELETE FROM children_documents WHERE child_id = $1', [id]);
-      console.log(`✅ Documents archivés pour l'enfant #${id}`);
+    if (!result.success) {
+      console.error('❌ childLifecycleService.deleteChild failed:', result.error);
+      return res.status(400).json({
+        success: false,
+        error: result.error || 'Erreur lors de l\'archivage'
+      });
     }
 
-    // Soft delete - désactiver l'enfant
-    await pool.query(
-      'UPDATE children SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = $1',
-      [id]
-    );
+    // Archiver les documents dans archived_documents pour traçabilité
+    if (docsResult.rows.length > 0) {
+      for (const doc of docsResult.rows) {
+        try {
+          await pool.query(`
+            INSERT INTO archived_documents (
+              child_first_name, child_last_name, document_type,
+              original_filename, cloudinary_url, cloudinary_public_id,
+              file_size, mime_type, archived_by, archived_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+          `, [
+            childInfo.first_name,
+            childInfo.last_name,
+            doc.document_type,
+            doc.original_filename,
+            doc.cloudinary_url,
+            doc.cloudinary_public_id,
+            doc.file_size,
+            doc.mime_type,
+            req.user?.id || null
+          ]);
+        } catch (archiveErr) {
+          console.warn('⚠️ Erreur archivage document:', archiveErr.message);
+        }
+      }
+      await pool.query('DELETE FROM children_documents WHERE child_id = $1', [id]);
+    }
+
+    console.log(`✅ Enfant #${id} archivé avec succès`);
+
+    // Vérifier si le parent a d'autres enfants actifs
+    let parentHasNoOtherChildren = false;
+    let parentName = null;
+
+    console.log(`🔍 checkParentDeactivation: ${checkParentDeactivation}, parentId: ${parentId}`);
+
+    if (checkParentDeactivation && parentId) {
+      const otherChildrenResult = await pool.query(`
+        SELECT COUNT(*) as count FROM children 
+        WHERE parent_id = $1 AND id != $2 AND is_active = true
+      `, [parentId, id]);
+
+      const otherChildrenCount = parseInt(otherChildrenResult.rows[0].count);
+      parentHasNoOtherChildren = otherChildrenCount === 0;
+      parentName = `${childInfo.parent_first_name || ''} ${childInfo.parent_last_name || ''}`.trim() || 'Le parent';
+
+      console.log(`👨‍👩‍👧 Parent #${parentId} (${parentName}) a ${otherChildrenCount} autre(s) enfant(s) actif(s)`);
+      console.log(`📊 parentHasNoOtherChildren: ${parentHasNoOtherChildren}`);
+    } else {
+      console.log(`⚠️ Vérification parent ignorée: checkParentDeactivation=${checkParentDeactivation}, parentId=${parentId}`);
+    }
 
     res.json({
       success: true,
-      message: 'Enfant désactivé et documents archivés avec succès'
+      message: `${childInfo.first_name} ${childInfo.last_name} archivé avec succès`,
+      parentId: parentId,
+      parentName: parentName,
+      parentHasNoOtherChildren: parentHasNoOtherChildren
     });
 
   } catch (error) {
-    console.error('Erreur suppression enfant:', error);
+    console.error('❌ Erreur suppression enfant:', error);
     res.status(500).json({
       success: false,
-      error: 'Erreur lors de la suppression de l\'enfant'
+      error: error.message || 'Erreur lors de la suppression de l\'enfant'
     });
   }
 });

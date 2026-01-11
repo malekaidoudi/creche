@@ -100,8 +100,8 @@ const RescheduleAppointmentModal = ({ isOpen, onClose, appointment, onSuccess })
       const isoDate = convertToISO(formData.new_date);
       const newDateTime = `${isoDate}T${formData.new_time}:00`;
 
-      const response = await api.patch(`/api/appointments/${appointment.id}/reschedule`, {
-        new_date: newDateTime
+      const response = await api.patch(`/api/appointments/${appointment.id}/counter-propose`, {
+        proposed_date: newDateTime
       });
 
       if (response.data.success) {

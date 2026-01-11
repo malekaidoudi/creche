@@ -211,6 +211,21 @@ exports.confirmAppointment = async (req, res) => {
 
         const appointment = result.rows[0];
 
+        // Si c'est un RDV d'inscription, marquer la tâche comme complétée
+        if (appointment.enrollment_id) {
+            try {
+                // Chercher et compléter la tâche liée à ce dossier d'inscription
+                await db.query(`
+                    UPDATE tasks 
+                    SET status = 'completed', completed_at = NOW(), updated_at = NOW()
+                    WHERE related_type = 'enrollment' AND related_id = $1 AND status != 'completed'
+                `, [appointment.enrollment_id]);
+                console.log(`✅ Tâche d'inscription #${appointment.enrollment_id} marquée comme complétée`);
+            } catch (taskError) {
+                console.error('❌ Erreur mise à jour tâche:', taskError);
+            }
+        }
+
         // TODO: Envoyer notification au staff
 
         res.json({
@@ -306,9 +321,11 @@ exports.rescheduleAppointment = async (req, res) => {
  * Staff marque le RDV comme terminé avec succès
  * POST /api/appointments/:id/complete ou POST /api/appointments/:id/validate
  * 
- * WORKFLOW: RDV validé → Archiver inscription → Supprimer de enrollments
+ * WORKFLOW: RDV validé → Créer enfant via childLifecycleService → Archiver inscription
  */
 exports.completeAppointment = async (req, res) => {
+    const childLifecycleService = require('../services/childLifecycleService');
+
     try {
         const { id } = req.params;
         const { staff_notes } = req.body;
@@ -352,131 +369,45 @@ exports.completeAppointment = async (req, res) => {
 
         let createdChildId = null;
 
-        // 3. Si c'est un RDV d'inscription, CRÉER L'ENFANT puis archiver l'inscription
+        // 3. Si c'est un RDV d'inscription, utiliser le service centralisé pour créer l'enfant
         if (appointment.enrollment_id && appointment.appointment_type === 'inscription') {
-
-            // 3a. CRÉER L'ENFANT dans la table children
             const parentId = appointment.created_parent_user_id || appointment.parent_id;
 
             if (appointment.child_first_name) {
-                console.log(`👶 Création de l'enfant: ${appointment.child_first_name} ${appointment.child_last_name || ''}`);
-
-                // Mapper le genre vers les valeurs acceptées par la contrainte (male/female)
-                let gender = 'male'; // valeur par défaut
-                const rawGender = (appointment.child_gender || '').toLowerCase();
-                if (rawGender === 'f' || rawGender === 'female' || rawGender === 'fille' || rawGender === 'féminin') {
-                    gender = 'female';
-                } else if (rawGender === 'm' || rawGender === 'male' || rawGender === 'garçon' || rawGender === 'masculin') {
-                    gender = 'male';
-                }
-
-                const childResult = await db.query(`
-                    INSERT INTO children (
-                        first_name, last_name, birth_date, gender, 
-                        medical_info, parent_id, is_active, created_at
-                    ) VALUES ($1, $2, $3, $4, $5, $6, true, NOW())
-                    RETURNING id, first_name, last_name
-                `, [
-                    appointment.child_first_name,
-                    appointment.child_last_name || '',
-                    appointment.child_birth_date,
-                    gender,
-                    appointment.child_medical_info || null,
-                    parentId
-                ]);
-
-                createdChildId = childResult.rows[0].id;
-                console.log(`✅ Enfant créé avec ID: ${createdChildId}`);
-
-                // Mettre à jour le RDV avec le child_id
-                await db.query(`
-                    UPDATE appointments SET child_id = $1 WHERE id = $2
-                `, [createdChildId, id]);
-
-                // Transférer les documents d'inscription vers children_documents
-                const docsResult = await db.query(`
-                    SELECT * FROM enrollment_documents WHERE enrollment_id = $1
-                `, [appointment.enrollment_id]);
-
-                if (docsResult.rows.length > 0) {
-                    console.log(`📄 Transfert de ${docsResult.rows.length} document(s) vers l'enfant #${createdChildId}`);
-
-                    for (const doc of docsResult.rows) {
-                        await db.query(`
-                            INSERT INTO children_documents (
-                                child_id, filename, original_filename, file_path,
-                                mime_type, file_size, document_type, transferred_from_enrollment,
-                                uploaded_by, uploaded_at, cloudinary_url, cloudinary_public_id
-                            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-                            ON CONFLICT DO NOTHING
-                        `, [
-                            createdChildId,
-                            doc.filename,
-                            doc.original_filename,
-                            doc.file_path,
-                            doc.mime_type,
-                            doc.file_size,
-                            doc.document_type,
-                            appointment.enrollment_id,
-                            doc.uploaded_by,
-                            doc.uploaded_at,
-                            doc.cloudinary_url,
-                            doc.cloudinary_public_id
-                        ]);
+                // Utiliser le service centralisé childLifecycleService
+                const createResult = await childLifecycleService.createChild(
+                    {
+                        first_name: appointment.child_first_name,
+                        last_name: appointment.child_last_name,
+                        birth_date: appointment.child_birth_date,
+                        gender: appointment.child_gender,
+                        medical_info: appointment.child_medical_info,
+                        parent_id: parentId
+                    },
+                    {
+                        enrollment_id: appointment.enrollment_id,
+                        created_by: req.user?.id,
+                        transfer_documents: true,
+                        create_birthday_event: true,
+                        create_notification: true,
+                        archive_enrollment: true
                     }
-                    console.log(`✅ Documents transférés vers l'enfant`);
-                }
+                );
 
-                // Créer une notification pour le parent
-                if (parentId) {
+                if (createResult.success) {
+                    createdChildId = createResult.childId;
+
+                    // Mettre à jour le RDV avec le child_id
                     await db.query(`
-                        INSERT INTO notifications (user_id, title, message, type, is_read, created_at)
-                        VALUES ($1, $2, $3, 'enrollment_completed', false, NOW())
-                    `, [
-                        parentId,
-                        '🎉 Inscription finalisée !',
-                        `L'inscription de ${appointment.child_first_name} à la crèche Mima Elghalia est maintenant complète. Bienvenue !`
-                    ]);
+                        UPDATE appointments SET child_id = $1 WHERE id = $2
+                    `, [createdChildId, id]);
+
+                    console.log(`✅ Inscription #${appointment.enrollment_id} finalisée via childLifecycleService - Enfant #${createdChildId} créé`);
+                } else {
+                    console.error(`❌ Erreur création enfant via service:`, createResult.error);
+                    // Continuer quand même pour ne pas bloquer le RDV
                 }
             }
-
-            // 3b. Archiver l'inscription dans enrollments_archive
-            await db.query(`
-                INSERT INTO enrollments_archive (
-                    id, parent_id, child_id, enrollment_date, status,
-                    lunch_assistance, regulation_accepted, appointment_date, appointment_time,
-                    admin_notes, created_at, updated_at, applicant_first_name,
-                    applicant_last_name, applicant_email, new_status, approved_by, approved_at
-                ) VALUES (
-                    $1, $2, $3, $4, 'approved',
-                    $5, $6, $7, $8,
-                    $9, $10, NOW(), $11,
-                    $12, $13, 'approved', $14, $15
-                )
-            `, [
-                appointment.enrollment_id,
-                parentId,
-                createdChildId,
-                appointment.enrollment_date || new Date(),
-                appointment.lunch_assistance || false,
-                appointment.regulation_accepted || false,
-                appointment.proposed_date,
-                appointment.proposed_date ? new Date(appointment.proposed_date).toTimeString().slice(0, 8) : null,
-                staff_notes || appointment.e_admin_notes,
-                appointment.e_created_at || new Date(),
-                appointment.applicant_first_name,
-                appointment.applicant_last_name,
-                appointment.applicant_email,
-                appointment.approved_by,
-                appointment.approved_at
-            ]);
-
-            console.log(`📦 Inscription #${appointment.enrollment_id} archivée dans enrollments_archive`);
-
-            // 3c. Supprimer l'inscription de la table enrollments
-            await db.query(`DELETE FROM enrollments WHERE id = $1`, [appointment.enrollment_id]);
-
-            console.log(`✅ Inscription #${appointment.enrollment_id} finalisée - Enfant #${createdChildId} créé`);
         }
 
         res.json({

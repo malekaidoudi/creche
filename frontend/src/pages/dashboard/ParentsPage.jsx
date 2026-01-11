@@ -58,17 +58,17 @@ const ParentsPage = () => {
       try {
         setLoading(true);
 
-        // Récupérer les utilisateurs avec le rôle 'parent'
-        const response = await api.get('/api/users', { params: { role: 'parent', active: 'true' } });
+        // Récupérer tous les utilisateurs avec le rôle 'parent' (actifs et archivés)
+        const response = await api.get('/api/users', { params: { role: 'parent' } });
 
         if (response.data.success && response.data.users) {
           // Récupérer les enfants pour chaque parent
           const parentsWithChildren = await Promise.all(
             response.data.users.map(async (user) => {
               try {
-                // Récupérer les enfants associés à ce parent
-                const childrenResponse = await api.get(`/api/children`, { params: { parent_id: user.id } });
-                const children = childrenResponse.data.success ? childrenResponse.data.children : [];
+                // Récupérer les enfants associés à ce parent via la route dédiée
+                const childrenResponse = await api.get(`/api/children/parent/${user.id}`);
+                const children = childrenResponse.data?.success ? (childrenResponse.data.children || []) : [];
 
                 return {
                   id: user.id,

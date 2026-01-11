@@ -1,6 +1,6 @@
 /**
- * ROUTES RENDEZ-VOUS
- * Admin ↔ Parent
+ * ROUTES RENDEZ-VOUS v2
+ * Workflow simplifié de négociation RDV admin ↔ parent
  */
 
 const express = require('express');
@@ -8,14 +8,17 @@ const router = express.Router();
 const appointmentService = require('../services/appointmentService');
 const auth = require('../middleware/auth');
 
+// ============================================================================
+// ROUTES PRINCIPALES
+// ============================================================================
+
 /**
- * POST /api/appointments - Créer un RDV (admin) ou demander un RDV (parent)
+ * POST /api/appointments - Créer un RDV (admin ou parent)
  */
 router.post('/', auth.authenticateToken, async (req, res) => {
   try {
-    // Si parent, créer avec status 'pending' automatiquement
+    // Si parent, définir automatiquement parent_id
     if (req.user.role === 'parent') {
-      req.body.status = 'pending';
       req.body.parent_id = req.user.userId;
     }
 
@@ -32,42 +35,6 @@ router.post('/', auth.authenticateToken, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Erreur lors de la création du rendez-vous'
-    });
-  }
-});
-
-/**
- * GET /api/appointments/my - Récupérer les RDV du parent connecté
- */
-router.get('/my', auth.authenticateToken, async (req, res) => {
-  try {
-    const { pool } = require('../config/db_postgres');
-
-    // Récupérer les RDV du parent par son user_id ou email
-    const result = await pool.query(`
-      SELECT 
-        a.*,
-        TO_CHAR(a.proposed_date, 'YYYY-MM-DD"T"HH24:MI') as proposed_date_formatted,
-        TO_CHAR(a.confirmed_date, 'YYYY-MM-DD"T"HH24:MI') as confirmed_date_formatted,
-        c.first_name as child_first_name,
-        c.last_name as child_last_name
-      FROM appointments a
-      LEFT JOIN children c ON a.child_id = c.id
-      WHERE a.parent_id = $1
-         OR a.parent_email = (SELECT email FROM users WHERE id = $1)
-      ORDER BY COALESCE(a.confirmed_date, a.proposed_date) DESC
-    `, [req.user.userId]);
-
-    res.json({
-      success: true,
-      appointments: result.rows
-    });
-
-  } catch (error) {
-    console.error('❌ Erreur GET /api/appointments/my:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Erreur lors de la récupération des rendez-vous'
     });
   }
 });
@@ -96,12 +63,51 @@ router.get('/', auth.authenticateToken, async (req, res) => {
 });
 
 /**
+ * GET /api/appointments/my - RDV du parent connecté
+ */
+router.get('/my', auth.authenticateToken, async (req, res) => {
+  try {
+    const { pool } = require('../config/db_postgres');
+
+    const result = await pool.query(`
+      SELECT 
+        a.*,
+        TO_CHAR(a.proposed_date, 'YYYY-MM-DD"T"HH24:MI') as proposed_date_formatted,
+        TO_CHAR(a.confirmed_date, 'YYYY-MM-DD"T"HH24:MI') as confirmed_date_formatted,
+        c.first_name as child_first_name,
+        c.last_name as child_last_name,
+        lp.first_name || ' ' || lp.last_name as last_proposed_by_name,
+        lp.role as last_proposed_by_role
+      FROM appointments a
+      LEFT JOIN children c ON a.child_id = c.id
+      LEFT JOIN users lp ON a.last_proposed_by = lp.id
+      WHERE a.parent_id = $1
+         OR a.parent_email = (SELECT email FROM users WHERE id = $1)
+      ORDER BY 
+        CASE WHEN a.status IN ('proposed', 'counter_proposed') THEN 0 ELSE 1 END,
+        COALESCE(a.confirmed_date, a.proposed_date) DESC
+    `, [req.user.userId]);
+
+    res.json({
+      success: true,
+      appointments: result.rows
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur GET /api/appointments/my:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération des rendez-vous'
+    });
+  }
+});
+
+/**
  * GET /api/appointments/today - RDV d'aujourd'hui (admin)
  */
-router.get('/today', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
+router.get('/today', auth.authenticateToken, auth.requireRole('admin', 'staff'), async (req, res) => {
   try {
     const result = await appointmentService.getTodayAppointments();
-
     res.json(result);
 
   } catch (error) {
@@ -114,12 +120,32 @@ router.get('/today', auth.authenticateToken, auth.requireRole('admin'), async (r
 });
 
 /**
+ * GET /api/appointments/pending - RDV en attente (admin, pour rappels)
+ */
+router.get('/pending', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
+  try {
+    const result = await appointmentService.getPendingAppointments();
+    res.json(result);
+
+  } catch (error) {
+    console.error('❌ Erreur GET /api/appointments/pending:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération des rendez-vous en attente'
+    });
+  }
+});
+
+/**
  * GET /api/appointments/:id - Récupérer un RDV spécifique
  */
 router.get('/:id', auth.authenticateToken, async (req, res) => {
   try {
-    const { id } = req.params;
-    const result = await appointmentService.getAppointmentById(id, req.user.userId, req.user.role);
+    const result = await appointmentService.getAppointmentById(
+      parseInt(req.params.id),
+      req.user.userId,
+      req.user.role
+    );
 
     if (result.success) {
       res.json(result);
@@ -136,15 +162,17 @@ router.get('/:id', auth.authenticateToken, async (req, res) => {
   }
 });
 
+// ============================================================================
+// ACTIONS SUR LES RDV
+// ============================================================================
+
 /**
- * PATCH /api/appointments/:id/confirm - Confirmer un RDV (parent ou admin)
+ * PATCH /api/appointments/:id/confirm - Confirmer un RDV (accepter la proposition)
  */
 router.patch('/:id/confirm', auth.authenticateToken, async (req, res) => {
   try {
-    const { confirmed_date } = req.body;
     const result = await appointmentService.confirmAppointment(
       parseInt(req.params.id),
-      confirmed_date,
       req.user.userId,
       req.user.role
     );
@@ -152,7 +180,7 @@ router.patch('/:id/confirm', auth.authenticateToken, async (req, res) => {
     if (result.success) {
       res.json(result);
     } else {
-      res.status(404).json(result);
+      res.status(400).json(result);
     }
 
   } catch (error) {
@@ -165,92 +193,37 @@ router.patch('/:id/confirm', auth.authenticateToken, async (req, res) => {
 });
 
 /**
- * PATCH /api/appointments/:id/reschedule - Proposer nouvelle date (parent)
+ * PATCH /api/appointments/:id/counter-propose - Proposer une autre date
  */
-router.patch('/:id/reschedule', auth.authenticateToken, auth.requireRole('parent'), async (req, res) => {
+router.patch('/:id/counter-propose', auth.authenticateToken, async (req, res) => {
   try {
-    const { new_date } = req.body;
-    const result = await appointmentService.rescheduleAppointment(
+    const { proposed_date } = req.body;
+
+    if (!proposed_date) {
+      return res.status(400).json({
+        success: false,
+        error: 'La nouvelle date est requise'
+      });
+    }
+
+    const result = await appointmentService.counterProposeDate(
       parseInt(req.params.id),
-      new_date,
-      req.user.userId
+      proposed_date,
+      req.user.userId,
+      req.user.role
     );
 
     if (result.success) {
       res.json(result);
     } else {
-      res.status(404).json(result);
+      res.status(400).json(result);
     }
 
   } catch (error) {
-    console.error('❌ Erreur PATCH /api/appointments/:id/reschedule:', error);
+    console.error('❌ Erreur PATCH /api/appointments/:id/counter-propose:', error);
     res.status(500).json({
       success: false,
-      error: 'Erreur lors de la replanification'
-    });
-  }
-});
-
-/**
- * PATCH /api/appointments/:id/status - Changer le statut d'un RDV (admin/staff)
- * Compatible avec le widget TodayTasksWidget
- */
-router.patch('/:id/status', auth.authenticateToken, auth.requireRole('admin', 'staff'), async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
-
-    // Si status = 'completed', utiliser la logique de validation pour les RDV d'inscription
-    if (status === 'completed') {
-      const appointmentsController = require('../controllers/appointmentsController');
-      // Appeler completeAppointment qui gère aussi la finalisation de l'inscription
-      return appointmentsController.completeAppointment(req, res);
-    }
-
-    // Pour les autres statuts, utiliser le service standard
-    const result = await appointmentService.updateAppointmentStatus(
-      parseInt(id),
-      status,
-      req.user.userId
-    );
-
-    if (result.success) {
-      res.json(result);
-    } else {
-      res.status(404).json(result);
-    }
-
-  } catch (error) {
-    console.error('❌ Erreur PATCH /api/appointments/:id/status:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Erreur lors de la mise à jour du statut'
-    });
-  }
-});
-
-/**
- * PATCH /api/appointments/:id/complete - Marquer complété (admin)
- */
-router.patch('/:id/complete', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
-  try {
-    const { notes } = req.body;
-    const result = await appointmentService.completeAppointment(
-      parseInt(req.params.id),
-      notes
-    );
-
-    if (result.success) {
-      res.json(result);
-    } else {
-      res.status(404).json(result);
-    }
-
-  } catch (error) {
-    console.error('❌ Erreur PATCH /api/appointments/:id/complete:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Erreur lors de la complétion'
+      error: 'Erreur lors de la contre-proposition'
     });
   }
 });
@@ -260,7 +233,10 @@ router.patch('/:id/complete', auth.authenticateToken, auth.requireRole('admin'),
  */
 router.patch('/:id/cancel', auth.authenticateToken, async (req, res) => {
   try {
-    const result = await appointmentService.cancelAppointment(parseInt(req.params.id));
+    const result = await appointmentService.cancelAppointment(
+      parseInt(req.params.id),
+      req.user.userId
+    );
 
     if (result.success) {
       res.json(result);
@@ -278,78 +254,49 @@ router.patch('/:id/cancel', auth.authenticateToken, async (req, res) => {
 });
 
 /**
- * POST /api/appointments/:id/failed - Marquer RDV échoué et décider de la suite (admin/staff)
- * 
- * WORKFLOW:
- * - outcome = 'reschedule' → Créer un nouveau RDV, enrollment reste 'in_progress'
- * - outcome = 'abandon' → enrollment.status = 'rejected_deleted', supprimer compte parent
+ * PATCH /api/appointments/:id/complete - Marquer complété (admin)
+ * Pour les RDV d'inscription: crée l'enfant et migre les documents
  */
-router.post('/:id/failed', auth.authenticateToken, auth.requireRole('admin', 'staff'), async (req, res) => {
-  try {
-    const appointmentsController = require('../controllers/appointmentsController');
-    await appointmentsController.markAppointmentFailed(req, res);
-  } catch (error) {
-    console.error('❌ Erreur POST /api/appointments/:id/failed:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Erreur lors du traitement du RDV échoué'
-    });
-  }
+router.patch('/:id/complete', auth.authenticateToken, auth.requireRole('admin', 'staff'), async (req, res) => {
+  const appointmentsController = require('../controllers/appointmentsController');
+  // Mapper notes vers staff_notes pour le controller
+  req.body.staff_notes = req.body.notes;
+  return appointmentsController.completeAppointment(req, res);
 });
 
 /**
- * POST /api/appointments/:id/validate - Valider RDV d'inscription (admin/staff)
- * 
- * WORKFLOW: RDV validé → enrollment.status = 'approved' (inscription finalisée)
+ * PATCH /api/appointments/:id/status - Changer le statut (admin)
  */
-router.post('/:id/validate', auth.authenticateToken, auth.requireRole('admin', 'staff'), async (req, res) => {
+router.patch('/:id/status', auth.authenticateToken, auth.requireRole('admin', 'staff'), async (req, res) => {
   try {
-    const appointmentsController = require('../controllers/appointmentsController');
-    await appointmentsController.completeAppointment(req, res);
-  } catch (error) {
-    console.error('❌ Erreur POST /api/appointments/:id/validate:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Erreur lors de la validation du RDV'
-    });
-  }
-});
-
-/**
- * POST /api/appointments/:id/reject-with-proposal - Refuser et proposer nouvelle date (admin)
- */
-router.post('/:id/reject-with-proposal', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
-  try {
-    const { proposed_date, reason } = req.body;
-    const result = await appointmentService.rejectWithProposal(
+    const { status } = req.body;
+    const result = await appointmentService.updateAppointmentStatus(
       parseInt(req.params.id),
-      proposed_date,
-      reason,
+      status,
       req.user.userId
     );
 
     if (result.success) {
       res.json(result);
     } else {
-      res.status(404).json(result);
+      res.status(400).json(result);
     }
 
   } catch (error) {
-    console.error('❌ Erreur POST /api/appointments/:id/reject-with-proposal:', error);
+    console.error('❌ Erreur PATCH /api/appointments/:id/status:', error);
     res.status(500).json({
       success: false,
-      error: 'Erreur lors du refus avec proposition'
+      error: 'Erreur lors de la mise à jour du statut'
     });
   }
 });
 
-// ============================================================
-// ROUTES PUBLIQUES POUR PARENTS SANS COMPTE (via enrollment)
-// ============================================================
+// ============================================================================
+// ROUTES PUBLIQUES (parents sans compte, via enrollment)
+// ============================================================================
 
 /**
  * GET /api/appointments/by-enrollment/:enrollmentId
- * Récupérer le RDV d'une inscription (public avec email)
  */
 router.get('/by-enrollment/:enrollmentId', async (req, res) => {
   try {
@@ -399,12 +346,11 @@ router.get('/by-enrollment/:enrollmentId', async (req, res) => {
 });
 
 /**
- * POST /api/appointments/public/confirm
- * Parent confirme le RDV (sans compte, via email)
+ * POST /api/appointments/public/confirm - Parent confirme (sans compte)
  */
 router.post('/public/confirm', async (req, res) => {
   try {
-    const { enrollment_id, email, parent_notes } = req.body;
+    const { enrollment_id, email } = req.body;
 
     if (!enrollment_id || !email) {
       return res.status(400).json({
@@ -415,19 +361,18 @@ router.post('/public/confirm', async (req, res) => {
 
     const { pool } = require('../config/db_postgres');
 
-    // Vérifier et mettre à jour le RDV
     const result = await pool.query(`
       UPDATE appointments
       SET 
         status = 'confirmed',
         confirmed_date = proposed_date,
-        parent_notes = COALESCE($3, parent_notes),
+        pending_response_from = NULL,
         updated_at = NOW()
       WHERE enrollment_id = $1
         AND LOWER(parent_email) = LOWER($2)
-        AND status IN ('proposed', 'rescheduled')
+        AND status IN ('proposed', 'counter_proposed')
       RETURNING *
-    `, [enrollment_id, email, parent_notes]);
+    `, [enrollment_id, email]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -454,22 +399,20 @@ router.post('/public/confirm', async (req, res) => {
 });
 
 /**
- * POST /api/appointments/public/reschedule
- * Parent demande un changement de date (sans compte, via email)
+ * POST /api/appointments/public/counter-propose - Parent propose autre date (sans compte)
  */
-router.post('/public/reschedule', async (req, res) => {
+router.post('/public/counter-propose', async (req, res) => {
   try {
-    const { enrollment_id, email, new_date, parent_notes } = req.body;
+    const { enrollment_id, email, proposed_date } = req.body;
 
-    if (!enrollment_id || !email || !new_date) {
+    if (!enrollment_id || !email || !proposed_date) {
       return res.status(400).json({
         success: false,
         error: 'ID inscription, email et nouvelle date requis'
       });
     }
 
-    // Vérifier que la date est dans le futur
-    if (new Date(new_date) <= new Date()) {
+    if (new Date(proposed_date) <= new Date()) {
       return res.status(400).json({
         success: false,
         error: 'La date doit être dans le futur'
@@ -478,41 +421,18 @@ router.post('/public/reschedule', async (req, res) => {
 
     const { pool } = require('../config/db_postgres');
 
-    // Vérifier le nombre de reports (max 3)
-    const checkResult = await pool.query(`
-      SELECT rescheduled_count FROM appointments
-      WHERE enrollment_id = $1 AND LOWER(parent_email) = LOWER($2)
-    `, [enrollment_id, email]);
-
-    if (checkResult.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Rendez-vous non trouvé ou email incorrect'
-      });
-    }
-
-    if (checkResult.rows[0].rescheduled_count >= 3) {
-      return res.status(400).json({
-        success: false,
-        error: 'Nombre maximum de reports atteint (3). Veuillez contacter la crèche.'
-      });
-    }
-
-    // Mettre à jour le RDV
     const result = await pool.query(`
       UPDATE appointments
       SET 
         proposed_date = $3,
-        status = 'rescheduled',
-        rescheduled_count = rescheduled_count + 1,
-        last_rescheduled_at = NOW(),
-        parent_notes = COALESCE($4, parent_notes),
+        status = 'counter_proposed',
+        pending_response_from = 'admin',
         updated_at = NOW()
       WHERE enrollment_id = $1
         AND LOWER(parent_email) = LOWER($2)
-        AND status NOT IN ('completed', 'cancelled', 'no_show')
+        AND status IN ('proposed', 'counter_proposed')
       RETURNING *
-    `, [enrollment_id, email, new_date, parent_notes]);
+    `, [enrollment_id, email, proposed_date]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -521,32 +441,19 @@ router.post('/public/reschedule', async (req, res) => {
       });
     }
 
-    const appointment = result.rows[0];
-
-    // Formater la nouvelle date pour log
-    const formattedDate = new Date(new_date).toLocaleDateString('fr-FR', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-
-    console.log(`📅 RDV reporté par parent ${email}: nouvelle date ${formattedDate}`);
+    console.log(`📅 RDV contre-proposé par parent ${email}`);
 
     res.json({
       success: true,
       message: 'Nouvelle date proposée avec succès',
-      appointment,
-      remaining_reschedules: 3 - appointment.rescheduled_count
+      appointment: result.rows[0]
     });
 
   } catch (error) {
-    console.error('❌ Erreur POST /api/appointments/public/reschedule:', error);
+    console.error('❌ Erreur POST /api/appointments/public/counter-propose:', error);
     res.status(500).json({
       success: false,
-      error: 'Erreur lors du changement de date'
+      error: 'Erreur lors de la contre-proposition'
     });
   }
 });

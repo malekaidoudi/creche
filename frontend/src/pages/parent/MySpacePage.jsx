@@ -47,16 +47,31 @@ const MySpacePage = () => {
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [appointmentKey, setAppointmentKey] = useState(0);
+  const [canAddChild, setCanAddChild] = useState(true);
+  const [childrenCountInfo, setChildrenCountInfo] = useState(null);
 
   useEffect(() => {
     loadChildren();
     loadUnreadCount();
     loadAppointments();
+    loadChildrenCount();
 
     // Rafraîchir le compteur toutes les 30 secondes
     const interval = setInterval(loadUnreadCount, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  const loadChildrenCount = async () => {
+    try {
+      const response = await api.get('/api/children/my-count');
+      if (response.data?.success) {
+        setCanAddChild(response.data.canAddChild);
+        setChildrenCountInfo(response.data);
+      }
+    } catch (error) {
+      console.error('Erreur chargement compteur enfants:', error);
+    }
+  };
 
   const loadAppointments = async () => {
     try {
@@ -324,16 +339,24 @@ const MySpacePage = () => {
                         </div>
                       </div>
                     ))}
-                    {/* Bouton Ajouter un enfant */}
-                    <Link
-                      to="/mon-espace/ajouter-enfant"
-                      className="flex items-center justify-center gap-2 p-3 rounded-lg border-2 border-dashed border-primary-300 dark:border-primary-700 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
-                    >
-                      <Plus className="w-5 h-5" />
-                      <span className="font-medium">
-                        {isRTL ? 'إضافة طفل جديد' : 'Ajouter un enfant'}
-                      </span>
-                    </Link>
+                    {/* Bouton Ajouter un enfant - caché si 3 enfants atteints */}
+                    {canAddChild ? (
+                      <Link
+                        to="/mon-espace/ajouter-enfant"
+                        className="flex items-center justify-center gap-2 p-3 rounded-lg border-2 border-dashed border-primary-300 dark:border-primary-700 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
+                      >
+                        <Plus className="w-5 h-5" />
+                        <span className="font-medium">
+                          {isRTL ? 'إضافة طفل جديد' : 'Ajouter un enfant'}
+                        </span>
+                      </Link>
+                    ) : (
+                      <div className="flex items-center justify-center gap-2 p-3 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-800/50">
+                        <span className="text-sm text-center">
+                          {isRTL ? 'لقد وصلت إلى الحد الأقصى (3 أطفال)' : 'Limite atteinte (3 enfants max)'}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
               </WidgetCard>

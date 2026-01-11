@@ -237,6 +237,7 @@ const enrollmentsController = {
       console.log(`✅ Compte parent créé: ${newUser.email} (ID: ${newUser.id})`);
 
       // 2. CRÉER LE RDV avec le parent_id
+      // pending_response_from = 'parent' car c'est l'admin qui propose et le parent doit confirmer
       const appointmentResult = await db.query(`
         INSERT INTO appointments (
           enrollment_id,
@@ -254,8 +255,10 @@ const enrollmentsController = {
           parent_first_name,
           parent_last_name,
           child_first_name,
-          child_last_name
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+          child_last_name,
+          pending_response_from,
+          last_proposed_by
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
         RETURNING *
       `, [
         id,
@@ -273,7 +276,9 @@ const enrollmentsController = {
         enrollmentData.applicant_first_name || 'Parent',
         enrollmentData.applicant_last_name || '',
         enrollmentData.child_first_name,
-        enrollmentData.child_last_name || ''
+        enrollmentData.child_last_name || '',
+        'parent',      // Le parent doit confirmer le RDV proposé par l'admin
+        req.user.id    // Proposé par l'admin (user ID)
       ]);
 
       const appointmentId = appointmentResult.rows[0].id;
@@ -338,8 +343,8 @@ const enrollmentsController = {
       // lors de la finalisation de l'inscription (quand l'enfant est créé dans la table children)
       console.log(`📄 Documents d'inscription conservés pour le dossier #${id} (seront transférés à la finalisation)`);
 
-      // Marquer automatiquement la tâche d'inscription comme complétée
-      completeEnrollmentTask(id);
+      // NOTE: La tâche sera marquée comme complétée quand le parent confirme le RDV
+      // (voir appointmentsController.confirmAppointment)
 
       res.json({
         success: true,

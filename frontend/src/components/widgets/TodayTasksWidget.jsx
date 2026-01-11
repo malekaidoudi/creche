@@ -8,13 +8,14 @@ import api from '../../services/api';
 import CreateAppointmentModal from '../modals/CreateAppointmentModal';
 import TaskDetailModal from '../modals/TaskDetailModal';
 import AppointmentActionModal from '../modals/AppointmentActionModal';
+import RejectWithProposalModal from '../modals/RejectWithProposalModal';
 import WidgetCard, { WidgetEmptyState } from '../ui/WidgetCard';
 
 /**
  * Composant de carte unifié pour toutes les tâches
  * Design inspiré des cartes de RDV avec bordure colorée à gauche
  */
-const TaskCard = ({ task, index, isRTL, onTaskClick, onValidate, onComplete, onSchedule }) => {
+const TaskCard = ({ task, index, isRTL, onTaskClick, onValidate, onComplete, onSchedule, onConfirmAppointment, onProposeNewDate }) => {
   // Couleurs selon le type
   const getTypeConfig = () => {
     switch (task.type) {
@@ -28,6 +29,8 @@ const TaskCard = ({ task, index, isRTL, onTaskClick, onValidate, onComplete, onS
         return { bg: 'from-purple-50 to-violet-50', border: 'border-purple-500', badge: 'bg-purple-500', icon: '📝', label: isRTL ? 'مذكرة' : 'Mémo' };
       case 'task':
         return { bg: 'from-orange-50 to-amber-50', border: 'border-orange-500', badge: 'bg-orange-500', icon: '✅', label: isRTL ? 'مهمة' : 'Tâche' };
+      case 'pending_appointment':
+        return { bg: 'from-amber-50 to-orange-50', border: 'border-amber-500', badge: 'bg-amber-500', icon: '⏳', label: isRTL ? 'موعد في الانتظار' : 'RDV en attente' };
       case 'event':
       case 'meeting':
         return { bg: 'from-cyan-50 to-teal-50', border: 'border-cyan-500', badge: 'bg-cyan-500', icon: '📢', label: isRTL ? 'حدث' : 'Événement' };
@@ -102,6 +105,26 @@ const TaskCard = ({ task, index, isRTL, onTaskClick, onValidate, onComplete, onS
 
           {/* Boutons d'action */}
           <div className="flex items-center gap-2 mt-3">
+            {/* Boutons Valider/Autre date pour RDV en attente de réponse admin */}
+            {task.type === 'pending_appointment' && (
+              <>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onConfirmAppointment(task); }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white text-xs font-medium rounded-lg transition-all shadow-sm hover:shadow"
+                >
+                  <CheckCircle className="w-3.5 h-3.5" />
+                  {isRTL ? 'تأكيد' : 'Valider'}
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); onProposeNewDate(task); }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-700 dark:text-white text-xs font-medium rounded-lg transition-all"
+                >
+                  <CalendarPlus className="w-3.5 h-3.5" />
+                  {isRTL ? 'تاريخ آخر' : 'Autre date'}
+                </button>
+              </>
+            )}
+
             {/* Bouton Valider pour RDV inscription */}
             {task.type === 'appointment' && task.metadata?.is_inscription && task.status !== 'completed' && (
               <button
@@ -114,7 +137,7 @@ const TaskCard = ({ task, index, isRTL, onTaskClick, onValidate, onComplete, onS
             )}
 
             {/* Bouton Terminer pour autres types */}
-            {task.type !== 'birthday' && task.status !== 'completed' && !(task.type === 'appointment' && task.metadata?.is_inscription) && (
+            {task.type !== 'birthday' && task.type !== 'pending_appointment' && task.status !== 'completed' && !(task.type === 'appointment' && task.metadata?.is_inscription) && (
               <button
                 onClick={(e) => { e.stopPropagation(); onComplete(task); }}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white text-xs font-medium rounded-lg transition-all shadow-sm hover:shadow"
@@ -151,6 +174,8 @@ const TodayTasksWidget = ({ onOpenMemoModal, onOpenTaskModal, onOpenAppointmentM
   const [selectedTask, setSelectedTask] = useState(null);
   const [showActionModal, setShowActionModal] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [pendingAppointmentForReject, setPendingAppointmentForReject] = useState(null);
 
   useEffect(() => {
     loadTodayTasks();
@@ -288,8 +313,40 @@ const TodayTasksWidget = ({ onOpenMemoModal, onOpenTaskModal, onOpenAppointmentM
         console.log('Erreur chargement mémos:', error.message);
       }
 
-      // 5. Combiner tâches, RDV, anniversaires et mémos
-      const combined = [...tasksFromDb, ...appointments, ...birthdays, ...memos];
+      // 5. Charger les RDV en attente de réponse admin (nouveau workflow)
+      let pendingAppointments = [];
+      try {
+        const pendingResponse = await api.get('/api/appointments');
+        if (pendingResponse.data.success) {
+          pendingAppointments = (pendingResponse.data.appointments || [])
+            .filter(apt =>
+              (apt.status === 'proposed' || apt.status === 'counter_proposed') &&
+              apt.pending_response_from === 'admin'
+            )
+            .map(apt => ({
+              id: `pending-appt-${apt.id}`,
+              type: 'pending_appointment',
+              title: apt.subject || (isRTL ? 'موعد في الانتظار' : 'RDV en attente'),
+              description: `${apt.parent_name || 'Parent'} - ${new Date(apt.proposed_date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}`,
+              start_date: apt.proposed_date,
+              priority: 'high',
+              status: apt.status,
+              metadata: {
+                appointment_id: apt.id,
+                parent_name: apt.parent_name,
+                parent_id: apt.parent_id,
+                child_name: apt.child_name,
+                proposed_date: apt.proposed_date,
+                pending_response_from: apt.pending_response_from
+              }
+            }));
+        }
+      } catch (error) {
+        console.log('Erreur chargement RDV en attente:', error.message);
+      }
+
+      // 6. Combiner tâches, RDV, anniversaires, mémos et RDV en attente
+      const combined = [...pendingAppointments, ...tasksFromDb, ...appointments, ...birthdays, ...memos];
 
       // Trier par priorité puis par date
       combined.sort((a, b) => {
@@ -460,6 +517,28 @@ const TodayTasksWidget = ({ onOpenMemoModal, onOpenTaskModal, onOpenAppointmentM
                   setSelectedTask(t);
                   setShowAppointmentModal(true);
                 }}
+                onConfirmAppointment={async (t) => {
+                  try {
+                    const apptId = t.metadata?.appointment_id;
+                    const response = await api.patch(`/api/appointments/${apptId}/confirm`);
+                    if (response.data.success) {
+                      dialog.success(isRTL ? 'تم تأكيد الموعد' : 'Rendez-vous confirmé !');
+                      loadTodayTasks();
+                      window.dispatchEvent(new Event('taskUpdated'));
+                    }
+                  } catch (error) {
+                    console.error('Erreur confirmation RDV:', error);
+                    dialog.error(error.response?.data?.error || (isRTL ? 'خطأ' : 'Erreur'));
+                  }
+                }}
+                onProposeNewDate={(t) => {
+                  setPendingAppointmentForReject({
+                    id: t.metadata?.appointment_id,
+                    parent_name: t.metadata?.parent_name,
+                    proposed_date: t.metadata?.proposed_date
+                  });
+                  setShowRejectModal(true);
+                }}
               />
             ))}
 
@@ -512,6 +591,20 @@ const TodayTasksWidget = ({ onOpenMemoModal, onOpenTaskModal, onOpenAppointmentM
           setSelectedAppointment(null);
         }}
         appointment={selectedAppointment}
+        onSuccess={() => {
+          loadTodayTasks();
+          window.dispatchEvent(new Event('taskUpdated'));
+        }}
+      />
+
+      {/* Modal proposition nouvelle date pour RDV en attente */}
+      <RejectWithProposalModal
+        isOpen={showRejectModal}
+        onClose={() => {
+          setShowRejectModal(false);
+          setPendingAppointmentForReject(null);
+        }}
+        appointment={pendingAppointmentForReject}
         onSuccess={() => {
           loadTodayTasks();
           window.dispatchEvent(new Event('taskUpdated'));

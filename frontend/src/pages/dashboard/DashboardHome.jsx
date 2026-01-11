@@ -26,7 +26,6 @@ import EventsWidget from '../../components/widgets/BirthdaysWidget';
 import TodayTasksWidget from '../../components/widgets/TodayTasksWidget';
 import TodayAppointmentsWidget from '../../components/widgets/TodayAppointmentsWidget';
 import OverdueTasksWidget from '../../components/widgets/OverdueTasksWidget';
-import PendingAppointmentsWidget from '../../components/widgets/PendingAppointmentsWidget';
 import MobileDashboardComplete from '../../components/dashboard/MobileDashboardComplete';
 import MobileNavigation from '../../components/mobile/MobileNavigation';
 import EventModal from '../../components/modals/EventModal';
@@ -345,16 +344,6 @@ const DashboardHome = () => {
           </div>
         </div>
 
-        {/* Rendez-vous à valider (admin uniquement) */}
-        {isAdmin && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.25 }}
-          >
-            <PendingAppointmentsWidget />
-          </motion.div>
-        )}
 
         {/* Widgets compacts pour mobile (staff/admin uniquement) */}
         {(isStaff() || isAdmin()) && (
