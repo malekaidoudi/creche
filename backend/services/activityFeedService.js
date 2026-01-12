@@ -224,11 +224,11 @@ const activityFeedService = {
         WHERE DATE(created_at) = $1
       `, [targetDate]);
 
-            // Présences du jour
+            // Présences du jour (basé sur check_in_time)
             const attendance = await db.query(`
         SELECT 
-          COUNT(*) FILTER (WHERE status = 'present') as present,
-          COUNT(*) FILTER (WHERE status = 'absent') as absent,
+          COUNT(*) FILTER (WHERE check_in_time IS NOT NULL) as present,
+          COUNT(*) FILTER (WHERE check_in_time IS NULL) as absent,
           COUNT(*) as total
         FROM attendance
         WHERE date = $1
