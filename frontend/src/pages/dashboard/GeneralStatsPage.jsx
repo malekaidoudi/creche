@@ -44,10 +44,10 @@ const GeneralStatsPage = () => {
           api.get('/api/enrollments', { params: { status: 'pending' } })
         ]);
 
-        const children = childrenRes.data.success ? childrenRes.data.children : [];
-        const parents = parentsRes.data.success ? parentsRes.data.users : [];
-        const staffMembers = staffRes.data.success ? staffRes.data.users : [];
-        const pendingEnrollments = enrollmentsRes.data.success ? enrollmentsRes.data.enrollments : [];
+        const children = childrenRes.data?.success ? (childrenRes.data.children || []) : [];
+        const parents = parentsRes.data?.success ? (parentsRes.data.users || []) : [];
+        const staffMembers = staffRes.data?.success ? (staffRes.data.users || []) : [];
+        const pendingEnrollments = enrollmentsRes.data?.success ? (enrollmentsRes.data.enrollments || []) : [];
 
         // Calculer les statistiques réelles
         const totalChildren = children.length;
@@ -164,6 +164,22 @@ const GeneralStatsPage = () => {
     return (
       <div className="flex items-center justify-center h-64">
         <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  if (!stats) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <AlertTriangle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
+          <p className="text-gray-600 dark:text-gray-400">
+            {isRTL ? 'خطأ في تحميل الإحصائيات' : 'Erreur lors du chargement des statistiques'}
+          </p>
+          <Button onClick={() => window.location.reload()} className="mt-4">
+            {isRTL ? 'إعادة المحاولة' : 'Réessayer'}
+          </Button>
+        </div>
       </div>
     );
   }

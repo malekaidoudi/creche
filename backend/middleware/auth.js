@@ -55,7 +55,11 @@ const auth = {
         });
       }
 
-      if (!allowedRoles.includes(req.user.role)) {
+      // Le rôle developer a automatiquement les mêmes accès que admin
+      const effectiveRole = req.user.role === 'developer' ? 'admin' : req.user.role;
+      const hasAccess = allowedRoles.includes(req.user.role) || allowedRoles.includes(effectiveRole);
+
+      if (!hasAccess) {
         logger.security('ACCESS_DENIED', {
           userId: req.user.id,
           role: req.user.role,

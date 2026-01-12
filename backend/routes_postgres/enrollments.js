@@ -344,7 +344,7 @@ router.get('/:id/status', async (req, res) => {
  */
 router.get('/appointments/today',
   auth.authenticateToken,
-  auth.requireRole('staff', 'admin'),
+  auth.requireRole('staff', 'admin', 'developer'),
   async (req, res) => {
     try {
       const today = new Date();
@@ -422,7 +422,7 @@ router.get('/appointments/today',
  */
 router.get('/',
   auth.authenticateToken,
-  auth.requireRole('staff', 'admin'),
+  auth.requireRole('staff', 'admin', 'developer'),
   enrollmentsController.getAllEnrollments
 );
 
@@ -432,7 +432,7 @@ router.get('/',
  */
 router.get('/:id',
   auth.authenticateToken,
-  auth.requireRole('staff', 'admin'),
+  auth.requireRole('staff', 'admin', 'developer'),
   async (req, res) => {
     try {
       const { id } = req.params;
@@ -491,7 +491,7 @@ router.get('/:id',
  */
 router.post('/:id/approve',
   auth.authenticateToken,
-  auth.requireRole('admin'),
+  auth.requireRole('admin', 'developer'),
   [
     body('appointment_date').notEmpty().withMessage('Date de rendez-vous requise')
   ],
@@ -515,7 +515,7 @@ router.post('/:id/approve',
  */
 router.put('/:id/reject',
   auth.authenticateToken,
-  auth.requireRole('admin'),
+  auth.requireRole('admin', 'developer'),
   [
     body('rejection_type').isIn(['age_depasse', 'maladie_contagieuse', 'dossier_manquant', 'autre']).withMessage('Type de rejet invalide'),
     body('custom_reason').optional().isString(),
@@ -563,7 +563,7 @@ router.post('/:id/choose-appointment',
  */
 router.put('/:id/status',
   auth.authenticateToken,
-  auth.requireRole('admin'),
+  auth.requireRole('admin', 'developer'),
   [
     body('status').isIn(['pending', 'in_progress', 'approved', 'rejected_incomplete', 'rejected_deleted', 'archived'])
   ],
@@ -598,7 +598,7 @@ router.put('/:id/status',
  */
 router.delete('/:id',
   auth.authenticateToken,
-  auth.requireRole('admin'),
+  auth.requireRole('admin', 'developer'),
   async (req, res) => {
     const client = await db.connect();
 
@@ -649,7 +649,7 @@ router.delete('/:id',
  */
 router.get('/:id/documents/:docId',
   auth.authenticateToken,
-  auth.requireRole('staff', 'admin'),
+  auth.requireRole('staff', 'admin', 'developer'),
   async (req, res) => {
     try {
       const { id, docId } = req.params;
@@ -717,7 +717,7 @@ router.get('/:id/documents/:docId',
  */
 router.get('/:id/documents',
   auth.authenticateToken,
-  auth.requireRole('staff', 'admin'),
+  auth.requireRole('staff', 'admin', 'developer'),
   async (req, res) => {
     try {
       const { id } = req.params;
