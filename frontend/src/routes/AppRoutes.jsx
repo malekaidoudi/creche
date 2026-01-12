@@ -78,6 +78,11 @@ import RecoveryPage from '../pages/RecoveryPage'
 import ProtectedRoute from '../components/auth/ProtectedRoute'
 import ErrorBoundary from '../components/ErrorBoundary'
 
+// Pages d'erreur
+import NotFoundPage from '../pages/errors/NotFoundPage'
+import ForbiddenPage from '../pages/errors/ForbiddenPage'
+import ServerErrorPage from '../pages/errors/ServerErrorPage'
+
 const AppRoutes = () => {
     return (
         <>
@@ -152,7 +157,7 @@ const AppRoutes = () => {
                     <Route
                         path="profile"
                         element={
-                            <ProtectedRoute roles={['admin', 'staff', 'parent']}>
+                            <ProtectedRoute roles={['admin', 'staff', 'parent', 'developer']}>
                                 <UnifiedProfilePage />
                             </ProtectedRoute>
                         }
@@ -278,26 +283,27 @@ const AppRoutes = () => {
                         </ErrorBoundary>
                     } />
 
-                    <Route path="activity-logs" element={<ActivityLogPage />} />
+                    <Route path="activity-logs" element={
+                        <ProtectedRoute roles={['developer']}>
+                            <ActivityLogPage />
+                        </ProtectedRoute>
+                    } />
                     <Route path="activity-feed" element={<ActivityFeedPage />} />
                     <Route path="daily-reports" element={<DailyReportsPage />} />
                     <Route path="mailbox" element={<MailboxPage />} />
-                    <Route path="storage" element={<CloudinaryExplorerPage />} />
+                    <Route path="storage" element={
+                        <ProtectedRoute roles={['developer']}>
+                            <CloudinaryExplorerPage />
+                        </ProtectedRoute>
+                    } />
                 </Route>
 
+                {/* Pages d'erreur */}
+                <Route path="/403" element={<ForbiddenPage />} />
+                <Route path="/500" element={<ServerErrorPage />} />
+
                 {/* 404 */}
-                <Route
-                    path="*"
-                    element={
-                        <div className="min-h-screen flex items-center justify-center">
-                            <div className="text-center">
-                                <h1 className="text-4xl font-bold text-gray-900 mb-4">404</h1>
-                                <p className="text-gray-600 mb-8">Page non trouvée</p>
-                                <a href="/" className="btn-primary">Retour à l'accueil</a>
-                            </div>
-                        </div>
-                    }
-                />
+                <Route path="*" element={<NotFoundPage />} />
             </Routes>
         </>
     )
