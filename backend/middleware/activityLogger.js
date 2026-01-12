@@ -292,15 +292,19 @@ const logActivity = async (actionKey, params = {}) => {
  * Helper pour logger une connexion réussie
  */
 const logLoginSuccess = async (user, req) => {
+    const firstName = user.firstName || user.first_name || '';
+    const lastName = user.lastName || user.last_name || '';
+    const fullName = `${firstName} ${lastName}`.trim() || user.email;
+
     return activityLogService.create({
         action: 'login_success',
         category: CATEGORIES.AUTH,
         severity: SEVERITY.INFO,
         title: 'Connexion réussie',
-        description: `${user.firstName} ${user.lastName} s'est connecté(e)`,
+        description: `${fullName} s'est connecté(e)`,
         userId: user.id,
         userEmail: user.email,
-        userName: `${user.firstName} ${user.lastName}`,
+        userName: fullName,
         userRole: user.role,
         ipAddress: req?.ip,
         userAgent: req?.get('User-Agent'),
