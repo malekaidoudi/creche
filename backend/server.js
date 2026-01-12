@@ -201,6 +201,11 @@ console.log('🌐 CORS: configuré (flexible + sécurisé)\n');
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Activity Logger - Journal d'activité automatique
+const { activityLogger } = require('./middleware/activityLogger');
+app.use(activityLogger({ logErrors: true }));
+console.log('📊 Activity Logger: activé');
+
 // Static files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/public', express.static(path.join(__dirname, 'public')));
