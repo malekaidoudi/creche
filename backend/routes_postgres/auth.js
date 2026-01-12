@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { body, validationResult } = require('express-validator');
 const db = require('../config/db_postgres');
-const { createLog } = require('./logs');
+const { logLoginSuccess, logLoginFailed } = require('../middleware/activityLogger');
 
 const router = express.Router();
 
@@ -61,12 +61,10 @@ router.post('/login', [
       { expiresIn: JWT_EXPIRES_IN }
     );
 
-    // Créer un log de connexion
-    await createLog(
-      user.id,
-      'login',
-      `${user.first_name} ${user.last_name} s'est connecté au système`
-    );
+    // Créer un log de connexion via activityLogger
+    logLoginSuccess(user, req).catch(err => {
+      console.warn('⚠️ Erreur log connexion:', err.message);
+    });
 
     // Retourner les données utilisateur (sans le mot de passe)
     const { password: _, ...userWithoutPassword } = user;
