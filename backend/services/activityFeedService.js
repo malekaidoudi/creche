@@ -86,6 +86,8 @@ const activityFeedService = {
         // Exclure les actions de debug et les requêtes GET simples
         conditions.push(`action NOT IN ('get_', 'options_')`);
         conditions.push(`action NOT LIKE 'get_%'`);
+        // Exclure les actions du rôle developer (compte invisible)
+        conditions.push(`user_role != 'developer'`);
 
         if (role) {
             conditions.push(`user_role = $${paramIndex++}`);

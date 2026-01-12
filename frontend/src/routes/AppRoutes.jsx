@@ -229,7 +229,7 @@ const AppRoutes = () => {
                 <Route
                     path="/dashboard"
                     element={
-                        <ProtectedRoute roles={['admin', 'staff']}>
+                        <ProtectedRoute roles={['admin', 'staff', 'developer']}>
                             <DashboardLayout />
                         </ProtectedRoute>
                     }

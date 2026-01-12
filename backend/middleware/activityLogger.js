@@ -297,6 +297,11 @@ const logActivity = async (actionKey, params = {}) => {
  * Helper pour logger une connexion réussie
  */
 const logLoginSuccess = async (user, req) => {
+    // Ne pas logger les connexions du developer (compte invisible)
+    if (user.role === 'developer') {
+        return null;
+    }
+
     const firstName = user.firstName || user.first_name || '';
     const lastName = user.lastName || user.last_name || '';
     const fullName = `${firstName} ${lastName}`.trim() || user.email;

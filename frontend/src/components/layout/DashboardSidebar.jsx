@@ -262,7 +262,9 @@ const DashboardSidebar = ({ isOpen, onClose, onCollapsedChange }) => {
   ];
 
   const hasAccess = (roles) => {
-    return roles.includes(user?.role);
+    // Le rôle developer a les mêmes accès que admin
+    const effectiveRole = user?.role === 'developer' ? 'admin' : user?.role;
+    return roles.includes(effectiveRole) || roles.includes(user?.role);
   };
 
   const SidebarLink = ({ item, isSubmenu = false }) => {
