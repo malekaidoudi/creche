@@ -13,8 +13,8 @@ const activityLogController = require('../controllers/activityLogController');
 // Toutes les routes nécessitent une authentification
 router.use(auth.authenticateToken);
 
-// Middleware pour vérifier les rôles admin/staff
-const requireAdminOrStaff = auth.requireRole('admin', 'staff');
+// Middleware pour vérifier le rôle developer uniquement
+const requireDeveloper = auth.requireRole('developer');
 
 // ==================== DASHBOARD ====================
 
@@ -23,7 +23,7 @@ const requireAdminOrStaff = auth.requireRole('admin', 'staff');
  * @desc Données complètes pour le tableau de bord
  * @access Admin, Staff
  */
-router.get('/dashboard', requireAdminOrStaff, activityLogController.getDashboard);
+router.get('/dashboard', requireDeveloper, activityLogController.getDashboard);
 
 // ==================== LOGS ====================
 
@@ -41,7 +41,7 @@ router.get('/dashboard', requireAdminOrStaff, activityLogController.getDashboard
  * @query {string} startDate - Date de début
  * @query {string} endDate - Date de fin
  */
-router.get('/', requireAdminOrStaff, activityLogController.getAll);
+router.get('/', requireDeveloper, activityLogController.getAll);
 
 /**
  * @route GET /api/activity-logs/stats
@@ -51,14 +51,14 @@ router.get('/', requireAdminOrStaff, activityLogController.getAll);
  * @query {string} startDate - Date de début personnalisée
  * @query {string} endDate - Date de fin personnalisée
  */
-router.get('/stats', requireAdminOrStaff, activityLogController.getStats);
+router.get('/stats', requireDeveloper, activityLogController.getStats);
 
 /**
  * @route GET /api/activity-logs/actions
  * @desc Liste des actions disponibles pour les filtres
  * @access Admin, Staff
  */
-router.get('/actions', requireAdminOrStaff, activityLogController.getAvailableActions);
+router.get('/actions', requireDeveloper, activityLogController.getAvailableActions);
 
 /**
  * @route GET /api/activity-logs/archive
@@ -95,49 +95,49 @@ router.post('/', auth.requireRole('admin'), activityLogController.create);
  * @desc Récupérer toutes les alertes
  * @access Admin, Staff
  */
-router.get('/alerts', requireAdminOrStaff, activityLogController.getAlerts);
+router.get('/alerts', requireDeveloper, activityLogController.getAlerts);
 
 /**
  * @route GET /api/activity-logs/alerts/active
  * @desc Récupérer les alertes actives uniquement
  * @access Admin, Staff
  */
-router.get('/alerts/active', requireAdminOrStaff, activityLogController.getActiveAlerts);
+router.get('/alerts/active', requireDeveloper, activityLogController.getActiveAlerts);
 
 /**
  * @route GET /api/activity-logs/alerts/stats
  * @desc Statistiques des alertes
  * @access Admin, Staff
  */
-router.get('/alerts/stats', requireAdminOrStaff, activityLogController.getAlertStats);
+router.get('/alerts/stats', requireDeveloper, activityLogController.getAlertStats);
 
 /**
  * @route GET /api/activity-logs/alerts/:id
  * @desc Récupérer une alerte par ID
  * @access Admin, Staff
  */
-router.get('/alerts/:id', requireAdminOrStaff, activityLogController.getAlertById);
+router.get('/alerts/:id', requireDeveloper, activityLogController.getAlertById);
 
 /**
  * @route PUT /api/activity-logs/alerts/:id/acknowledge
  * @desc Marquer une alerte comme vue
  * @access Admin, Staff
  */
-router.put('/alerts/:id/acknowledge', requireAdminOrStaff, activityLogController.acknowledgeAlert);
+router.put('/alerts/:id/acknowledge', requireDeveloper, activityLogController.acknowledgeAlert);
 
 /**
  * @route PUT /api/activity-logs/alerts/:id/resolve
  * @desc Résoudre une alerte
  * @access Admin, Staff
  */
-router.put('/alerts/:id/resolve', requireAdminOrStaff, activityLogController.resolveAlert);
+router.put('/alerts/:id/resolve', requireDeveloper, activityLogController.resolveAlert);
 
 /**
  * @route PUT /api/activity-logs/alerts/:id/dismiss
  * @desc Ignorer une alerte
  * @access Admin, Staff
  */
-router.put('/alerts/:id/dismiss', requireAdminOrStaff, activityLogController.dismissAlert);
+router.put('/alerts/:id/dismiss', requireDeveloper, activityLogController.dismissAlert);
 
 // ==================== RAPPORTS ====================
 
@@ -147,7 +147,7 @@ router.put('/alerts/:id/dismiss', requireAdminOrStaff, activityLogController.dis
  * @access Admin, Staff
  * @query {string} date - Date du rapport (défaut: aujourd'hui)
  */
-router.get('/reports/daily', requireAdminOrStaff, activityLogController.getDailyReport);
+router.get('/reports/daily', requireDeveloper, activityLogController.getDailyReport);
 
 /**
  * @route GET /api/activity-logs/reports/weekly
@@ -155,7 +155,7 @@ router.get('/reports/daily', requireAdminOrStaff, activityLogController.getDaily
  * @access Admin, Staff
  * @query {string} startDate - Date de début de la semaine
  */
-router.get('/reports/weekly', requireAdminOrStaff, activityLogController.getWeeklyReport);
+router.get('/reports/weekly', requireDeveloper, activityLogController.getWeeklyReport);
 
 /**
  * @route GET /api/activity-logs/reports/monthly
@@ -164,21 +164,21 @@ router.get('/reports/weekly', requireAdminOrStaff, activityLogController.getWeek
  * @query {number} year - Année
  * @query {number} month - Mois (0-11)
  */
-router.get('/reports/monthly', requireAdminOrStaff, activityLogController.getMonthlyReport);
+router.get('/reports/monthly', requireDeveloper, activityLogController.getMonthlyReport);
 
 /**
  * @route GET /api/activity-logs/reports/history
  * @desc Historique des rapports générés
  * @access Admin, Staff
  */
-router.get('/reports/history', requireAdminOrStaff, activityLogController.getReportHistory);
+router.get('/reports/history', requireDeveloper, activityLogController.getReportHistory);
 
 /**
  * @route GET /api/activity-logs/reports/:id
  * @desc Récupérer un rapport par ID
  * @access Admin, Staff
  */
-router.get('/reports/:id', requireAdminOrStaff, activityLogController.getReportById);
+router.get('/reports/:id', requireDeveloper, activityLogController.getReportById);
 
 /**
  * @route GET /api/activity-logs/reports/:type/export/:format
@@ -187,7 +187,7 @@ router.get('/reports/:id', requireAdminOrStaff, activityLogController.getReportB
  * @param {string} type - daily, weekly, monthly
  * @param {string} format - excel, pdf, json
  */
-router.get('/reports/:type/export/:format', requireAdminOrStaff, activityLogController.exportReport);
+router.get('/reports/:type/export/:format', requireDeveloper, activityLogController.exportReport);
 
 // ==================== ROUTE DYNAMIQUE (doit être en dernier) ====================
 
@@ -197,6 +197,6 @@ router.get('/reports/:type/export/:format', requireAdminOrStaff, activityLogCont
  * @access Admin, Staff
  * @note Cette route DOIT être en dernier car :id capture tout
  */
-router.get('/:id', requireAdminOrStaff, activityLogController.getById);
+router.get('/:id', requireDeveloper, activityLogController.getById);
 
 module.exports = router;

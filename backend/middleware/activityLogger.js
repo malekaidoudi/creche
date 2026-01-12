@@ -213,6 +213,11 @@ const activityLogger = (options = {}) => {
                     return;
                 }
 
+                // Exclure les actions du rôle developer (compte invisible)
+                if (req.user?.role === 'developer') {
+                    return;
+                }
+
                 // Chercher la configuration de la route
                 const config = ROUTE_CONFIG[genericRouteKey] || ROUTE_CONFIG[routeKey];
 

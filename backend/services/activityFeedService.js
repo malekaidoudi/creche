@@ -50,6 +50,7 @@ const ACTION_MESSAGES = {
 // Couleurs par rôle
 const ROLE_COLORS = {
     admin: 'purple',
+    developer: 'indigo',
     staff: 'blue',
     parent: 'green',
     system: 'gray'
@@ -58,6 +59,7 @@ const ROLE_COLORS = {
 // Labels par rôle
 const ROLE_LABELS = {
     admin: 'Direction',
+    developer: 'Développeur',
     staff: 'Éducatrice',
     parent: 'Parent',
     system: 'Système'

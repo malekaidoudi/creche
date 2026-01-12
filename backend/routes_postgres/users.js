@@ -107,7 +107,7 @@ router.get('/contacts', auth.authenticateToken, async (req, res) => {
     let sql = `
       SELECT id, email, first_name, last_name, role, profile_image
       FROM users 
-      WHERE is_active = true AND id != $1
+      WHERE is_active = true AND id != $1 AND role != 'developer'
     `;
     const params = [userId];
 
@@ -143,7 +143,7 @@ router.get('/', auth.authenticateToken, async (req, res) => {
       SELECT id, email, first_name, last_name, phone, role, profile_image, 
              is_active, password_set, gender, staff_position, created_at, updated_at
       FROM users 
-      WHERE 1=1
+      WHERE role != 'developer'
     `;
     const params = [];
     let paramCount = 0;
@@ -179,8 +179,8 @@ router.get('/', auth.authenticateToken, async (req, res) => {
 
     const result = await db.query(sql, params);
 
-    // Compter le total
-    let countSql = 'SELECT COUNT(*) as total FROM users WHERE 1=1';
+    // Compter le total (exclure developer)
+    let countSql = "SELECT COUNT(*) as total FROM users WHERE role != 'developer'";
     const countParams = [];
     let countParamCount = 0;
 

@@ -22,7 +22,8 @@ import {
   MessageSquare,
   Image,
   Activity,
-  Mail
+  Mail,
+  HardDrive
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -241,13 +242,21 @@ const DashboardSidebar = ({ isOpen, onClose, onCollapsedChange }) => {
       path: '/dashboard/activity-feed',
       roles: ['admin']
     },
-    // Journal d'activité technique - Pour directeur uniquement
+    // Journal d'activité technique - Pour développeur uniquement
     {
       key: 'activity-logs',
       title: isRTL ? 'سجل تقني' : 'Journal technique',
       icon: Activity,
       path: '/dashboard/activity-logs',
-      roles: ['admin']
+      roles: ['developer']
+    },
+    // Storage Cloudinary - Pour développeur uniquement
+    {
+      key: 'storage',
+      title: isRTL ? 'التخزين' : 'Storage',
+      icon: HardDrive,
+      path: '/dashboard/storage',
+      roles: ['developer']
     },
     // Paramètres supprimé de la sidebar (accessible via menu utilisateur)
   ];

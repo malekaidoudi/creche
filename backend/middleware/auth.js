@@ -81,8 +81,8 @@ const auth = {
         const userId = req.user.id;
         const userRole = req.user.role;
 
-        // Admin et staff ont accès à tout
-        if (['admin', 'staff'].includes(userRole)) {
+        // Admin, developer et staff ont accès à tout
+        if (['admin', 'developer', 'staff'].includes(userRole)) {
           return next();
         }
 
@@ -160,8 +160,8 @@ const auth = {
       const userRole = req.user.role;
       const documentId = req.params.docId || req.params.id;
 
-      // Admin et staff ont accès à tous les documents
-      if (['admin', 'staff'].includes(userRole)) {
+      // Admin, developer et staff ont accès à tous les documents
+      if (['admin', 'developer', 'staff'].includes(userRole)) {
         return next();
       }
 
@@ -246,9 +246,10 @@ const auth = {
 };
 
 // Middlewares prédéfinis pour faciliter l'utilisation
-auth.requireAdmin = auth.requireRole('admin');
-auth.requireStaff = auth.requireRole('admin', 'staff');
-auth.requireParent = auth.requireRole('admin', 'staff', 'parent');
+auth.requireAdmin = auth.requireRole('admin', 'developer');
+auth.requireDeveloper = auth.requireRole('developer');
+auth.requireStaff = auth.requireRole('admin', 'developer', 'staff');
+auth.requireParent = auth.requireRole('admin', 'developer', 'staff', 'parent');
 
 // Middlewares de propriété spécialisés
 auth.requireEnrollmentAccess = auth.requireOwnershipOrStaff('enrollment');
