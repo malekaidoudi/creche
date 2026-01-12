@@ -17,7 +17,7 @@ const DashboardHeader = ({ onMenuClick }) => {
 
   // Utiliser les notifications seulement pour admin/staff
   const notificationsHook = useNotifications();
-  const { unreadCount } = (user?.role === 'admin' || user?.role === 'staff') ? notificationsHook : { unreadCount: 0 };
+  const { unreadCount } = (user?.role === 'admin' || user?.role === 'staff' || user?.role === 'developer') ? notificationsHook : { unreadCount: 0 };
 
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
@@ -48,6 +48,8 @@ const DashboardHeader = ({ onMenuClick }) => {
         return isRTL ? 'موظف' : 'Personnel';
       case 'parent':
         return isRTL ? 'ولي أمر' : 'Parent';
+      case 'developer':
+        return 'Developer';
       default:
         return role;
     }
@@ -61,6 +63,8 @@ const DashboardHeader = ({ onMenuClick }) => {
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
       case 'parent':
         return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'developer':
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
       default:
         return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
     }
@@ -126,7 +130,7 @@ const DashboardHeader = ({ onMenuClick }) => {
               </span>
             </Link>
             {/* Notifications - Visible seulement pour admin/staff - Masqué sur mobile ≤1024px */}
-            {(user?.role === 'admin' || user?.role === 'staff') && (
+            {(user?.role === 'admin' || user?.role === 'staff' || user?.role === 'developer') && (
               <button
                 onClick={() => setNotificationOpen(true)}
                 className="hidden lg:block p-2 text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 relative transition-colors"
@@ -202,10 +206,10 @@ const DashboardHeader = ({ onMenuClick }) => {
                       {isRTL ? 'الملف الشخصي' : 'Profil'}
                     </Link>
 
-                    {/* Paramètres - Admin et Staff */}
-                    {(user?.role === 'admin' || user?.role === 'staff') && (
+                    {/* Paramètres - Admin, Staff et Developer */}
+                    {(user?.role === 'admin' || user?.role === 'staff' || user?.role === 'developer') && (
                       <Link
-                        to={user?.role === 'admin' ? '/dashboard/settings' : '/dashboard/staff-settings'}
+                        to={(user?.role === 'admin' || user?.role === 'developer') ? '/dashboard/settings' : '/dashboard/staff-settings'}
                         onClick={() => setUserMenuOpen(false)}
                         className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                       >

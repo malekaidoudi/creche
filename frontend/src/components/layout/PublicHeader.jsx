@@ -34,8 +34,8 @@ const PublicHeader = () => {
     { name: t('nav.home'), href: '/' },
     // Afficher Dashboard/Mon Espace si connecté, pas d'Inscription dans le menu
     ...(isAuthenticated ? [
-      // Dashboard seulement pour admin et staff
-      ...(user?.role === 'admin' || user?.role === 'staff' ? [
+      // Dashboard pour admin, staff et developer
+      ...(user?.role === 'admin' || user?.role === 'staff' || user?.role === 'developer' ? [
         { name: isRTL ? 'لوحة التحكم' : 'Dashboard', href: '/dashboard' }
       ] : []),
       ...(hasMySpaceAccess ? [{ name: isRTL ? 'مساحتي' : 'Mon Espace', href: '/mon-espace' }] : [])
@@ -228,7 +228,8 @@ const PublicHeader = () => {
                       <p className="text-sm text-gray-500 dark:text-gray-400">
                         {user?.role === 'admin' ? (isRTL ? 'المدير' : 'Directeur') :
                           user?.role === 'staff' ? (isRTL ? 'موظف' : 'Personnel') :
-                            (isRTL ? 'ولي أمر' : 'Parent')}
+                            user?.role === 'developer' ? 'Developer' :
+                              (isRTL ? 'ولي أمر' : 'Parent')}
                       </p>
                     </div>
                   </div>

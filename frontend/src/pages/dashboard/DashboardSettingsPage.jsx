@@ -1162,8 +1162,8 @@ const DashboardSettingsPage = () => {
                   </button>
                 </div>
 
-                {/* Menu Latéral (Admin & Staff uniquement) */}
-                {(user?.role === 'admin' || user?.role === 'staff') && (
+                {/* Menu Latéral (Admin, Staff & Developer) */}
+                {(user?.role === 'admin' || user?.role === 'staff' || user?.role === 'developer') && (
                   <div className="flex items-center justify-between border-t border-gray-200 dark:border-gray-700 pt-6">
                     <div>
                       <p className="font-medium text-gray-900 dark:text-white">
@@ -1319,7 +1319,7 @@ const DashboardSettingsPage = () => {
         </div>
 
         {/* Gestion des images de visite virtuelle - Admin seulement */}
-        {user?.role === 'admin' && (
+        {(user?.role === 'admin' || user?.role === 'developer') && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1469,7 +1469,7 @@ const DashboardSettingsPage = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {user?.role === 'admin' ? (
+              {(user?.role === 'admin' || user?.role === 'developer') ? (
                 <HolidayPoliciesManager />
               ) : (
                 <div className="p-4 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-2 border-yellow-300 dark:border-yellow-700 rounded-lg shadow-sm">

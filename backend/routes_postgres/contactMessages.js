@@ -11,7 +11,7 @@ const emailService = require('../emails/emailService');
 router.get('/', authenticateToken, async (req, res) => {
     try {
         // Vérifier que l'utilisateur est admin
-        if (req.user.role !== 'admin') {
+        if (req.user.role !== 'admin' && req.user.role !== 'developer') {
             return res.status(403).json({
                 success: false,
                 error: 'Accès non autorisé'
@@ -80,7 +80,7 @@ router.get('/', authenticateToken, async (req, res) => {
  */
 router.get('/:id', authenticateToken, async (req, res) => {
     try {
-        if (req.user.role !== 'admin') {
+        if (req.user.role !== 'admin' && req.user.role !== 'developer') {
             return res.status(403).json({
                 success: false,
                 error: 'Accès non autorisé'
@@ -134,7 +134,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
  */
 router.post('/:id/reply', authenticateToken, async (req, res) => {
     try {
-        if (req.user.role !== 'admin') {
+        if (req.user.role !== 'admin' && req.user.role !== 'developer') {
             return res.status(403).json({
                 success: false,
                 error: 'Accès non autorisé'
@@ -221,7 +221,7 @@ router.post('/:id/reply', authenticateToken, async (req, res) => {
  */
 router.patch('/:id/status', authenticateToken, async (req, res) => {
     try {
-        if (req.user.role !== 'admin') {
+        if (req.user.role !== 'admin' && req.user.role !== 'developer') {
             return res.status(403).json({
                 success: false,
                 error: 'Accès non autorisé'
@@ -264,7 +264,7 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
  */
 router.delete('/:id', authenticateToken, async (req, res) => {
     try {
-        if (req.user.role !== 'admin') {
+        if (req.user.role !== 'admin' && req.user.role !== 'developer') {
             return res.status(403).json({
                 success: false,
                 error: 'Accès non autorisé'
@@ -295,7 +295,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
  */
 router.get('/stats/summary', authenticateToken, async (req, res) => {
     try {
-        if (req.user.role !== 'admin') {
+        if (req.user.role !== 'admin' && req.user.role !== 'developer') {
             return res.status(403).json({
                 success: false,
                 error: 'Accès non autorisé'

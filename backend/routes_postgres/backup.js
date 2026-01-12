@@ -61,7 +61,7 @@ function generateBackupFilename() {
 // GET /api/backup - Lister les backups disponibles
 router.get('/', authenticateToken, async (req, res) => {
     try {
-        if (req.user.role !== 'admin') {
+        if (req.user.role !== 'admin' && req.user.role !== 'developer') {
             return res.status(403).json({ error: 'Accès réservé aux administrateurs' });
         }
 
@@ -112,7 +112,7 @@ router.get('/', authenticateToken, async (req, res) => {
 // POST /api/backup - Créer un nouveau backup
 router.post('/', authenticateToken, async (req, res) => {
     try {
-        if (req.user.role !== 'admin') {
+        if (req.user.role !== 'admin' && req.user.role !== 'developer') {
             return res.status(403).json({ error: 'Accès réservé aux administrateurs' });
         }
 
@@ -203,7 +203,7 @@ router.post('/', authenticateToken, async (req, res) => {
 // GET /api/backup/download/:filename - Télécharger un backup
 router.get('/download/:filename', authenticateToken, async (req, res) => {
     try {
-        if (req.user.role !== 'admin') {
+        if (req.user.role !== 'admin' && req.user.role !== 'developer') {
             return res.status(403).json({ error: 'Accès réservé aux administrateurs' });
         }
 
@@ -225,7 +225,7 @@ router.get('/download/:filename', authenticateToken, async (req, res) => {
 // DELETE /api/backup/:filename - Supprimer un backup
 router.delete('/:filename', authenticateToken, async (req, res) => {
     try {
-        if (req.user.role !== 'admin') {
+        if (req.user.role !== 'admin' && req.user.role !== 'developer') {
             return res.status(403).json({ error: 'Accès réservé aux administrateurs' });
         }
 
@@ -253,7 +253,7 @@ router.delete('/:filename', authenticateToken, async (req, res) => {
 // POST /api/backup/restore/:filename - Restaurer depuis un backup
 router.post('/restore/:filename', authenticateToken, async (req, res) => {
     try {
-        if (req.user.role !== 'admin') {
+        if (req.user.role !== 'admin' && req.user.role !== 'developer') {
             return res.status(403).json({ error: 'Accès réservé aux administrateurs' });
         }
 

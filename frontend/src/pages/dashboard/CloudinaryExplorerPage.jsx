@@ -439,7 +439,7 @@ const CloudinaryExplorerPage = () => {
         return 'bg-green-500';
     };
 
-    if (!user || user.role !== 'admin') {
+    if (!user || (user.role !== 'admin' && user.role !== 'developer')) {
         return (
             <div className="flex items-center justify-center h-64">
                 <div className="text-center">

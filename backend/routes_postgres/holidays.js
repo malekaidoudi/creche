@@ -131,7 +131,7 @@ router.get('/', async (req, res) => {
 router.post('/', authenticateToken, async (req, res) => {
   try {
     // Vérifier que l'utilisateur est admin
-    if (req.user.role !== 'admin') {
+    if (req.user.role !== 'admin' && req.user.role !== 'developer') {
       return res.status(403).json({
         success: false,
         error: 'Accès réservé aux administrateurs'
@@ -187,7 +187,7 @@ router.post('/', authenticateToken, async (req, res) => {
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
     // Vérifier que l'utilisateur est admin
-    if (req.user.role !== 'admin') {
+    if (req.user.role !== 'admin' && req.user.role !== 'developer') {
       return res.status(403).json({
         success: false,
         error: 'Accès réservé aux administrateurs'
@@ -296,7 +296,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     // Vérifier que l'utilisateur est admin
-    if (req.user.role !== 'admin') {
+    if (req.user.role !== 'admin' && req.user.role !== 'developer') {
       return res.status(403).json({
         success: false,
         error: 'Accès réservé aux administrateurs'
@@ -339,7 +339,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 router.post('/sync', authenticateToken, async (req, res) => {
   try {
     // Vérifier que l'utilisateur est admin
-    if (req.user.role !== 'admin') {
+    if (req.user.role !== 'admin' && req.user.role !== 'developer') {
       return res.status(403).json({
         success: false,
         error: 'Accès réservé aux administrateurs'

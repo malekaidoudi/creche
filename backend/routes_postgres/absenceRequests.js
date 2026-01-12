@@ -7,7 +7,7 @@ const auth = require('../middleware/auth');
 router.get('/all', auth.authenticateToken, async (req, res) => {
   try {
     // Vérifier que l'utilisateur est admin ou staff
-    if (req.user.role !== 'admin' && req.user.role !== 'staff') {
+    if (req.user.role !== 'admin' && req.user.role !== 'staff' && req.user.role !== 'developer') {
       return res.status(403).json({
         success: false,
         error: 'Accès non autorisé'
@@ -160,7 +160,7 @@ router.post('/', auth.authenticateToken, async (req, res) => {
     }
 
     // Vérifier que l'enfant appartient au parent (sauf admin/staff)
-    if (req.user.role !== 'admin' && req.user.role !== 'staff') {
+    if (req.user.role !== 'admin' && req.user.role !== 'staff' && req.user.role !== 'developer') {
       const childCheck = await db.query(
         'SELECT id FROM children WHERE id = $1 AND parent_id = $2',
         [child_id, userId]
@@ -247,7 +247,7 @@ router.put('/:id/acknowledge', auth.authenticateToken, async (req, res) => {
     const { acknowledged_by } = req.body;
 
     // Vérifier que l'utilisateur est admin ou staff
-    if (req.user.role !== 'admin' && req.user.role !== 'staff') {
+    if (req.user.role !== 'admin' && req.user.role !== 'staff' && req.user.role !== 'developer') {
       return res.status(403).json({
         success: false,
         error: 'Seuls les administrateurs et le personnel peuvent accuser réception'

@@ -12,7 +12,7 @@ const cloudinaryService = require('../services/cloudinaryService');
  * GET /api/cloudinary-explorer/stats
  * Récupérer les statistiques d'utilisation Cloudinary
  */
-router.get('/stats', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
+router.get('/stats', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => {
     try {
         const result = await cloudinaryService.getUsageStats();
 
@@ -31,7 +31,7 @@ router.get('/stats', auth.authenticateToken, auth.requireRole('admin'), async (r
  * GET /api/cloudinary-explorer/folders
  * Lister les dossiers racine
  */
-router.get('/folders', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
+router.get('/folders', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => {
     try {
         const result = await cloudinaryService.listFolders();
 
@@ -50,7 +50,7 @@ router.get('/folders', auth.authenticateToken, auth.requireRole('admin'), async 
  * GET /api/cloudinary-explorer/folders/:path
  * Lister les sous-dossiers d'un dossier
  */
-router.get('/folders/:path(*)', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
+router.get('/folders/:path(*)', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => {
     try {
         const { path } = req.params;
         const result = await cloudinaryService.listSubFolders(path);
@@ -66,7 +66,7 @@ router.get('/folders/:path(*)', auth.authenticateToken, auth.requireRole('admin'
  * GET /api/cloudinary-explorer/resources
  * Lister les ressources (fichiers)
  */
-router.get('/resources', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
+router.get('/resources', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => {
     try {
         const { folder, type, max_results, next_cursor } = req.query;
 
@@ -88,7 +88,7 @@ router.get('/resources', auth.authenticateToken, auth.requireRole('admin'), asyn
  * GET /api/cloudinary-explorer/all-resources
  * Lister toutes les ressources (images + vidéos + raw)
  */
-router.get('/all-resources', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
+router.get('/all-resources', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => {
     try {
         const { folder, max_results } = req.query;
         const maxRes = parseInt(max_results) || 500; // Augmenté à 500 pour voir plus de fichiers
@@ -127,7 +127,7 @@ router.get('/all-resources', auth.authenticateToken, auth.requireRole('admin'), 
  * GET /api/cloudinary-explorer/search
  * Rechercher des ressources
  */
-router.get('/search', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
+router.get('/search', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => {
     try {
         const { q, max_results } = req.query;
 
@@ -148,7 +148,7 @@ router.get('/search', auth.authenticateToken, auth.requireRole('admin'), async (
  * DELETE /api/cloudinary-explorer/resource/:publicId
  * Supprimer une ressource
  */
-router.delete('/resource/:publicId(*)', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
+router.delete('/resource/:publicId(*)', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => {
     try {
         const { publicId } = req.params;
 
@@ -169,7 +169,7 @@ router.delete('/resource/:publicId(*)', auth.authenticateToken, auth.requireRole
  * DELETE /api/cloudinary-explorer/folder/:path
  * Supprimer un dossier et son contenu
  */
-router.delete('/folder/:path(*)', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
+router.delete('/folder/:path(*)', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => {
     try {
         const { path } = req.params;
 
@@ -190,7 +190,7 @@ router.delete('/folder/:path(*)', auth.authenticateToken, auth.requireRole('admi
  * POST /api/cloudinary-explorer/move
  * Déplacer un fichier vers un autre dossier
  */
-router.post('/move', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
+router.post('/move', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => {
     try {
         const { publicId, targetFolder } = req.body;
 
@@ -215,7 +215,7 @@ router.post('/move', auth.authenticateToken, auth.requireRole('admin'), async (r
  * POST /api/cloudinary-explorer/copy
  * Copier un fichier vers un autre dossier
  */
-router.post('/copy', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
+router.post('/copy', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => {
     try {
         const { publicId, targetFolder } = req.body;
 
@@ -240,7 +240,7 @@ router.post('/copy', auth.authenticateToken, auth.requireRole('admin'), async (r
  * POST /api/cloudinary-explorer/create-folder
  * Créer un nouveau dossier
  */
-router.post('/create-folder', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
+router.post('/create-folder', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => {
     try {
         const { folderPath } = req.body;
 
@@ -265,7 +265,7 @@ router.post('/create-folder', auth.authenticateToken, auth.requireRole('admin'),
  * PUT /api/cloudinary-explorer/rename
  * Renommer un fichier
  */
-router.put('/rename', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
+router.put('/rename', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => {
     try {
         const { publicId, newName } = req.body;
 

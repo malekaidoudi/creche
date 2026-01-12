@@ -167,14 +167,14 @@ const SimpleNotificationCenter = ({ isOpen, onClose }) => {
         notification.type === 'vacation_added' || notification.type === 'vacation_removed') {
         // Notifications jours fériés/vacances - Rediriger vers le dashboard/mon-espace (widget jours fériés visible)
         // Admin va aux paramètres, les autres vont au dashboard où le widget est affiché
-        if (user?.role === 'admin') {
+        if (user?.role === 'admin' || user?.role === 'developer') {
           navigate(`${settingsRoute}?section=holidays`);
         } else {
           navigate(isParent ? '/mon-espace' : '/dashboard');
         }
       } else if (notification.type === 'schedule_changed' || notification.type === 'saturday_changed' || notification.type === 'phone_changed') {
-        // Notifications paramètres crèche - Admin vers paramètres, autres vers dashboard
-        if (user?.role === 'admin') {
+        // Notifications paramètres crèche - Admin/Developer vers paramètres, autres vers dashboard
+        if (user?.role === 'admin' || user?.role === 'developer') {
           navigate(settingsRoute);
         } else {
           navigate(isParent ? '/mon-espace' : '/dashboard');
@@ -359,7 +359,7 @@ const SimpleNotificationCenter = ({ isOpen, onClose }) => {
                               </p>
 
                               {/* Actions pour les demandes d'absence */}
-                              {isAbsenceRequest && (user?.role === 'admin' || user?.role === 'staff') && (
+                              {isAbsenceRequest && (user?.role === 'admin' || user?.role === 'staff' || user?.role === 'developer') && (
                                 <div className="mt-3" onClick={(e) => e.stopPropagation()}>
                                   <Button
                                     size="sm"

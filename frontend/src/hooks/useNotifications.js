@@ -9,7 +9,7 @@ export const useNotifications = () => {
   const [loading, setLoading] = useState(false);
 
   const loadNotifications = async () => {
-    if (!user || (user.role !== 'admin' && user.role !== 'staff')) {
+    if (!user || (user.role !== 'admin' && user.role !== 'staff' && user.role !== 'developer')) {
       console.log('🚫 Chargement notifications ignoré - utilisateur non autorisé:', user?.role);
       return;
     }
@@ -17,11 +17,11 @@ export const useNotifications = () => {
     try {
       setLoading(true);
       console.log('📬 Chargement notifications pour:', user.email);
-      
+
       const response = await api.get('/api/notifications');
-      
+
       console.log('📨 Réponse notifications:', response.data);
-      
+
       if (response.data.success) {
         setNotifications(response.data.notifications || []);
         setUnreadCount(response.data.unread_count || 0);
@@ -43,11 +43,11 @@ export const useNotifications = () => {
   const markAsRead = async (notificationId) => {
     try {
       const response = await api.put(`/notifications/${notificationId}/read`);
-      
+
       if (response.data.success) {
-        setNotifications(prev => 
-          prev.map(notif => 
-            notif.id === notificationId 
+        setNotifications(prev =>
+          prev.map(notif =>
+            notif.id === notificationId
               ? { ...notif, is_read: true }
               : notif
           )
@@ -62,9 +62,9 @@ export const useNotifications = () => {
   const markAllAsRead = async () => {
     try {
       const response = await api.put('/api/notifications/read-all');
-      
+
       if (response.data.success) {
-        setNotifications(prev => 
+        setNotifications(prev =>
           prev.map(notif => ({ ...notif, is_read: true }))
         );
         setUnreadCount(0);
