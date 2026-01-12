@@ -233,13 +233,21 @@ const DashboardSidebar = ({ isOpen, onClose, onCollapsedChange }) => {
         }
       ]
     },
-    // Fil d'activité simplifié - Pour directeur
+    // Fil d'activité simplifié - Pour directeur uniquement
     {
       key: 'activity-feed',
       title: isRTL ? 'متابعة النشاط' : 'Fil d\'activité',
       icon: Activity,
       path: '/dashboard/activity-feed',
-      roles: ['admin', 'staff']
+      roles: ['admin']
+    },
+    // Journal d'activité technique - Pour directeur uniquement
+    {
+      key: 'activity-logs',
+      title: isRTL ? 'سجل تقني' : 'Journal technique',
+      icon: Activity,
+      path: '/dashboard/activity-logs',
+      roles: ['admin']
     },
     // Paramètres supprimé de la sidebar (accessible via menu utilisateur)
   ];

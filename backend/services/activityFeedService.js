@@ -246,11 +246,37 @@ const activityFeedService = {
         LIMIT 5
       `, [targetDate]);
 
+            // Transformer les actions récentes de manière sécurisée
+            const recentImportant = recentActions.rows.map(log => {
+                try {
+                    return this.transformToFeedItem(log);
+                } catch (e) {
+                    return {
+                        id: log.id,
+                        userName: log.user_name || 'Utilisateur',
+                        userRole: log.user_role || 'system',
+                        message: log.action,
+                        createdAt: log.created_at
+                    };
+                }
+            });
+
             return {
                 date: targetDate,
-                stats: stats.rows[0],
+                stats: stats.rows[0] || {
+                    parent_actions: 0,
+                    staff_actions: 0,
+                    admin_actions: 0,
+                    active_parents: 0,
+                    active_staff: 0,
+                    new_enrollments: 0,
+                    approved_enrollments: 0,
+                    attendance_actions: 0,
+                    documents_uploaded: 0,
+                    messages_received: 0
+                },
                 attendance: attendance.rows[0] || { present: 0, absent: 0, total: 0 },
-                recentImportant: recentActions.rows.map(log => this.transformToFeedItem(log))
+                recentImportant
             };
         } catch (error) {
             console.error('❌ Erreur résumé journalier:', error);

@@ -11,14 +11,14 @@ const activityFeedService = require('../services/activityFeedService');
 // Toutes les routes nécessitent une authentification
 router.use(auth.authenticateToken);
 
-// Middleware pour vérifier les rôles admin/staff
-const requireAdminOrStaff = auth.requireRole('admin', 'staff');
+// Middleware pour vérifier le rôle admin uniquement
+const requireAdmin = auth.requireRole('admin');
 
 /**
  * GET /api/activity-feed
  * Récupérer le fil d'activité
  */
-router.get('/', requireAdminOrStaff, async (req, res) => {
+router.get('/', requireAdmin, async (req, res) => {
     try {
         const { page, limit, role, date, userId } = req.query;
 
@@ -47,7 +47,7 @@ router.get('/', requireAdminOrStaff, async (req, res) => {
  * GET /api/activity-feed/summary
  * Résumé du jour
  */
-router.get('/summary', requireAdminOrStaff, async (req, res) => {
+router.get('/summary', requireAdmin, async (req, res) => {
     try {
         const { date } = req.query;
         const summary = await activityFeedService.getDailySummary(date || null);
@@ -69,7 +69,7 @@ router.get('/summary', requireAdminOrStaff, async (req, res) => {
  * GET /api/activity-feed/calendar/:year/:month
  * Données pour le calendrier
  */
-router.get('/calendar/:year/:month', requireAdminOrStaff, async (req, res) => {
+router.get('/calendar/:year/:month', requireAdmin, async (req, res) => {
     try {
         const { year, month } = req.params;
         const calendarData = await activityFeedService.getCalendarData(
@@ -94,7 +94,7 @@ router.get('/calendar/:year/:month', requireAdminOrStaff, async (req, res) => {
  * GET /api/activity-feed/user/:userId
  * Activités d'un utilisateur spécifique
  */
-router.get('/user/:userId', requireAdminOrStaff, async (req, res) => {
+router.get('/user/:userId', requireAdmin, async (req, res) => {
     try {
         const { userId } = req.params;
         const { limit } = req.query;
