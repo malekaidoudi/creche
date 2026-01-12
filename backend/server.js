@@ -79,6 +79,7 @@ const paymentAlertsRoutes = require('./routes_postgres/paymentAlerts');
 const documentsRoutes = require('./routes_postgres/documents');
 const cloudinaryRoutes = require('./routes_postgres/cloudinary');
 const cloudinaryExplorerRoutes = require('./routes_postgres/cloudinaryExplorer');
+const activityFeedRoutes = require('./routes_postgres/activityFeed');
 console.log('✅ Routes chargées\n');
 
 const app = express();
@@ -334,6 +335,9 @@ console.log('  ✓ /api/cloudinary (upload direct) ☁️');
 
 app.use('/api/cloudinary-explorer', cloudinaryExplorerRoutes);
 console.log('  ✓ /api/cloudinary-explorer (explorateur stockage) 🗂️');
+
+app.use('/api/activity-feed', activityFeedRoutes);
+console.log('  ✓ /api/activity-feed (fil d\'activité simplifié) 📰');
 
 console.log('\n✅ Toutes les routes montées avec succès\n');
 

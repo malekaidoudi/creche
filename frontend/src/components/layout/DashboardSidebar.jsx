@@ -233,12 +233,12 @@ const DashboardSidebar = ({ isOpen, onClose, onCollapsedChange }) => {
         }
       ]
     },
-    // Journal d'activité - Lien direct pour admin/staff
+    // Fil d'activité simplifié - Pour directeur
     {
-      key: 'activity-logs',
-      title: isRTL ? 'سجل النشاط' : 'Journal d\'activité',
+      key: 'activity-feed',
+      title: isRTL ? 'متابعة النشاط' : 'Fil d\'activité',
       icon: Activity,
-      path: '/dashboard/activity-logs',
+      path: '/dashboard/activity-feed',
       roles: ['admin', 'staff']
     },
     // Paramètres supprimé de la sidebar (accessible via menu utilisateur)
