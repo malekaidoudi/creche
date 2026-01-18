@@ -75,19 +75,35 @@ router.post('/check-child', [
     console.log('👶 Check-child reçu:', { child_first_name, child_last_name, child_birth_date });
 
     // Vérifier dans la table enrollments si un enfant avec même nom/prénom/date existe
-    // Utiliser COALESCE pour gérer les deux colonnes status possibles (migration)
-    const enrollmentCheck = await db.query(
-      `SELECT id, child_first_name, child_last_name, child_birth_date, 
-              applicant_first_name, applicant_last_name, applicant_email, 
-              COALESCE(new_status::text, status) as status 
-       FROM enrollments 
-       WHERE LOWER(TRIM(COALESCE(child_first_name, ''))) = $1 
-         AND LOWER(TRIM(COALESCE(child_last_name, ''))) = $2 
-         AND child_birth_date IS NOT NULL
-         AND child_birth_date::date = $3::date
-         AND (COALESCE(new_status::text, status) IN ('pending', 'in_progress'))`,
-      [normalizedFirstName, normalizedLastName, child_birth_date]
-    );
+    // Requête simplifiée pour éviter les erreurs de cast
+    let enrollmentCheck;
+    try {
+      enrollmentCheck = await db.query(
+        `SELECT id, child_first_name, child_last_name, child_birth_date, 
+                applicant_first_name, applicant_last_name, applicant_email,
+                COALESCE(status, 'pending') as status
+         FROM enrollments 
+         WHERE LOWER(TRIM(COALESCE(child_first_name, ''))) = $1 
+           AND LOWER(TRIM(COALESCE(child_last_name, ''))) = $2 
+           AND child_birth_date IS NOT NULL
+           AND child_birth_date = $3::date
+           AND COALESCE(status, 'pending') IN ('pending', 'in_progress')`,
+        [normalizedFirstName, normalizedLastName, child_birth_date]
+      );
+    } catch (sqlError) {
+      console.error('❌ Erreur SQL enrollments:', sqlError.message);
+      // Fallback: requête sans filtre status si la colonne pose problème
+      enrollmentCheck = await db.query(
+        `SELECT id, child_first_name, child_last_name, child_birth_date, 
+                applicant_first_name, applicant_last_name, applicant_email
+         FROM enrollments 
+         WHERE LOWER(TRIM(COALESCE(child_first_name, ''))) = $1 
+           AND LOWER(TRIM(COALESCE(child_last_name, ''))) = $2 
+           AND child_birth_date IS NOT NULL
+           AND child_birth_date = $3::date`,
+        [normalizedFirstName, normalizedLastName, child_birth_date]
+      );
+    }
 
     if (enrollmentCheck.rows.length > 0) {
       const existingEnrollment = enrollmentCheck.rows[0];
@@ -105,18 +121,31 @@ router.post('/check-child', [
     }
 
     // Vérifier aussi dans la table children (enfants déjà inscrits)
-    // Note: la colonne peut être date_of_birth ou birth_date selon la migration
-    const childCheck = await db.query(
-      `SELECT c.id, c.first_name, c.last_name, 
-              COALESCE(c.date_of_birth, c.birth_date) as birth_date
-       FROM children c
-       WHERE LOWER(TRIM(COALESCE(c.first_name, ''))) = $1 
-         AND LOWER(TRIM(COALESCE(c.last_name, ''))) = $2 
-         AND COALESCE(c.date_of_birth, c.birth_date) IS NOT NULL
-         AND COALESCE(c.date_of_birth, c.birth_date)::date = $3::date
-         AND c.is_active = true`,
-      [normalizedFirstName, normalizedLastName, child_birth_date]
-    );
+    let childCheck;
+    try {
+      childCheck = await db.query(
+        `SELECT c.id, c.first_name, c.last_name, c.birth_date
+         FROM children c
+         WHERE LOWER(TRIM(COALESCE(c.first_name, ''))) = $1 
+           AND LOWER(TRIM(COALESCE(c.last_name, ''))) = $2 
+           AND c.birth_date IS NOT NULL
+           AND c.birth_date = $3::date
+           AND c.is_active = true`,
+        [normalizedFirstName, normalizedLastName, child_birth_date]
+      );
+    } catch (sqlError) {
+      console.error('❌ Erreur SQL children:', sqlError.message);
+      // Fallback sans filtre is_active
+      childCheck = await db.query(
+        `SELECT c.id, c.first_name, c.last_name, c.birth_date
+         FROM children c
+         WHERE LOWER(TRIM(COALESCE(c.first_name, ''))) = $1 
+           AND LOWER(TRIM(COALESCE(c.last_name, ''))) = $2 
+           AND c.birth_date IS NOT NULL
+           AND c.birth_date = $3::date`,
+        [normalizedFirstName, normalizedLastName, child_birth_date]
+      );
+    }
 
     if (childCheck.rows.length > 0) {
       console.log('👶 Enfant déjà inscrit trouvé:', childCheck.rows[0].id);
