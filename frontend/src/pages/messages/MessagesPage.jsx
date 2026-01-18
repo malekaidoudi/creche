@@ -683,8 +683,8 @@ export default function MessagesPage() {
 
         {/* Section Conversation */}
         {selectedContact ? (
-          /* Fullscreen overlay pour mobile */
-          <div className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-gray-800 lg:relative lg:col-span-2 lg:h-[650px] lg:rounded-lg lg:shadow-sm lg:border lg:border-gray-200 lg:dark:border-gray-700">
+          /* Fullscreen overlay pour mobile - bottom ajusté pour la navigation mobile */
+          <div className="fixed inset-0 z-[60] flex flex-col bg-white dark:bg-gray-800 lg:relative lg:col-span-2 lg:h-[650px] lg:rounded-lg lg:shadow-sm lg:border lg:border-gray-200 lg:dark:border-gray-700 lg:z-auto" style={{ bottom: isMobile ? '0' : undefined }}>
             {/* Header conversation */}
             <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 shrink-0 relative z-10">
               <div className="flex items-center justify-between">
@@ -757,8 +757,12 @@ export default function MessagesPage() {
               )}
             </div>
 
-            {/* Formulaire envoi */}
-            <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shrink-0">
+            {/* Formulaire envoi - padding-bottom important pour être visible au-dessus de la navigation mobile */}
+            <form
+              onSubmit={handleSendMessage}
+              className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shrink-0 relative"
+              style={{ paddingBottom: isMobile ? 'calc(80px + env(safe-area-inset-bottom, 0px))' : '16px' }}
+            >
               <div className="flex gap-2">
                 <input
                   ref={messageInputRef}
@@ -766,12 +770,15 @@ export default function MessagesPage() {
                   value={replyContent}
                   onChange={(e) => setReplyContent(e.target.value)}
                   placeholder="Écrivez votre message..."
-                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                  className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 text-base"
+                  style={{ fontSize: '16px' }}
+                  autoComplete="off"
+                  autoCorrect="off"
                 />
                 <button
                   type="submit"
                   disabled={!replyContent.trim()}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   <Send className="w-5 h-5" />
                 </button>

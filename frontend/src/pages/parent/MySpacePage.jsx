@@ -8,7 +8,8 @@ import {
   Home,
   ChevronLeft,
   FileText,
-  Plus
+  Plus,
+  MessageCircle
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -30,6 +31,7 @@ import MobileNavigation from '../../components/mobile/MobileNavigation';
 import { useDialogContext } from '../../contexts/DialogContext';
 import NewsWidget from '../../components/NewsWidget';
 import HolidaysList from '../../components/HolidaysList';
+import TestimonialForm from '../../components/testimonials/TestimonialForm';
 
 const MySpacePage = () => {
   const { user } = useAuth();
@@ -49,6 +51,7 @@ const MySpacePage = () => {
   const [appointmentKey, setAppointmentKey] = useState(0);
   const [canAddChild, setCanAddChild] = useState(true);
   const [childrenCountInfo, setChildrenCountInfo] = useState(null);
+  const [showTestimonialForm, setShowTestimonialForm] = useState(false);
 
   useEffect(() => {
     loadChildren();
@@ -404,6 +407,32 @@ const MySpacePage = () => {
             </motion.div>
           </div>
 
+          {/* Bouton Témoignage */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="mb-8"
+          >
+            <button
+              onClick={() => setShowTestimonialForm(true)}
+              className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl text-white hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg hover:shadow-xl"
+            >
+              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                <MessageCircle className="w-6 h-6" />
+              </div>
+              <div className="flex-1 text-left">
+                <h3 className="font-semibold text-lg">
+                  {isRTL ? 'شاركنا رأيك' : 'Partagez votre avis'}
+                </h3>
+                <p className="text-purple-100 text-sm">
+                  {isRTL ? 'ساعدنا على التحسين بتقييمك' : 'Aidez-nous à nous améliorer avec votre témoignage'}
+                </p>
+              </div>
+              <ChevronLeft className={`w-6 h-6 ${isRTL ? '' : 'rotate-180'}`} />
+            </button>
+          </motion.div>
+
         </div>
 
         {/* Centre de notifications */}
@@ -436,6 +465,16 @@ const MySpacePage = () => {
           onSuccess={() => {
             setAppointmentKey(prev => prev + 1); // Recharger le widget
           }}
+        />
+
+        {/* Modal témoignage */}
+        <TestimonialForm
+          isOpen={showTestimonialForm}
+          onClose={() => setShowTestimonialForm(false)}
+          onSuccess={() => {
+            dialog.success(isRTL ? 'تم إرسال تقييمك بنجاح!' : 'Votre témoignage a été envoyé avec succès !');
+          }}
+          userName={`${user?.first_name || ''} ${user?.last_name || ''}`}
         />
 
         {/* Menu latéral sur grand écran, bouton flottant sur petit écran */}

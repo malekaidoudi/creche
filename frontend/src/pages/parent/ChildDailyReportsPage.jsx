@@ -19,6 +19,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Ca
 import { Button } from '../../components/ui/Button';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
+import API_CONFIG from '../../config/api';
+
+// Fonction pour construire l'URL complète de la photo
+const getChildPhotoUrl = (photoUrl) => {
+    if (!photoUrl) return null;
+    if (photoUrl.startsWith('http')) return photoUrl;
+    if (photoUrl.startsWith('blob:')) return photoUrl;
+    if (photoUrl.startsWith('data:')) return photoUrl;
+    return `${API_CONFIG.BASE_URL}${photoUrl.startsWith('/') ? '' : '/'}${photoUrl}`;
+};
 
 const ChildDailyReportsPage = () => {
     const { isRTL } = useLanguage();
@@ -338,73 +348,87 @@ const ChildDailyReportsPage = () => {
                                 >
                                     <Card className={isDark ? 'bg-gray-800 border-gray-700' : ''}>
                                         <CardHeader className="border-b border-gray-200 dark:border-gray-700">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${selectedChild.report_type === 'baby'
-                                                        ? 'bg-pink-100 dark:bg-pink-900/40'
-                                                        : 'bg-blue-100 dark:bg-blue-900/40'
-                                                        }`}>
-                                                        {selectedChild.photo_url ? (
-                                                            <img src={selectedChild.photo_url} alt="" className="w-12 h-12 rounded-full object-cover" />
-                                                        ) : selectedChild.report_type === 'baby' ? (
-                                                            <Baby className="w-6 h-6 text-pink-500" />
-                                                        ) : (
-                                                            <User className="w-6 h-6 text-blue-500" />
-                                                        )}
-                                                    </div>
-                                                    <div>
-                                                        <CardTitle className={isDark ? 'text-white' : ''}>
-                                                            {selectedChild.first_name} {selectedChild.last_name}
-                                                        </CardTitle>
-                                                        <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                                                            {getAgeText(selectedChild.birth_date)}
-                                                            {selectedReport.educator_first_name && (
-                                                                <span className="ml-3">
-                                                                    • {labels.educator}: {selectedReport.educator_first_name} {selectedReport.educator_last_name}
-                                                                </span>
-                                                            )}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                {/* Stock couches et fournitures du jour */}
-                                                <div className="flex items-center gap-4">
-                                                    {/* Stock couches */}
-                                                    <div className={`px-3 py-2 rounded-lg ${selectedChild.diaper_low_stock
-                                                        ? 'bg-red-100 dark:bg-red-900/40 border border-red-300 dark:border-red-700'
-                                                        : 'bg-green-100 dark:bg-green-900/40'}`}>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-lg">🧷</span>
-                                                            <div>
-                                                                <p className={`text-xs ${selectedChild.diaper_low_stock ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
-                                                                    {isRTL ? 'مخزون الحفاضات' : 'Stock couches'}
-                                                                </p>
-                                                                <p className={`text-lg font-bold ${selectedChild.diaper_low_stock ? 'text-red-700 dark:text-red-300' : 'text-green-700 dark:text-green-300'}`}>
-                                                                    {selectedChild.diaper_stock || 0}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    {/* Fournitures apportées ce jour */}
-                                                    {(selectedReport.today_supplies?.length > 0 || selectedChild.today_supplies?.length > 0) && (
-                                                        <div className="px-3 py-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/40">
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="text-lg">🎒</span>
-                                                                <div>
-                                                                    <p className="text-xs text-emerald-600 dark:text-emerald-400">
-                                                                        {isRTL ? 'أحضر هذا اليوم' : 'Apporté ce jour'}
-                                                                    </p>
-                                                                    <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
-                                                                        {(selectedReport.today_supplies || selectedChild.today_supplies).map(s =>
-                                                                            s.supply_type === 'diapers'
-                                                                                ? `${s.quantity} ${isRTL ? 'حفاضات' : 'couches'}`
-                                                                                : s.description || (isRTL ? 'طعام' : 'Nourriture')
-                                                                        ).join(', ')}
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                        </div>
+                                            {/* Info enfant */}
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${selectedChild.report_type === 'baby'
+                                                    ? 'bg-pink-100 dark:bg-pink-900/40'
+                                                    : 'bg-blue-100 dark:bg-blue-900/40'
+                                                    }`}>
+                                                    {getChildPhotoUrl(selectedChild.photo_url) ? (
+                                                        <img src={getChildPhotoUrl(selectedChild.photo_url)} alt="" className="w-12 h-12 rounded-full object-cover" />
+                                                    ) : selectedChild.report_type === 'baby' ? (
+                                                        <Baby className="w-6 h-6 text-pink-500" />
+                                                    ) : (
+                                                        <User className="w-6 h-6 text-blue-500" />
                                                     )}
                                                 </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <CardTitle className={`truncate ${isDark ? 'text-white' : ''}`}>
+                                                        {selectedChild.first_name} {selectedChild.last_name}
+                                                    </CardTitle>
+                                                    <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                                        {getAgeText(selectedChild.birth_date)}
+                                                    </p>
+                                                    {selectedReport.educator_first_name && (
+                                                        <p className={`text-xs mt-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                                                            {labels.educator}: {selectedReport.educator_first_name} {selectedReport.educator_last_name}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Stock couches et fournitures - en grille responsive */}
+                                            <div className="grid grid-cols-2 gap-3">
+                                                {/* Stock couches */}
+                                                <div className={`px-3 py-2 rounded-lg ${selectedChild.diaper_low_stock
+                                                    ? 'bg-red-100 dark:bg-red-900/40 border border-red-300 dark:border-red-700'
+                                                    : 'bg-green-100 dark:bg-green-900/40'}`}>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-lg">🧷</span>
+                                                        <div className="min-w-0">
+                                                            <p className={`text-xs truncate ${selectedChild.diaper_low_stock ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                                                                {isRTL ? 'مخزون الحفاضات' : 'Stock couches'}
+                                                            </p>
+                                                            <p className={`text-lg font-bold ${selectedChild.diaper_low_stock ? 'text-red-700 dark:text-red-300' : 'text-green-700 dark:text-green-300'}`}>
+                                                                {selectedChild.diaper_stock || 0}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                {/* Fournitures apportées ce jour */}
+                                                {(selectedReport.today_supplies?.length > 0 || selectedChild.today_supplies?.length > 0) ? (
+                                                    <div className="px-3 py-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/40">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-lg">🎒</span>
+                                                            <div className="min-w-0 flex-1">
+                                                                <p className="text-xs text-emerald-600 dark:text-emerald-400 truncate">
+                                                                    {isRTL ? 'أحضر هذا اليوم' : 'Apporté ce jour'}
+                                                                </p>
+                                                                <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300 truncate">
+                                                                    {(selectedReport.today_supplies || selectedChild.today_supplies).map(s =>
+                                                                        s.supply_type === 'diapers'
+                                                                            ? `${s.quantity} ${isRTL ? 'حفاضات' : 'couches'}`
+                                                                            : s.description || (isRTL ? 'طعام' : 'Nourriture')
+                                                                    ).join(', ')}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700/50">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-lg opacity-50">🎒</span>
+                                                            <div className="min-w-0">
+                                                                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                                                    {isRTL ? 'أحضر هذا اليوم' : 'Apporté ce jour'}
+                                                                </p>
+                                                                <p className="text-sm text-gray-400 dark:text-gray-500">
+                                                                    {isRTL ? 'لا شيء' : 'Rien'}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         </CardHeader>
 

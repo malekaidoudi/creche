@@ -261,13 +261,17 @@ const getTodaySupplies = async (req, res) => {
 /**
  * GET /api/supplies/child/:childId/food-options
  * Récupérer la liste des nourritures apportées pour un enfant (pour les options de repas)
- * Retourne les items food distincts des 30 derniers jours
+ * Retourne les items food apportés CE JOUR uniquement
  */
 const getFoodOptions = async (req, res) => {
     try {
         const { childId } = req.params;
+        const { date } = req.query;
 
-        // Récupérer les descriptions de nourriture des 30 derniers jours
+        // Utiliser la date fournie ou aujourd'hui
+        const targetDate = date || new Date().toISOString().split('T')[0];
+
+        // Récupérer les descriptions de nourriture apportées CE JOUR uniquement
         const result = await db.query(`
             SELECT DISTINCT description
             FROM daily_supplies_brought
@@ -275,9 +279,9 @@ const getFoodOptions = async (req, res) => {
               AND supply_type = 'food' 
               AND description IS NOT NULL 
               AND description != ''
-              AND brought_date >= CURRENT_DATE - INTERVAL '30 days'
+              AND brought_date = $2
             ORDER BY description
-        `, [childId]);
+        `, [childId, targetDate]);
 
         // Parser les descriptions (peuvent contenir plusieurs items séparés par virgule)
         const allItems = new Set();

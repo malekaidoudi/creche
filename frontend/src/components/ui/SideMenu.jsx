@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { MessageSquare, StickyNote, Calendar, CheckSquare, Bell, DollarSign, CalendarCheck, Settings, Mail, Megaphone, FileText, Zap, Clock, ChevronDown, ChevronUp, CalendarX } from 'lucide-react';
+import { MessageSquare, StickyNote, Calendar, CheckSquare, Bell, DollarSign, CalendarCheck, Settings, Mail, Megaphone, FileText, Zap, Clock, ChevronDown, ChevronUp, CalendarX, Pill } from 'lucide-react';
 import MemoModal from '../modals/MemoModal';
 import EventModal from '../modals/EventModal';
 import TaskModal from '../modals/TaskModal';
@@ -186,6 +186,16 @@ export default function SideMenu() {
       hoverColor: 'hover:from-red-600 hover:to-pink-600',
       show: isParent,
       onClick: () => navigate('/mon-espace/absence-request')
+    },
+    // Parent: Traitements médicaux
+    {
+      id: 'parent-treatments',
+      icon: Pill,
+      label: 'Traitements médicaux',
+      color: 'from-purple-500 to-violet-500',
+      hoverColor: 'hover:from-purple-600 hover:to-violet-600',
+      show: isParent,
+      onClick: () => navigate('/mon-espace/treatments')
     }
   ].filter(item => item.show);
 

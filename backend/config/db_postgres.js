@@ -159,9 +159,54 @@ const ensurePhotoPrivacyColumn = async () => {
   }
 };
 
-// Test de connexion au démarrage puis migration
+// Migration automatique: Créer la table testimonials si elle n'existe pas
+const ensureTestimonialsTable = async () => {
+  try {
+    const checkQuery = `
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public' AND table_name = 'testimonials';
+    `;
+    const res = await pool.query(checkQuery);
+
+    if (res.rows.length === 0) {
+      console.log('📝 Création de la table testimonials...');
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS testimonials (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          parent_name VARCHAR(100) NOT NULL,
+          child_name VARCHAR(100),
+          content TEXT NOT NULL,
+          rating INTEGER CHECK (rating >= 1 AND rating <= 5) DEFAULT 5,
+          status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+          admin_notes TEXT,
+          is_featured BOOLEAN DEFAULT FALSE,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          approved_at TIMESTAMP,
+          approved_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+        );
+      `);
+
+      // Créer les index
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_testimonials_status ON testimonials(status);`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_testimonials_user_id ON testimonials(user_id);`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_testimonials_created_at ON testimonials(created_at DESC);`);
+
+      console.log('✅ Table testimonials créée avec succès');
+    }
+  } catch (error) {
+    if (!error.message.includes('already exists')) {
+      console.log('⚠️ Migration testimonials:', error.message);
+    }
+  }
+};
+
+// Test de connexion au démarrage puis migrations
 testConnection()
   .then(() => ensurePhotoPrivacyColumn())
+  .then(() => ensureTestimonialsTable())
   .catch(console.error);
 
 // Export des fonctions

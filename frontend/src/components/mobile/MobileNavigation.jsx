@@ -27,7 +27,8 @@ import {
     LogOut,
     User,
     Bell,
-    Clock
+    Clock,
+    CalendarX
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useAuth } from '../../contexts/AuthContext';
@@ -92,8 +93,15 @@ const MobileNavigation = () => {
         {
             id: 'attendance',
             icon: ClipboardCheck,
-            label: isRTL ? 'الحضور' : 'Présences',
+            label: isRTL ? 'الحضور' : 'Présence',
             path: '/mon-espace/attendance-report',
+            roles: ['parent']
+        },
+        {
+            id: 'absence',
+            icon: CalendarX,
+            label: isRTL ? 'غياب' : 'Absence',
+            path: '/mon-espace/absence-request',
             roles: ['parent']
         },
         {
@@ -101,13 +109,6 @@ const MobileNavigation = () => {
             icon: Bell,
             label: isRTL ? 'إعلانات' : 'Annonces',
             path: '/mon-espace/announcements',
-            roles: ['parent']
-        },
-        {
-            id: 'documents',
-            icon: FileText,
-            label: isRTL ? 'وثائق' : 'Documents',
-            path: '/mon-espace/activities',
             roles: ['parent']
         },
         {
@@ -138,6 +139,12 @@ const MobileNavigation = () => {
             icon: UserPlus,
             label: isRTL ? 'التسجيلات' : 'Inscriptions',
             path: '/dashboard/enrollments',
+            roles: ['admin']
+        },
+        {
+            icon: Clock,
+            label: isRTL ? 'التقارير اليومية' : 'Rapports journaliers',
+            path: '/dashboard/daily-reports',
             roles: ['admin', 'staff']
         },
         {

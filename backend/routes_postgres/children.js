@@ -844,6 +844,10 @@ router.put('/:id', [
       birth_date,
       gender,
       medical_info,
+      allergies,
+      medical_notes,
+      doctor_name,
+      doctor_phone,
       emergency_contact_name,
       emergency_contact_phone,
       photo_url,
@@ -893,6 +897,30 @@ router.put('/:id', [
       paramCount++;
       updates.push(`medical_info = $${paramCount}`);
       params.push(medical_info);
+    }
+
+    if (allergies !== undefined) {
+      paramCount++;
+      updates.push(`allergies = $${paramCount}`);
+      params.push(allergies);
+    }
+
+    if (medical_notes !== undefined) {
+      paramCount++;
+      updates.push(`medical_notes = $${paramCount}`);
+      params.push(medical_notes);
+    }
+
+    if (doctor_name !== undefined) {
+      paramCount++;
+      updates.push(`doctor_name = $${paramCount}`);
+      params.push(doctor_name);
+    }
+
+    if (doctor_phone !== undefined) {
+      paramCount++;
+      updates.push(`doctor_phone = $${paramCount}`);
+      params.push(doctor_phone);
     }
 
     if (emergency_contact_name !== undefined) {
@@ -946,8 +974,9 @@ router.put('/:id', [
       SET ${updates.join(', ')} 
       WHERE id = $${paramCount}
       RETURNING id, first_name, last_name, birth_date, gender, medical_info, 
+                allergies, medical_notes, doctor_name, doctor_phone,
                 emergency_contact_name, emergency_contact_phone, photo_url, 
-                is_active, updated_at
+                photo_shared_with_staff, is_active, updated_at
     `;
 
     const result = await pool.query(sql, params);

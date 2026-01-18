@@ -21,7 +21,8 @@ import {
     CalendarPlus,
     CreditCard,
     Plus,
-    UserPlus
+    UserPlus,
+    Pill
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -230,34 +231,72 @@ const MobileDashboardComplete = ({
                     <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
                         {isRTL ? 'إجراءات سريعة' : 'Actions rapides'}
                     </h3>
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="grid gap-2 grid-cols-4">
+                        {/* Présences - visible pour staff et admin */}
                         <button
                             onClick={() => navigate('/dashboard/attendance')}
                             className="flex flex-col items-center p-3 bg-green-50 dark:bg-green-900/20 rounded-xl active:scale-95 transition-transform"
                         >
                             <UserCheck className="w-6 h-6 text-green-600 mb-1" />
-                            <span className="text-xs text-gray-700 dark:text-gray-300 text-center">Présences</span>
+                            <span className="text-xs text-gray-700 dark:text-gray-300 text-center">{isRTL ? 'الحضور' : 'Présences'}</span>
                         </button>
+
+                        {/* Inscriptions - admin seulement */}
+                        {isAdmin() && (
+                            <button
+                                onClick={() => navigate('/dashboard/enrollments')}
+                                className="flex flex-col items-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl active:scale-95 transition-transform"
+                            >
+                                <UserPlus className="w-6 h-6 text-blue-600 mb-1" />
+                                <span className="text-xs text-gray-700 dark:text-gray-300 text-center">{isRTL ? 'التسجيل' : 'Inscription'}</span>
+                            </button>
+                        )}
+
+                        {/* Événement - admin seulement (staff ne peut pas créer d'événements) */}
+                        {isAdmin() && (
+                            <button
+                                onClick={() => onOpenEventModal?.()}
+                                className="flex flex-col items-center p-3 bg-purple-50 dark:bg-purple-900/20 rounded-xl active:scale-95 transition-transform"
+                            >
+                                <CalendarPlus className="w-6 h-6 text-purple-600 mb-1" />
+                                <span className="text-xs text-gray-700 dark:text-gray-300 text-center">{isRTL ? 'حدث' : 'Événement'}</span>
+                            </button>
+                        )}
+
+                        {/* Absences - visible pour staff et admin */}
                         <button
-                            onClick={() => navigate('/dashboard/enrollments')}
-                            className="flex flex-col items-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl active:scale-95 transition-transform"
-                        >
-                            <UserPlus className="w-6 h-6 text-blue-600 mb-1" />
-                            <span className="text-xs text-gray-700 dark:text-gray-300 text-center">Inscription</span>
-                        </button>
-                        <button
-                            onClick={() => onOpenEventModal?.()}
-                            className="flex flex-col items-center p-3 bg-purple-50 dark:bg-purple-900/20 rounded-xl active:scale-95 transition-transform"
-                        >
-                            <CalendarPlus className="w-6 h-6 text-purple-600 mb-1" />
-                            <span className="text-xs text-gray-700 dark:text-gray-300 text-center">Événement</span>
-                        </button>
-                        <button
-                            onClick={() => navigate('/dashboard/payments')}
+                            onClick={() => navigate('/dashboard/absence-management')}
                             className="flex flex-col items-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded-xl active:scale-95 transition-transform"
                         >
-                            <CreditCard className="w-6 h-6 text-orange-600 mb-1" />
-                            <span className="text-xs text-gray-700 dark:text-gray-300 text-center">Paiement</span>
+                            <Calendar className="w-6 h-6 text-orange-600 mb-1" />
+                            <span className="text-xs text-gray-700 dark:text-gray-300 text-center">{isRTL ? 'الغيابات' : 'Absences'}</span>
+                        </button>
+
+                        {/* Messages - visible pour staff et admin */}
+                        <button
+                            onClick={() => navigate('/dashboard/messages')}
+                            className="flex flex-col items-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl active:scale-95 transition-transform"
+                        >
+                            <MessageSquare className="w-6 h-6 text-blue-600 mb-1" />
+                            <span className="text-xs text-gray-700 dark:text-gray-300 text-center">{isRTL ? 'رسائل' : 'Messages'}</span>
+                        </button>
+
+                        {/* Rapports journaliers - visible pour staff et admin */}
+                        <button
+                            onClick={() => navigate('/dashboard/daily-reports')}
+                            className="flex flex-col items-center p-3 bg-teal-50 dark:bg-teal-900/20 rounded-xl active:scale-95 transition-transform"
+                        >
+                            <Clock className="w-6 h-6 text-teal-600 mb-1" />
+                            <span className="text-xs text-gray-700 dark:text-gray-300 text-center">{isRTL ? 'التقارير' : 'Rapports'}</span>
+                        </button>
+
+                        {/* Traitements médicaux - visible pour staff et admin */}
+                        <button
+                            onClick={() => navigate('/dashboard/treatments')}
+                            className="flex flex-col items-center p-3 bg-pink-50 dark:bg-pink-900/20 rounded-xl active:scale-95 transition-transform"
+                        >
+                            <Pill className="w-6 h-6 text-pink-600 mb-1" />
+                            <span className="text-xs text-gray-700 dark:text-gray-300 text-center">{isRTL ? 'العلاجات' : 'Traitements'}</span>
                         </button>
                     </div>
                 </motion.div>

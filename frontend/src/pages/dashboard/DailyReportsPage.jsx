@@ -11,9 +11,12 @@ import {
     Check, X, ChevronRight, Search, Filter, Save, Send,
     AlertCircle, CheckCircle, Loader2, RefreshCw
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useTheme } from '../../hooks/useTheme';
 import { useAuth } from '../../hooks/useAuth';
+import useIsMobile from '../../hooks/useIsMobile';
+import MobileDailyReportsPage from '../../components/mobile/MobileDailyReportsPage';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -24,6 +27,21 @@ const DailyReportsPage = () => {
     const { isRTL } = useLanguage();
     const { isDark } = useTheme();
     const { user } = useAuth();
+    const isMobile = useIsMobile();
+    const navigate = useNavigate();
+
+    // Couleurs style direction (comme app mobile)
+    const dirColors = {
+        background: '#0F172A',
+        card: '#1E293B',
+        cardLight: '#334155',
+        text: '#F8FAFC',
+        textSecondary: '#94A3B8',
+        primary: '#8B5CF6',
+        success: '#10B981',
+        warning: '#F59E0B',
+        danger: '#EF4444',
+    };
 
     // États
     const [children, setChildren] = useState([]);
@@ -148,9 +166,9 @@ const DailyReportsPage = () => {
             console.error('Erreur chargement fournitures:', error);
         }
 
-        // Charger les options de nourriture pour cet enfant
+        // Charger les options de nourriture apportées CE JOUR pour cet enfant
         try {
-            const foodRes = await api.get(`/api/supplies/child/${child.id}/food-options`);
+            const foodRes = await api.get(`/api/supplies/child/${child.id}/food-options?date=${reportDate}`);
             if (foodRes.data.success) {
                 setFoodOptions(foodRes.data.food_options || []);
             }
@@ -449,12 +467,21 @@ const DailyReportsPage = () => {
 
     if (loading) {
         return (
-            <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
+            <div
+                className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}
+                style={isMobile ? { backgroundColor: dirColors.background } : {}}
+            >
                 <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
             </div>
         );
     }
 
+    // VERSION MOBILE - Utiliser le composant dédié
+    if (isMobile) {
+        return <MobileDailyReportsPage />;
+    }
+
+    // VERSION DESKTOP - Design original
     return (
         <div className={`min-h-screen p-4 md:p-6 ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`} dir={isRTL ? 'rtl' : 'ltr'}>
             {/* En-tête */}
@@ -847,6 +874,29 @@ const DailyReportsPage = () => {
                                                     </p>
                                                 </div>
                                             </div>
+
+                                            {/* Afficher les fournitures déjà enregistrées aujourd'hui */}
+                                            {suppliesBrought.length > 0 && (
+                                                <div className={`mb-4 p-3 rounded-lg ${isDark ? 'bg-gray-800' : 'bg-white'} border border-green-300 dark:border-green-700`}>
+                                                    <p className={`text-sm font-medium mb-2 ${isDark ? 'text-green-400' : 'text-green-700'}`}>
+                                                        ✅ {isRTL ? 'تم تسجيله اليوم:' : 'Enregistré aujourd\'hui :'}
+                                                    </p>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {suppliesBrought.map((supply, idx) => (
+                                                            <span key={idx} className={`px-2 py-1 text-xs rounded-full ${supply.supply_type === 'diapers'
+                                                                ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
+                                                                : 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300'
+                                                                }`}>
+                                                                {supply.supply_type === 'diapers'
+                                                                    ? `🧷 ${supply.quantity} ${isRTL ? 'حفاظات' : 'couches'}`
+                                                                    : `🍼 ${supply.description}`
+                                                                }
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 <div className="p-3 bg-white dark:bg-gray-700 rounded-lg border border-green-200 dark:border-green-700">
                                                     <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
@@ -870,13 +920,47 @@ const DailyReportsPage = () => {
                                                     <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                                                         🍼 {isRTL ? 'طعام/حليب' : 'Nourriture/Lait'}
                                                     </label>
-                                                    <input
-                                                        type="text"
-                                                        placeholder={isRTL ? 'وصف...' : 'Description...'}
-                                                        value={formData.supplies_food || ''}
-                                                        onChange={(e) => setFormData(prev => ({ ...prev, supplies_food: e.target.value }))}
-                                                        className={`w-full px-3 py-2 rounded border ${isDark ? 'bg-gray-600 border-gray-500 text-white' : 'bg-white border-gray-300'}`}
-                                                    />
+                                                    <div className="flex gap-2">
+                                                        <input
+                                                            type="text"
+                                                            placeholder={isRTL ? 'مثال: حليب، كومبوت...' : 'Ex: Lait, Compote...'}
+                                                            value={formData.supplies_food || ''}
+                                                            onChange={(e) => setFormData(prev => ({ ...prev, supplies_food: e.target.value }))}
+                                                            className={`flex-1 px-3 py-2 rounded border ${isDark ? 'bg-gray-600 border-gray-500 text-white' : 'bg-white border-gray-300'}`}
+                                                            onKeyDown={async (e) => {
+                                                                if (e.key === 'Enter' && formData.supplies_food.trim()) {
+                                                                    e.preventDefault();
+                                                                    await addSupplyBrought('food', 1, formData.supplies_food.trim());
+                                                                    setFormData(prev => ({ ...prev, supplies_food: '' }));
+                                                                    // Recharger les options de nourriture
+                                                                    const foodRes = await api.get(`/api/supplies/child/${selectedChild.id}/food-options?date=${reportDate}`);
+                                                                    if (foodRes.data.success) {
+                                                                        setFoodOptions(foodRes.data.food_options || []);
+                                                                    }
+                                                                }
+                                                            }}
+                                                        />
+                                                        <Button
+                                                            size="sm"
+                                                            onClick={async () => {
+                                                                if (formData.supplies_food.trim()) {
+                                                                    await addSupplyBrought('food', 1, formData.supplies_food.trim());
+                                                                    setFormData(prev => ({ ...prev, supplies_food: '' }));
+                                                                    // Recharger les options de nourriture
+                                                                    const foodRes = await api.get(`/api/supplies/child/${selectedChild.id}/food-options?date=${reportDate}`);
+                                                                    if (foodRes.data.success) {
+                                                                        setFoodOptions(foodRes.data.food_options || []);
+                                                                    }
+                                                                }
+                                                            }}
+                                                            className="bg-green-500 hover:bg-green-600"
+                                                        >
+                                                            +
+                                                        </Button>
+                                                    </div>
+                                                    <p className={`text-xs mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                                        {isRTL ? 'اضغط Enter أو + للإضافة' : 'Appuyez sur Entrée ou + pour ajouter'}
+                                                    </p>
                                                 </div>
                                             </div>
                                         </div>

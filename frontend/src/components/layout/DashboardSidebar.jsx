@@ -23,7 +23,9 @@ import {
   Image,
   Activity,
   Mail,
-  HardDrive
+  HardDrive,
+  MessageCircle,
+  Pill
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -93,6 +95,13 @@ const DashboardSidebar = ({ isOpen, onClose, onCollapsedChange }) => {
       roles: ['admin']
     },
     {
+      key: 'testimonials',
+      title: isRTL ? 'التقييمات' : 'Témoignages',
+      icon: MessageCircle,
+      path: '/dashboard/testimonials',
+      roles: ['admin']
+    },
+    {
       key: 'children',
       title: isRTL ? 'الأطفال' : 'Enfants',
       icon: Baby,
@@ -145,6 +154,13 @@ const DashboardSidebar = ({ isOpen, onClose, onCollapsedChange }) => {
       title: isRTL ? 'التقارير اليومية' : 'Rapports Journaliers',
       icon: FileText,
       path: '/dashboard/daily-reports',
+      roles: ['admin', 'staff']
+    },
+    {
+      key: 'treatments',
+      title: isRTL ? 'العلاجات الطبية' : 'Traitements médicaux',
+      icon: Pill,
+      path: '/dashboard/treatments',
       roles: ['admin', 'staff']
     },
     {

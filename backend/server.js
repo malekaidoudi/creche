@@ -80,6 +80,8 @@ const documentsRoutes = require('./routes_postgres/documents');
 const cloudinaryRoutes = require('./routes_postgres/cloudinary');
 const cloudinaryExplorerRoutes = require('./routes_postgres/cloudinaryExplorer');
 const activityFeedRoutes = require('./routes_postgres/activityFeed');
+const testimonialsRoutes = require('./routes_postgres/testimonials');
+const treatmentsRoutes = require('./routes_postgres/treatments');
 console.log('✅ Routes chargées\n');
 
 const app = express();
@@ -339,6 +341,12 @@ console.log('  ✓ /api/cloudinary-explorer (explorateur stockage) 🗂️');
 app.use('/api/activity-feed', activityFeedRoutes);
 console.log('  ✓ /api/activity-feed (fil d\'activité simplifié) 📰');
 
+app.use('/api/testimonials', testimonialsRoutes);
+console.log('  ✓ /api/testimonials (témoignages parents) 💬');
+
+app.use('/api/treatments', treatmentsRoutes);
+console.log('  ✓ /api/treatments (traitements médicaux) 💊');
+
 console.log('\n✅ Toutes les routes montées avec succès\n');
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -464,6 +472,14 @@ const server = app.listen(PORT, () => {
     console.log('💾 Backup:          Automatique quotidien à 02:00 ✅');
   } catch (error) {
     console.error('❌ Erreur démarrage job backup:', error.message);
+  }
+
+  // Démarrer le job de vérification des traitements médicaux
+  try {
+    const { startTreatmentJob } = require('./jobs/treatmentJob');
+    startTreatmentJob();
+  } catch (error) {
+    console.error('❌ Erreur démarrage job traitements:', error.message);
   }
 });
 

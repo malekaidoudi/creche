@@ -27,6 +27,7 @@ import ChildMedicalPage from '../pages/parent/ChildMedicalPage'
 import ChildEmergencyContactsPage from '../pages/parent/ChildEmergencyContactsPage'
 import ChildDailyReportsPage from '../pages/parent/ChildDailyReportsPage'
 import AddChildPage from '../pages/parent/AddChildPage'
+import ParentTreatmentsPage from '../pages/parent/TreatmentsPage'
 
 // Pages staff
 import AbsenceManagementPage from '../pages/staff/AbsenceManagementPage'
@@ -70,6 +71,8 @@ import ActivityFeedPage from '../pages/dashboard/ActivityFeedPage'
 import DailyReportsPage from '../pages/dashboard/DailyReportsPage'
 import MailboxPage from '../pages/dashboard/MailboxPage'
 import CloudinaryExplorerPage from '../pages/dashboard/CloudinaryExplorerPage'
+import TestimonialsManagementPage from '../pages/dashboard/TestimonialsManagementPage'
+import DashboardTreatmentsPage from '../pages/dashboard/TreatmentsPage'
 
 // Page de récupération d'urgence
 import RecoveryPage from '../pages/RecoveryPage'
@@ -228,6 +231,14 @@ const AppRoutes = () => {
                             </ProtectedRoute>
                         }
                     />
+                    <Route
+                        path="mon-espace/treatments"
+                        element={
+                            <ProtectedRoute roles={['parent']}>
+                                <ParentTreatmentsPage />
+                            </ProtectedRoute>
+                        }
+                    />
                 </Route>
 
                 {/* Routes dashboard */}
@@ -266,6 +277,7 @@ const AppRoutes = () => {
                     <Route path="tasks" element={<TasksPage />} />
                     <Route path="activities" element={<ActivitiesPage />} />
                     <Route path="planning" element={<WeeklyPlanningPage />} />
+                    <Route path="treatments" element={<DashboardTreatmentsPage />} />
 
                     <Route path="parents" element={<ParentsPage />} />
                     <Route path="staff" element={<StaffPage />} />
@@ -294,6 +306,11 @@ const AppRoutes = () => {
                     <Route path="storage" element={
                         <ProtectedRoute roles={['developer']}>
                             <CloudinaryExplorerPage />
+                        </ProtectedRoute>
+                    } />
+                    <Route path="testimonials" element={
+                        <ProtectedRoute roles={['admin', 'developer']}>
+                            <TestimonialsManagementPage />
                         </ProtectedRoute>
                     } />
                 </Route>

@@ -139,6 +139,22 @@ const getReport = async (req, res) => {
         const report = result.rows[0];
         report.report_type = getReportType(report.birth_date);
 
+        // Parser les traitements médicaux depuis le champ medication (JSON)
+        if (report.medication) {
+            try {
+                const parsed = JSON.parse(report.medication);
+                if (Array.isArray(parsed)) {
+                    report.medical_treatments = parsed;
+                    report.medication = null; // Ne pas exposer le JSON brut
+                }
+            } catch (e) {
+                // Si ce n'est pas du JSON, c'est l'ancien format texte
+                report.medical_treatments = [];
+            }
+        } else {
+            report.medical_treatments = [];
+        }
+
         // Récupérer les repas détaillés
         const mealsResult = await db.query(
             'SELECT * FROM daily_meals WHERE report_id = $1 ORDER BY period',
@@ -326,6 +342,7 @@ const createOrUpdateReport = async (req, res) => {
             // Nouveaux champs détaillés
             meals = [], // Array de {period, meal_type, meal_description, quantity}
             diaper_changes_list = [], // Array de {nature, time, notes}
+            medical_treatments = [], // Array de {temperature, time, medication_name, dose, notes}
             // Champs legacy (pour compatibilité)
             meals_count,
             meal_type,
@@ -348,6 +365,11 @@ const createOrUpdateReport = async (req, res) => {
             supplies_diapers,
             supplies_food
         } = req.body;
+
+        // Stocker les traitements médicaux en JSON dans le champ medication
+        const medicationData = medical_treatments.length > 0
+            ? JSON.stringify(medical_treatments)
+            : medication || null;
 
         const userId = req.user.id;
         const date = report_date || new Date().toISOString().split('T')[0];
@@ -404,7 +426,7 @@ const createOrUpdateReport = async (req, res) => {
       RETURNING *
     `, [
             child_id, date, reportType, userId,
-            temperature || null, medication || null, actualMealsCount, meal_type || null, period || null,
+            temperature || null, medicationData, actualMealsCount, meal_type || null, period || null,
             appetite || null, appetite_notes || null, actualDiaperChanges, diaper_nature || null, diaper_notes || null,
             skin_condition || 'good', skin_notes || null, sleep_quality || null, sleep_start || null, sleep_end || null, sleep_notes || null,
             activities || null, observations || null, status

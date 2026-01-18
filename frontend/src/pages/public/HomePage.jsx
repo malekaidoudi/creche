@@ -5,6 +5,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { Heart, Shield, GraduationCap, Star, ArrowRight, Camera } from 'lucide-react'
 import LoginFormHero from '../../components/auth/LoginFormHero'
 import JoinUsModal from '../../components/ui/JoinUsModal'
+import TestimonialsSection from '../../components/home/TestimonialsSection'
 
 const HomePage = () => {
   const { isRTL } = useLanguage()
@@ -226,6 +227,9 @@ const HomePage = () => {
           </div>
         </div>
       </section>
+
+      {/* Section Témoignages */}
+      <TestimonialsSection />
 
       {/* Call to Action pour non-connectés seulement */}
       {!isAuthenticated && (
