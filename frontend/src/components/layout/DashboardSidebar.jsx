@@ -434,17 +434,17 @@ const DashboardSidebar = ({ isOpen, onClose, onCollapsedChange }) => {
           overflow: 'visible'
         }}
       >
-        {/* Bouton toggle collapse - Desktop uniquement */}
+        {/* Bouton toggle collapse moderne - Desktop uniquement */}
         <button
           onClick={handleToggleCollapse}
-          className={`hidden lg:flex absolute top-20 ${isRTL ? 'left-0 -translate-x-1/2' : 'right-0 translate-x-1/2'} z-50 w-8 h-8 items-center justify-center bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-full shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-300`}
+          className={`hidden lg:flex absolute top-20 ${isRTL ? 'left-0 -translate-x-1/2' : 'right-0 translate-x-1/2'} z-50 w-5 h-10 items-center justify-center bg-gradient-to-b from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 group overflow-hidden`}
           title={isCollapsed ? (isRTL ? 'إظهار القائمة' : 'Afficher le menu') : (isRTL ? 'إخفاء القائمة' : 'Masquer le menu')}
         >
-          {isCollapsed ? (
-            isRTL ? <ChevronRight className="w-4 h-4 text-gray-600 dark:text-gray-300" /> : <ChevronLeft className="w-4 h-4 text-gray-600 dark:text-gray-300" />
-          ) : (
-            isRTL ? <ChevronLeft className="w-4 h-4 text-gray-600 dark:text-gray-300" /> : <ChevronRight className="w-4 h-4 text-gray-600 dark:text-gray-300" />
-          )}
+          {/* Double chevron animé */}
+          <div className={`flex flex-col items-center transition-transform duration-300 ${isCollapsed ? (isRTL ? 'rotate-180' : '') : (isRTL ? '' : 'rotate-180')}`}>
+            <ChevronLeft className="w-3 h-3 text-white/90 -mb-1.5" />
+            <ChevronLeft className="w-3 h-3 text-white/60" />
+          </div>
         </button>
 
         {/* Header */}
