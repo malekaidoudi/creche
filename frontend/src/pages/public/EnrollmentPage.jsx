@@ -1016,16 +1016,6 @@ const EnrollmentPage = () => {
                       error={errors.birth_date?.message}
                     />
 
-                    {/* Indicateur de chargement - hauteur fixe pour éviter le saut */}
-                    <div className="h-6 mt-2">
-                      {childCheckLoading && (
-                        <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                          <div className="w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
-                          {isRTL ? 'جاري التحقق...' : 'Vérification en cours...'}
-                        </div>
-                      )}
-                    </div>
-
                     {/* Modal pour enfant existant */}
                     {childCheckResult?.exists && (
                       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
