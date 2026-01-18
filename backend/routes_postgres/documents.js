@@ -230,9 +230,11 @@ router.get('/public/reglement', async (req, res) => {
         `);
 
         if (result.rows.length === 0) {
+            console.log('⚠️ Aucun règlement intérieur trouvé dans admin_documents');
             return res.status(404).json({
                 success: false,
-                error: 'Règlement non disponible'
+                error: 'Le règlement intérieur n\'a pas encore été mis en ligne. Veuillez contacter la crèche.',
+                code: 'REGLEMENT_NOT_UPLOADED'
             });
         }
 

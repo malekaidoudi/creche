@@ -75,16 +75,17 @@ router.post('/check-child', [
     console.log('👶 Check-child reçu:', { child_first_name, child_last_name, child_birth_date });
 
     // Vérifier dans la table enrollments si un enfant avec même nom/prénom/date existe
-    // Utiliser TO_DATE pour parser la date de manière sécurisée
+    // Utiliser COALESCE pour gérer les deux colonnes status possibles (migration)
     const enrollmentCheck = await db.query(
       `SELECT id, child_first_name, child_last_name, child_birth_date, 
-              applicant_first_name, applicant_last_name, applicant_email, status 
+              applicant_first_name, applicant_last_name, applicant_email, 
+              COALESCE(new_status::text, status) as status 
        FROM enrollments 
        WHERE LOWER(TRIM(COALESCE(child_first_name, ''))) = $1 
          AND LOWER(TRIM(COALESCE(child_last_name, ''))) = $2 
          AND child_birth_date IS NOT NULL
-         AND DATE(child_birth_date) = DATE($3)
-         AND status IN ('pending', 'in_progress')`,
+         AND child_birth_date::date = $3::date
+         AND (COALESCE(new_status::text, status) IN ('pending', 'in_progress'))`,
       [normalizedFirstName, normalizedLastName, child_birth_date]
     );
 
@@ -104,13 +105,16 @@ router.post('/check-child', [
     }
 
     // Vérifier aussi dans la table children (enfants déjà inscrits)
+    // Note: la colonne peut être date_of_birth ou birth_date selon la migration
     const childCheck = await db.query(
-      `SELECT c.id, c.first_name, c.last_name, c.date_of_birth
+      `SELECT c.id, c.first_name, c.last_name, 
+              COALESCE(c.date_of_birth, c.birth_date) as birth_date
        FROM children c
        WHERE LOWER(TRIM(COALESCE(c.first_name, ''))) = $1 
          AND LOWER(TRIM(COALESCE(c.last_name, ''))) = $2 
-         AND c.date_of_birth IS NOT NULL
-         AND DATE(c.date_of_birth) = DATE($3)`,
+         AND COALESCE(c.date_of_birth, c.birth_date) IS NOT NULL
+         AND COALESCE(c.date_of_birth, c.birth_date)::date = $3::date
+         AND c.is_active = true`,
       [normalizedFirstName, normalizedLastName, child_birth_date]
     );
 
