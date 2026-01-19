@@ -172,7 +172,7 @@ const corsOptions = {
     }
 
     // Autoriser uniquement les sous-domaines spécifiques de Render (notre backend)
-    if (origin === 'https://creche-backend.onrender.com') {
+    if (origin === 'https://creche-backend-prod.onrender.com') {
       return callback(null, true);
     }
 

@@ -117,7 +117,7 @@ router.post('/:id/documents',
 ### **Test 1 : Upload documents valides**
 ```bash
 # Créer une inscription test
-curl -X POST https://creche-backend.onrender.com/api/enrollments \
+curl -X POST https://creche-backend-prod.onrender.com/api/enrollments \
   -H "Content-Type: application/json" \
   -d '{
     "applicant_first_name": "Test",
@@ -133,7 +133,7 @@ curl -X POST https://creche-backend.onrender.com/api/enrollments \
 # Noter l'ID retourné (ex: 123)
 
 # Uploader des documents
-curl -X POST https://creche-backend.onrender.com/api/enrollments/123/documents \
+curl -X POST https://creche-backend-prod.onrender.com/api/enrollments/123/documents \
   -F "carnet_medical=@/path/to/carnet.pdf" \
   -F "acte_naissance=@/path/to/acte.pdf" \
   -F "certificat_medical=@/path/to/certificat.pdf"
@@ -168,7 +168,7 @@ curl -X POST https://creche-backend.onrender.com/api/enrollments/123/documents \
 
 ### **Test 2 : Upload sans fichiers**
 ```bash
-curl -X POST https://creche-backend.onrender.com/api/enrollments/123/documents
+curl -X POST https://creche-backend-prod.onrender.com/api/enrollments/123/documents
 ```
 
 **Résultat attendu** :
@@ -183,7 +183,7 @@ curl -X POST https://creche-backend.onrender.com/api/enrollments/123/documents
 
 ### **Test 3 : Upload pour enrollment inexistant**
 ```bash
-curl -X POST https://creche-backend.onrender.com/api/enrollments/99999/documents \
+curl -X POST https://creche-backend-prod.onrender.com/api/enrollments/99999/documents \
   -F "carnet_medical=@/path/to/carnet.pdf"
 ```
 

@@ -37,7 +37,7 @@
                        window.location.hostname === '127.0.0.1' || 
                        window.location.hostname === '192.168.1.60';
         
-        const apiUrl = isLocal ? 'http://localhost:3003' : 'https://creche-backend.onrender.com';
+        const apiUrl = isLocal ? 'http://localhost:3003' : 'https://creche-backend-prod.onrender.com';
         
         addResult(`🎯 <strong>Détection locale:</strong> ${isLocal}`, isLocal ? 'success' : 'error');
         addResult(`🔌 <strong>URL API calculée:</strong> ${apiUrl}`, 'info');

@@ -30,7 +30,7 @@
 
 | Composant | Configuration |
 |-----------|---------------|
-| **Backend** | `http://localhost:3003` ou `https://creche-backend.onrender.com` |
+| **Backend** | `http://localhost:3003` ou `https://creche-backend-prod.onrender.com` |
 | **Frontend** | `http://localhost:5173` ou `https://malekaidoudi.github.io/creche/` |
 | **Base de données** | PostgreSQL (Neon) |
 | **Node.js** | v22.x |

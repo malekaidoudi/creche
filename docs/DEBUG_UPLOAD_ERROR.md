@@ -225,12 +225,12 @@ Avant de tester l'upload, vérifier :
 
 ### **Vérifier l'uptime du serveur**
 ```bash
-curl -s https://creche-backend.onrender.com/api/health | jq '.uptime'
+curl -s https://creche-backend-prod.onrender.com/api/health | jq '.uptime'
 ```
 
 ### **Tester l'endpoint (sans fichiers)**
 ```bash
-curl -X POST https://creche-backend.onrender.com/api/enrollments/26/documents
+curl -X POST https://creche-backend-prod.onrender.com/api/enrollments/26/documents
 ```
 
 **Résultat attendu** :

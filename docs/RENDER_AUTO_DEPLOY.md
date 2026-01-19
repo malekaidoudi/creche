@@ -92,7 +92,7 @@ curl -X POST https://api.render.com/deploy/srv-xxxxx?key=xxxxx
 ### **1. Vérifier l'uptime du serveur**
 
 ```bash
-curl -s https://creche-backend.onrender.com/api/health | jq '.uptime'
+curl -s https://creche-backend-prod.onrender.com/api/health | jq '.uptime'
 ```
 
 **Résultat attendu** : Uptime < 60 secondes (serveur vient de redémarrer)
@@ -100,7 +100,7 @@ curl -s https://creche-backend.onrender.com/api/health | jq '.uptime'
 ### **2. Vérifier la version**
 
 ```bash
-curl -s https://creche-backend.onrender.com/api/health | jq '.version'
+curl -s https://creche-backend-prod.onrender.com/api/health | jq '.version'
 ```
 
 **Résultat attendu** : Version mise à jour

@@ -50,7 +50,7 @@ FRONTEND_URL=https://malekaidoudi.github.io/creche
 ### **4. Tester les endpoints** ⏳
 ```bash
 # Test création inscription
-curl -X POST https://creche-backend.onrender.com/api/enrollments \
+curl -X POST https://creche-backend-prod.onrender.com/api/enrollments \
   -H "Content-Type: application/json" \
   -d '{
     "applicant_first_name": "Test",
