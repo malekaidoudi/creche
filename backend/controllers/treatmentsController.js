@@ -561,7 +561,8 @@ const checkAndNotifyTreatments = async () => {
             JOIN attendance a ON c.id = a.child_id AND a.date = $1
             WHERE ct.status = 'active'
             AND $1 BETWEEN ct.start_date AND ct.end_date
-            AND a.status = 'present'
+            AND a.check_in_time IS NOT NULL
+            AND a.check_out_time IS NULL
         `, [today]);
 
         const notificationsToSend = [];
