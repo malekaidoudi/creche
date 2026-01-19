@@ -193,6 +193,16 @@ export const AuthProvider = ({ children }) => {
     dispatch({ type: 'CLEAR_ERROR' });
   };
 
+  // Fonction pour définir les données d'authentification (utilisé après reset password)
+  const setAuthData = (token, user) => {
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(user));
+    dispatch({
+      type: 'LOGIN_SUCCESS',
+      payload: { user, token }
+    });
+  };
+
   // Fonction pour changer le mot de passe
   const changePassword = async (currentPassword, newPassword) => {
     try {
@@ -228,6 +238,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     updateUser,
     clearError,
+    setAuthData,
     changePassword,
     hasRole,
     hasAnyRole,

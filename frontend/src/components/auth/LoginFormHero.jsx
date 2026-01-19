@@ -122,9 +122,17 @@ const LoginFormHero = () => {
 
         {/* Password */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            {isRTL ? 'كلمة المرور' : 'Mot de passe'}
-          </label>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              {isRTL ? 'كلمة المرور' : 'Mot de passe'}
+            </label>
+            <Link
+              to="/forgot-password"
+              className="text-sm text-pink-600 hover:text-pink-700 dark:text-pink-400 dark:hover:text-pink-300 transition-colors"
+            >
+              {isRTL ? 'نسيت كلمة المرور؟' : 'Mot de passe oublié ?'}
+            </Link>
+          </div>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 rtl:left-auto rtl:right-0 pl-3 rtl:pl-0 rtl:pr-3 flex items-center pointer-events-none">
               <Lock className="w-5 h-5 text-gray-400" />

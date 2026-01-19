@@ -90,6 +90,13 @@ const EMAIL_TYPES = {
     from: 'contact@mima-elghalia.com',
     template: 'resend-password-link.html',
     subject: 'Nouveau lien de création de mot de passe - Crèche Mima Elghalia'
+  },
+
+  RESET_PASSWORD: {
+    type: 'reset_password',
+    from: 'contact@mima-elghalia.com',
+    template: 'reset-password.html',
+    subject: 'Réinitialisation de votre mot de passe - Crèche Mima Elghalia'
   }
 };
 

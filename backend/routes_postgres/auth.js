@@ -1,9 +1,11 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const { body, validationResult } = require('express-validator');
 const db = require('../config/db_postgres');
 const { logLoginSuccess, logLoginFailed } = require('../middleware/activityLogger');
+const emailService = require('../emails/emailService');
 
 const router = express.Router();
 
@@ -347,6 +349,217 @@ router.post('/create-password', [
     res.status(500).json({
       success: false,
       error: 'Erreur lors de la création du compte'
+    });
+  }
+});
+
+// POST /api/auth/forgot-password - Demande de réinitialisation de mot de passe
+router.post('/forgot-password', [
+  body('email').isEmail().withMessage('Email invalide')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email invalide',
+        details: errors.array()
+      });
+    }
+
+    const { email } = req.body;
+
+    // Rechercher l'utilisateur
+    const result = await db.query(
+      'SELECT id, email, first_name, last_name, is_active FROM users WHERE email = $1',
+      [email.toLowerCase()]
+    );
+
+    // Toujours retourner succès pour éviter l'énumération des emails
+    if (result.rows.length === 0) {
+      console.log(`⚠️ Forgot password: email non trouvé - ${email}`);
+      return res.json({
+        success: true,
+        message: 'Si cet email existe dans notre système, vous recevrez un lien de réinitialisation.'
+      });
+    }
+
+    const user = result.rows[0];
+
+    // Vérifier si le compte est actif
+    if (!user.is_active) {
+      console.log(`⚠️ Forgot password: compte désactivé - ${email}`);
+      return res.json({
+        success: true,
+        message: 'Si cet email existe dans notre système, vous recevrez un lien de réinitialisation.'
+      });
+    }
+
+    // Générer un token sécurisé (64 caractères hex)
+    const resetToken = crypto.randomBytes(32).toString('hex');
+
+    // Expiration dans 1 heure
+    const resetTokenExpires = new Date(Date.now() + 60 * 60 * 1000);
+
+    // Sauvegarder le token en base
+    await db.query(
+      'UPDATE users SET reset_token = $1, reset_token_expires = $2 WHERE id = $3',
+      [resetToken, resetTokenExpires, user.id]
+    );
+
+    // Construire le lien de réinitialisation
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const resetLink = `${frontendUrl}/reset-password/${resetToken}`;
+
+    // Envoyer l'email
+    const emailResult = await emailService.sendResetPasswordEmail(user, resetLink);
+
+    if (emailResult.success) {
+      console.log(`✅ Email de réinitialisation envoyé à ${email}`);
+    } else {
+      console.error(`❌ Erreur envoi email reset: ${emailResult.error}`);
+    }
+
+    res.json({
+      success: true,
+      message: 'Si cet email existe dans notre système, vous recevrez un lien de réinitialisation.'
+    });
+
+  } catch (error) {
+    console.error('Erreur forgot-password:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la demande de réinitialisation'
+    });
+  }
+});
+
+// POST /api/auth/reset-password - Réinitialisation du mot de passe avec token
+router.post('/reset-password', [
+  body('token').notEmpty().withMessage('Token requis'),
+  body('password').isLength({ min: 6 }).withMessage('Mot de passe minimum 6 caractères')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Données invalides',
+        details: errors.array()
+      });
+    }
+
+    const { token, password } = req.body;
+
+    // Rechercher l'utilisateur avec ce token
+    const result = await db.query(
+      'SELECT id, email, first_name, last_name, role, reset_token_expires FROM users WHERE reset_token = $1',
+      [token]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Lien de réinitialisation invalide ou expiré'
+      });
+    }
+
+    const user = result.rows[0];
+
+    // Vérifier si le token n'est pas expiré
+    if (new Date() > new Date(user.reset_token_expires)) {
+      // Nettoyer le token expiré
+      await db.query(
+        'UPDATE users SET reset_token = NULL, reset_token_expires = NULL WHERE id = $1',
+        [user.id]
+      );
+
+      return res.status(400).json({
+        success: false,
+        error: 'Ce lien de réinitialisation a expiré. Veuillez en demander un nouveau.'
+      });
+    }
+
+    // Hasher le nouveau mot de passe
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Mettre à jour le mot de passe et effacer le token
+    await db.query(
+      `UPDATE users 
+       SET password = $1, reset_token = NULL, reset_token_expires = NULL, updated_at = NOW() 
+       WHERE id = $2`,
+      [hashedPassword, user.id]
+    );
+
+    console.log(`✅ Mot de passe réinitialisé pour ${user.email}`);
+
+    // Générer un JWT pour connexion automatique
+    const jwtToken = jwt.sign(
+      { userId: user.id, email: user.email, role: user.role },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+
+    res.json({
+      success: true,
+      message: 'Mot de passe réinitialisé avec succès',
+      token: jwtToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        role: user.role
+      }
+    });
+
+  } catch (error) {
+    console.error('Erreur reset-password:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la réinitialisation du mot de passe'
+    });
+  }
+});
+
+// GET /api/auth/verify-reset-token/:token - Vérifier si un token de reset est valide
+router.get('/verify-reset-token/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    const result = await db.query(
+      'SELECT id, email, first_name, reset_token_expires FROM users WHERE reset_token = $1',
+      [token]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({
+        valid: false,
+        error: 'Lien invalide'
+      });
+    }
+
+    const user = result.rows[0];
+
+    // Vérifier expiration
+    if (new Date() > new Date(user.reset_token_expires)) {
+      return res.status(400).json({
+        valid: false,
+        error: 'Ce lien a expiré'
+      });
+    }
+
+    res.json({
+      valid: true,
+      email: user.email,
+      first_name: user.first_name
+    });
+
+  } catch (error) {
+    console.error('Erreur verify-reset-token:', error);
+    res.status(500).json({
+      valid: false,
+      error: 'Erreur de vérification'
     });
   }
 });

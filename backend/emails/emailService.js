@@ -462,6 +462,16 @@ class EmailService {
       html: htmlContent
     });
   }
+
+  /**
+   * Envoyer un e-mail de réinitialisation de mot de passe
+   */
+  async sendResetPasswordEmail(userData, resetLink) {
+    return this.sendEmail('RESET_PASSWORD', userData.email, {
+      first_name: userData.first_name || 'Utilisateur',
+      reset_link: resetLink
+    });
+  }
 }
 
 // Export singleton

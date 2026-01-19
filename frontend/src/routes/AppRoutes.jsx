@@ -15,6 +15,8 @@ import UploadDocumentsPage from '../pages/public/UploadDocumentsPage'
 
 // Pages d'authentification
 import RegisterPage from '../pages/auth/RegisterPage'
+import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage'
+import ResetPasswordPage from '../pages/auth/ResetPasswordPage'
 
 // Pages parent
 import MySpacePage from '../pages/parent/MySpacePage'
@@ -96,6 +98,8 @@ const AppRoutes = () => {
 
                 {/* Routes d'authentification */}
                 <Route path="/register" element={<RegisterPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
 
                 {/* Routes workflow inscription */}
                 <Route path="/create-password" element={<CreatePasswordPage />} />
