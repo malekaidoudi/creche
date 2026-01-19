@@ -5,7 +5,7 @@ import { useTheme } from '../../hooks/useTheme'
 import { Mail, ArrowLeft, Send, CheckCircle } from 'lucide-react'
 import { motion } from 'framer-motion'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3003'
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3003/api'
 
 const ForgotPasswordPage = () => {
     const { isRTL } = useLanguage()
@@ -22,7 +22,7 @@ const ForgotPasswordPage = () => {
         setLoading(true)
 
         try {
-            const response = await fetch(`${API_URL}/api/auth/forgot-password`, {
+            const response = await fetch(`${API_BASE}/auth/forgot-password`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -124,8 +124,8 @@ const ForgotPasswordPage = () => {
                                         onChange={(e) => setEmail(e.target.value)}
                                         required
                                         className={`block w-full ${isRTL ? 'pr-10 pl-3' : 'pl-10 pr-3'} py-3 border rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all ${isDark
-                                                ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
-                                                : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+                                            ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
+                                            : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
                                             }`}
                                         placeholder={isRTL ? 'أدخل بريدك الإلكتروني' : 'Votre email'}
                                     />

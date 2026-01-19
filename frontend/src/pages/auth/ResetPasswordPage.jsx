@@ -6,7 +6,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { Lock, Eye, EyeOff, ArrowLeft, CheckCircle, AlertCircle, KeyRound } from 'lucide-react'
 import { motion } from 'framer-motion'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3003'
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3003/api'
 
 const ResetPasswordPage = () => {
     const { token } = useParams()
@@ -30,7 +30,7 @@ const ResetPasswordPage = () => {
     useEffect(() => {
         const verifyToken = async () => {
             try {
-                const response = await fetch(`${API_URL}/api/auth/verify-reset-token/${token}`)
+                const response = await fetch(`${API_BASE}/auth/verify-reset-token/${token}`)
                 const data = await response.json()
 
                 if (data.valid) {
@@ -73,7 +73,7 @@ const ResetPasswordPage = () => {
         setLoading(true)
 
         try {
-            const response = await fetch(`${API_URL}/api/auth/reset-password`, {
+            const response = await fetch(`${API_BASE}/auth/reset-password`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -92,10 +92,12 @@ const ResetPasswordPage = () => {
                         setAuthData(data.token, data.user)
 
                         // Redirection selon le rôle
-                        if (data.user.role === 'admin' || data.user.role === 'staff') {
+                        if (data.user.role === 'admin' || data.user.role === 'staff' || data.user.role === 'developer') {
                             navigate('/dashboard', { replace: true })
-                        } else {
+                        } else if (data.user.role === 'parent') {
                             navigate('/mon-espace', { replace: true })
+                        } else {
+                            navigate('/', { replace: true })
                         }
                     } else {
                         navigate('/', { replace: true })
@@ -218,8 +220,8 @@ const ResetPasswordPage = () => {
                                         required
                                         minLength={6}
                                         className={`block w-full ${isRTL ? 'pr-10 pl-12' : 'pl-10 pr-12'} py-3 border rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all ${isDark
-                                                ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
-                                                : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+                                            ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
+                                            : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
                                             }`}
                                         placeholder={isRTL ? 'أدخل كلمة المرور الجديدة' : 'Votre nouveau mot de passe'}
                                     />
@@ -255,8 +257,8 @@ const ResetPasswordPage = () => {
                                         onChange={(e) => setConfirmPassword(e.target.value)}
                                         required
                                         className={`block w-full ${isRTL ? 'pr-10 pl-12' : 'pl-10 pr-12'} py-3 border rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all ${isDark
-                                                ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
-                                                : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+                                            ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
+                                            : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
                                             }`}
                                         placeholder={isRTL ? 'أعد إدخال كلمة المرور' : 'Confirmez le mot de passe'}
                                     />

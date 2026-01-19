@@ -227,9 +227,10 @@ export const AuthProvider = ({ children }) => {
     return roles.includes(state.user?.role);
   };
 
-  const isAdmin = () => hasRole('admin');
-  const isStaff = () => hasAnyRole(['admin', 'staff']);
+  const isAdmin = () => hasAnyRole(['admin', 'developer']);
+  const isStaff = () => hasAnyRole(['admin', 'staff', 'developer']);
   const isParent = () => hasRole('parent');
+  const isDeveloper = () => hasRole('developer');
 
   const value = {
     ...state,
@@ -244,7 +245,8 @@ export const AuthProvider = ({ children }) => {
     hasAnyRole,
     isAdmin,
     isStaff,
-    isParent
+    isParent,
+    isDeveloper
   };
 
   return (
