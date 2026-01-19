@@ -488,6 +488,26 @@ server.timeout = 300000;
 server.keepAliveTimeout = 300000;
 server.headersTimeout = 310000;
 
+// ═══════════════════════════════════════════════════════════════
+// KEEP-ALIVE: Éviter le cold start de Render (ping toutes les 14 min)
+// ═══════════════════════════════════════════════════════════════
+if (process.env.NODE_ENV === 'production' && process.env.RENDER_EXTERNAL_URL) {
+  const KEEP_ALIVE_INTERVAL = 14 * 60 * 1000; // 14 minutes
+
+  setInterval(async () => {
+    try {
+      const response = await fetch(`${process.env.RENDER_EXTERNAL_URL}/api/health`);
+      if (response.ok) {
+        console.log(`🏓 Keep-alive ping OK - ${new Date().toLocaleTimeString('fr-FR')}`);
+      }
+    } catch (error) {
+      console.log('⚠️ Keep-alive ping failed:', error.message);
+    }
+  }, KEEP_ALIVE_INTERVAL);
+
+  console.log('🏓 Keep-alive:        Actif (ping /14min) ✅');
+}
+
 // Gestion propre de l'arrêt
 process.on('SIGTERM', () => {
   console.log('\n⚠️  SIGTERM reçu, arrêt gracieux du serveur...');
