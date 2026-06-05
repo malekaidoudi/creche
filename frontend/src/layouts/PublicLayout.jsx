@@ -5,6 +5,7 @@ import { useLanguage } from '../hooks/useLanguage'
 import PublicHeader from '../components/layout/PublicHeader'
 import PublicFooter from '../components/layout/PublicFooter'
 import ErrorBoundary from '../components/ui/ErrorBoundary'
+import HelpSystem from '../components/help/HelpSystem'
 
 const PublicLayout = () => {
   const { t } = useTranslation()
@@ -24,6 +25,8 @@ const PublicLayout = () => {
       <ErrorBoundary>
         <PublicFooter />
       </ErrorBoundary>
+
+      <HelpSystem />
     </div>
   )
 }

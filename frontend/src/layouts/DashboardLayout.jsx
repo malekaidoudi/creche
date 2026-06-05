@@ -8,6 +8,7 @@ import DashboardHeader from '../components/layout/DashboardHeader';
 import FloatingActionButton from '../components/ui/FloatingActionButton';
 import SideMenu from '../components/ui/SideMenu';
 import MobileNavigation from '../components/mobile/MobileNavigation';
+import HelpSystem from '../components/help/HelpSystem';
 
 const DashboardLayout = () => {
   const { isRTL } = useLanguage();
@@ -62,6 +63,9 @@ const DashboardLayout = () => {
           {menuType === 'side' ? <SideMenu /> : <FloatingActionButton />}
         </div>
       )}
+
+      {/* Help System */}
+      <HelpSystem />
     </div>
   );
 };
