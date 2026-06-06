@@ -203,10 +203,34 @@ const ensureTestimonialsTable = async () => {
   }
 };
 
+// Migration automatique: Ajouter la colonne last_active à users
+const ensureLastActiveColumn = async () => {
+  try {
+    const checkQuery = `
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_name = 'users' AND column_name = 'last_active';
+    `;
+    const res = await pool.query(checkQuery);
+
+    if (res.rows.length === 0) {
+      console.log('📝 Ajout colonne last_active à users...');
+      await pool.query(`ALTER TABLE users ADD COLUMN last_active TIMESTAMP WITH TIME ZONE;`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_users_last_active ON users(last_active DESC);`);
+      console.log('✅ Colonne last_active ajoutée');
+    }
+  } catch (error) {
+    if (!error.message.includes('already exists')) {
+      console.log('⚠️ Migration last_active:', error.message);
+    }
+  }
+};
+
 // Test de connexion au démarrage puis migrations
 testConnection()
   .then(() => ensurePhotoPrivacyColumn())
   .then(() => ensureTestimonialsTable())
+  .then(() => ensureLastActiveColumn())
   .catch(console.error);
 
 // Export des fonctions

@@ -140,9 +140,9 @@ router.get('/', auth.authenticateToken, async (req, res) => {
     const { role, active, search, page = 1, limit = 50 } = req.query;
 
     let sql = `
-      SELECT id, email, first_name, last_name, phone, role, profile_image, 
-             is_active, password_set, gender, staff_position, created_at, updated_at
-      FROM users 
+      SELECT id, email, first_name, last_name, phone, role, profile_image,
+             is_active, password_set, gender, staff_position, created_at, updated_at, last_active
+      FROM users
       WHERE role != 'developer'
     `;
     const params = [];
@@ -221,6 +221,34 @@ router.get('/', auth.authenticateToken, async (req, res) => {
       success: false,
       error: 'Erreur lors de la récupération des utilisateurs'
     });
+  }
+});
+
+// POST /api/users/presence - Mettre à jour la présence de l'utilisateur connecté
+router.post('/presence', auth.authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id || req.user.userId;
+    await db.query('UPDATE users SET last_active = NOW() WHERE id = $1', [userId]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Erreur mise à jour présence:', error);
+    res.status(500).json({ success: false, error: 'Erreur' });
+  }
+});
+
+// GET /api/users/online - Liste des utilisateurs actifs (< 5 minutes)
+router.get('/online', auth.authenticateToken, async (req, res) => {
+  try {
+    const result = await db.query(
+      `SELECT id, email, first_name, last_name, role, last_active
+       FROM users
+       WHERE last_active > NOW() - INTERVAL '5 minutes'
+       AND is_active = true`
+    );
+    res.json({ success: true, users: result.rows });
+  } catch (error) {
+    console.error('Erreur récupération utilisateurs en ligne:', error);
+    res.status(500).json({ success: false, error: 'Erreur' });
   }
 });
 

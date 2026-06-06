@@ -36,6 +36,14 @@ export default function MessagesPage() {
   const [showChildInfo, setShowChildInfo] = useState(null);
   const [replyContent, setReplyContent] = useState('');
 
+  // Helper: déterminer si un contact est en ligne (last_active < 5 min)
+  const isContactOnline = (contact) => {
+    if (!contact?.last_active) return false;
+    const lastActive = new Date(contact.last_active);
+    const now = new Date();
+    return (now - lastActive) < 5 * 60 * 1000; // 5 minutes
+  };
+
   // Refs
   const messagesContainerRef = useRef(null);
   const messageInputRef = useRef(null);
@@ -447,6 +455,17 @@ export default function MessagesPage() {
       await loadChildren();
     };
     initData();
+
+    // Heartbeat présence: notifier le serveur qu'on est actif toutes les 30s
+    const presenceInterval = setInterval(() => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        axios.post(`${API_URL}/users/presence`, {}, {
+          headers: { Authorization: `Bearer ${token}` }
+        }).catch(() => { });
+      }
+    }, 30000);
+    return () => clearInterval(presenceInterval);
   }, []);
 
   useEffect(() => {
@@ -572,13 +591,18 @@ export default function MessagesPage() {
                       }`}
                   >
                     <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-gray-900 dark:text-white">
-                          {contact.first_name} {contact.last_name}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">{contact.email}</p>
+                      <div className="flex items-center gap-2">
+                        <div className="relative">
+                          <p className="font-medium text-gray-900 dark:text-white">
+                            {contact.first_name} {contact.last_name}
+                          </p>
+                          {isContactOnline(contact) && (
+                            <span className="absolute -right-3 top-1/2 -translate-y-1/2 w-2 h-2 bg-green-500 rounded-full" title="En ligne" />
+                          )}
+                        </div>
                       </div>
                     </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{contact.email}</p>
                   </button>
                 ))}
               </div>
@@ -599,13 +623,18 @@ export default function MessagesPage() {
                       }`}
                   >
                     <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-gray-900 dark:text-white">
-                          {contact.first_name} {contact.last_name}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">{contact.email}</p>
+                      <div className="flex items-center gap-2">
+                        <div className="relative">
+                          <p className="font-medium text-gray-900 dark:text-white">
+                            {contact.first_name} {contact.last_name}
+                          </p>
+                          {isContactOnline(contact) && (
+                            <span className="absolute -right-3 top-1/2 -translate-y-1/2 w-2 h-2 bg-green-500 rounded-full" title="En ligne" />
+                          )}
+                        </div>
                       </div>
                     </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{contact.email}</p>
                   </button>
                 ))}
               </div>
@@ -631,9 +660,14 @@ export default function MessagesPage() {
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <p className="font-medium text-gray-900 dark:text-white">
-                            {contact.first_name} {contact.last_name}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-gray-900 dark:text-white">
+                              {contact.first_name} {contact.last_name}
+                            </p>
+                            {isContactOnline(contact) && (
+                              <span className="w-2 h-2 bg-green-500 rounded-full inline-block" title="En ligne" />
+                            )}
+                          </div>
                           <p className="text-xs text-gray-500 dark:text-gray-400">{contact.email}</p>
                         </div>
 
@@ -702,9 +736,17 @@ export default function MessagesPage() {
                   </button>
                   {getRoleIcon(selectedContact.role)}
                   <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-white">
-                      {selectedContact.first_name} {selectedContact.last_name}
-                    </h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-gray-900 dark:text-white">
+                        {selectedContact.first_name} {selectedContact.last_name}
+                      </h3>
+                      {isContactOnline(selectedContact) && (
+                        <span className="flex items-center gap-1 text-xs text-green-600">
+                          <span className="w-2 h-2 bg-green-500 rounded-full inline-block" />
+                          En ligne
+                        </span>
+                      )}
+                    </div>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
                       {getRoleLabel(selectedContact.role)}
                     </p>

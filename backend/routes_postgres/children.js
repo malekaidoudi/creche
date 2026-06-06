@@ -13,17 +13,18 @@ const cloudinaryService = require('../services/cloudinaryService');
 router.get('/simple', auth.authenticateToken, async (req, res) => {
   try {
     const sql = `
-      SELECT 
-        c.id, 
-        c.first_name, 
-        c.last_name, 
-        c.parent_id,
+      SELECT DISTINCT
+        c.id,
+        c.first_name,
+        c.last_name,
+        COALESCE(c.parent_id, e.parent_id) as parent_id,
         c.birth_date,
         u.id as parent_user_id,
         u.first_name as parent_first_name,
         u.last_name as parent_last_name
       FROM children c
-      LEFT JOIN users u ON c.parent_id = u.id
+      LEFT JOIN enrollments e ON c.id = e.child_id AND e.status = 'approved'
+      LEFT JOIN users u ON COALESCE(c.parent_id, e.parent_id) = u.id
       WHERE c.is_active = true
       ORDER BY c.first_name, c.last_name
     `;
