@@ -70,7 +70,6 @@ import ActivitiesPage from '../pages/activities/ActivitiesPage'
 // Journal d'activité (direction)
 import ActivityLogPage from '../pages/dashboard/ActivityLogPage'
 import ActivityFeedPage from '../pages/dashboard/ActivityFeedPage'
-import EmailLogsPage from '../pages/dashboard/EmailLogsPage'
 import DailyReportsPage from '../pages/dashboard/DailyReportsPage'
 import MailboxPage from '../pages/dashboard/MailboxPage'
 import CloudinaryExplorerPage from '../pages/dashboard/CloudinaryExplorerPage'
@@ -306,7 +305,6 @@ const AppRoutes = () => {
                         </ProtectedRoute>
                     } />
                     <Route path="activity-feed" element={<ActivityFeedPage />} />
-                    <Route path="email-logs" element={<EmailLogsPage />} />
                     <Route path="daily-reports" element={<DailyReportsPage />} />
                     <Route path="mailbox" element={<MailboxPage />} />
                     <Route path="storage" element={

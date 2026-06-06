@@ -146,5 +146,31 @@ router.get('/email', auth.authenticateToken, async (req, res) => {
   }
 });
 
+// DELETE /api/logs/email/:id - Supprimer un log email (admin uniquement)
+router.delete('/email/:id', auth.authenticateToken, async (req, res) => {
+  try {
+    if (req.user?.role !== 'admin' && req.user?.role !== 'staff') {
+      return res.status(403).json({
+        success: false,
+        error: 'Accès réservé aux administrateurs'
+      });
+    }
+
+    const { id } = req.params;
+    await db.query('DELETE FROM email_logs WHERE id = $1', [id]);
+
+    res.json({
+      success: true,
+      message: 'Log email supprimé'
+    });
+  } catch (error) {
+    console.error('Erreur suppression email log:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la suppression du log email'
+    });
+  }
+});
+
 module.exports = router;
 module.exports.createLog = createLog;
