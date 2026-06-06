@@ -261,58 +261,109 @@ const AddChildPage = () => {
             {/* Section: Parent existant (admin/staff uniquement) */}
             {!isPersonal && (
               <div className="p-4 bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800 rounded-xl">
-                <div className="flex items-center gap-2 mb-3">
-                  <Users className="w-5 h-5 text-teal-600 dark:text-teal-400" />
-                  <h3 className="font-semibold text-teal-800 dark:text-teal-300 text-sm">
-                    {isRTL ? 'ربط بولي أمر موجود (اختياري)' : 'Associer à un parent existant (optionnel)'}
-                  </h3>
-                </div>
-                {loadingParents ? (
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <LoadingSpinner size="sm" />
-                    {isRTL ? 'جاري التحميل...' : 'Chargement...'}
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {existingParents.length > 10 && (
-                      <div className="relative">
-                        <Search className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                        <input
-                          type="text"
-                          value={parentSearch}
-                          onChange={(e) => setParentSearch(e.target.value)}
-                          placeholder={isRTL ? 'بحث باسم الولي...' : 'Rechercher un parent...'}
-                          className="w-full pl-9 rtl:pl-3 rtl:pr-9 pr-3 py-2 text-sm border rounded-lg bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500"
-                        />
+                {preselectedParentId ? (
+                  /* Mode verrouillé : parent pré-sélectionné depuis la page Parents */
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Users className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+                      <h3 className="font-semibold text-teal-800 dark:text-teal-300 text-sm">
+                        {isRTL ? 'ولي الأمر المختار' : 'Parent sélectionné'}
+                      </h3>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 font-medium">
+                        {isRTL ? 'مغلق' : 'Verrouillé'}
+                      </span>
+                    </div>
+                    {loadingParents ? (
+                      <div className="flex items-center gap-2 text-sm text-gray-500">
+                        <LoadingSpinner size="sm" />
+                        {isRTL ? 'جاري التحميل...' : 'Chargement...'}
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-teal-200 dark:border-teal-700">
+                        <input type="hidden" {...register('parent_id')} value={preselectedParentId} />
+                        {(() => {
+                          const preselected = existingParents.find(p => String(p.id) === String(preselectedParentId));
+                          return preselected ? (
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center flex-shrink-0">
+                                <User className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+                              </div>
+                              <div>
+                                <p className="font-semibold text-gray-900 dark:text-white text-sm">
+                                  {preselected.first_name} {preselected.last_name}
+                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">{preselected.email}</p>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-sm text-gray-500">{isRTL ? 'جاري التحميل...' : 'Chargement...'}</p>
+                          );
+                        })()}
                       </div>
                     )}
-                    <select
-                      {...register('parent_id')}
-                      defaultValue={preselectedParentId || ''}
-                      className="w-full px-4 py-3 border rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-colors border-gray-300 dark:border-gray-600"
-                    >
-                      <option value="">
-                        {isRTL ? 'لا أحد — سجّل كطفل بدون ولي' : 'Aucun — Enregistrer comme enfant orphelin'}
-                      </option>
-                      {existingParents
-                        .filter(p => {
-                          if (!parentSearch) return true;
-                          const term = parentSearch.toLowerCase();
-                          const fullName = `${p.first_name} ${p.last_name}`.toLowerCase();
-                          return fullName.includes(term) || p.email?.toLowerCase().includes(term);
-                        })
-                        .map(parent => (
-                          <option key={parent.id} value={parent.id}>
-                            {parent.first_name} {parent.last_name} — {parent.email}
-                          </option>
-                        ))}
-                    </select>
-                    <p className="text-xs text-teal-700 dark:text-teal-400">
+                    <p className="text-xs text-teal-600 dark:text-teal-400 mt-2">
                       {isRTL
-                        ? 'إذا اخترت وليًا، سيُربط الطفل بحسابه مباشرة.'
-                        : 'Si vous choisissez un parent, l\'enfant sera lié directement à son compte.'
+                        ? 'الطفل سيرتبط بهذا الولي مباشرةً. لا يمكن تغييره من هذه الصفحة.'
+                        : 'L\'enfant sera lié directement à ce parent. Non modifiable depuis cette page.'
                       }
                     </p>
+                  </div>
+                ) : (
+                  /* Mode libre : aucun parent pré-sélectionné */
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Users className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+                      <h3 className="font-semibold text-teal-800 dark:text-teal-300 text-sm">
+                        {isRTL ? 'ربط بولي أمر موجود (اختياري)' : 'Associer à un parent existant (optionnel)'}
+                      </h3>
+                    </div>
+                    {loadingParents ? (
+                      <div className="flex items-center gap-2 text-sm text-gray-500">
+                        <LoadingSpinner size="sm" />
+                        {isRTL ? 'جاري التحميل...' : 'Chargement...'}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {existingParents.length > 10 && (
+                          <div className="relative">
+                            <Search className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                            <input
+                              type="text"
+                              value={parentSearch}
+                              onChange={(e) => setParentSearch(e.target.value)}
+                              placeholder={isRTL ? 'بحث باسم الولي...' : 'Rechercher un parent...'}
+                              className="w-full pl-9 rtl:pl-3 rtl:pr-9 pr-3 py-2 text-sm border rounded-lg bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500"
+                            />
+                          </div>
+                        )}
+                        <select
+                          {...register('parent_id')}
+                          className="w-full px-4 py-3 border rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-colors border-gray-300 dark:border-gray-600"
+                        >
+                          <option value="">
+                            {isRTL ? 'لا أحد — سجّل كطفل بدون ولي' : 'Aucun — Enregistrer comme enfant orphelin'}
+                          </option>
+                          {existingParents
+                            .filter(p => {
+                              if (!parentSearch) return true;
+                              const term = parentSearch.toLowerCase();
+                              const fullName = `${p.first_name} ${p.last_name}`.toLowerCase();
+                              return fullName.includes(term) || p.email?.toLowerCase().includes(term);
+                            })
+                            .map(parent => (
+                              <option key={parent.id} value={parent.id}>
+                                {parent.first_name} {parent.last_name} — {parent.email}
+                              </option>
+                            ))}
+                        </select>
+                        <p className="text-xs text-teal-700 dark:text-teal-400">
+                          {isRTL
+                            ? 'إذا اخترت وليًا، سيُربط الطفل بحسابه مباشرة.'
+                            : 'Si vous choisissez un parent, l\'enfant sera lié directement à son compte.'
+                          }
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
