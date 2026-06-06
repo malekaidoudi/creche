@@ -136,6 +136,47 @@ export const isValidDateTime = (dateTimeString) => {
 };
 
 /**
+ * Formate une saisie date avec slash automatique JJ/MM/AAAA
+ * @param {string} rawValue - Valeur brute saisie par l'utilisateur
+ * @returns {string} Valeur formatée avec slashes
+ */
+export const formatDateInput = (rawValue) => {
+  if (!rawValue) return '';
+
+  // Garder uniquement les chiffres
+  const digits = rawValue.replace(/\D/g, '');
+
+  let formatted = digits;
+  if (digits.length >= 2) {
+    formatted = digits.slice(0, 2) + '/' + digits.slice(2);
+  }
+  if (digits.length >= 4) {
+    formatted = digits.slice(0, 2) + '/' + digits.slice(2, 4) + '/' + digits.slice(4);
+  }
+  if (formatted.length > 10) {
+    formatted = formatted.slice(0, 10);
+  }
+
+  return formatted;
+};
+
+/**
+ * Vérifie si une date au format dd/mm/yyyy est valide
+ * @param {string} ddmmyyyy - Date au format dd/mm/yyyy
+ * @returns {boolean} true si valide
+ */
+export const isValidDateFormat = (ddmmyyyy) => {
+  if (!ddmmyyyy || ddmmyyyy.length !== 10) return false;
+
+  const regex = /^(0[1-9]|[12]\d|3[01])\/(0[1-9]|1[0-2])\/(19|20)\d{2}$/;
+  if (!regex.test(ddmmyyyy)) return false;
+
+  const [day, month, year] = ddmmyyyy.split('/').map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.getDate() === day && date.getMonth() === month - 1 && date.getFullYear() === year;
+};
+
+/**
  * Convertit une date dd/mm/yyyy en yyyy-mm-dd (format ISO pour backend)
  * @param {string} ddmmyyyy - Date au format dd/mm/yyyy
  * @returns {string} Date au format yyyy-mm-dd ou chaîne vide si invalide

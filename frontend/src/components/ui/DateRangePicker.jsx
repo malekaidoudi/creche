@@ -1,9 +1,11 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import DateRangePicker from 'flowbite-datepicker/DateRangePicker'
+import { formatDateInput } from '../../utils/dateUtils'
 
 /**
  * Composant DateRangePicker basé sur Flowbite
  * Pour sélectionner une plage de dates (vacances, etc.)
+ * Supporte la saisie directe avec slash automatique JJ/MM/AAAA
  */
 const DateRangePickerComponent = ({
     label,
@@ -20,6 +22,31 @@ const DateRangePickerComponent = ({
 }) => {
     const containerRef = useRef(null)
     const dateRangePickerRef = useRef(null)
+    const startInputRef = useRef(null)
+    const endInputRef = useRef(null)
+
+    // Formate la saisie avec slash auto
+    const handleDateInput = useCallback((e, onChange) => {
+        const raw = e.target.value
+        const formatted = formatDateInput(raw)
+        e.target.value = formatted
+        if (onChange) {
+            onChange(formatted)
+        }
+    }, [])
+
+    // Bloque les touches non numeriques
+    const handleKeyDown = useCallback((e) => {
+        const allowedKeys = [
+            'Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
+            'Tab', 'Home', 'End', 'Escape', 'Enter'
+        ]
+        if (allowedKeys.includes(e.key)) return
+        if (e.ctrlKey || e.metaKey) return
+        if (/^\d$/.test(e.key)) return
+        if (e.key === '/') return
+        e.preventDefault()
+    }, [])
 
     useEffect(() => {
         if (containerRef.current && !dateRangePickerRef.current) {
@@ -34,12 +61,12 @@ const DateRangePickerComponent = ({
                 orientation: 'auto'  // Position intelligente
             })
 
-            // Écouter les changements sur les deux inputs
-            const startInput = containerRef.current.querySelector('[name="start"]')
-            const endInput = containerRef.current.querySelector('[name="end"]')
+            // Récupérer les inputs
+            startInputRef.current = containerRef.current.querySelector('[name="start"]')
+            endInputRef.current = containerRef.current.querySelector('[name="end"]')
 
-            if (startInput) {
-                startInput.addEventListener('changeDate', (e) => {
+            if (startInputRef.current) {
+                startInputRef.current.addEventListener('changeDate', (e) => {
                     if (onStartChange) {
                         const date = e.detail?.date || e.target.datepicker?.getDate()
                         if (date) {
@@ -54,8 +81,8 @@ const DateRangePickerComponent = ({
                 })
             }
 
-            if (endInput) {
-                endInput.addEventListener('changeDate', (e) => {
+            if (endInputRef.current) {
+                endInputRef.current.addEventListener('changeDate', (e) => {
                     if (onEndChange) {
                         const date = e.detail?.date || e.target.datepicker?.getDate()
                         if (date) {
@@ -91,9 +118,13 @@ const DateRangePickerComponent = ({
                     <input
                         name="start"
                         type="text"
+                        inputMode="numeric"
+                        maxLength={10}
                         datepicker-format="dd/mm/yyyy"
                         value={startValue}
-                        placeholder="Date de début"
+                        onInput={(e) => handleDateInput(e, onStartChange)}
+                        onKeyDown={handleKeyDown}
+                        placeholder="JJ/MM/AAAA"
                         className={`
               block w-full px-4 py-3 
               border rounded-lg 
@@ -113,9 +144,13 @@ const DateRangePickerComponent = ({
                     <input
                         name="end"
                         type="text"
+                        inputMode="numeric"
+                        maxLength={10}
                         datepicker-format="dd/mm/yyyy"
                         value={endValue}
-                        placeholder="Date de fin"
+                        onInput={(e) => handleDateInput(e, onEndChange)}
+                        onKeyDown={handleKeyDown}
+                        placeholder="JJ/MM/AAAA"
                         className={`
               block w-full px-4 py-3 
               border rounded-lg 

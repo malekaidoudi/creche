@@ -1,11 +1,13 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import Datepicker from 'flowbite-datepicker/Datepicker'
 import { useLanguage } from '../../hooks/useLanguage'
+import { formatDateInput } from '../../utils/dateUtils'
 
 /**
  * Composant DatePicker basé sur Flowbite
  * Format: jj/mm/aaaa
  * Autohide activé
+ * Saisie directe avec slash automatique supportee
  */
 const DatePicker = ({
     label,
@@ -23,38 +25,74 @@ const DatePicker = ({
     const datepickerRef = useRef(null)
     const { isRTL } = useLanguage()
 
+    // Formate la saisie avec slash auto JJ/MM/AAAA
+    const handleInput = useCallback((e) => {
+        const raw = e.target.value
+        const formatted = formatDateInput(raw)
+        e.target.value = formatted
+        if (onChange) {
+            onChange(formatted)
+        }
+    }, [onChange])
+
+    // Bloque les touches non numeriques sauf backspace/delete/arrows/slash
+    const handleKeyDown = useCallback((e) => {
+        const allowedKeys = [
+            'Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
+            'Tab', 'Home', 'End', 'Escape', 'Enter'
+        ]
+        if (allowedKeys.includes(e.key)) return
+        if (e.ctrlKey || e.metaKey) return // autorise Ctrl+A, Ctrl+C, etc.
+        if (/^\d$/.test(e.key)) return // chiffres OK
+        if (e.key === '/') return // slash OK (mais on en ajoutera auto)
+        e.preventDefault()
+    }, [])
+
+    // Sync le datepicker Flowbite quand la valeur change de l'exterieur
+    useEffect(() => {
+        if (datepickerRef.current && inputRef.current) {
+            const val = value || ''
+            inputRef.current.value = val
+            // Si date complete valide, mettre a jour le datepicker interne
+            if (/^\d{2}\/\d{2}\/\d{4}$/.test(val)) {
+                const [day, month, year] = val.split('/').map(Number)
+                const date = new Date(year, month - 1, day)
+                if (!isNaN(date.getTime())) {
+                    datepickerRef.current.setDate(date)
+                }
+            }
+        }
+    }, [value])
+
     useEffect(() => {
         if (inputRef.current && !datepickerRef.current) {
-            // Détecter si on est sur mobile
             const isMobile = window.innerWidth < 640
 
-            // Initialiser Flowbite Datepicker
             datepickerRef.current = new Datepicker(inputRef.current, {
                 autohide: true,
-                format: 'dd/mm/yyyy',  // Format français
-                title: isMobile ? '' : (title || label || ''),  // Pas de titre sur mobile
+                format: 'dd/mm/yyyy',
+                title: isMobile ? '' : (title || label || ''),
                 todayBtn: false,
                 clearBtn: false,
                 language: 'fr',
-                orientation: 'auto',  // Auto pour position intelligente
+                orientation: 'auto',
                 buttonClass: 'btn'
             })
 
-            // Écouter les changements de date
             const handleChangeDate = (e) => {
                 if (onChange) {
                     const date = datepickerRef.current.getDate()
                     if (date) {
-                        // Formater en dd/mm/yyyy
                         const day = String(date.getDate()).padStart(2, '0')
                         const month = String(date.getMonth() + 1).padStart(2, '0')
                         const year = date.getFullYear()
-                        onChange(`${day}/${month}/${year}`)
+                        const formatted = `${day}/${month}/${year}`
+                        if (inputRef.current) inputRef.current.value = formatted
+                        onChange(formatted)
                     } else {
                         onChange('')
                     }
                 }
-                // Forcer la fermeture après sélection
                 if (datepickerRef.current) {
                     datepickerRef.current.hide()
                 }
@@ -62,7 +100,6 @@ const DatePicker = ({
 
             inputRef.current.addEventListener('changeDate', handleChangeDate)
 
-            // Cleanup
             const currentInput = inputRef.current
             return () => {
                 if (currentInput) {
@@ -87,9 +124,12 @@ const DatePicker = ({
                 <input
                     ref={inputRef}
                     type="text"
-                    readOnly
-                    value={value || ''}
-                    placeholder={placeholder || (isRTL ? 'اختر التاريخ' : 'Sélectionner une date')}
+                    inputMode="numeric"
+                    maxLength={10}
+                    defaultValue={value || ''}
+                    onInput={handleInput}
+                    onKeyDown={handleKeyDown}
+                    placeholder={placeholder || (isRTL ? 'JJ/MM/AAAA' : 'JJ/MM/AAAA')}
                     className={`cursor-pointer
             block w-full px-4 py-3 
             border rounded-lg 
@@ -103,6 +143,15 @@ const DatePicker = ({
           `}
                     {...props}
                 />
+                {/* Icône calendrier pour indiquer le datepicker */}
+                <svg
+                    className="absolute right-3 rtl:right-auto rtl:left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
             </div>
             {error && (
                 <p className="text-red-500 text-sm mt-1">{error}</p>
