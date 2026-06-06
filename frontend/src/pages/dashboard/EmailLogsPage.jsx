@@ -25,7 +25,7 @@ export default function EmailLogsPage() {
     const fetchLogs = async () => {
         try {
             setLoading(true);
-            const response = await api.get(`/logs/email?limit=100&status=${filter}`);
+            const response = await api.get(`/api/logs/email?limit=100&status=${filter}`);
             if (response.data.success) {
                 setLogs(response.data.logs);
             }
