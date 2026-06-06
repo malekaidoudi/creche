@@ -634,6 +634,15 @@ const ParentsPage = () => {
                               <Button
                                 size="sm"
                                 variant="outline"
+                                className="text-teal-600 dark:text-teal-400 border-teal-200 dark:border-teal-800 hover:bg-teal-50 dark:hover:bg-teal-900/30"
+                                onClick={() => navigate(`/dashboard/add-child?parentId=${parent.id}`)}
+                                title={isRTL ? 'إضافة طفل لهذا الولي' : 'Ajouter un enfant à ce parent'}
+                              >
+                                <Baby className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
                                 onClick={() => handleStatusToggle(parent.id)}
                               >
                                 {parent.status === 'active' ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
@@ -920,6 +929,19 @@ const ParentsPage = () => {
                           {isRTL ? 'تفعيل' : 'Activer'}
                         </>
                       )}
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full justify-start text-teal-600 dark:text-teal-400 border-teal-200 dark:border-teal-800 hover:bg-teal-50 dark:hover:bg-teal-900/30"
+                      onClick={() => {
+                        setShowDetails(false);
+                        navigate(`/dashboard/add-child?parentId=${selectedParent.id}`);
+                      }}
+                    >
+                      <Baby className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                      {isRTL ? 'إضافة طفل' : 'Ajouter un enfant'}
                     </Button>
 
                     <Button

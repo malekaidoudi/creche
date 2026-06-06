@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { motion } from 'framer-motion';
-import { Baby, User, Calendar, Phone, AlertTriangle, Save, ArrowLeft, CheckCircle, UserPlus, ArrowRight, FileText } from 'lucide-react';
+import { Baby, User, Calendar, Phone, AlertTriangle, Save, ArrowLeft, CheckCircle, UserPlus, ArrowRight, FileText, Search, Users } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useDialogContext } from '../../contexts/DialogContext';
@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../..
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import DatePicker from '../../components/ui/DatePicker';
 import childrenService from '../../services/childrenService';
+import userService from '../../services/userService';
 import { convertToISO, calculateAge } from '../../utils/dateUtils';
 import DocumentScanner from '../../components/ui/DocumentScanner';
 import { uploadToEndpoint } from '../../services/api';
@@ -30,6 +31,10 @@ const AddChildPage = () => {
     acte_naissance: null,
     certificat_medical: null
   });
+  const [existingParents, setExistingParents] = useState([]);
+  const [loadingParents, setLoadingParents] = useState(false);
+  const [parentSearch, setParentSearch] = useState('');
+  const preselectedParentId = searchParams.get('parentId');
 
   // Détection mobile
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -42,6 +47,24 @@ const AddChildPage = () => {
     watch,
     setValue
   } = useForm();
+
+  // Charger les parents existants (pour admin/staff)
+  useEffect(() => {
+    const loadParents = async () => {
+      if (isPersonal) return;
+      try {
+        setLoadingParents(true);
+        const response = await userService.getAllUsers({ role: 'parent', limit: 200 });
+        const users = response.users || response.data?.users || [];
+        setExistingParents(users);
+      } catch (error) {
+        console.error('Erreur chargement parents:', error);
+      } finally {
+        setLoadingParents(false);
+      }
+    };
+    loadParents();
+  }, [isPersonal]);
 
   // Pré-remplir la date d'inscription avec aujourd'hui
   useEffect(() => {
@@ -62,9 +85,7 @@ const AddChildPage = () => {
         birth_date: convertToISO(data.birth_date), // Convertir dd/mm/yyyy → yyyy-mm-dd
         gender: data.gender,
         medical_info: data.medical_info || '',
-        // Contact d'urgence sera défini lors de la création du compte parent
-        // Pas de parent_id = enfant orphelin
-        // enrollment_status = 'enrolled' par défaut dans la DB
+        parent_id: data.parent_id || null,
       };
 
       const response = await childrenService.createChild(childData);
@@ -130,29 +151,40 @@ const AddChildPage = () => {
                 </p>
               </div>
 
-              {/* Info Box - Enfant orphelin */}
-              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 mb-6">
-                <h3 className="font-semibold text-blue-800 dark:text-blue-300 mb-2">
-                  {isRTL ? 'الخطوة التالية' : 'Prochaine étape'}
+              {/* Info Box */}
+              <div className={`border rounded-xl p-4 mb-6 ${createdChild.parent_id ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'}`}>
+                <h3 className={`font-semibold mb-2 ${createdChild.parent_id ? 'text-green-800 dark:text-green-300' : 'text-blue-800 dark:text-blue-300'}`}>
+                  {createdChild.parent_id
+                    ? (isRTL ? 'تم الربط بنجاح' : 'Association réussie')
+                    : (isRTL ? 'الخطوة التالية' : 'Prochaine étape')
+                  }
                 </h3>
-                <p className="text-blue-700 dark:text-blue-400 text-sm">
-                  {isRTL
-                    ? 'الطفل مسجل بدون حساب ولي أمر. يمكنك الآن إنشاء حساب للوالد وربطه بهذا الطفل.'
-                    : 'L\'enfant est inscrit sans compte parent associé. Vous pouvez maintenant créer un compte parent et l\'associer à cet enfant.'
+                <p className={`text-sm ${createdChild.parent_id ? 'text-green-700 dark:text-green-400' : 'text-blue-700 dark:text-blue-400'}`}>
+                  {createdChild.parent_id
+                    ? (isRTL
+                      ? 'تم تسجيل الطفل وربطه بولي الأمر المختار. يمكنه الآن رؤية الطفل في مساحته.'
+                      : 'L\'enfant est inscrit et lié au parent sélectionné. Le parent peut maintenant voir l\'enfant dans son espace.'
+                    )
+                    : (isRTL
+                      ? 'الطفل مسجل بدون حساب ولي أمر. يمكنك الآن إنشاء حساب للوالد وربطه بهذا الطفل.'
+                      : 'L\'enfant est inscrit sans compte parent associé. Vous pouvez maintenant créer un compte parent et l\'associer à cet enfant.'
+                    )
                   }
                 </p>
               </div>
 
               {/* Actions */}
               <div className="space-y-3">
-                <Button
-                  onClick={() => navigate('/dashboard/add-user', { state: { preselectedChild: createdChild, preselectedRole: 'parent' } })}
-                  className="w-full bg-primary-600 hover:bg-primary-700"
-                >
-                  <UserPlus className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
-                  {isRTL ? 'إنشاء حساب ولي أمر' : 'Créer un compte parent'}
-                  <ArrowRight className="w-4 h-4 ml-2 rtl:ml-0 rtl:mr-2" />
-                </Button>
+                {!createdChild.parent_id && (
+                  <Button
+                    onClick={() => navigate('/dashboard/add-user', { state: { preselectedChild: createdChild, preselectedRole: 'parent' } })}
+                    className="w-full bg-primary-600 hover:bg-primary-700"
+                  >
+                    <UserPlus className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                    {isRTL ? 'إنشاء حساب ولي أمر' : 'Créer un compte parent'}
+                    <ArrowRight className="w-4 h-4 ml-2 rtl:ml-0 rtl:mr-2" />
+                  </Button>
+                )}
 
                 <div className="flex gap-3">
                   <Button
@@ -225,6 +257,67 @@ const AddChildPage = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+
+            {/* Section: Parent existant (admin/staff uniquement) */}
+            {!isPersonal && (
+              <div className="p-4 bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800 rounded-xl">
+                <div className="flex items-center gap-2 mb-3">
+                  <Users className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+                  <h3 className="font-semibold text-teal-800 dark:text-teal-300 text-sm">
+                    {isRTL ? 'ربط بولي أمر موجود (اختياري)' : 'Associer à un parent existant (optionnel)'}
+                  </h3>
+                </div>
+                {loadingParents ? (
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <LoadingSpinner size="sm" />
+                    {isRTL ? 'جاري التحميل...' : 'Chargement...'}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {existingParents.length > 10 && (
+                      <div className="relative">
+                        <Search className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                        <input
+                          type="text"
+                          value={parentSearch}
+                          onChange={(e) => setParentSearch(e.target.value)}
+                          placeholder={isRTL ? 'بحث باسم الولي...' : 'Rechercher un parent...'}
+                          className="w-full pl-9 rtl:pl-3 rtl:pr-9 pr-3 py-2 text-sm border rounded-lg bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500"
+                        />
+                      </div>
+                    )}
+                    <select
+                      {...register('parent_id')}
+                      defaultValue={preselectedParentId || ''}
+                      className="w-full px-4 py-3 border rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-colors border-gray-300 dark:border-gray-600"
+                    >
+                      <option value="">
+                        {isRTL ? 'لا أحد — سجّل كطفل بدون ولي' : 'Aucun — Enregistrer comme enfant orphelin'}
+                      </option>
+                      {existingParents
+                        .filter(p => {
+                          if (!parentSearch) return true;
+                          const term = parentSearch.toLowerCase();
+                          const fullName = `${p.first_name} ${p.last_name}`.toLowerCase();
+                          return fullName.includes(term) || p.email?.toLowerCase().includes(term);
+                        })
+                        .map(parent => (
+                          <option key={parent.id} value={parent.id}>
+                            {parent.first_name} {parent.last_name} — {parent.email}
+                          </option>
+                        ))}
+                    </select>
+                    <p className="text-xs text-teal-700 dark:text-teal-400">
+                      {isRTL
+                        ? 'إذا اخترت وليًا، سيُربط الطفل بحسابه مباشرة.'
+                        : 'Si vous choisissez un parent, l\'enfant sera lié directement à son compte.'
+                      }
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Informations personnelles */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Prénom */}
