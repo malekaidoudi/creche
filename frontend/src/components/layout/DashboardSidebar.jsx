@@ -95,6 +95,13 @@ const DashboardSidebar = ({ isOpen, onClose, onCollapsedChange }) => {
       roles: ['admin']
     },
     {
+      key: 'email-logs',
+      title: isRTL ? 'سجلات البريد' : 'Journal Emails',
+      icon: Mail,
+      path: '/dashboard/email-logs',
+      roles: ['admin', 'staff']
+    },
+    {
       key: 'testimonials',
       title: isRTL ? 'التقييمات' : 'Témoignages',
       icon: MessageCircle,

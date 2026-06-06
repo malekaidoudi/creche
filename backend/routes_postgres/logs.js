@@ -93,5 +93,58 @@ const createLog = async (userId, action, description, options = {}) => {
   }
 };
 
+// GET /api/logs/email - Récupérer les logs d'emails (admin uniquement)
+router.get('/email', auth.authenticateToken, async (req, res) => {
+  try {
+    // Vérifier que l'utilisateur est admin
+    if (req.user?.role !== 'admin' && req.user?.role !== 'staff') {
+      return res.status(403).json({
+        success: false,
+        error: 'Accès réservé aux administrateurs'
+      });
+    }
+
+    const { limit = 50, status = 'all' } = req.query;
+    const limitNum = parseInt(limit);
+
+    let whereClause = '1=1';
+    const params = [limitNum];
+
+    if (status !== 'all') {
+      whereClause += ' AND status = $2';
+      params.push(status);
+    }
+
+    const result = await db.query(`
+      SELECT
+        id,
+        email_type,
+        recipient_email,
+        sender_email,
+        subject,
+        status,
+        resend_id,
+        error_message,
+        metadata,
+        created_at
+      FROM email_logs
+      WHERE ${whereClause}
+      ORDER BY created_at DESC
+      LIMIT $1
+    `, status !== 'all' ? [limitNum, status] : [limitNum]);
+
+    res.json({
+      success: true,
+      logs: result.rows
+    });
+  } catch (error) {
+    console.error('Erreur récupération email logs:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération des logs d\'emails'
+    });
+  }
+});
+
 module.exports = router;
 module.exports.createLog = createLog;
