@@ -44,7 +44,7 @@ const ParentsPage = () => {
   const [parents, setParents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('active');
   const [selectedParent, setSelectedParent] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
   const [statsExpanded, setStatsExpanded] = useState(false);
@@ -58,8 +58,9 @@ const ParentsPage = () => {
       try {
         setLoading(true);
 
-        // Récupérer tous les utilisateurs avec le rôle 'parent' (actifs et archivés)
-        const response = await api.get('/api/users', { params: { role: 'parent' } });
+        // Récupérer les utilisateurs avec le rôle 'parent' selon le filtre actif
+        const activeParam = filterStatus === 'all' ? 'all' : (filterStatus === 'active' ? 'true' : 'false');
+        const response = await api.get('/api/users', { params: { role: 'parent', active: activeParam } });
 
         if (response.data.success && response.data.users) {
           // Récupérer les enfants pour chaque parent
@@ -116,7 +117,7 @@ const ParentsPage = () => {
     };
 
     loadParents();
-  }, [isRTL]);
+  }, [isRTL, filterStatus]);
 
   const filteredParents = parents.filter(parent => {
     const matchesSearch =

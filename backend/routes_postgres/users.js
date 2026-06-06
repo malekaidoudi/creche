@@ -139,6 +139,9 @@ router.get('/', auth.authenticateToken, async (req, res) => {
   try {
     const { role, active, search, page = 1, limit = 50 } = req.query;
 
+    // Par défaut, ne retourner que les utilisateurs actifs
+    const activeFilter = active === undefined ? 'true' : active;
+
     let sql = `
       SELECT id, email, first_name, last_name, phone, role, profile_image,
              is_active, password_set, gender, staff_position, created_at, updated_at, last_active
@@ -155,10 +158,10 @@ router.get('/', auth.authenticateToken, async (req, res) => {
       params.push(role);
     }
 
-    if (active !== undefined) {
+    if (activeFilter !== 'all') {
       paramCount++;
       sql += ` AND is_active = $${paramCount}`;
-      params.push(active === 'true');
+      params.push(activeFilter === 'true');
     }
 
     if (search) {
@@ -190,10 +193,10 @@ router.get('/', auth.authenticateToken, async (req, res) => {
       countParams.push(role);
     }
 
-    if (active !== undefined) {
+    if (activeFilter !== 'all') {
       countParamCount++;
       countSql += ` AND is_active = $${countParamCount}`;
-      countParams.push(active === 'true');
+      countParams.push(activeFilter === 'true');
     }
 
     if (search) {

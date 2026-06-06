@@ -55,10 +55,10 @@ const StaffPage = () => {
       try {
         setLoading(true);
 
-        // Récupérer les utilisateurs avec les rôles 'admin' et 'staff'
+        // Récupérer les utilisateurs actifs avec les rôles 'admin' et 'staff'
         const [adminResponse, staffResponse] = await Promise.all([
-          api.get('/api/users', { params: { role: 'admin' } }),
-          api.get('/api/users', { params: { role: 'staff' } })
+          api.get('/api/users', { params: { role: 'admin', active: 'true' } }),
+          api.get('/api/users', { params: { role: 'staff', active: 'true' } })
         ]);
 
         const admins = adminResponse.data.success ? adminResponse.data.users : [];
