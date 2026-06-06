@@ -114,7 +114,7 @@ const DashboardSidebar = ({ isOpen, onClose, onCollapsedChange }) => {
         },
         {
           title: isRTL ? 'إضافة طفل' : 'Ajouter un enfant',
-          path: '/dashboard/children/add',
+          path: '/dashboard/add-child',
           roles: ['admin']
         },
         {

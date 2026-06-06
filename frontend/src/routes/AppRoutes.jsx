@@ -256,7 +256,7 @@ const AppRoutes = () => {
                 >
                     <Route index element={<DashboardHome />} />
                     <Route path="children" element={<ChildrenPage />} />
-                    <Route path="children/add" element={<DashboardAddChildPage />} />
+                    <Route path="add-child" element={<DashboardAddChildPage />} />
                     <Route path="enrollments" element={<EnrollmentsPage />} />
                     <Route path="pending-enrollments" element={<PendingEnrollmentsPage />} />
                     <Route path="enrollments/today" element={<EnrollmentsPage />} />

@@ -618,7 +618,7 @@ const ChildrenPage = () => {
           onViewChild={(child) => handleViewChild(child)}
           onEditChild={(child) => handleViewChild(child)}
           onDeleteChild={(child) => handleDelete(child.id)}
-          onAddChild={() => navigate('/dashboard/children/add')}
+          onAddChild={() => navigate('/dashboard/add-child')}
           onRefresh={() => loadChildren()}
         />
         <MobileNavigation />
@@ -660,14 +660,14 @@ const ChildrenPage = () => {
             {(isAdmin() || isStaff()) && (
               <div className="flex gap-2">
                 <Button asChild>
-                  <Link to="/dashboard/children/add">
+                  <Link to="/dashboard/add-child">
                     <Plus className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
                     {isRTL ? 'إضافة طفل' : 'Ajouter enfant'}
                   </Link>
                 </Button>
                 {isStaff() && (
                   <Button asChild variant="outline">
-                    <Link to="/dashboard/children/add?personal=true">
+                    <Link to="/dashboard/add-child?personal=true">
                       <UserPlus className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
                       {isRTL ? 'إضافة طفلي' : 'Mon enfant'}
                     </Link>

@@ -605,7 +605,7 @@ const AddUserPage = () => {
                                                 <Button
                                                     type="button"
                                                     variant="outline"
-                                                    onClick={() => navigate('/dashboard/children/add')}
+                                                    onClick={() => navigate('/dashboard/add-child')}
                                                     className="mt-4"
                                                 >
                                                     {isRTL ? 'تسجيل طفل' : 'Inscrire un enfant'}
