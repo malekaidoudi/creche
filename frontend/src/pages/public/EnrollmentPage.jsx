@@ -48,6 +48,7 @@ const EnrollmentPage = () => {
     certificat_medical: null
   })
   const [documentErrors, setDocumentErrors] = useState({})
+  const [reglementDownloaded, setReglementDownloaded] = useState(false)
 
   // États pour la vérification d'email
   const [emailCheckResult, setEmailCheckResult] = useState(null)
@@ -216,17 +217,11 @@ const EnrollmentPage = () => {
   const validateDocuments = () => {
     const errors = {}
 
-    // Vérifier les documents obligatoires
-    if (!documents.carnet_medical) {
-      errors.carnet_medical = isRTL ? 'الدفتر الطبي مطلوب' : 'Le carnet médical est requis'
-    }
-
-    if (!documents.acte_naissance) {
-      errors.acte_naissance = isRTL ? 'شهادة الميلاد مطلوبة' : 'L\'acte de naissance est requis'
-    }
-
-    if (!documents.certificat_medical) {
-      errors.certificat_medical = isRTL ? 'الشهادة الطبية مطلوبة' : 'Le certificat médical est requis'
+    // Le règlement intérieur est le seul document indispensable
+    if (!reglementDownloaded) {
+      errors.reglement = isRTL
+        ? 'يجب تحميل النظام الداخلي للحضانة. هذا المستند ضروري للتسجيل.'
+        : 'Vous devez télécharger le règlement intérieur de la crèche. Ce document est indispensable pour l\'inscription.'
     }
 
     setDocumentErrors(errors)
@@ -506,7 +501,7 @@ const EnrollmentPage = () => {
     // Validation spéciale pour l'étape des documents
     if (step === 3) {
       if (!validateDocuments()) {
-        dialog.error(isRTL ? 'يرجى تحميل جميع الوثائق المطلوبة' : 'Veuillez télécharger tous les documents requis')
+        dialog.error(isRTL ? 'يجب تحميل النظام الداخلي للحضانة للمتابعة' : 'Vous devez télécharger le règlement intérieur de la crèche pour continuer')
         return
       }
     }
@@ -1384,8 +1379,8 @@ const EnrollmentPage = () => {
                         </h3>
                         <p className="text-sm text-blue-800 dark:text-blue-200 mt-1">
                           {isRTL
-                            ? 'يرجى تحميل جميع الوثائق المطلوبة. الملفات المقبولة: PDF, JPG, PNG (حتى 5MB)'
-                            : 'Veuillez télécharger tous les documents requis. Formats acceptés : PDF, JPG, PNG (max 5MB)'
+                            ? 'الوثائق اختيارية باستثناء النظام الداخلي. الملفات المقبولة: PDF, JPG, PNG (حتى 5MB)'
+                            : 'Les documents sont optionnels sauf le règlement intérieur. Formats acceptés : PDF, JPG, PNG (max 5MB)'
                           }
                         </p>
                       </div>
@@ -1398,7 +1393,7 @@ const EnrollmentPage = () => {
                       documentType="carnet_medical"
                       label={isRTL ? 'الدفتر الطبي' : 'Carnet médical'}
                       description={isRTL ? 'الدفتر الطبي للطفل مع التطعيمات' : 'Carnet de santé de l\'enfant avec vaccinations'}
-                      required={true}
+                      required={false}
                       onFileChange={(file) => handleDocumentChange('carnet_medical', file)}
                       value={documents.carnet_medical}
                       error={documentErrors.carnet_medical}
@@ -1409,7 +1404,7 @@ const EnrollmentPage = () => {
                       documentType="acte_naissance"
                       label={isRTL ? 'شهادة الميلاد' : 'Acte de naissance'}
                       description={isRTL ? 'شهادة الميلاد الأصلية أو نسخة مصدقة' : 'Acte de naissance original ou copie certifiée'}
-                      required={true}
+                      required={false}
                       onFileChange={(file) => handleDocumentChange('acte_naissance', file)}
                       value={documents.acte_naissance}
                       error={documentErrors.acte_naissance}
@@ -1420,7 +1415,7 @@ const EnrollmentPage = () => {
                       documentType="certificat_medical"
                       label={isRTL ? 'الشهادة الطبية' : 'Certificat médical'}
                       description={isRTL ? 'شهادة طبية تؤكد عدم وجود أمراض معدية' : 'Certificat médical attestant l\'absence de maladies contagieuses'}
-                      required={true}
+                      required={false}
                       onFileChange={(file) => handleDocumentChange('certificat_medical', file)}
                       value={documents.certificat_medical}
                       error={documentErrors.certificat_medical}
@@ -1428,18 +1423,24 @@ const EnrollmentPage = () => {
                   </div>
 
                   {/* Téléchargement du règlement */}
-                  <div className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg p-4">
+                  <div className={`bg-gray-50 dark:bg-gray-700 border rounded-lg p-4 ${documentErrors.reglement ? 'border-red-300 dark:border-red-600' : 'border-gray-200 dark:border-gray-600'}`}>
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                       <div className="flex-1">
                         <h3 className="font-medium text-gray-900 dark:text-white">
-                          {isRTL ? 'النظام الداخلي للحضانة' : 'Règlement intérieur de la crèche'}
+                          {isRTL ? 'النظام الداخلي للحضانة' : 'Règlement intérieur de la crèche'} <span className="text-red-500">*</span>
                         </h3>
                         <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
                           {isRTL
-                            ? 'قم بتحميل ومراجعة النظام الداخلي قبل المتابعة'
-                            : 'Téléchargez et consultez le règlement avant de continuer'
+                            ? 'قم بتحميل ومراجعة النظام الداخلي قبل المتابعة (إلزامي)'
+                            : 'Téléchargez et consultez le règlement avant de continuer (obligatoire)'
                           }
                         </p>
+                        {reglementDownloaded && (
+                          <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" />
+                            {isRTL ? 'تم التحميل ✓' : 'Téléchargé ✓'}
+                          </p>
+                        )}
                       </div>
                       <button
                         type="button"
@@ -1448,6 +1449,8 @@ const EnrollmentPage = () => {
                             const response = await api.get('/api/documents/public/reglement');
                             if (response.data.success && response.data.url) {
                               window.open(response.data.url, '_blank');
+                              setReglementDownloaded(true);
+                              setDocumentErrors(prev => ({ ...prev, reglement: null }));
                             } else {
                               dialog.error(isRTL ? 'النظام الداخلي غير متوفر حاليا' : 'Règlement non disponible actuellement');
                             }
@@ -1456,12 +1459,18 @@ const EnrollmentPage = () => {
                             dialog.error(isRTL ? 'خطأ في تحميل النظام الداخلي' : 'Erreur lors du téléchargement du règlement');
                           }
                         }}
-                        className="flex items-center justify-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors whitespace-nowrap text-sm sm:text-base"
+                        className={`flex items-center justify-center px-4 py-2 rounded-lg transition-colors whitespace-nowrap text-sm sm:text-base ${reglementDownloaded ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-primary-600 text-white hover:bg-primary-700'}`}
                       >
                         <Download className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
-                        {isRTL ? 'تحميل' : 'Télécharger'}
+                        {reglementDownloaded ? (isRTL ? 'تم التحميل' : 'Téléchargé') : (isRTL ? 'تحميل' : 'Télécharger')}
                       </button>
                     </div>
+                    {documentErrors.reglement && (
+                      <div className="flex items-center space-x-2 rtl:space-x-reverse text-red-600 text-sm mt-3">
+                        <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                        <span>{documentErrors.reglement}</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Rappel important sur les documents originaux */}
@@ -1676,11 +1685,6 @@ const EnrollmentPage = () => {
                         <CheckCircle className={`w-4 h-4 ${watch('lunch_assistance') ? 'text-green-600' : 'text-gray-400'}`} />
                         <span className={watch('lunch_assistance') ? 'text-green-800 dark:text-green-300 font-medium' : 'text-gray-600 dark:text-gray-400'}>
                           {isRTL ? 'المساعدة في الغداء' : 'Assistance au déjeuner'}
-                          {watch('lunch_assistance') && (
-                            <span className="text-xs text-gray-500 dark:text-gray-400 ml-1 rtl:ml-0 rtl:mr-1">
-                              (+50 TND/mois)
-                            </span>
-                          )}
                         </span>
                       </div>
                       <div className="flex items-center space-x-2 rtl:space-x-reverse">
