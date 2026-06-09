@@ -221,6 +221,16 @@ router.get('/admin/:id/download', auth.authenticateToken, async (req, res) => {
  */
 router.get('/public/reglement', async (req, res) => {
     try {
+        // Fallback: URL Cloudinary directe configurée via variable d'environnement
+        const envUrl = process.env.REGLEMENT_INTERIEUR_URL;
+        if (envUrl) {
+            return res.json({
+                success: true,
+                url: envUrl,
+                filename: 'reglement-interieur.pdf'
+            });
+        }
+
         const result = await db.query(`
             SELECT cloudinary_url, original_filename 
             FROM admin_documents 
