@@ -226,11 +226,55 @@ const ensureLastActiveColumn = async () => {
   }
 };
 
+// Migration automatique: Créer la table admin_documents si elle n'existe pas
+const ensureAdminDocumentsTable = async () => {
+  try {
+    const checkQuery = `
+      SELECT table_name
+      FROM information_schema.tables
+      WHERE table_schema = 'public' AND table_name = 'admin_documents';
+    `;
+    const res = await pool.query(checkQuery);
+
+    if (res.rows.length === 0) {
+      console.log('📝 Création de la table admin_documents...');
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS admin_documents (
+          id SERIAL PRIMARY KEY,
+          title VARCHAR(255) NOT NULL,
+          description TEXT,
+          document_type VARCHAR(50) DEFAULT 'general',
+          original_filename VARCHAR(255),
+          cloudinary_url TEXT,
+          cloudinary_public_id VARCHAR(255),
+          file_size INTEGER,
+          mime_type VARCHAR(100),
+          is_public BOOLEAN DEFAULT FALSE,
+          is_required BOOLEAN DEFAULT FALSE,
+          uploaded_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_admin_documents_type ON admin_documents(document_type);`);
+      await pool.query(`CREATE INDEX IF NOT EXISTS idx_admin_documents_created_at ON admin_documents(created_at DESC);`);
+
+      console.log('✅ Table admin_documents créée avec succès');
+    }
+  } catch (error) {
+    if (!error.message.includes('already exists')) {
+      console.log('⚠️ Migration admin_documents:', error.message);
+    }
+  }
+};
+
 // Test de connexion au démarrage puis migrations
 testConnection()
   .then(() => ensurePhotoPrivacyColumn())
   .then(() => ensureTestimonialsTable())
   .then(() => ensureLastActiveColumn())
+  .then(() => ensureAdminDocumentsTable())
   .catch(console.error);
 
 // Export des fonctions

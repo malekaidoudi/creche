@@ -462,10 +462,20 @@ const AddChildPage = () => {
                                             </div>
                                             <button
                                                 type="button"
-                                                onClick={() => {
-                                                    window.open('/creche/reg-interne-mimaelghalia.pdf', '_blank');
-                                                    setReglementDownloaded(true);
-                                                    setDocumentErrors(prev => ({ ...prev, reglement: null }));
+                                                onClick={async () => {
+                                                    try {
+                                                        const response = await api.get('/api/documents/public/reglement');
+                                                        if (response.data.success && response.data.url) {
+                                                            window.open(response.data.url, '_blank');
+                                                            setReglementDownloaded(true);
+                                                            setDocumentErrors(prev => ({ ...prev, reglement: null }));
+                                                        } else {
+                                                            dialog.error(isRTL ? 'النظام الداخلي غير متوفر حاليا' : 'Règlement non disponible actuellement');
+                                                        }
+                                                    } catch (error) {
+                                                        console.error('Erreur téléchargement règlement:', error);
+                                                        dialog.error(isRTL ? 'خطأ في تحميل النظام الداخلي' : 'Erreur lors du téléchargement du règlement');
+                                                    }
                                                 }}
                                                 className={`flex items-center justify-center px-4 py-2 rounded-lg transition-colors whitespace-nowrap text-sm ${reglementDownloaded ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-primary-600 text-white hover:bg-primary-700'}`}
                                             >
