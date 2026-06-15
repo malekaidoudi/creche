@@ -42,6 +42,8 @@ const AddChildPage = () => {
     })
     const [documentErrors, setDocumentErrors] = useState({})
     const [reglementDownloaded, setReglementDownloaded] = useState(false)
+    const [reglementModalOpen, setReglementModalOpen] = useState(false)
+    const [reglementUrl, setReglementUrl] = useState(null)
 
     const {
         register,
@@ -456,7 +458,7 @@ const AddChildPage = () => {
                                                 {reglementDownloaded && (
                                                     <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
                                                         <CheckCircle className="w-3 h-3" />
-                                                        {isRTL ? 'تم التحميل ✓' : 'Téléchargé ✓'}
+                                                        {isRTL ? 'تم الاطلاع ✓' : 'Consulté ✓'}
                                                     </p>
                                                 )}
                                             </div>
@@ -466,8 +468,8 @@ const AddChildPage = () => {
                                                     try {
                                                         const response = await api.get('/api/documents/public/reglement');
                                                         if (response.data.success && response.data.url) {
-                                                            window.open(response.data.url, '_blank');
-                                                            setReglementDownloaded(true);
+                                                            setReglementUrl(response.data.url);
+                                                            setReglementModalOpen(true);
                                                             setDocumentErrors(prev => ({ ...prev, reglement: null }));
                                                         } else {
                                                             dialog.error(isRTL ? 'النظام الداخلي غير متوفر حاليا' : 'Règlement non disponible actuellement');
@@ -480,7 +482,7 @@ const AddChildPage = () => {
                                                 className={`flex items-center justify-center px-4 py-2 rounded-lg transition-colors whitespace-nowrap text-sm ${reglementDownloaded ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-primary-600 text-white hover:bg-primary-700'}`}
                                             >
                                                 <Download className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
-                                                {reglementDownloaded ? (isRTL ? 'تم التحميل' : 'Téléchargé') : (isRTL ? 'تحميل' : 'Télécharger')}
+                                                {reglementDownloaded ? (isRTL ? 'تم الاطلاع' : 'Consulté') : (isRTL ? 'عرض' : 'Consulter')}
                                             </button>
                                         </div>
                                         {documentErrors.reglement && (
@@ -490,6 +492,50 @@ const AddChildPage = () => {
                                             </div>
                                         )}
                                     </div>
+
+                                    {/* Modal Règlement intérieur */}
+                                    {reglementModalOpen && reglementUrl && (
+                                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                                            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden">
+                                                <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+                                                    <h3 className="font-semibold text-gray-900 dark:text-white">
+                                                        {isRTL ? 'النظام الداخلي للحضانة' : 'Règlement intérieur de la crèche'}
+                                                    </h3>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setReglementModalOpen(false)}
+                                                        className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
+                                                    >
+                                                        <X className="w-5 h-5" />
+                                                    </button>
+                                                </div>
+                                                <div className="flex-1 overflow-hidden bg-gray-100 dark:bg-gray-900">
+                                                    <iframe
+                                                        src={reglementUrl}
+                                                        title={isRTL ? 'النظام الداخلي' : 'Règlement intérieur'}
+                                                        className="w-full h-full"
+                                                    />
+                                                </div>
+                                                <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-3">
+                                                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                                                        {isRTL ? 'بعد قراءة النظام الداخلي، اضغط على الزر أدناه للمتابعة' : 'Après avoir lu le règlement, cliquez sur le bouton ci-dessous pour continuer'}
+                                                    </p>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setReglementDownloaded(true);
+                                                            setReglementModalOpen(false);
+                                                            setDocumentErrors(prev => ({ ...prev, reglement: null }));
+                                                        }}
+                                                        className="w-full sm:w-auto flex items-center justify-center px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium"
+                                                    >
+                                                        <CheckCircle className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                                                        {isRTL ? 'لقد قرأت النظام الداخلي وأوافق عليه' : 'J\'ai lu et j\'accepte le règlement'}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
