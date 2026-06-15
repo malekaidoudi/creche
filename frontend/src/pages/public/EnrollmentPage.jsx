@@ -1478,7 +1478,7 @@ const EnrollmentPage = () => {
                   {/* Modal Règlement intérieur */}
                   {reglementModalOpen && reglementUrl && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden">
+                      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg flex flex-col overflow-hidden max-h-[90vh]">
                         {/* Header */}
                         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
                           <h3 className="font-semibold text-gray-900 dark:text-white">
@@ -1492,19 +1492,39 @@ const EnrollmentPage = () => {
                             <X className="w-5 h-5" />
                           </button>
                         </div>
-                        {/* PDF Viewer */}
-                        <div className="flex-1 overflow-hidden bg-gray-100 dark:bg-gray-900">
-                          <iframe
-                            src={reglementUrl}
-                            title={isRTL ? 'النظام الداخلي' : 'Règlement intérieur'}
-                            className="w-full h-full"
-                          />
+                        {/* Content */}
+                        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                          <div className="text-center">
+                            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                              <FileText className="w-8 h-8 text-red-600 dark:text-red-400" />
+                            </div>
+                            <p className="text-gray-700 dark:text-gray-200 mb-2">
+                              {isRTL
+                                ? 'النظام الداخلي جاهز للاطلاع. اضغط على الزر أدناه لفتح الملف.'
+                                : 'Le règlement intérieur est prêt à être consulté. Cliquez sur le bouton ci-dessous pour l\'ouvrir.'}
+                            </p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                              {isRTL
+                                ? 'سيتم فتح الملف في متصفحك. بعد القراءة، عد للضغط على "لقد قرأت وأوافق"'
+                                : 'Le fichier s\'ouvrira dans votre navigateur. Après lecture, revenez appuyer sur "J\'ai lu et j\'accepte"'}
+                            </p>
+                          </div>
+                          <a
+                            href={reglementUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => {
+                              setReglementDownloaded(true);
+                              setDocumentErrors(prev => ({ ...prev, reglement: null }));
+                            }}
+                            className="flex items-center justify-center w-full px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors font-medium"
+                          >
+                            <Download className="w-5 h-5 mr-2 rtl:mr-0 rtl:ml-2" />
+                            {isRTL ? 'فتح النظام الداخلي' : 'Ouvrir le règlement intérieur'}
+                          </a>
                         </div>
                         {/* Footer */}
-                        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-3">
-                          <p className="text-sm text-gray-600 dark:text-gray-300">
-                            {isRTL ? 'بعد قراءة النظام الداخلي، اضغط على الزر أدناه للمتابعة' : 'Après avoir lu le règlement, cliquez sur le bouton ci-dessous pour continuer'}
-                          </p>
+                        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex flex-col gap-3">
                           <button
                             type="button"
                             onClick={() => {
@@ -1512,7 +1532,7 @@ const EnrollmentPage = () => {
                               setReglementModalOpen(false);
                               setDocumentErrors(prev => ({ ...prev, reglement: null }));
                             }}
-                            className="w-full sm:w-auto flex items-center justify-center px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium"
+                            className="w-full flex items-center justify-center px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium"
                           >
                             <CheckCircle className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
                             {isRTL ? 'لقد قرأت النظام الداخلي وأوافق عليه' : 'J\'ai lu et j\'accepte le règlement'}
