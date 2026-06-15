@@ -1500,17 +1500,18 @@ const EnrollmentPage = () => {
                             </div>
                             <p className="text-gray-700 dark:text-gray-200 mb-2">
                               {isRTL
-                                ? 'النظام الداخلي جاهز للاطلاع. اضغط على الزر أدناه لفتح الملف.'
-                                : 'Le règlement intérieur est prêt à être consulté. Cliquez sur le bouton ci-dessous pour l\'ouvrir.'}
+                                ? 'النظام الداخلي جاهز للتحميل. اضغط على الزر أدناه.'
+                                : 'Le règlement intérieur est prêt à être téléchargé. Cliquez sur le bouton ci-dessous.'}
                             </p>
                             <p className="text-sm text-gray-500 dark:text-gray-400">
                               {isRTL
-                                ? 'سيتم فتح الملف في متصفحك. بعد القراءة، عد للضغط على "لقد قرأت وأوافق"'
-                                : 'Le fichier s\'ouvrira dans votre navigateur. Après lecture, revenez appuyer sur "J\'ai lu et j\'accepte"'}
+                                ? 'سيتم تحميل الملف على جهازك. بعد التحميل، عد للضغط على "لقد قرأت وأوافق"'
+                                : 'Le fichier sera téléchargé sur votre appareil. Après téléchargement, appuyez sur "J\'ai lu et j\'accepte"'}
                             </p>
                           </div>
                           <a
                             href={reglementUrl}
+                            download="reglement-interieur.pdf"
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={() => {
@@ -1520,7 +1521,7 @@ const EnrollmentPage = () => {
                             className="flex items-center justify-center w-full px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors font-medium"
                           >
                             <Download className="w-5 h-5 mr-2 rtl:mr-0 rtl:ml-2" />
-                            {isRTL ? 'فتح النظام الداخلي' : 'Ouvrir le règlement intérieur'}
+                            {isRTL ? 'تحميل النظام الداخلي' : 'Télécharger le règlement intérieur'}
                           </a>
                         </div>
                         {/* Footer */}
