@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Formation - Utilisation du Site Mima El Ghalia</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+    
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #0a0a0a;
+      color: white;
+      overflow: hidden;
+    }
+    
+    .slides-container {
+      height: 100vh;
+      overflow-y: scroll;
+      scroll-snap-type: y mandatory;
+    }
+    
+    .slide {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 60px 80px;
+      scroll-snap-align: start;
+      position: relative;
+    }
+    
+    /* Backgrounds */
+    .bg-gradient { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .bg-dark { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); }
+    .bg-green { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
+    .bg-orange { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+    .bg-blue { background: linear-gradient(135deg, #0093E9 0%, #80D0C7 100%); }
+    .bg-pink { background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%); color: #333; }
+    .bg-yellow { background: linear-gradient(135deg, #f6d365 0%, #fda085 100%); color: #333; }
+    
+    h1 { font-size: 64px; font-weight: 800; text-align: center; margin-bottom: 30px; }
+    h2 { font-size: 48px; font-weight: 700; text-align: center; margin-bottom: 40px; }
+    h3 { font-size: 36px; font-weight: 600; margin-bottom: 25px; }
+    
+    .subtitle { font-size: 28px; opacity: 0.9; text-align: center; max-width: 900px; line-height: 1.6; }
+    
+    .logo { width: 150px; height: 150px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 70px; margin-bottom: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+    
+    .big-emoji { font-size: 100px; margin-bottom: 30px; }
+    
+    /* Steps */
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 25px;
+      max-width: 900px;
+      width: 100%;
+    }
+    
+    .step {
+      display: flex;
+      align-items: center;
+      gap: 25px;
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 25px 35px;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    
+    .step-number {
+      width: 60px;
+      height: 60px;
+      background: white;
+      color: #667eea;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+    
+    .step-content h4 {
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+    
+    .step-content p {
+      font-size: 18px;
+      opacity: 0.85;
+    }
+    
+    /* Cards */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 30px;
+      max-width: 1000px;
+      margin-top: 30px;
+    }
+    
+    .cards-3 { grid-template-columns: repeat(3, 1fr); }
+    
+    .card {
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 35px;
+      text-align: center;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    
+    .card-icon { font-size: 50px; margin-bottom: 15px; }
+    .card h4 { font-size: 22px; margin-bottom: 10px; }
+    .card p { font-size: 16px; opacity: 0.85; line-height: 1.5; }
+    
+    /* Tips */
+    .tip {
+      background: rgba(255,255,255,0.2);
+      border-radius: 16px;
+      padding: 25px 40px;
+      margin-top: 40px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      max-width: 800px;
+    }
+    
+    .tip-icon { font-size: 40px; }
+    .tip-text { font-size: 20px; }
+    
+    /* Image placeholder */
+    .screenshot {
+      background: rgba(255,255,255,0.1);
+      border: 2px dashed rgba(255,255,255,0.3);
+      border-radius: 16px;
+      padding: 60px;
+      text-align: center;
+      margin-top: 30px;
+      max-width: 700px;
+    }
+    
+    .screenshot p {
+      font-size: 18px;
+      opacity: 0.7;
+    }
+    
+    /* Navigation */
+    .slide-number {
+      position: absolute;
+      bottom: 30px;
+      right: 40px;
+      font-size: 18px;
+      opacity: 0.5;
+    }
+    
+    .nav {
+      position: fixed;
+      right: 30px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 100;
+    }
+    
+    .nav-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.3);
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .nav-dot:hover, .nav-dot.active {
+      background: white;
+      transform: scale(1.3);
+    }
+    
+    .controls {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 15px;
+      z-index: 100;
+    }
+    
+    .control-btn {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      padding: 12px 25px;
+      border-radius: 50px;
+      font-size: 15px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .control-btn:hover { background: rgba(255,255,255,0.3); }
+    
+    /* Highlight box */
+    .highlight-box {
+      background: rgba(255,255,255,0.2);
+      border-left: 4px solid white;
+      padding: 20px 30px;
+      margin: 20px 0;
+      border-radius: 0 12px 12px 0;
+      font-size: 20px;
+    }
+    
+    /* Contact */
+    .contact-info p {
+      font-size: 24px;
+      margin: 15px 0;
+    }
+    
+    .contact-info a {
+      color: white;
+      text-decoration: none;
+    }
+
+    /* Two columns */
+    .two-cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 50px;
+      max-width: 1100px;
+      width: 100%;
+    }
+    
+    .col h3 {
+      text-align: left;
+      margin-bottom: 20px;
+    }
+    
+    .col ul {
+      list-style: none;
+      text-align: left;
+    }
+    
+    .col li {
+      font-size: 20px;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    
+    .col li:last-child { border-bottom: none; }
+  </style>
+</head>
+<body>
+
+<div class="slides-container" id="slides">
+
+  <!-- SLIDE 1: Bienvenue -->
+  <div class="slide bg-gradient">
+    <div class="logo">🏠</div>
+    <h1>Formation Utilisateur</h1>
+    <p class="subtitle">Apprenez à utiliser le site de gestion<br><strong>Crèche Mima El Ghalia</strong></p>
+    <div class="tip">
+      <span class="tip-icon">⏱️</span>
+      <span class="tip-text">Durée : environ 20 minutes</span>
+    </div>
+    <span class="slide-number">1 / 18</span>
+  </div>
+
+  <!-- SLIDE 2: Programme -->
+  <div class="slide bg-dark">
+    <h2>📋 Ce que vous allez apprendre</h2>
+    <div class="cards">
+      <div class="card">
+        <div class="card-icon">🔐</div>
+        <h4>Se connecter</h4>
+        <p>Accéder à votre espace</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">📝</div>
+        <h4>Gérer les inscriptions</h4>
+        <p>Valider ou rejeter</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">👶</div>
+        <h4>Gérer les enfants</h4>
+        <p>Fiches et documents</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">✅</div>
+        <h4>Marquer les présences</h4>
+        <p>Arrivées et départs</p>
+      </div>
+    </div>
+    <span class="slide-number">2 / 18</span>
+  </div>
+
+  <!-- SLIDE 3: Connexion -->
+  <div class="slide bg-blue">
+    <div class="big-emoji">🔐</div>
+    <h2>Se connecter au site</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-number">1</div>
+        <div class="step-content">
+          <h4>Ouvrez le site</h4>
+          <p>Tapez <strong>mima-elghalia.com</strong> dans votre navigateur</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">2</div>
+        <div class="step-content">
+          <h4>Cliquez sur "Connexion"</h4>
+          <p>Le bouton est en haut à droite de la page</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">3</div>
+        <div class="step-content">
+          <h4>Entrez vos identifiants</h4>
+          <p>Votre email et votre mot de passe</p>
+        </div>
+      </div>
+    </div>
+    <span class="slide-number">3 / 18</span>
+  </div>
+
+  <!-- SLIDE 4: Dashboard -->
+  <div class="slide bg-dark">
+    <div class="big-emoji">🏠</div>
+    <h2>Le Tableau de Bord</h2>
+    <p class="subtitle">Après connexion, vous arrivez sur le tableau de bord.<br>C'est votre page d'accueil avec toutes les informations importantes.</p>
+    <div class="cards" style="margin-top: 40px;">
+      <div class="card">
+        <div class="card-icon">📊</div>
+        <h4>Statistiques</h4>
+        <p>Nombre d'enfants, présents aujourd'hui...</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">⚡</div>
+        <h4>Actions rapides</h4>
+        <p>Accès direct aux tâches courantes</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔔</div>
+        <h4>Notifications</h4>
+        <p>Nouvelles inscriptions, messages...</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">📅</div>
+        <h4>Activités récentes</h4>
+        <p>Ce qui s'est passé récemment</p>
+      </div>
+    </div>
+    <span class="slide-number">4 / 18</span>
+  </div>
+
+  <!-- SLIDE 5: Menu -->
+  <div class="slide bg-gradient">
+    <h2>📱 Le Menu de Navigation</h2>
+    <p class="subtitle" style="margin-bottom: 40px;">Le menu à gauche vous permet d'accéder à toutes les fonctionnalités</p>
+    <div class="two-cols">
+      <div class="col">
+        <h3>👨‍💼 Pour la Direction</h3>
+        <ul>
+          <li>📝 Inscriptions en attente</li>
+          <li>👶 Gestion des enfants</li>
+          <li>👥 Gestion du personnel</li>
+          <li>📊 Rapports de présence</li>
+          <li>⚙️ Paramètres</li>
+        </ul>
+      </div>
+      <div class="col">
+        <h3>👩‍🏫 Pour les Éducatrices</h3>
+        <ul>
+          <li>👶 Liste des enfants</li>
+          <li>✅ Pointage des présences</li>
+          <li>💬 Messagerie</li>
+          <li>📅 Jours fériés</li>
+        </ul>
+      </div>
+    </div>
+    <span class="slide-number">5 / 18</span>
+  </div>
+
+  <!-- SLIDE 6: Inscriptions - Intro -->
+  <div class="slide bg-orange">
+    <div class="big-emoji">📝</div>
+    <h1>Les Inscriptions</h1>
+    <p class="subtitle">Comment gérer les demandes d'inscription des parents</p>
+    <span class="slide-number">6 / 18</span>
+  </div>
+
+  <!-- SLIDE 7: Inscriptions - Liste -->
+  <div class="slide bg-dark">
+    <h2>📋 Voir les inscriptions en attente</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-number">1</div>
+        <div class="step-content">
+          <h4>Cliquez sur "Inscriptions" dans le menu</h4>
+          <p>Vous verrez la liste de toutes les demandes</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">2</div>
+        <div class="step-content">
+          <h4>Les demandes en attente sont en jaune</h4>
+          <p>Cliquez sur une demande pour voir les détails</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">3</div>
+        <div class="step-content">
+          <h4>Consultez les informations</h4>
+          <p>Nom de l'enfant, parents, documents fournis...</p>
+        </div>
+      </div>
+    </div>
+    <span class="slide-number">7 / 18</span>
+  </div>
+
+  <!-- SLIDE 8: Inscriptions - Valider -->
+  <div class="slide bg-green">
+    <h2>✅ Valider une inscription</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-number">1</div>
+        <div class="step-content">
+          <h4>Vérifiez les documents</h4>
+          <p>Carnet de santé, photos, certificats...</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">2</div>
+        <div class="step-content">
+          <h4>Choisissez une date de rendez-vous</h4>
+          <p>Pour rencontrer les parents</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">3</div>
+        <div class="step-content">
+          <h4>Cliquez sur "Valider"</h4>
+          <p>Un email sera envoyé automatiquement aux parents</p>
+        </div>
+      </div>
+    </div>
+    <div class="tip">
+      <span class="tip-icon">📧</span>
+      <span class="tip-text">Le parent reçoit un email avec la date du rendez-vous</span>
+    </div>
+    <span class="slide-number">8 / 18</span>
+  </div>
+
+  <!-- SLIDE 9: Inscriptions - Rejeter -->
+  <div class="slide bg-orange">
+    <h2>❌ Rejeter une inscription</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-number">1</div>
+        <div class="step-content">
+          <h4>Si documents incomplets</h4>
+          <p>Cliquez sur "Rejeter - Documents incomplets"</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">2</div>
+        <div class="step-content">
+          <h4>Écrivez le motif</h4>
+          <p>Expliquez ce qui manque (ex: "Photo d'identité manquante")</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">3</div>
+        <div class="step-content">
+          <h4>Le parent peut corriger</h4>
+          <p>Il recevra un email avec les instructions</p>
+        </div>
+      </div>
+    </div>
+    <span class="slide-number">9 / 18</span>
+  </div>
+
+  <!-- SLIDE 10: Enfants - Intro -->
+  <div class="slide bg-blue">
+    <div class="big-emoji">👶</div>
+    <h1>Gestion des Enfants</h1>
+    <p class="subtitle">Consulter et modifier les fiches des enfants</p>
+    <span class="slide-number">10 / 18</span>
+  </div>
+
+  <!-- SLIDE 11: Enfants - Fiche -->
+  <div class="slide bg-dark">
+    <h2>👶 La fiche d'un enfant</h2>
+    <div class="cards cards-3">
+      <div class="card">
+        <div class="card-icon">👤</div>
+        <h4>Informations</h4>
+        <p>Nom, prénom, date de naissance, photo</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">👨‍👩‍👧</div>
+        <h4>Parents</h4>
+        <p>Coordonnées, téléphone, email</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🏥</div>
+        <h4>Santé</h4>
+        <p>Allergies, régime alimentaire, médicaments</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">📞</div>
+        <h4>Urgence</h4>
+        <p>Personnes à contacter en cas d'urgence</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">📄</div>
+        <h4>Documents</h4>
+        <p>Carnet de santé, certificats...</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">📊</div>
+        <h4>Présences</h4>
+        <p>Historique des présences</p>
+      </div>
+    </div>
+    <span class="slide-number">11 / 18</span>
+  </div>
+
+  <!-- SLIDE 12: Présences - Intro -->
+  <div class="slide bg-green">
+    <div class="big-emoji">✅</div>
+    <h1>Les Présences</h1>
+    <p class="subtitle">Comment marquer les arrivées et départs des enfants</p>
+    <span class="slide-number">12 / 18</span>
+  </div>
+
+  <!-- SLIDE 13: Présences - Comment -->
+  <div class="slide bg-dark">
+    <h2>✅ Marquer une présence</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-number">1</div>
+        <div class="step-content">
+          <h4>Allez dans "Présences" dans le menu</h4>
+          <p>Vous verrez la liste des enfants du jour</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">2</div>
+        <div class="step-content">
+          <h4>Quand un enfant arrive</h4>
+          <p>Cliquez sur le bouton <strong>✅ Arrivée</strong> à côté de son nom</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">3</div>
+        <div class="step-content">
+          <h4>Quand un enfant part</h4>
+          <p>Cliquez sur le bouton <strong>👋 Départ</strong></p>
+        </div>
+      </div>
+    </div>
+    <div class="tip">
+      <span class="tip-icon">💡</span>
+      <span class="tip-text">L'heure est enregistrée automatiquement !</span>
+    </div>
+    <span class="slide-number">13 / 18</span>
+  </div>
+
+  <!-- SLIDE 14: Présences - Rapport -->
+  <div class="slide bg-blue">
+    <h2>📊 Voir les rapports de présence</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-number">1</div>
+        <div class="step-content">
+          <h4>Allez dans "Rapports" dans le menu</h4>
+          <p>Vous verrez un calendrier avec toutes les présences</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">2</div>
+        <div class="step-content">
+          <h4>Filtrez par enfant ou par date</h4>
+          <p>Utilisez les filtres en haut de la page</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">3</div>
+        <div class="step-content">
+          <h4>Consultez les statistiques</h4>
+          <p>Taux de présence, jours d'absence...</p>
+        </div>
+      </div>
+    </div>
+    <span class="slide-number">14 / 18</span>
+  </div>
+
+  <!-- SLIDE 15: Messagerie -->
+  <div class="slide bg-gradient">
+    <div class="big-emoji">💬</div>
+    <h2>La Messagerie</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-number">1</div>
+        <div class="step-content">
+          <h4>Cliquez sur "Messages" dans le menu</h4>
+          <p>Vous verrez vos conversations avec les parents</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">2</div>
+        <div class="step-content">
+          <h4>Cliquez sur une conversation</h4>
+          <p>Pour lire et répondre aux messages</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">3</div>
+        <div class="step-content">
+          <h4>Pour nouveau message</h4>
+          <p>Cliquez sur "+" et choisissez le parent</p>
+        </div>
+      </div>
+    </div>
+    <span class="slide-number">15 / 18</span>
+  </div>
+
+  <!-- SLIDE 16: Jours fériés -->
+  <div class="slide bg-dark">
+    <h2>📅 Les Jours Fériés</h2>
+    <p class="subtitle" style="margin-bottom: 30px;">Gérer les jours où la crèche est fermée</p>
+    <div class="cards cards-3">
+      <div class="card">
+        <div class="card-icon">🏛️</div>
+        <h4>Nationaux</h4>
+        <p>Fête de l'indépendance, etc.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🕌</div>
+        <h4>Religieux</h4>
+        <p>Aïd el-Fitr, Aïd el-Adha...</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🏫</div>
+        <h4>Vacances</h4>
+        <p>Vacances scolaires</p>
+      </div>
+    </div>
+    <div class="tip">
+      <span class="tip-icon">🔘</span>
+      <span class="tip-text">Utilisez le bouton ON/OFF pour activer ou désactiver chaque jour</span>
+    </div>
+    <span class="slide-number">16 / 18</span>
+  </div>
+
+  <!-- SLIDE 17: Astuces -->
+  <div class="slide bg-yellow">
+    <h2>💡 Astuces Pratiques</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-number">🌙</div>
+        <div class="step-content">
+          <h4>Mode sombre</h4>
+          <p>Cliquez sur l'icône lune en haut pour changer les couleurs</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">🌍</div>
+        <div class="step-content">
+          <h4>Changer la langue</h4>
+          <p>Cliquez sur FR/AR en haut pour passer en arabe</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">🔔</div>
+        <div class="step-content">
+          <h4>Notifications</h4>
+          <p>La cloche en haut vous alerte des nouveautés</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-number">👤</div>
+        <div class="step-content">
+          <h4>Mon profil</h4>
+          <p>Cliquez sur votre photo pour modifier vos informations</p>
+        </div>
+      </div>
+    </div>
+    <span class="slide-number">17 / 18</span>
+  </div>
+
+  <!-- SLIDE 18: Questions -->
+  <div class="slide bg-gradient">
+    <div class="big-emoji">🙋</div>
+    <h1>Des Questions ?</h1>
+    <p class="subtitle" style="margin-bottom: 40px;">N'hésitez pas à demander de l'aide !</p>
+    <div class="contact-info">
+      <p>📧 contact@mima-elghalia.com</p>
+      <p>🌐 mima-elghalia.com</p>
+    </div>
+    <div class="tip" style="margin-top: 50px;">
+      <span class="tip-icon">📄</span>
+      <span class="tip-text">Ce document reste disponible pour consultation à tout moment</span>
+    </div>
+    <span class="slide-number">18 / 18</span>
+  </div>
+
+</div>
+
+<!-- Navigation -->
+<div class="nav" id="nav"></div>
+
+<div class="controls">
+  <button class="control-btn" onclick="prevSlide()">← Précédent</button>
+  <button class="control-btn" onclick="nextSlide()">Suivant →</button>
+  <button class="control-btn" onclick="toggleFullscreen()">⛶ Plein écran</button>
+</div>
+
+<script>
+  const container = document.getElementById('slides');
+  const slides = document.querySelectorAll('.slide');
+  const nav = document.getElementById('nav');
+  let currentSlide = 0;
+
+  slides.forEach((_, i) => {
+    const dot = document.createElement('div');
+    dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+    dot.onclick = () => goToSlide(i);
+    nav.appendChild(dot);
+  });
+
+  function updateNav() {
+    document.querySelectorAll('.nav-dot').forEach((dot, i) => {
+      dot.classList.toggle('active', i === currentSlide);
+    });
+  }
+
+  function goToSlide(index) {
+    currentSlide = index;
+    slides[index].scrollIntoView({ behavior: 'smooth' });
+    updateNav();
+  }
+
+  function nextSlide() {
+    if (currentSlide < slides.length - 1) goToSlide(currentSlide + 1);
+  }
+
+  function prevSlide() {
+    if (currentSlide > 0) goToSlide(currentSlide - 1);
+  }
+
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+    } else {
+      document.exitFullscreen();
+    }
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'ArrowDown') {
+      e.preventDefault(); nextSlide();
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault(); prevSlide();
+    } else if (e.key === 'f' || e.key === 'F') {
+      toggleFullscreen();
+    }
+  });
+
+  container.addEventListener('scroll', () => {
+    currentSlide = Math.round(container.scrollTop / window.innerHeight);
+    updateNav();
+  });
+</script>
+
+</body>
+</html>
