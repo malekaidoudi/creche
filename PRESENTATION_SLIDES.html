@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Présentation Slides - Crèche Mima El Ghalia</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #0a0a0a;
+      color: white;
+      overflow: hidden;
+    }
+    
+    .slides-container {
+      height: 100vh;
+      overflow-y: scroll;
+      scroll-snap-type: y mandatory;
+    }
+    
+    .slide {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 60px;
+      scroll-snap-align: start;
+      position: relative;
+    }
+    
+    /* Slide backgrounds */
+    .slide-cover {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .slide-dark {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    }
+    
+    .slide-purple {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .slide-blue {
+      background: linear-gradient(135deg, #0093E9 0%, #80D0C7 100%);
+    }
+    
+    .slide-green {
+      background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    }
+    
+    .slide-orange {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+    
+    /* Typography */
+    h1 {
+      font-size: 72px;
+      font-weight: 900;
+      text-align: center;
+      margin-bottom: 20px;
+      text-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+    
+    h2 {
+      font-size: 48px;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    
+    h3 {
+      font-size: 32px;
+      font-weight: 600;
+      margin-bottom: 30px;
+      text-align: center;
+    }
+    
+    .subtitle {
+      font-size: 28px;
+      opacity: 0.9;
+      text-align: center;
+      max-width: 800px;
+    }
+    
+    /* Logo */
+    .logo {
+      width: 180px;
+      height: 180px;
+      background: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 80px;
+      margin-bottom: 40px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    
+    /* Cards grid */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 30px;
+      max-width: 1000px;
+      margin-top: 40px;
+    }
+    
+    .cards-3 {
+      grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .cards-4 {
+      grid-template-columns: repeat(4, 1fr);
+    }
+    
+    .card {
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 35px;
+      text-align: center;
+      border: 1px solid rgba(255,255,255,0.2);
+      transition: transform 0.3s;
+    }
+    
+    .card:hover {
+      transform: translateY(-5px);
+    }
+    
+    .card-icon {
+      font-size: 50px;
+      margin-bottom: 15px;
+    }
+    
+    .card h4 {
+      font-size: 22px;
+      margin-bottom: 10px;
+    }
+    
+    .card p {
+      font-size: 16px;
+      opacity: 0.8;
+      line-height: 1.5;
+    }
+    
+    /* Stats */
+    .stats {
+      display: flex;
+      gap: 50px;
+      margin-top: 50px;
+    }
+    
+    .stat {
+      text-align: center;
+    }
+    
+    .stat-number {
+      font-size: 80px;
+      font-weight: 900;
+      line-height: 1;
+    }
+    
+    .stat-label {
+      font-size: 20px;
+      opacity: 0.8;
+      margin-top: 10px;
+    }
+    
+    /* List */
+    .list {
+      text-align: left;
+      max-width: 700px;
+    }
+    
+    .list-item {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 20px 0;
+      font-size: 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .list-item:last-child {
+      border-bottom: none;
+    }
+    
+    .list-icon {
+      font-size: 30px;
+      width: 50px;
+      text-align: center;
+    }
+    
+    /* Architecture */
+    .architecture {
+      display: flex;
+      align-items: center;
+      gap: 30px;
+      margin-top: 50px;
+    }
+    
+    .arch-box {
+      background: rgba(255,255,255,0.2);
+      padding: 30px 50px;
+      border-radius: 16px;
+      text-align: center;
+      border: 2px solid rgba(255,255,255,0.3);
+    }
+    
+    .arch-box strong {
+      font-size: 24px;
+      display: block;
+    }
+    
+    .arch-box small {
+      opacity: 0.8;
+    }
+    
+    .arch-arrow {
+      font-size: 40px;
+    }
+    
+    /* Table */
+    .table-container {
+      margin-top: 40px;
+      max-width: 800px;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    
+    th, td {
+      padding: 20px 30px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255,255,255,0.2);
+    }
+    
+    th {
+      font-size: 18px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      opacity: 0.7;
+    }
+    
+    td {
+      font-size: 20px;
+    }
+    
+    .price {
+      color: #38ef7d;
+      font-weight: 700;
+    }
+    
+    /* Navigation */
+    .nav {
+      position: fixed;
+      right: 30px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 100;
+    }
+    
+    .nav-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.3);
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .nav-dot:hover, .nav-dot.active {
+      background: white;
+      transform: scale(1.3);
+    }
+    
+    /* Slide number */
+    .slide-number {
+      position: absolute;
+      bottom: 30px;
+      right: 40px;
+      font-size: 16px;
+      opacity: 0.5;
+    }
+    
+    /* Controls */
+    .controls {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 20px;
+      z-index: 100;
+    }
+    
+    .control-btn {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      padding: 15px 30px;
+      border-radius: 50px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .control-btn:hover {
+      background: rgba(255,255,255,0.3);
+    }
+    
+    /* Meta info */
+    .meta {
+      margin-top: 50px;
+      text-align: center;
+      opacity: 0.7;
+    }
+    
+    .meta p {
+      margin: 10px 0;
+      font-size: 18px;
+    }
+    
+    /* Highlight */
+    .highlight {
+      background: rgba(255,255,255,0.2);
+      padding: 5px 15px;
+      border-radius: 8px;
+    }
+    
+    /* Big emoji */
+    .big-emoji {
+      font-size: 120px;
+      margin-bottom: 30px;
+    }
+
+    /* Thank you */
+    .thank-you h1 {
+      font-size: 100px;
+    }
+    
+    .contact-info {
+      margin-top: 50px;
+      text-align: center;
+    }
+    
+    .contact-info p {
+      font-size: 24px;
+      margin: 15px 0;
+      opacity: 0.9;
+    }
+    
+    .contact-info a {
+      color: white;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="slides-container" id="slides">
+    
+    <!-- SLIDE 1: Cover -->
+    <div class="slide slide-cover">
+      <div class="logo">🏠</div>
+      <h1>Crèche Mima El Ghalia</h1>
+      <p class="subtitle">Système de Gestion Complète de Crèche</p>
+      <div class="meta">
+        <p><strong>Développeur :</strong> Malek Aidoudi</p>
+        <p><strong>Date :</strong> Juin 2025</p>
+      </div>
+      <span class="slide-number">1 / 12</span>
+    </div>
+    
+    <!-- SLIDE 2: Objectifs -->
+    <div class="slide slide-dark">
+      <h2>🎯 Objectifs du Projet</h2>
+      <div class="cards">
+        <div class="card">
+          <div class="card-icon">📝</div>
+          <h4>Inscriptions en ligne</h4>
+          <p>Formulaire complet avec documents</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">📊</div>
+          <h4>Suivi de présence</h4>
+          <p>Pointage et rapports quotidiens</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">💬</div>
+          <h4>Communication</h4>
+          <p>Messagerie parents-staff</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">📁</div>
+          <h4>Gestion documentaire</h4>
+          <p>Stockage sécurisé cloud</p>
+        </div>
+      </div>
+      <span class="slide-number">2 / 12</span>
+    </div>
+    
+    <!-- SLIDE 3: Utilisateurs -->
+    <div class="slide slide-purple">
+      <h2>👥 Types d'Utilisateurs</h2>
+      <div class="cards cards-3">
+        <div class="card">
+          <div class="card-icon">👨‍💼</div>
+          <h4>Admin</h4>
+          <p>Accès complet<br>Gestion totale</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">👩‍🏫</div>
+          <h4>Staff</h4>
+          <p>Gestion enfants<br>Présences</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">👨‍👩‍👧</div>
+          <h4>Parent</h4>
+          <p>Espace personnel<br>Suivi enfant</p>
+        </div>
+      </div>
+      <span class="slide-number">3 / 12</span>
+    </div>
+    
+    <!-- SLIDE 4: Module Inscription -->
+    <div class="slide slide-dark">
+      <h2>📝 Module Inscription</h2>
+      <div class="list">
+        <div class="list-item">
+          <span class="list-icon">✅</span>
+          <span>Formulaire en ligne complet</span>
+        </div>
+        <div class="list-item">
+          <span class="list-icon">📎</span>
+          <span>Upload de documents (carnet santé, photos)</span>
+        </div>
+        <div class="list-item">
+          <span class="list-icon">📅</span>
+          <span>Sélection créneaux de rendez-vous</span>
+        </div>
+        <div class="list-item">
+          <span class="list-icon">📄</span>
+          <span>Validation règlement obligatoire</span>
+        </div>
+        <div class="list-item">
+          <span class="list-icon">📧</span>
+          <span>Confirmation email automatique</span>
+        </div>
+      </div>
+      <span class="slide-number">4 / 12</span>
+    </div>
+    
+    <!-- SLIDE 5: Module Présence -->
+    <div class="slide slide-blue">
+      <h2>📊 Module Présence</h2>
+      <div class="cards">
+        <div class="card">
+          <div class="card-icon">⏰</div>
+          <h4>Pointage</h4>
+          <p>Arrivée / Départ<br>En temps réel</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">📅</div>
+          <h4>Calendrier</h4>
+          <p>Vue mensuelle<br>Par enfant</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">📈</div>
+          <h4>Statistiques</h4>
+          <p>Taux de présence<br>Graphiques</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">📥</div>
+          <h4>Export</h4>
+          <p>Rapports PDF<br>Téléchargement</p>
+        </div>
+      </div>
+      <span class="slide-number">5 / 12</span>
+    </div>
+    
+    <!-- SLIDE 6: Jours Fériés -->
+    <div class="slide slide-dark">
+      <h2>📅 Jours Fériés Tunisiens</h2>
+      <div class="cards cards-3">
+        <div class="card">
+          <div class="card-icon">🏛️</div>
+          <h4>Nationaux</h4>
+          <p>8 jours<br>Automatique</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🕌</div>
+          <h4>Religieux</h4>
+          <p>12 jours<br>Islamiques</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🏫</div>
+          <h4>Scolaires</h4>
+          <p>8 périodes<br>Vacances</p>
+        </div>
+      </div>
+      <p class="subtitle" style="margin-top: 40px;">Toggle ON/OFF pour chaque jour • Impact automatique sur présences</p>
+      <span class="slide-number">6 / 12</span>
+    </div>
+    
+    <!-- SLIDE 7: Interface UX -->
+    <div class="slide slide-green">
+      <h2>🎨 Interface Utilisateur</h2>
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-number">🌙</div>
+          <div class="stat-label">Mode Sombre</div>
+        </div>
+        <div class="stat">
+          <div class="stat-number">🌍</div>
+          <div class="stat-label">FR + AR</div>
+        </div>
+        <div class="stat">
+          <div class="stat-number">📱</div>
+          <div class="stat-label">Responsive</div>
+        </div>
+        <div class="stat">
+          <div class="stat-number">✨</div>
+          <div class="stat-label">Animations</div>
+        </div>
+      </div>
+      <span class="slide-number">7 / 12</span>
+    </div>
+    
+    <!-- SLIDE 8: Stack Tech -->
+    <div class="slide slide-dark">
+      <h2>🔧 Stack Technologique</h2>
+      <div class="cards">
+        <div class="card">
+          <div class="card-icon">⚛️</div>
+          <h4>Frontend</h4>
+          <p>React 18 • Vite<br>TailwindCSS • Framer Motion</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🟢</div>
+          <h4>Backend</h4>
+          <p>Node.js 18 • Express<br>JWT • Nodemailer</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🐘</div>
+          <h4>Database</h4>
+          <p>PostgreSQL<br>Neon Cloud</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">☁️</div>
+          <h4>Cloud</h4>
+          <p>Cloudinary<br>Images CDN</p>
+        </div>
+      </div>
+      <span class="slide-number">8 / 12</span>
+    </div>
+    
+    <!-- SLIDE 9: Architecture -->
+    <div class="slide slide-orange">
+      <h2>🏗️ Architecture</h2>
+      <div class="architecture">
+        <div class="arch-box">
+          <strong>Vercel</strong>
+          <small>Frontend</small>
+        </div>
+        <span class="arch-arrow">→</span>
+        <div class="arch-box">
+          <strong>Render</strong>
+          <small>Backend</small>
+        </div>
+        <span class="arch-arrow">→</span>
+        <div class="arch-box">
+          <strong>Neon</strong>
+          <small>PostgreSQL</small>
+        </div>
+      </div>
+      <span class="slide-number">9 / 12</span>
+    </div>
+    
+    <!-- SLIDE 10: Sécurité -->
+    <div class="slide slide-dark">
+      <h2>🔐 Sécurité</h2>
+      <div class="cards cards-4">
+        <div class="card">
+          <div class="card-icon">🔑</div>
+          <h4>JWT</h4>
+          <p>Tokens sécurisés</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🔒</div>
+          <h4>Bcrypt</h4>
+          <p>Hash passwords</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🛡️</div>
+          <h4>HTTPS</h4>
+          <p>Chiffrement SSL</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">👮</div>
+          <h4>RBAC</h4>
+          <p>Contrôle rôles</p>
+        </div>
+      </div>
+      <span class="slide-number">10 / 12</span>
+    </div>
+    
+    <!-- SLIDE 11: Coûts -->
+    <div class="slide slide-purple">
+      <h2>💰 Coûts Mensuels</h2>
+      <div class="table-container">
+        <table>
+          <tr>
+            <th>Service</th>
+            <th>Plan</th>
+            <th>Coût</th>
+          </tr>
+          <tr>
+            <td>Vercel</td>
+            <td>Hobby</td>
+            <td class="price">Gratuit</td>
+          </tr>
+          <tr>
+            <td>Render</td>
+            <td>Free</td>
+            <td class="price">Gratuit</td>
+          </tr>
+          <tr>
+            <td>Neon</td>
+            <td>Free</td>
+            <td class="price">Gratuit</td>
+          </tr>
+          <tr>
+            <td>Cloudinary</td>
+            <td>Free</td>
+            <td class="price">Gratuit</td>
+          </tr>
+          <tr>
+            <td><strong>TOTAL</strong></td>
+            <td></td>
+            <td class="price" style="font-size: 28px;">0 TND</td>
+          </tr>
+        </table>
+      </div>
+      <span class="slide-number">11 / 12</span>
+    </div>
+    
+    <!-- SLIDE 12: Merci -->
+    <div class="slide slide-cover thank-you">
+      <div class="big-emoji">🙏</div>
+      <h1>Merci !</h1>
+      <h3>Des questions ?</h3>
+      <div class="contact-info">
+        <p>📧 <a href="mailto:malekaidoudi@gmail.com">malekaidoudi@gmail.com</a></p>
+        <p>🌐 <a href="https://mima-elghalia.com">mima-elghalia.com</a></p>
+      </div>
+      <span class="slide-number">12 / 12</span>
+    </div>
+    
+  </div>
+
+  <!-- Navigation dots -->
+  <div class="nav" id="nav"></div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button class="control-btn" onclick="prevSlide()">← Précédent</button>
+    <button class="control-btn" onclick="nextSlide()">Suivant →</button>
+    <button class="control-btn" onclick="toggleFullscreen()">⛶ Plein écran</button>
+  </div>
+
+  <script>
+    const container = document.getElementById('slides');
+    const slides = document.querySelectorAll('.slide');
+    const nav = document.getElementById('nav');
+    let currentSlide = 0;
+
+    // Create navigation dots
+    slides.forEach((_, i) => {
+      const dot = document.createElement('div');
+      dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+      dot.onclick = () => goToSlide(i);
+      nav.appendChild(dot);
+    });
+
+    function updateNav() {
+      document.querySelectorAll('.nav-dot').forEach((dot, i) => {
+        dot.classList.toggle('active', i === currentSlide);
+      });
+    }
+
+    function goToSlide(index) {
+      currentSlide = index;
+      slides[index].scrollIntoView({ behavior: 'smooth' });
+      updateNav();
+    }
+
+    function nextSlide() {
+      if (currentSlide < slides.length - 1) {
+        goToSlide(currentSlide + 1);
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        goToSlide(currentSlide - 1);
+      }
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+      } else {
+        document.exitFullscreen();
+      }
+    }
+
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        nextSlide();
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        prevSlide();
+      } else if (e.key === 'f' || e.key === 'F') {
+        toggleFullscreen();
+      }
+    });
+
+    // Update current slide on scroll
+    container.addEventListener('scroll', () => {
+      const scrollPos = container.scrollTop;
+      const slideHeight = window.innerHeight;
+      currentSlide = Math.round(scrollPos / slideHeight);
+      updateNav();
+    });
+  </script>
+
+</body>
+</html>
