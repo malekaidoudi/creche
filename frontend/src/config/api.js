@@ -3,11 +3,16 @@
  * 
  * Ce fichier gère automatiquement les différentes URLs d'API :
  * - Développement local : http://localhost:3003
- * - Production : https://creche-backend-prod.onrender.com
+ * - Production : Variable VITE_API_URL (Railway)
  */
 
 // Déterminer l'URL du backend en fonction de l'environnement
 const getBaseUrl = () => {
+  // Si une variable d'environnement est définie, l'utiliser
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+
   const hostname = window.location.hostname;
   const isDev = import.meta.env.DEV;
 
@@ -21,13 +26,9 @@ const getBaseUrl = () => {
     return 'http://localhost:3003';
   }
 
-  // Production (mima-elghalia.com) - Backend PROD
-  if (hostname === 'mima-elghalia.com' || hostname === 'www.mima-elghalia.com') {
-    return 'https://creche-backend-prod.onrender.com';
-  }
-
-  // Staging/Preview ou autre - Backend PROD par défaut
-  return 'https://creche-backend-prod.onrender.com';
+  // Production - URL Railway (à configurer dans Vercel env vars)
+  // IMPORTANT: Mettre à jour VITE_API_URL dans Vercel après déploiement Railway
+  return 'https://creche-backend.up.railway.app';
 };
 
 // Configuration API pour différents environnements
