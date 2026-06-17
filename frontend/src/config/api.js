@@ -26,9 +26,8 @@ const getBaseUrl = () => {
     return 'http://localhost:3003';
   }
 
-  // Production - URL Railway (à configurer dans Vercel env vars)
-  // IMPORTANT: Mettre à jour VITE_API_URL dans Vercel après déploiement Railway
-  return 'https://creche-backend.up.railway.app';
+  // Production - URL Fly.io (à configurer dans Vercel env vars si besoin)
+  return 'https://creche-backend-mima.fly.dev';
 };
 
 // Configuration API pour différents environnements
