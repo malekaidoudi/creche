@@ -174,7 +174,7 @@ const ensureTestimonialsTable = async () => {
       await pool.query(`
         CREATE TABLE IF NOT EXISTS testimonials (
           id SERIAL PRIMARY KEY,
-          user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          user_id INTEGER,
           parent_name VARCHAR(100) NOT NULL,
           child_name VARCHAR(100),
           content TEXT NOT NULL,
@@ -185,7 +185,7 @@ const ensureTestimonialsTable = async () => {
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           approved_at TIMESTAMP,
-          approved_by INTEGER REFERENCES users(id) ON DELETE SET NULL
+          approved_by INTEGER
         );
       `);
 
@@ -197,9 +197,8 @@ const ensureTestimonialsTable = async () => {
       console.log('✅ Table testimonials créée avec succès');
     }
   } catch (error) {
-    if (!error.message.includes('already exists')) {
-      console.log('⚠️ Migration testimonials:', error.message);
-    }
+    console.error('❌ Migration testimonials ÉCHOUÉE:', error.message);
+    throw error;
   }
 };
 
@@ -270,12 +269,17 @@ const ensureAdminDocumentsTable = async () => {
 };
 
 // Test de connexion au démarrage puis migrations
+// IMPORTANT: initializeDatabase crée les tables principales (users, children, etc.)
+// avant les migrations qui en dépendent
+const { initializeDatabase } = require('../init_database');
+
 testConnection()
+  .then(() => initializeDatabase())
   .then(() => ensurePhotoPrivacyColumn())
   .then(() => ensureTestimonialsTable())
   .then(() => ensureLastActiveColumn())
   .then(() => ensureAdminDocumentsTable())
-  .catch(console.error);
+  .catch(err => console.error('❌ Migration DB échouée:', err.message));
 
 // Export des fonctions
 module.exports = {
