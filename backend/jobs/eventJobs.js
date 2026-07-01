@@ -9,10 +9,10 @@ const { generateBirthdayEvents, sendBirthdayReminders } = require('../services/b
 
 /**
  * Job: Envoi des rappels d'événements
- * Fréquence: Toutes les 15 minutes
+ * Fréquence: Toutes les 2 heures (économie compute Neon)
  */
 function startReminderScheduler() {
-  cron.schedule('*/15 * * * *', async () => {
+  cron.schedule('0 */2 * * *', async () => {
     try {
       console.log('🔔 [Job] Vérification des rappels à envoyer...');
 
@@ -78,7 +78,7 @@ function startReminderScheduler() {
     }
   });
 
-  console.log('✅ Job reminderScheduler démarré (toutes les 15 minutes)');
+  console.log('✅ Job reminderScheduler démarré (toutes les 2 heures)');
 }
 
 /**
@@ -109,10 +109,10 @@ function startBirthdayGenerator() {
 
 /**
  * Job: Détection des événements en retard
- * Fréquence: Quotidien à 06:00
+ * Fréquence: Quotidien à 06:30 (décalé pour éviter conflit backup)
  */
 function startOverdueChecker() {
-  cron.schedule('0 6 * * *', async () => {
+  cron.schedule('30 6 * * *', async () => {
     try {
       console.log('⚠️ [Job] Vérification des événements en retard...');
 
@@ -172,11 +172,11 @@ function startOverdueChecker() {
 
 /**
  * Job: Rappels pour RDV en attente de réponse
- * Fréquence: Toutes les heures
+ * Fréquence: Toutes les 4 heures (économie compute Neon)
  * Crée une tâche + notification si un RDV est en attente depuis plus de 24h
  */
 function startAppointmentReminderJob() {
-  cron.schedule('0 * * * *', async () => {
+  cron.schedule('0 */4 * * *', async () => {
     try {
       console.log('📅 [Job] Vérification des RDV en attente de réponse...');
 
@@ -275,7 +275,7 @@ function startAppointmentReminderJob() {
     }
   });
 
-  console.log('✅ Job appointmentReminderJob démarré (toutes les heures)');
+  console.log('✅ Job appointmentReminderJob démarré (toutes les 4 heures)');
 }
 
 /**

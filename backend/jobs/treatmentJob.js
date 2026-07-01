@@ -16,16 +16,16 @@ let treatmentJob = null;
 
 /**
  * Démarrer le job de vérification des traitements
- * Exécuté toutes les 15 minutes entre 7h et 19h
+ * Exécuté toutes les 2 heures entre 7h et 19h (économie compute Neon)
  */
 const startTreatmentJob = async () => {
     try {
         // Initialiser les tables au démarrage
         await initTreatmentsTables();
 
-        // Cron: toutes les 15 minutes, de 7h à 19h, du lundi au vendredi
+        // Cron: toutes les 2 heures, de 7h à 19h (économie compute Neon)
         // Format: minute hour day-of-month month day-of-week
-        treatmentJob = cron.schedule('*/15 7-19 * * 1-6', async () => {
+        treatmentJob = cron.schedule('0 */2 7-19 * * 1-6', async () => {
             console.log('⏰ [CRON] Vérification des traitements médicaux...');
             const result = await checkAndNotifyTreatments();
             console.log(`✅ [CRON] Traitements vérifiés: ${result.checked || 0}, Notifications: ${result.notifications || 0}`);
@@ -34,7 +34,7 @@ const startTreatmentJob = async () => {
             timezone: 'Africa/Tunis'
         });
 
-        console.log('💊 Traitements:     Cron job actif (toutes les 15 min, 7h-19h) ✅');
+        console.log('💊 Traitements:     Cron job actif (toutes les 2h, 7h-19h) ✅');
         return true;
     } catch (error) {
         console.error('❌ Erreur démarrage job traitements:', error.message);
