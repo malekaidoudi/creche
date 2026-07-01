@@ -268,18 +268,19 @@ const ensureAdminDocumentsTable = async () => {
   }
 };
 
-// Test de connexion au démarrage puis migrations
-// IMPORTANT: initializeDatabase crée les tables principales (users, children, etc.)
-// avant les migrations qui en dépendent
-const { initializeDatabase } = require('../init_database');
-
-testConnection()
-  .then(() => initializeDatabase())
-  .then(() => ensurePhotoPrivacyColumn())
-  .then(() => ensureTestimonialsTable())
-  .then(() => ensureLastActiveColumn())
-  .then(() => ensureAdminDocumentsTable())
-  .catch(err => console.error('❌ Migration DB échouée:', err.message));
+// Fonction pour exécuter les migrations secondaires (appelée depuis server.js)
+const runMigrations = async () => {
+  try {
+    await testConnection();
+    await ensurePhotoPrivacyColumn();
+    await ensureTestimonialsTable();
+    await ensureLastActiveColumn();
+    await ensureAdminDocumentsTable();
+    console.log('✅ Toutes les migrations DB terminées');
+  } catch (err) {
+    console.error('❌ Migration DB échouée:', err.message);
+  }
+};
 
 // Export des fonctions
 module.exports = {
@@ -288,6 +289,7 @@ module.exports = {
   getClient,
   testConnection,
   closePool,
+  runMigrations,
   // Compatibilité avec l'ancien code MySQL
   execute: query,
   getConnection: getClient

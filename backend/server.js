@@ -39,6 +39,13 @@ console.log('══════════════════════�
 // Configuration PostgreSQL Neon
 const db = require('./config/db_postgres');
 
+// Initialisation des tables principales (users, children, attendance, etc.)
+// puis migrations secondaires (testimonials, admin_documents, etc.)
+const { initializeDatabase } = require('./init_database');
+initializeDatabase()
+  .then(() => db.runMigrations())
+  .catch(err => console.error('❌ Initialisation DB échouée:', err.message));
+
 // Import des routes
 console.log('📂 Chargement des routes...');
 const authRoutes = require('./routes_postgres/auth');
