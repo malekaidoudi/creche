@@ -5,28 +5,32 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../../.env') });
 
 // Configuration PostgreSQL pour Neon avec timeouts optimisés
-const dbConfig = {
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  port: process.env.DB_PORT || 5432,
-  // SSL activé pour Neon - les certificats Neon sont valides, pas besoin de désactiver la vérification
-  ssl: process.env.NODE_ENV === 'production' ? true : { rejectUnauthorized: true },
+// Supporte DATABASE_URL (connexion string) ou variables séparées
+const dbConfig = process.env.DATABASE_URL
+  ? {
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : { rejectUnauthorized: true },
+  }
+  : {
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    port: process.env.DB_PORT || 5432,
+    // SSL activé pour Neon - les certificats Neon sont valides, pas besoin de désactiver la vérification
+    ssl: process.env.NODE_ENV === 'production' ? true : { rejectUnauthorized: true },
+  };
 
-  // Configuration du pool optimisée pour Neon
-  max: 5, // Réduire le nombre de connexions max
-  min: 0, // Pas de connexions minimum
-  idleTimeoutMillis: 10000, // Fermer les connexions inactives après 10s
-  connectionTimeoutMillis: 10000, // Augmenter le timeout de connexion à 10s
-
-  // Paramètres de requête
-  query_timeout: 30000, // Timeout de requête à 30s
-  statement_timeout: 30000, // Timeout de statement à 30s
-
-  // Retry sur erreur de connexion
-  allowExitOnIdle: true, // Permettre au pool de se fermer si inactif
-};
+// Configuration du pool optimisée pour Neon
+Object.assign(dbConfig, {
+  max: 5,
+  min: 0,
+  idleTimeoutMillis: 10000,
+  connectionTimeoutMillis: 10000,
+  query_timeout: 30000,
+  statement_timeout: 30000,
+  allowExitOnIdle: true,
+});
 
 console.log('🔧 Configuration PostgreSQL Neon:', {
   host: dbConfig.host,
