@@ -96,8 +96,8 @@ const createLog = async (userId, action, description, options = {}) => {
 // GET /api/logs/email - Récupérer les logs d'emails (admin uniquement)
 router.get('/email', auth.authenticateToken, async (req, res) => {
   try {
-    // Vérifier que l'utilisateur est admin
-    if (req.user?.role !== 'admin' && req.user?.role !== 'staff') {
+    // Vérifier que l'utilisateur est admin, staff ou developer
+    if (!['admin', 'staff', 'developer'].includes(req.user?.role)) {
       return res.status(403).json({
         success: false,
         error: 'Accès réservé aux administrateurs'
@@ -149,7 +149,7 @@ router.get('/email', auth.authenticateToken, async (req, res) => {
 // DELETE /api/logs/email/:id - Supprimer un log email (admin uniquement)
 router.delete('/email/:id', auth.authenticateToken, async (req, res) => {
   try {
-    if (req.user?.role !== 'admin' && req.user?.role !== 'staff') {
+    if (!['admin', 'staff', 'developer'].includes(req.user?.role)) {
       return res.status(403).json({
         success: false,
         error: 'Accès réservé aux administrateurs'
