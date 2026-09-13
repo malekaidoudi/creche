@@ -550,7 +550,7 @@ router.put('/:id/reject',
   auth.authenticateToken,
   auth.requireRole('admin', 'developer'),
   [
-    body('rejection_type').isIn(['age_depasse', 'maladie_contagieuse', 'dossier_manquant', 'autre']).withMessage('Type de rejet invalide'),
+    body('rejection_type').isIn(['age_depasse', 'maladie_contagieuse', 'dossier_manquant', 'places_completes', 'autre']).withMessage('Type de rejet invalide'),
     body('custom_reason').optional().isString(),
     body('appointment_date').optional().isISO8601()
   ],
