@@ -1,0 +1,32 @@
+# Robots.txt pour Mima El Ghalia
+# https://mima-elghalia.com
+
+User-agent: *
+Allow: /
+
+# Autoriser les principaux moteurs de recherche
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Slurp
+Allow: /
+
+# Bloquer les pages d'administration et API
+Disallow: /dashboard/
+Disallow: /api/
+Disallow: /admin/
+Disallow: /login
+Disallow: /register
+
+# Bloquer les fichiers de test
+Disallow: /test*.html
+Disallow: /*.test.js
+
+# Sitemap
+Sitemap: https://mima-elghalia.com/sitemap.xml
+
+# Délai entre les requêtes (en secondes)
+Crawl-delay: 1
