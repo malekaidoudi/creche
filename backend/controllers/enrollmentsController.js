@@ -495,19 +495,20 @@ const enrollmentsController = {
       const status = rejection_type === 'dossier_manquant' ? 'rejected_incomplete' : 'rejected_deleted';
 
       // Mettre à jour le dossier
+      // NOTE: appointment_date n'existe pas sur enrollments (géré via la table appointments
+      // + active_appointment_id) - on ne l'écrit pas ici, seulement transmis à l'email si besoin
       const result = await db.query(`
         UPDATE enrollments 
         SET status = $1, 
             rejection_type = $2,
             rejection_reason = $3,
-            appointment_date = $4,
-            rejected_by = $5,
+            rejected_by = $4,
             rejected_at = NOW(),
-            processed_by = $5,
+            processed_by = $4,
             processed_at = NOW()
-        WHERE id = $6
+        WHERE id = $5
         RETURNING *
-      `, [status, rejection_type, custom_reason, appointment_date, req.user.id, id]);
+      `, [status, rejection_type, custom_reason, req.user.id, id]);
 
       const enrollment = result.rows[0];
 
