@@ -33,6 +33,21 @@ api.interceptors.request.use(
   }
 )
 
+// Libellés des rôles en français, pour des messages compréhensibles par tous
+const ROLE_LABELS = {
+  admin: 'administrateur',
+  developer: 'développeur',
+  staff: 'personnel',
+  parent: 'parent',
+};
+
+const formatRoleLabel = (role) => ROLE_LABELS[role] || role || 'inconnu';
+
+// Anti-spam: éviter d'afficher plusieurs dialogs 403 identiques si plusieurs
+// requêtes échouent en même temps (ex: plusieurs appels parallèles au chargement d'une page)
+let last403DialogAt = 0;
+const FORBIDDEN_DIALOG_THROTTLE_MS = 3000;
+
 // Intercepteur de réponse pour gérer les erreurs globalement
 api.interceptors.response.use(
   (response) => {
@@ -66,6 +81,30 @@ api.interceptors.response.use(
         localStorage.removeItem('token')
         window.location.href = '/'
         dialogHelper.error('Session expirée, veuillez vous reconnecter')
+      }
+
+      return Promise.reject(error)
+    }
+
+    // Gestion des erreurs d'autorisation (403) - message élégant et compréhensible
+    // pour tous les rôles, quelle que soit la fonctionnalité concernée
+    if (error.response?.status === 403) {
+      const now = Date.now();
+      if (now - last403DialogAt > FORBIDDEN_DIALOG_THROTTLE_MS) {
+        last403DialogAt = now;
+
+        const data = error.response.data || {};
+        const requiredRoles = Array.isArray(data.required_roles) ? data.required_roles : null;
+
+        let message = "Vous n'avez pas les autorisations nécessaires pour accéder à cette fonctionnalité.";
+        if (requiredRoles && requiredRoles.length > 0) {
+          const rolesText = requiredRoles.map(formatRoleLabel).join(' ou ');
+          message = `Cette fonctionnalité est réservée au rôle : ${rolesText}. Contactez un administrateur si vous pensez qu'il s'agit d'une erreur.`;
+        } else if (data.error && typeof data.error === 'string') {
+          message = data.error;
+        }
+
+        dialogHelper.warning(message, 'Accès restreint');
       }
 
       return Promise.reject(error)
