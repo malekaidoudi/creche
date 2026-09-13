@@ -862,7 +862,14 @@ const ActivityLogPage = () => {
                                 {selectedLog.ip_address && (
                                     <div>
                                         <p className="text-sm text-gray-500">Adresse IP</p>
-                                        <p className="font-mono">{selectedLog.ip_address}</p>
+                                        <p className="font-mono">
+                                            {selectedLog.ip_address}
+                                            {selectedLog.country && (
+                                                <span className="ml-2 text-sm text-gray-500 font-normal">
+                                                    ({selectedLog.country_code === 'TN' ? '🇹🇳' : selectedLog.country_code === 'FR' ? '🇫🇷' : '🌍'} {selectedLog.country})
+                                                </span>
+                                            )}
+                                        </p>
                                     </div>
                                 )}
 
@@ -906,7 +913,7 @@ const ActivityLogPage = () => {
                 <div>
                     <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
                         <Activity className="w-6 h-6 sm:w-7 sm:h-7 text-blue-600" />
-                        Journal d'Activité
+                        Journal Technique
                     </h1>
                     <p className="text-gray-500 text-sm sm:text-base mt-1 hidden sm:block">
                         Suivez toutes les activités de la crèche en temps réel

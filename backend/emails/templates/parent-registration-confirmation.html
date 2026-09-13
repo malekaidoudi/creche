@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Confirmation de création de compte</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td align="center" style="padding: 40px 0;">
+        <table role="presentation" style="width: 600px; max-width: 100%; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); padding: 40px 30px; text-align: center; border-radius: 12px 12px 0 0;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">
+                ✅ Compte créé !
+              </h1>
+              <p style="margin: 10px 0 0; color: #ffffff; font-size: 18px;">
+                Bienvenue à la crèche Mima Elghalia
+              </p>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px 30px;">
+              <p style="margin: 0 0 20px; color: #374151; font-size: 16px; line-height: 1.6;">
+                Bonjour <strong>{{parentName}}</strong>,
+              </p>
+
+              <p style="margin: 0 0 30px; color: #374151; font-size: 16px; line-height: 1.6;">
+                Votre compte parent a bien été créé avec succès sur la plateforme de la crèche Mima Elghalia. 🎉
+              </p>
+
+              {{#if childName}}
+              <!-- Success Box - Enfant associé -->
+              <table role="presentation" style="width: 100%; background-color: #d1fae5; border-left: 4px solid #10b981; border-radius: 8px; margin-bottom: 30px;">
+                <tr>
+                  <td style="padding: 20px; text-align: center;">
+                    <p style="margin: 0; color: #065f46; font-size: 18px; font-weight: 700;">
+                      👶 Enfant associé
+                    </p>
+                    <p style="margin: 10px 0 0; color: #065f46; font-size: 15px;">
+                      {{childName}} est maintenant lié(e) à votre compte
+                    </p>
+                  </td>
+                </tr>
+              </table>
+              {{/if}}
+
+              {{#if needsChildAssociation}}
+              <!-- Warning Box - Association manuelle requise -->
+              <table role="presentation" style="width: 100%; background-color: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 8px; margin-bottom: 30px;">
+                <tr>
+                  <td style="padding: 20px;">
+                    <p style="margin: 0; color: #92400e; font-size: 15px; line-height: 1.6;">
+                      ⚠️ <strong>Action requise :</strong> Nous n'avons pas trouvé automatiquement le dossier de votre enfant. Notre équipe va vérifier votre demande et vous recontacter rapidement pour finaliser l'association.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+              {{/if}}
+
+              <p style="margin: 0 0 15px; color: #374151; font-size: 16px; font-weight: 600;">
+                📱 Avec votre espace parent, vous pourrez :
+              </p>
+
+              <ul style="margin: 0 0 30px; padding-left: 20px; color: #374151; font-size: 15px; line-height: 1.8;">
+                <li>Consulter les informations de votre enfant</li>
+                <li>Suivre les présences et absences</li>
+                <li>Recevoir les actualités de la crèche</li>
+                <li>Communiquer avec l'équipe pédagogique</li>
+                <li>Signaler une absence</li>
+              </ul>
+
+              <p style="margin: 0; color: #374151; font-size: 16px; line-height: 1.6;">
+                Vous pouvez dès à présent vous connecter avec votre email et le mot de passe choisi lors de l'inscription.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f9fafb; padding: 30px; text-align: center; border-radius: 0 0 12px 12px; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0 0 10px; color: #1f2937; font-size: 16px; font-weight: 600;">
+                {{nursery_name}}
+              </p>
+              <p style="margin: 0 0 5px; color: #6b7280; font-size: 14px;">
+                📧 {{contact_email}}
+              </p>
+              <p style="margin: 0; color: #6b7280; font-size: 14px;">
+                📞 {{contact_phone}}
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

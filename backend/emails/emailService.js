@@ -8,6 +8,7 @@ const path = require('path');
 const { EMAIL_TYPES, EMAIL_STATUS } = require('./emailTypes');
 const db = require('../config/db_postgres');
 const SettingsService = require('../services/SettingsService');
+const activityLogService = require('../services/activityLogService');
 
 // Initialiser le service d'email (Resend prioritaire, SMTP en fallback)
 let resendClient = null;
@@ -203,6 +204,13 @@ class EmailService {
       // Envoyer via Resend API (prioritaire)
       if (emailProvider === 'resend') {
         const result = await resendClient.emails.send(emailData);
+
+        // Le SDK Resend ne lève pas d'exception en cas d'erreur métier,
+        // il retourne { data: null, error: {...} } -> il faut vérifier explicitement
+        if (result.error) {
+          throw new Error(`Resend: ${result.error.message || result.error.name || 'Erreur inconnue'}`);
+        }
+
         emailId = result.data?.id || result.id;
         console.log(`✅ Email envoyé via Resend (ID: ${emailId})`);
       }
@@ -244,6 +252,20 @@ class EmailService {
         error: error.message,
         metadata: variables
       });
+
+      // Remonter l'échec dans le Journal Technique (déclenche une alerte automatique)
+      try {
+        await activityLogService.logAction('EMAIL_FAILED', {
+          severity: 'critical',
+          description: `Échec envoi email "${emailType}" à ${recipient}: ${error.message}`,
+          userEmail: recipient,
+          targetType: 'email',
+          targetName: recipient,
+          metadata: { emailType, error: error.message, provider: emailProvider }
+        });
+      } catch (logError) {
+        console.error('⚠️ Erreur enregistrement activity log pour échec email:', logError.message);
+      }
 
       return {
         success: false,
@@ -405,6 +427,11 @@ class EmailService {
     // Envoyer via Resend API (prioritaire)
     if (emailProvider === 'resend') {
       const result = await resendClient.emails.send(emailData);
+
+      if (result.error) {
+        throw new Error(`Resend: ${result.error.message || result.error.name || 'Erreur inconnue'}`);
+      }
+
       emailId = result.data?.id || result.id;
       console.log(`✅ Email contact envoyé via Resend (ID: ${emailId})`);
     }

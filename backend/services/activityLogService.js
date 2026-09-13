@@ -4,6 +4,7 @@
  */
 
 const db = require('../config/db_postgres');
+const { getCountryFromIp } = require('../utils/geoip');
 
 // Catégories d'activités
 const CATEGORIES = {
@@ -302,8 +303,13 @@ const activityLogService = {
                 db.query(countQuery, values.slice(0, -2))
             ]);
 
+            const logsWithCountry = dataResult.rows.map(log => {
+                const geo = getCountryFromIp(log.ip_address);
+                return { ...log, country: geo.name, country_code: geo.code };
+            });
+
             return {
-                logs: dataResult.rows,
+                logs: logsWithCountry,
                 pagination: {
                     page: parseInt(page),
                     limit: parseInt(limit),
@@ -325,7 +331,11 @@ const activityLogService = {
             const result = await db.query(`
         SELECT * FROM activity_logs WHERE id = $1
       `, [id]);
-            return result.rows[0] || null;
+
+            if (!result.rows[0]) return null;
+
+            const geo = getCountryFromIp(result.rows[0].ip_address);
+            return { ...result.rows[0], country: geo.name, country_code: geo.code };
         } catch (error) {
             console.error('❌ Erreur récupération activity log:', error);
             throw error;
