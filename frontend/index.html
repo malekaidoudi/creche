@@ -4,6 +4,12 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/jpeg" href="/images/logo.jpg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- PWA / iOS standalone: necessaire pour que env(safe-area-inset-*) fonctionne
+         (sinon la barre de navigation mobile se retrouve cachee sous la barre
+         d'accueil / la Dynamic Island sur iPhone) -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     
     <!-- SEO Primary Meta Tags -->
     <title>Mima El Ghalia | Crèche et Jardin d'Enfants à Medenine - Garde et Éducation Préscolaire</title>
