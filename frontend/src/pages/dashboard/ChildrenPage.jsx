@@ -65,6 +65,20 @@ const ChildrenPage = () => {
   const [pageLimit] = useState(20);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [missingInfoOpenId, setMissingInfoOpenId] = useState(null);
+  const missingInfoPopoverRef = useRef(null);
+
+  // Fermer la bulle d'info "dossier incomplet" en cliquant à l'extérieur
+  useEffect(() => {
+    if (missingInfoOpenId === null) return;
+    const handleClickOutside = (e) => {
+      if (missingInfoPopoverRef.current && !missingInfoPopoverRef.current.contains(e.target)) {
+        setMissingInfoOpenId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [missingInfoOpenId]);
 
   // Fonction pour charger les enfants depuis l'API
   const loadChildren = async (isSearching = false, customSearchTerm = null) => {
@@ -521,12 +535,12 @@ const ChildrenPage = () => {
   const getStatusIcon = (status) => {
     switch (status) {
       case 'approved':
-        return <CheckCircle className="w-4 h-4 text-green-600" />;
+        return <CheckCircle className="w-4 h-4 flex-shrink-0 block text-green-600" />;
       case 'rejected':
-        return <XCircle className="w-4 h-4 text-red-600" />;
+        return <XCircle className="w-4 h-4 flex-shrink-0 block text-red-600" />;
       case 'pending':
       default:
-        return <AlertCircle className="w-4 h-4 text-yellow-600" />;
+        return <AlertCircle className="w-4 h-4 flex-shrink-0 block text-yellow-600" />;
     }
   };
 
@@ -557,6 +571,26 @@ const ChildrenPage = () => {
           bgColor: 'bg-gray-100 dark:bg-gray-900'
         };
     }
+  };
+
+  // Liste des éléments manquants dans le dossier de l'enfant
+  // (ex: aucun parent associé, carnet de santé / infos médicales absentes, contact d'urgence manquant)
+  const getMissingDossierItems = (child) => {
+    const items = [];
+
+    if (!child.parent_first_name) {
+      items.push(isRTL ? 'لم يتم ربط ولي أمر بعد' : 'Aucun parent associé');
+    }
+
+    if (!child.medical_info) {
+      items.push(isRTL ? 'الكرنيه الصحي / المعلومات الطبية غير مكتملة' : 'Carnet de santé / infos médicales manquantes');
+    }
+
+    if (!child.emergency_contact_name || !child.emergency_contact_phone) {
+      items.push(isRTL ? 'جهة اتصال في حالات الطوارئ غير مكتملة' : 'Contact d\'urgence manquant');
+    }
+
+    return items;
   };
 
   const getStatusText = (status) => {
@@ -737,6 +771,8 @@ const ChildrenPage = () => {
           const attendanceStatus = getAttendanceStatus(attendanceToday);
           // Utiliser 'approved' par défaut car on filtre déjà les enfants approuvés
           const enrollmentStatus = getEnrollmentStatus('approved');
+          const missingDossierItems = getMissingDossierItems(child);
+          const isDossierComplete = missingDossierItems.length === 0;
 
           return (
             <motion.div
@@ -762,11 +798,38 @@ const ChildrenPage = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-2 rtl:space-x-reverse flex-shrink-0">
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${enrollmentStatus.color} ${enrollmentStatus.bgColor}`}>
-                        {getStatusIcon(child.status)}
+                    <div className="flex items-center space-x-2 rtl:space-x-reverse flex-shrink-0 relative">
+                      <span
+                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${enrollmentStatus.color} ${enrollmentStatus.bgColor} ${!isDossierComplete ? 'cursor-pointer' : ''}`}
+                        title={!isDossierComplete ? (isRTL ? 'دوسيه غير مكتمل - انقر للتفاصيل' : 'Dossier incomplet - cliquez pour voir le détail') : undefined}
+                        onClick={!isDossierComplete ? (e) => {
+                          e.stopPropagation();
+                          setMissingInfoOpenId(prev => prev === child.id ? null : child.id);
+                        } : undefined}
+                      >
+                        {isDossierComplete ? getStatusIcon('approved') : getStatusIcon('pending')}
                         <span className="ml-1 rtl:ml-0 rtl:mr-1">{enrollmentStatus.text}</span>
                       </span>
+
+                      {!isDossierComplete && missingInfoOpenId === child.id && (
+                        <div
+                          ref={missingInfoPopoverRef}
+                          className="absolute top-full right-0 rtl:right-auto rtl:left-0 mt-2 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3 z-20"
+                        >
+                          <p className="text-xs font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-1">
+                            <AlertCircle className="w-3.5 h-3.5 text-yellow-600" />
+                            {isRTL ? 'الدوسيه غير مكتمل' : 'Dossier incomplet'}
+                          </p>
+                          <ul className="space-y-1">
+                            {missingDossierItems.map((item, idx) => (
+                              <li key={idx} className="text-xs text-gray-600 dark:text-gray-400 flex items-start gap-1.5">
+                                <span className="w-1 h-1 mt-1.5 rounded-full bg-yellow-500 flex-shrink-0" />
+                                {item}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </CardHeader>

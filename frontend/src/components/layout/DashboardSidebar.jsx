@@ -447,60 +447,65 @@ const DashboardSidebar = ({ isOpen, onClose, onCollapsedChange }) => {
           </div>
         </button>
 
-        {/* Header */}
-        <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200 dark:border-gray-700">
-          <Link to="/dashboard" className="flex items-center space-x-3 rtl:space-x-reverse">
-            <div className="w-8 h-8">
-              <ImageWithFallback
-                src="/images/logo.jpg"
-                alt="Mima Elghalia"
-                fallback={defaultImages.logo}
-                className="w-full h-full object-contain"
-              />
-            </div>
-            {!isCollapsed && (
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Mima Elghalia
-                </h2>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {isRTL ? 'لوحة التحكم' : 'Dashboard'}
-                </p>
+        {/* Conteneur interne en colonne flex : garantit que le nav reste borné à la hauteur
+            de l'écran et scrolle en interne (au lieu de déborder hors de l'écran, ce qui
+            rendait les derniers menus invisibles, notamment sur Firefox). */}
+        <div className="h-full flex flex-col overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between h-16 px-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+            <Link to="/dashboard" className="flex items-center space-x-3 rtl:space-x-reverse">
+              <div className="w-8 h-8">
+                <ImageWithFallback
+                  src="/images/logo.jpg"
+                  alt="Mima Elghalia"
+                  fallback={defaultImages.logo}
+                  className="w-full h-full object-contain"
+                />
               </div>
-            )}
-          </Link>
+              {!isCollapsed && (
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Mima Elghalia
+                  </h2>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {isRTL ? 'لوحة التحكم' : 'Dashboard'}
+                  </p>
+                </div>
+              )}
+            </Link>
 
-          <button
-            onClick={onClose}
-            className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
+            <button
+              onClick={onClose}
+              className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto overflow-x-visible">
-          {menuItems
-            .filter(item => hasAccess(item.roles))
-            .map((item) => (
-              <SidebarLink key={item.key} item={item} />
-            ))}
-        </nav>
+          {/* Navigation */}
+          <nav className="flex-1 min-h-0 px-4 py-6 space-y-2 overflow-y-auto overflow-x-visible">
+            {menuItems
+              .filter(item => hasAccess(item.roles))
+              .map((item) => (
+                <SidebarLink key={item.key} item={item} />
+              ))}
+          </nav>
 
-        {/* Lien retour au site - Visible sur mobile uniquement */}
-        <div className="lg:hidden px-4 py-4 border-t border-gray-200 dark:border-gray-700">
-          <Link
-            to="/"
-            onClick={onClose}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-          >
-            <Home className="w-5 h-5" />
-            {!isCollapsed && (
-              <span className="font-medium">
-                {isRTL ? 'العودة للموقع' : 'Retour au site'}
-              </span>
-            )}
-          </Link>
+          {/* Lien retour au site - Visible sur mobile uniquement */}
+          <div className="lg:hidden px-4 py-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+            <Link
+              to="/"
+              onClick={onClose}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+            >
+              <Home className="w-5 h-5" />
+              {!isCollapsed && (
+                <span className="font-medium">
+                  {isRTL ? 'العودة للموقع' : 'Retour au site'}
+                </span>
+              )}
+            </Link>
+          </div>
         </div>
       </div>
     </>

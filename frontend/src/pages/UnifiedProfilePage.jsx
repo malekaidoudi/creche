@@ -26,6 +26,11 @@ const UnifiedProfilePage = () => {
   const [loading, setLoading] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [showPasswordSection, setShowPasswordSection] = useState(false);
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false
+  });
   const [formData, setFormData] = useState({
     first_name: user?.first_name || '',
     last_name: user?.last_name || '',
@@ -53,6 +58,10 @@ const UnifiedProfilePage = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const togglePasswordVisibility = (field) => {
+    setShowPasswords(prev => ({ ...prev, [field]: !prev[field] }));
   };
 
   const handleImageUpload = async (e) => {
@@ -353,39 +362,66 @@ const UnifiedProfilePage = () => {
                         <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                           {isRTL ? 'كلمة المرور الحالية' : 'Mot de passe actuel'}
                         </label>
-                        <input
-                          type="password"
-                          name="current_password"
-                          value={formData.current_password}
-                          onChange={handleInputChange}
-                          className={`w-full px-4 py-2 border rounded-lg ${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
-                        />
+                        <div className="relative">
+                          <input
+                            type={showPasswords.current ? 'text' : 'password'}
+                            name="current_password"
+                            value={formData.current_password}
+                            onChange={handleInputChange}
+                            className={`w-full px-4 py-2 pr-12 rtl:pr-4 rtl:pl-12 border rounded-lg ${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => togglePasswordVisibility('current')}
+                            className="absolute right-3 rtl:right-auto rtl:left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                          >
+                            {showPasswords.current ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                          </button>
+                        </div>
                       </div>
 
                       <div>
                         <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                           {isRTL ? 'كلمة المرور الجديدة' : 'Nouveau mot de passe'}
                         </label>
-                        <input
-                          type="password"
-                          name="new_password"
-                          value={formData.new_password}
-                          onChange={handleInputChange}
-                          className={`w-full px-4 py-2 border rounded-lg ${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
-                        />
+                        <div className="relative">
+                          <input
+                            type={showPasswords.new ? 'text' : 'password'}
+                            name="new_password"
+                            value={formData.new_password}
+                            onChange={handleInputChange}
+                            className={`w-full px-4 py-2 pr-12 rtl:pr-4 rtl:pl-12 border rounded-lg ${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => togglePasswordVisibility('new')}
+                            className="absolute right-3 rtl:right-auto rtl:left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                          >
+                            {showPasswords.new ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                          </button>
+                        </div>
                       </div>
 
                       <div>
                         <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                           {isRTL ? 'تأكيد كلمة المرور' : 'Confirmer le mot de passe'}
                         </label>
-                        <input
-                          type="password"
-                          name="confirm_password"
-                          value={formData.confirm_password}
-                          onChange={handleInputChange}
-                          className={`w-full px-4 py-2 border rounded-lg ${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
-                        />
+                        <div className="relative">
+                          <input
+                            type={showPasswords.confirm ? 'text' : 'password'}
+                            name="confirm_password"
+                            value={formData.confirm_password}
+                            onChange={handleInputChange}
+                            className={`w-full px-4 py-2 pr-12 rtl:pr-4 rtl:pl-12 border rounded-lg ${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => togglePasswordVisibility('confirm')}
+                            className="absolute right-3 rtl:right-auto rtl:left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                          >
+                            {showPasswords.confirm ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}
