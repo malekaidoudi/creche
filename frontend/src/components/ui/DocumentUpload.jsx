@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Upload, File, X, AlertCircle } from 'lucide-react'
 import { useLanguage } from '../../hooks/useLanguage'
+import { useDialogContext } from '../../contexts/DialogContext'
 
 const DocumentUpload = ({ 
   documentType, 
@@ -12,6 +13,7 @@ const DocumentUpload = ({
   error 
 }) => {
   const { isRTL } = useLanguage()
+  const dialog = useDialogContext()
   const [dragOver, setDragOver] = useState(false)
 
   const handleFileSelect = (file) => {
@@ -20,12 +22,12 @@ const DocumentUpload = ({
     const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']
 
     if (file.size > maxSize) {
-      alert(isRTL ? 'حجم الملف كبير جداً (الحد الأقصى 5MB)' : 'Fichier trop volumineux (max 5MB)')
+      dialog.error(isRTL ? 'حجم الملف كبير جداً (الحد الأقصى 5MB)' : 'Fichier trop volumineux (max 5MB)')
       return
     }
 
     if (!allowedTypes.includes(file.type)) {
-      alert(isRTL ? 'نوع الملف غير مدعوم (PDF, JPG, PNG فقط)' : 'Type de fichier non supporté (PDF, JPG, PNG uniquement)')
+      dialog.error(isRTL ? 'نوع الملف غير مدعوم (PDF, JPG, PNG فقط)' : 'Type de fichier non supporté (PDF, JPG, PNG uniquement)')
       return
     }
 

@@ -413,11 +413,14 @@ const ChildrenPage = () => {
 
   // Fonction pour rejeter un enfant
   const handleRejectChild = async (child) => {
-    const reason = window.prompt(
-      isRTL ? 'سبب الرفض (اختياري):' : 'Raison du rejet (optionnel):'
+    const confirmed = await dialog.confirm(
+      isRTL ? 'هل تريد رفض طلب هذا الطفل؟' : 'Voulez-vous rejeter la demande de cet enfant ?',
+      isRTL ? 'تأكيد الرفض' : 'Confirmer le rejet',
+      { type: 'danger', confirmText: isRTL ? 'رفض' : 'Rejeter', cancelText: isRTL ? 'إلغاء' : 'Annuler' }
     );
 
-    if (reason === null) return; // Utilisateur a annulé
+    if (!confirmed) return; // Utilisateur a annulé
+    const reason = '';
 
     try {
       setActionLoading('reject');

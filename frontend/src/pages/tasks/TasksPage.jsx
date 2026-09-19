@@ -98,7 +98,12 @@ export default function TasksPage() {
   };
 
   const handleDeleteTask = async (taskId) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cette tâche ?')) return;
+    const confirmed = await dialog.confirm(
+      isRTL ? 'هل أنت متأكد من حذف هذه المهمة؟' : 'Êtes-vous sûr de vouloir supprimer cette tâche ?',
+      isRTL ? 'تأكيد الحذف' : 'Confirmer la suppression',
+      { type: 'danger', confirmText: isRTL ? 'حذف' : 'Supprimer', cancelText: isRTL ? 'إلغاء' : 'Annuler' }
+    );
+    if (!confirmed) return;
 
     try {
       const token = localStorage.getItem('token');

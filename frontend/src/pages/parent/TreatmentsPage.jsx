@@ -24,10 +24,12 @@ import { Button } from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { toast } from 'react-hot-toast';
+import { useDialogContext } from '../../contexts/DialogContext';
 
 const TreatmentsPage = () => {
     const { user } = useAuth();
     const { isRTL, t } = useLanguage();
+    const dialog = useDialogContext();
     const { isDark } = useTheme();
     const isMobile = useIsMobile();
     const navigate = useNavigate();
@@ -109,7 +111,12 @@ const TreatmentsPage = () => {
     };
 
     const handleCancel = async (treatmentId) => {
-        if (!window.confirm('Voulez-vous vraiment annuler ce traitement ?')) return;
+        const confirmed = await dialog.confirm(
+            isRTL ? 'هل تريد إلغاء هذا العلاج فعلاً؟' : 'Voulez-vous vraiment annuler ce traitement ?',
+            isRTL ? 'تأكيد الإلغاء' : 'Confirmer l\'annulation',
+            { type: 'danger', confirmText: isRTL ? 'إلغاء العلاج' : 'Annuler le traitement', cancelText: isRTL ? 'رجوع' : 'Retour' }
+        );
+        if (!confirmed) return;
 
         try {
             await api.delete(`/api/treatments/${treatmentId}`);

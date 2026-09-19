@@ -10,6 +10,7 @@ import { FaFacebook, FaInstagram, FaTiktok } from 'react-icons/fa';
 import CommentSection from './CommentSection';
 import activityService from '../../services/activityService';
 import { useAuth } from '../../contexts/AuthContext';
+import { useDialogContext } from '../../contexts/DialogContext';
 
 const FullscreenFeed = ({
     activities,
@@ -21,6 +22,7 @@ const FullscreenFeed = ({
     onLoadMore
 }) => {
     const { user } = useAuth();
+    const dialog = useDialogContext();
     const [currentIndex, setCurrentIndex] = useState(initialIndex);
     const [showComments, setShowComments] = useState(false);
     const [showShareMenu, setShowShareMenu] = useState(false);
@@ -110,13 +112,13 @@ const FullscreenFeed = ({
 
     const shareOnInstagram = () => {
         navigator.clipboard.writeText(window.location.href);
-        alert(isRTL ? 'تم نسخ الرابط! الصقه في Instagram' : 'Lien copié ! Collez-le sur Instagram');
+        dialog.success(isRTL ? 'تم نسخ الرابط! الصقه في Instagram' : 'Lien copié ! Collez-le sur Instagram');
         setShowShareMenu(false);
     };
 
     const shareOnTikTok = () => {
         navigator.clipboard.writeText(window.location.href);
-        alert(isRTL ? 'تم نسخ الرابط! الصقه في TikTok' : 'Lien copié ! Collez-le sur TikTok');
+        dialog.success(isRTL ? 'تم نسخ الرابط! الصقه في TikTok' : 'Lien copié ! Collez-le sur TikTok');
         setShowShareMenu(false);
     };
 

@@ -11,9 +11,11 @@ import ReactionBar from './ReactionBar';
 import ReactorsModal from './ReactorsModal';
 import CommentSection from './CommentSection';
 import { useAuth } from '../../contexts/AuthContext';
+import { useDialogContext } from '../../contexts/DialogContext';
 
 const ActivityCard = ({ activity, onReact, onDelete, onEdit, isRTL = false, onOpenFullscreen }) => {
   const { user } = useAuth();
+  const dialog = useDialogContext();
   const [showMenu, setShowMenu] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -74,14 +76,14 @@ const ActivityCard = ({ activity, onReact, onDelete, onEdit, isRTL = false, onOp
   const shareOnInstagram = () => {
     // Instagram ne supporte pas le partage direct via URL, on copie le lien
     navigator.clipboard.writeText(window.location.href);
-    alert(isRTL ? 'تم نسخ الرابط! الصقه في Instagram' : 'Lien copié ! Collez-le sur Instagram');
+    dialog.success(isRTL ? 'تم نسخ الرابط! الصقه في Instagram' : 'Lien copié ! Collez-le sur Instagram');
     setShowShareMenu(false);
   };
 
   const shareOnTikTok = () => {
     // TikTok ne supporte pas le partage direct via URL, on copie le lien
     navigator.clipboard.writeText(window.location.href);
-    alert(isRTL ? 'تم نسخ الرابط! الصقه في TikTok' : 'Lien copié ! Collez-le sur TikTok');
+    dialog.success(isRTL ? 'تم نسخ الرابط! الصقه في TikTok' : 'Lien copié ! Collez-le sur TikTok');
     setShowShareMenu(false);
   };
 

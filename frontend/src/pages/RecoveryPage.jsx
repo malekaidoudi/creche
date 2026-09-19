@@ -17,11 +17,13 @@ import {
     WifiOff,
     RefreshCw
 } from 'lucide-react';
+import { useDialogContext } from '../contexts/DialogContext';
 
 // Utiliser l'URL de base sans /api car on l'ajoute dans les appels
 const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:3003/api').replace(/\/api$/, '');
 
 const RecoveryPage = () => {
+    const dialog = useDialogContext();
     const [recoveryKey, setRecoveryKey] = useState('');
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -90,7 +92,12 @@ const RecoveryPage = () => {
     };
 
     const restoreBackup = async (filename) => {
-        if (!confirm(`⚠️ ATTENTION: Cette action va remplacer TOUTES les données actuelles par celles du backup "${filename}".\n\nÊtes-vous absolument sûr de vouloir continuer ?`)) {
+        const confirmed = await dialog.confirm(
+            `Cette action va remplacer TOUTES les données actuelles par celles du backup "${filename}". Êtes-vous absolument sûr de vouloir continuer ?`,
+            'Attention : restauration destructive',
+            { type: 'danger', confirmText: 'Continuer', cancelText: 'Annuler' }
+        );
+        if (!confirmed) {
             return;
         }
 
@@ -139,7 +146,7 @@ const RecoveryPage = () => {
             link.remove();
             window.URL.revokeObjectURL(url);
         } catch (err) {
-            alert('Erreur lors du téléchargement');
+            dialog.error('Erreur lors du téléchargement');
         }
     };
 

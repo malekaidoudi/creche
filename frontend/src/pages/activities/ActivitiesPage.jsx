@@ -10,9 +10,11 @@ import ActivityForm from '../../components/activities/ActivityForm';
 import FullscreenFeed from '../../components/activities/FullscreenFeed';
 import useActivities from '../../hooks/useActivities';
 import { useAuth } from '../../contexts/AuthContext';
+import { useDialogContext } from '../../contexts/DialogContext';
 
 const ActivitiesPage = () => {
   const { user } = useAuth();
+  const dialog = useDialogContext();
   const [showForm, setShowForm] = useState(false);
   const [isRTL, setIsRTL] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -84,7 +86,12 @@ const ActivitiesPage = () => {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm(isRTL ? 'هل أنت متأكد من الحذف؟' : 'Êtes-vous sûr de vouloir supprimer cette activité ?')) {
+    const confirmed = await dialog.confirm(
+      isRTL ? 'هل أنت متأكد من الحذف؟' : 'Êtes-vous sûr de vouloir supprimer cette activité ?',
+      isRTL ? 'تأكيد الحذف' : 'Confirmer la suppression',
+      { type: 'danger', confirmText: isRTL ? 'حذف' : 'Supprimer', cancelText: isRTL ? 'إلغاء' : 'Annuler' }
+    );
+    if (confirmed) {
       try {
         await deleteActivity(id);
       } catch (err) {

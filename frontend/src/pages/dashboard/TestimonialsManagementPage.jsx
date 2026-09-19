@@ -11,10 +11,12 @@ import {
 import { useLanguage } from '../../hooks/useLanguage';
 import { useTheme } from '../../hooks/useTheme';
 import api from '../../services/api';
+import { useDialogContext } from '../../contexts/DialogContext';
 
 const TestimonialsManagementPage = () => {
     const { isRTL } = useLanguage();
     const { isDark } = useTheme();
+    const dialog = useDialogContext();
     const [testimonials, setTestimonials] = useState([]);
     const [stats, setStats] = useState({ pending: 0, approved: 0, rejected: 0 });
     const [loading, setLoading] = useState(true);
@@ -71,7 +73,12 @@ const TestimonialsManagementPage = () => {
     };
 
     const handleDelete = async (id) => {
-        if (!confirm(isRTL ? 'هل أنت متأكد من الحذف؟' : 'Êtes-vous sûr de vouloir supprimer ?')) {
+        const confirmed = await dialog.confirm(
+            isRTL ? 'هل أنت متأكد من الحذف؟' : 'Êtes-vous sûr de vouloir supprimer ce témoignage ?',
+            isRTL ? 'تأكيد الحذف' : 'Confirmer la suppression',
+            { type: 'danger', confirmText: isRTL ? 'حذف' : 'Supprimer', cancelText: isRTL ? 'إلغاء' : 'Annuler' }
+        );
+        if (!confirmed) {
             return;
         }
         try {

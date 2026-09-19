@@ -15,6 +15,7 @@ import { useLanguage } from '../../hooks/useLanguage';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { formatTime, formatDate, calculateDuration } from '../../utils/dateUtils';
+import { useDialogContext } from '../../contexts/DialogContext';
 
 const HistorySection = ({ 
   attendanceData, 
@@ -26,6 +27,7 @@ const HistorySection = ({
   onFilterChange 
 }) => {
   const { isRTL } = useLanguage();
+  const dialog = useDialogContext();
 
   // Fonctions utilitaires d'abord
   const calculateAge = (birthDate) => {
@@ -118,7 +120,7 @@ const HistorySection = ({
       ? `تفاصيل الحضور:\n\nالطفل: ${details.enfant}\nالعمر: ${details.age}\nالتاريخ: ${details.date}\nوقت الوصول: ${details.arrivee}\nوقت المغادرة: ${details.depart}\nالمدة: ${details.duree}\nالملاحظات: ${details.notes}`
       : `Détails de présence:\n\nEnfant: ${details.enfant}\nÂge: ${details.age}\nDate: ${details.date}\nArrivée: ${details.arrivee}\nDépart: ${details.depart}\nDurée: ${details.duree}\nNotes: ${details.notes}`;
 
-    alert(message);
+    dialog.showDialog('info', message, isRTL ? 'تفاصيل الحضور' : 'Détails de présence', { autoClose: false });
   };
 
   // Fonction pour exporter en CSV

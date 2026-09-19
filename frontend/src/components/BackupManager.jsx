@@ -18,10 +18,12 @@ import { useLanguage } from '../hooks/useLanguage';
 import { useTheme } from '../hooks/useTheme';
 import api from '../services/api';
 import { toast } from 'react-hot-toast';
+import { useDialogContext } from '../contexts/DialogContext';
 
 const BackupManager = () => {
     const { isRTL } = useLanguage();
     const { isDark } = useTheme();
+    const dialog = useDialogContext();
     const [backups, setBackups] = useState([]);
     const [status, setStatus] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -130,7 +132,12 @@ const BackupManager = () => {
             ? 'هل أنت متأكد من حذف هذه النسخة الاحتياطية؟'
             : 'Êtes-vous sûr de vouloir supprimer ce backup ?';
 
-        if (!confirm(confirmMsg)) return;
+        const confirmed = await dialog.confirm(
+            confirmMsg,
+            isRTL ? 'تأكيد الحذف' : 'Confirmer la suppression',
+            { type: 'danger', confirmText: isRTL ? 'حذف' : 'Supprimer', cancelText: isRTL ? 'إلغاء' : 'Annuler' }
+        );
+        if (!confirmed) return;
 
         try {
             setDeleting(filename);
