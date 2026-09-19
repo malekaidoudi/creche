@@ -7,7 +7,6 @@ import DashboardSidebar from '../components/layout/DashboardSidebar';
 import DashboardHeader from '../components/layout/DashboardHeader';
 import FloatingActionButton from '../components/ui/FloatingActionButton';
 import SideMenu from '../components/ui/SideMenu';
-import MobileNavigation from '../components/mobile/MobileNavigation';
 import HelpSystem from '../components/help/HelpSystem';
 
 const DashboardLayout = () => {
@@ -54,8 +53,9 @@ const DashboardLayout = () => {
         />
       )}
 
-      {/* Mobile: Bottom Navigation */}
-      {isMobile && <MobileNavigation />}
+      {/* Note: la navigation mobile en bas est deja rendue par chaque page
+          (voir les composants dans src/pages) pour garder le controle
+          page par page ; ne pas la dupliquer ici. */}
 
       {/* Desktop: Menu latéral OU Floating Action Button selon la préférence */}
       {!isMobile && (
