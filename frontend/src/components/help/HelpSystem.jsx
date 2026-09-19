@@ -118,7 +118,10 @@ const HelpSystem = () => {
   return (
     <>
       {/* Floating Action Button */}
-      <div className={`fixed bottom-6 z-50 ${isRTL ? 'left-6' : 'right-6'}`}>
+      {/* bottom-24 sur mobile pour rester au-dessus de la barre de navigation basse
+          (MobileNavigation, h-16 + safe-area) qu'il cachait/couvrait sinon,
+          notamment le bouton "Plus" situe dans le meme coin */}
+      <div className={`fixed bottom-24 lg:bottom-6 z-40 ${isRTL ? 'left-6' : 'right-6'}`}>
         {!hasOpenedBefore && !isOpen && (
           <motion.div
             initial={{ scale: 0 }}
