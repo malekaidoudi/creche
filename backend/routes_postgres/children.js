@@ -31,7 +31,8 @@ router.get('/simple', auth.authenticateToken, async (req, res) => {
 
     const result = await pool.query(sql);
 
-    return apiResponse.success(res, {
+    return res.json({
+      success: true,
       children: result.rows,
       count: result.rows.length
     });
