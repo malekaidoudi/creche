@@ -39,7 +39,7 @@ const DashboardLayout = () => {
 
         {/* Page content - With bottom padding for mobile nav */}
         <main className={`py-4 lg:py-6 ${isMobile ? 'pb-20' : ''}`}>
-          <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
+          <div className="max-w-7xl 2xl:max-w-8xl 3xl:max-w-9xl mx-auto px-3 sm:px-4 lg:px-8 3xl:px-12">
             <Outlet />
           </div>
         </main>

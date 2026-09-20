@@ -173,6 +173,10 @@ export default {
         '8xl': '88rem',
         '9xl': '96rem',
       },
+      // Breakpoint supplémentaire pour les grands écrans (2K/4K)
+      screens: {
+        '3xl': '1920px',
+      },
     },
   },
   plugins: [
