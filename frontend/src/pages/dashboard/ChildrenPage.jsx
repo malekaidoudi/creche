@@ -767,7 +767,7 @@ const ChildrenPage = () => {
       </Card>
 
       {/* Liste des enfants */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 3xl:grid-cols-4 gap-6">
         {children.map((child) => {
           // Valeur par défaut pour attendance_today si pas présente
           const attendanceToday = child.attendance_today || { status: 'absent', check_in: null, check_out: null };
@@ -817,7 +817,7 @@ const ChildrenPage = () => {
                       {!isDossierComplete && missingInfoOpenId === child.id && (
                         <div
                           ref={missingInfoPopoverRef}
-                          className="absolute top-full right-0 rtl:right-auto rtl:left-0 mt-2 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3 z-20"
+                          className="absolute top-full right-0 rtl:right-auto rtl:left-0 mt-2 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3 z-[60]"
                         >
                           <p className="text-xs font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-1">
                             <AlertCircle className="w-3.5 h-3.5 text-yellow-600" />
