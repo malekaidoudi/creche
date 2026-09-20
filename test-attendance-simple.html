@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Test Attendance Simple</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+        .result { margin: 10px 0; padding: 15px; border-radius: 8px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 12px; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Test Attendance - Diagnostic Simple</h1>
+    
+    <button onclick="testAttendance()">🚀 Tester Attendance Today</button>
+    <button onclick="clearResults()">🧹 Effacer</button>
+    
+    <div id="results"></div>
+    
+    <script>
+        const results = document.getElementById('results');
+        
+        function addResult(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = message;
+            results.appendChild(div);
+        }
+        
+        function clearResults() {
+            results.innerHTML = '';
+        }
+        
+        async function testAttendance() {
+            clearResults();
+            
+            try {
+                const API_BASE_URL = 'http://localhost:3003';
+                
+                // 1. Authentification
+                addResult('🔐 <strong>Étape 1: Authentification...</strong>', 'info');
+                const loginResponse = await fetch(`${API_BASE_URL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'crechemimaelghalia@gmail.com',
+                        password: 'admin123'
+                    })
+                });
+                
+                const loginData = await loginResponse.json();
+                if (!loginData.token) {
+                    addResult('❌ <strong>Échec authentification</strong>', 'error');
+                    return;
+                }
+                addResult('✅ <strong>Authentification OK</strong>', 'success');
+                
+                const token = loginData.token;
+                
+                // 2. Test API Children
+                addResult('👶 <strong>Étape 2: Chargement enfants...</strong>', 'info');
+                const childrenResponse = await fetch(`${API_BASE_URL}/api/children?status=approved&limit=100`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const childrenData = await childrenResponse.json();
+                console.log('📋 Réponse API children:', childrenData);
+                
+                if (!childrenResponse.ok) {
+                    addResult(`❌ <strong>Erreur API children:</strong> ${childrenData.error || 'Erreur inconnue'}`, 'error');
+                    return;
+                }
+                
+                const allChildren = childrenData.data?.children || [];
+                addResult(`✅ <strong>Enfants chargés:</strong> ${allChildren.length} enfants`, 'success');
+                
+                if (allChildren.length === 0) {
+                    addResult('⚠️ <strong>PROBLÈME:</strong> Aucun enfant trouvé ! Vérifiez la base de données.', 'error');
+                    return;
+                }
+                
+                // 3. Test API Attendance Today
+                addResult('📅 <strong>Étape 3: Chargement attendance aujourd\'hui...</strong>', 'info');
+                const attendanceResponse = await fetch(`${API_BASE_URL}/api/attendance/today`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const attendanceData = await attendanceResponse.json();
+                console.log('📋 Réponse API attendance:', attendanceData);
+                
+                if (!attendanceResponse.ok) {
+                    addResult(`❌ <strong>Erreur API attendance:</strong> ${attendanceData.error || 'Erreur inconnue'}`, 'error');
+                    return;
+                }
+                
+                const todayAttendance = attendanceData.attendance || [];
+                addResult(`✅ <strong>Attendance aujourd'hui:</strong> ${todayAttendance.length} enregistrements`, 'success');
+                
+                // 4. Simulation logique TodaySection
+                addResult('🔧 <strong>Étape 4: Simulation logique TodaySection...</strong>', 'info');
+                
+                let presentCount = 0;
+                let absentCount = 0;
+                let completedCount = 0;
+                
+                const childrenWithStatus = allChildren.map(child => {
+                    const todayRecord = todayAttendance.find(record => record.child_id === child.id);
+                    const isPresent = todayRecord?.check_in_time && !todayRecord?.check_out_time;
+                    const isCompleted = todayRecord?.check_in_time && todayRecord?.check_out_time;
+                    const isAbsent = !todayRecord?.check_in_time;
+                    
+                    if (isPresent) presentCount++;
+                    else if (isCompleted) completedCount++;
+                    else if (isAbsent) absentCount++;
+                    
+                    return {
+                        id: child.id,
+                        name: `${child.first_name} ${child.last_name}`,
+                        isPresent,
+                        isCompleted,
+                        isAbsent,
+                        status: isPresent ? 'Présent' : isCompleted ? 'Terminé' : 'Absent'
+                    };
+                });
+                
+                addResult(`
+                    <strong>🎯 Résultat simulation:</strong><br>
+                    Total enfants: ${allChildren.length}<br>
+                    Présents: ${presentCount}<br>
+                    Terminés: ${completedCount}<br>
+                    Absents: ${absentCount}<br><br>
+                    <strong>Liste des enfants:</strong><br>
+                    ${childrenWithStatus.map(c => `- ${c.name}: ${c.status}`).join('<br>')}
+                `, 'success');
+                
+                // 5. Vérification console
+                addResult(`
+                    <strong>🔍 Vérifications à faire dans l'application React:</strong><br>
+                    1. Ouvrir la console (F12)<br>
+                    2. Aller sur /dashboard/attendance/today<br>
+                    3. Chercher les logs "allChildren" ou "loadAllChildren"<br>
+                    4. Vérifier si allChildren est bien rempli<br>
+                    5. Vérifier si TodaySection reçoit bien la prop allChildren<br><br>
+                    <strong>Si le problème persiste:</strong><br>
+                    - Vider le cache du navigateur (Ctrl+Shift+Delete)<br>
+                    - Recharger avec Ctrl+F5<br>
+                    - Vérifier que le serveur frontend a bien redémarré
+                `, 'info');
+                
+            } catch (error) {
+                addResult(`❌ <strong>Erreur:</strong> ${error.message}`, 'error');
+                console.error('Erreur complète:', error);
+            }
+        }
+    </script>
+</body>
+</html>
