@@ -168,16 +168,22 @@ const MobileNavigation = () => {
         }
     ];
 
+    // Le rôle "developer" a les mêmes accès que "admin" partout ailleurs dans l'app
+    // (voir AuthContext.isAdmin()/isStaff() et DashboardSidebar.hasAccess) : on applique
+    // la même équivalence ici, sinon un compte developer se retrouve avec une barre de
+    // navigation mobile totalement vide (aucun item ne correspond à son rôle réel).
+    const effectiveRole = user?.role === 'developer' ? 'admin' : (user?.role || 'parent');
+
     // Sélectionner la navigation en fonction du rôle
-    const navItems = user?.role === 'parent' ? parentNavItems : mainNavItems;
+    const navItems = effectiveRole === 'parent' ? parentNavItems : mainNavItems;
 
     // Filtrer les éléments selon le rôle
     const filteredNavItems = navItems.filter(item =>
-        item.roles.includes(user?.role || 'parent')
+        item.roles.includes(effectiveRole) || item.roles.includes(user?.role)
     );
 
     const filteredMoreItems = moreMenuItems.filter(item =>
-        item.roles.includes(user?.role || 'parent')
+        item.roles.includes(effectiveRole) || item.roles.includes(user?.role)
     );
 
     const isActive = (path) => {
@@ -293,7 +299,7 @@ const MobileNavigation = () => {
                                                 {user.first_name} {user.last_name}
                                             </p>
                                             <p className="text-sm text-gray-500 dark:text-gray-400">
-                                                {user.role === 'admin' ? (isRTL ? 'مدير' : 'Administrateur') :
+                                                {user.role === 'admin' || user.role === 'developer' ? (isRTL ? 'مدير' : 'Administrateur') :
                                                     user.role === 'staff' ? (isRTL ? 'موظف' : 'Personnel') :
                                                         (isRTL ? 'ولي أمر' : 'Parent')}
                                             </p>
