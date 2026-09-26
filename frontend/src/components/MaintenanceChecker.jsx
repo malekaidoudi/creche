@@ -32,8 +32,11 @@ const MaintenanceChecker = ({ children }) => {
 
     checkBackendHealth();
 
-    // Vérifier toutes les 30 secondes
-    const interval = setInterval(checkBackendHealth, 30000);
+    // Vérifier toutes les 2 minutes.
+    // Note: /api/health est un check léger qui ne touche pas la base de
+    // données (voir backend/routes_postgres/health.js), donc cette
+    // fréquence n'a pas d'impact sur le compute Neon.
+    const interval = setInterval(checkBackendHealth, 120000);
 
     return () => clearInterval(interval);
   }, []);

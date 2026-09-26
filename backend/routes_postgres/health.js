@@ -58,51 +58,61 @@ router.get('/', async (req, res) => {
     }
   }
   
+  // Health check léger : ne touche PAS la base de données.
+  // Objectif: confirmer que le processus backend répond, sans consommer de
+  // compute Neon. Appelé très fréquemment (MaintenanceChecker frontend,
+  // healthcheck Railway/Render), donc doit rester bon marché.
+  // Pour un check incluant l'état réel de la base, voir GET /api/health/db
+  // ou GET /api/health/detailed (réservés au monitoring/admin).
+  res.status(200).json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    version: '2.1.0-postgresql',
+    environment: process.env.NODE_ENV || 'development',
+    services: {
+      server: 'OK'
+    },
+    memory: {
+      used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024 * 100) / 100,
+      total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024 * 100) / 100,
+      external: Math.round(process.memoryUsage().external / 1024 / 1024 * 100) / 100
+    }
+  });
+});
+
+// Route de vérification incluant la base de données (usage: monitoring/admin uniquement)
+// Volontairement séparée de GET / pour ne pas consommer de compute Neon à chaque
+// appel du healthcheck léger (frontend, Railway/Render).
+router.get('/db', async (req, res) => {
   try {
     const healthCheck = {
       status: 'OK',
       timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      version: '2.1.0-postgresql',
       database: 'PostgreSQL Neon',
-      environment: process.env.NODE_ENV || 'development',
       services: {
-        database: 'checking...',
-        server: 'OK'
-      },
-      memory: {
-        used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024 * 100) / 100,
-        total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024 * 100) / 100,
-        external: Math.round(process.memoryUsage().external / 1024 / 1024 * 100) / 100
+        database: 'checking...'
       }
     };
 
-    // Tester la connexion à PostgreSQL
     try {
       const dbStatus = await db.testConnection();
       healthCheck.services.database = dbStatus ? 'OK' : 'ERROR';
-      
-      // Ajouter des infos sur les données
+
       const users = await db.query('SELECT COUNT(*) as count FROM users');
       const children = await db.query('SELECT COUNT(*) as count FROM children');
       const settings = await db.query('SELECT COUNT(*) as count FROM nursery_settings');
-      
+
       healthCheck.data = {
         users: parseInt(users.rows[0].count),
         children: parseInt(children.rows[0].count),
         settings: parseInt(settings.rows[0].count)
       };
-      
+
     } catch (error) {
       healthCheck.services.database = 'ERROR';
       healthCheck.status = 'DEGRADED';
       healthCheck.database_error = error.message;
-    }
-
-    // Déterminer le statut global
-    const allServicesOk = Object.values(healthCheck.services).every(status => status === 'OK');
-    if (!allServicesOk) {
-      healthCheck.status = 'DEGRADED';
     }
 
     const statusCode = healthCheck.status === 'OK' ? 200 : 503;
