@@ -14,15 +14,9 @@ const PublicFooter = () => {
   useEffect(() => {
     const loadNurserySettings = async () => {
       try {
-        // Utiliser l'URL appropriée selon l'environnement
-        const apiUrl = window.location.hostname === 'localhost' ||
-          window.location.hostname === '127.0.0.1' ||
-          window.location.hostname === '192.168.1.60'
-          ? 'http://localhost:3003'
-          : 'https://creche-backend-prod.onrender.com';
-
-        const response = await fetch(`${apiUrl}/api/contact/info`);
-        const data = await response.json();
+        // Utiliser le client API centralisé (résout automatiquement l'URL du backend courant)
+        const response = await api.get('/api/contact/info');
+        const data = response.data;
 
         // Adapter au format de l'API contact
         if (data && data.success && data.contact) {
