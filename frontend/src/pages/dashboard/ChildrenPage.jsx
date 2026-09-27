@@ -114,12 +114,12 @@ const ChildrenPage = () => {
         setTotalPages(response.data.pagination?.pages || 0);
       } else {
         console.error('❌ ChildrenPage - Erreur API:', response);
-        dialog.error('Erreur lors du chargement des enfants');
+        dialog.error(isRTL ? 'خطأ في تحميل الأطفال' : 'Erreur lors du chargement des enfants');
         setChildren([]); // Vider la liste en cas d'erreur
       }
     } catch (error) {
       console.error('❌ Erreur CATCH lors du chargement:', error);
-      dialog.error('Erreur de connexion, vérifiez votre connexion internet');
+      dialog.error(isRTL ? 'خطأ في الاتصال، تحقق من اتصالك بالإنترنت' : 'Erreur de connexion, vérifiez votre connexion internet');
       setChildren([]); // Vider la liste en cas d'erreur
     } finally {
       console.log('✅ loadChildren terminé - setLoading(false)');
@@ -234,7 +234,7 @@ const ChildrenPage = () => {
         dialog.success(isRTL ? 'تم إلغاء تفعيل حساب الوالد بنجاح' : 'Compte parent désactivé avec succès');
         loadChildren(); // Recharger la liste
       } else {
-        throw new Error(response.data?.error || 'Erreur lors de la désactivation');
+        throw new Error(response.data?.error || (isRTL ? 'خطأ في إلغاء التفعيل' : 'Erreur lors de la désactivation'));
       }
     } catch (error) {
       console.error('Erreur lors de la désactivation:', error);
@@ -307,7 +307,7 @@ const ChildrenPage = () => {
         }
         loadChildren();
       } else {
-        throw new Error(response.data?.error || 'Erreur lors de l\'archivage');
+        throw new Error(response.data?.error || (isRTL ? 'خطأ في الأرشفة' : 'Erreur lors de l\'archivage'));
       }
     } catch (error) {
       console.error('Erreur lors de l\'archivage:', error);
@@ -462,7 +462,7 @@ const ChildrenPage = () => {
       }
     } catch (error) {
       console.error('Erreur chargement parents:', error);
-      dialog.error('Erreur lors du chargement des parents');
+      dialog.error(isRTL ? 'خطأ في تحميل قائمة الأولياء' : 'Erreur lors du chargement des parents');
     }
   };
 
@@ -486,7 +486,7 @@ const ChildrenPage = () => {
       }
     } catch (error) {
       console.error('Erreur association:', error);
-      dialog.error(error.response?.data?.error || 'Erreur lors de l\'association');
+      dialog.error(error.response?.data?.error || (isRTL ? 'خطأ في الربط' : 'Erreur lors de l\'association'));
     } finally {
       setActionLoading(null);
     }
@@ -1186,7 +1186,7 @@ const ChildrenPage = () => {
                             {isRTL ? 'البريد الإلكتروني' : 'Email'}
                           </label>
                           <p className="mt-1 text-sm text-blue-900 dark:text-blue-100" dir="ltr">
-                            {selectedChild.parent_email || 'Non renseigné'}
+                            {selectedChild.parent_email || (isRTL ? 'غير محدد' : 'Non renseigné')}
                           </p>
                         </div>
                         <div>

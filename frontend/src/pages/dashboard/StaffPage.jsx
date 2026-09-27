@@ -75,7 +75,9 @@ const StaffPage = () => {
           status: user.is_active ? 'active' : 'inactive',
           hire_date: user.created_at?.split('T')[0] || '',
           last_login: user.updated_at?.split('T')[0] || '',
-          department: user.role === 'admin' ? 'Administration' : 'Éducation',
+          // Le libellé traduit est dérivé de `role` au moment de l'affichage
+          // (voir getDepartmentLabel) pour rester correct si la langue change
+          // après ce chargement initial.
           experience_years: 0,
           specialization: ''
         }));
@@ -98,7 +100,7 @@ const StaffPage = () => {
       member.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       member.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       member.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      member.department.toLowerCase().includes(searchTerm.toLowerCase());
+      getDepartmentLabel(member.role).toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesFilter = filterRole === 'all' || member.role === filterRole;
 
@@ -139,11 +141,18 @@ const StaffPage = () => {
     return roleConfig[role] || roleConfig.staff;
   };
 
+  // Dérivé de `role` à l'affichage (et non stocké en state) pour rester
+  // correct si la langue change après le chargement initial des données.
+  const getDepartmentLabel = (role) =>
+    role === 'admin'
+      ? (isRTL ? 'الإدارة' : 'Administration')
+      : (isRTL ? 'التعليم' : 'Éducation');
+
   const exportStaff = () => {
     const csvContent = "data:text/csv;charset=utf-8," +
       "Nom,Email,Téléphone,Rôle,Département,Statut\n" +
       filteredStaff.map(member =>
-        `${member.first_name} ${member.last_name},${member.email},${member.phone},${member.role},${member.department},${member.status}`
+        `${member.first_name} ${member.last_name},${member.email},${member.phone},${member.role},${getDepartmentLabel(member.role)},${member.status}`
       ).join("\n");
 
     const encodedUri = encodeURI(csvContent);
@@ -184,7 +193,8 @@ const StaffPage = () => {
     ...s,
     full_name: `${s.first_name} ${s.last_name}`,
     role_label: s.role === 'admin' ? (isRTL ? 'مدير' : 'Admin') : (isRTL ? 'موظف' : 'Staff'),
-    status_label: s.status === 'active' ? (isRTL ? 'نشط' : 'Actif') : (isRTL ? 'غير نشط' : 'Inactif')
+    status_label: s.status === 'active' ? (isRTL ? 'نشط' : 'Actif') : (isRTL ? 'غير نشط' : 'Inactif'),
+    department: getDepartmentLabel(s.role)
   }));
 
   // Version Mobile
@@ -553,7 +563,7 @@ const StaffPage = () => {
                       </td>
                       <td className="py-3 px-4">
                         <span className="text-gray-600 dark:text-gray-300">
-                          {member.department}
+                          {getDepartmentLabel(member.role)}
                         </span>
                       </td>
                       <td className="py-3 px-4">
@@ -753,7 +763,7 @@ const StaffPage = () => {
                 <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
                   {isRTL ? 'القسم' : 'Département'}
                 </label>
-                <p className="text-gray-900 dark:text-white">{selectedStaff.department}</p>
+                <p className="text-gray-900 dark:text-white">{getDepartmentLabel(selectedStaff.role)}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
