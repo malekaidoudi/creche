@@ -190,12 +190,12 @@ const DashboardSettingsPage = () => {
 
         } else {
           console.error('❌ Structure de données non reconnue:', data);
-          setError('Format de données non reconnu');
+          dialog.error(isRTL ? 'صيغة البيانات غير معروفة' : 'Format de données non reconnu');
           setLoading(false);
         }
       } catch (error) {
         console.error('❌ Erreur de connexion:', error);
-        setError('Erreur de connexion au serveur');
+        dialog.error(isRTL ? 'خطأ في الاتصال بالخادم' : 'Erreur de connexion au serveur');
         setLoading(false);
       }
     };
@@ -540,7 +540,7 @@ const DashboardSettingsPage = () => {
           type: 'custom', // Type spécial pour les jours ajoutés manuellement
           is_active: true,
           is_closed: ah.is_closed,
-          description: ah.description || 'Jour férié personnalisé'
+          description: ah.description || (isRTL ? 'عطلة مخصصة' : 'Jour férié personnalisé')
         }));
 
         const finalHolidays = [...mergedHolidays, ...additionalHolidays];
@@ -839,7 +839,8 @@ const DashboardSettingsPage = () => {
         } catch (vacationError) {
           console.error('❌ Erreur vacances annuelles:', vacationError);
           console.error('📋 Détails:', vacationError.response?.data);
-          throw new Error(`Erreur vacances: ${vacationError.response?.data?.error || vacationError.message}`);
+          const vacationErrorDetail = vacationError.response?.data?.error || vacationError.message;
+          throw new Error(isRTL ? `خطأ في العطلة السنوية: ${vacationErrorDetail}` : `Erreur vacances: ${vacationErrorDetail}`);
         }
       }
 
