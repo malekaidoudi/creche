@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Camera, X, Check, RotateCcw, FileImage } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useLanguage } from '../../hooks/useLanguage';
 
 /**
  * Composant DocumentScanner
@@ -16,6 +17,7 @@ const DocumentScanner = ({
     className = '',
     disabled = false
 }) => {
+    const { isRTL } = useLanguage();
     const fileInputRef = useRef(null);
     const cameraInputRef = useRef(null);
     const [preview, setPreview] = useState(null);
@@ -33,7 +35,8 @@ const DocumentScanner = ({
 
         // Vérifier la taille
         if (file.size > maxSize) {
-            setError(`Fichier trop volumineux (max ${Math.round(maxSize / 1024 / 1024)}MB)`);
+            const maxMB = Math.round(maxSize / 1024 / 1024);
+            setError(isRTL ? `الملف كبير جداً (الحد الأقصى ${maxMB}م.ب)` : `Fichier trop volumineux (max ${maxMB}MB)`);
             return;
         }
 
@@ -70,7 +73,7 @@ const DocumentScanner = ({
             {label && (
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     {label}
-                    <span className="text-gray-400 text-xs ml-2">(optionnel)</span>
+                    <span className="text-gray-400 text-xs ml-2">{isRTL ? '(اختياري)' : '(optionnel)'}</span>
                 </label>
             )}
 
@@ -87,7 +90,7 @@ const DocumentScanner = ({
                         {/* Image prévisualisée */}
                         <img
                             src={preview}
-                            alt="Document scanné"
+                            alt={isRTL ? 'وثيقة ممسوحة' : 'Document scanné'}
                             className="w-full h-40 object-cover"
                         />
 
@@ -97,7 +100,7 @@ const DocumentScanner = ({
                                 type="button"
                                 onClick={handleRemove}
                                 className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
-                                title="Supprimer"
+                                title={isRTL ? 'حذف' : 'Supprimer'}
                             >
                                 <X className="w-5 h-5" />
                             </button>
@@ -105,7 +108,7 @@ const DocumentScanner = ({
                                 type="button"
                                 onClick={isMobile ? triggerCamera : triggerFileSelect}
                                 className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors"
-                                title="Remplacer"
+                                title={isRTL ? 'استبدال' : 'Remplacer'}
                             >
                                 <RotateCcw className="w-5 h-5" />
                             </button>
@@ -141,7 +144,7 @@ const DocumentScanner = ({
                             >
                                 <Camera className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                                 <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                                    Scanner
+                                    {isRTL ? 'مسح' : 'Scanner'}
                                 </span>
                             </button>
                         )}
@@ -155,7 +158,9 @@ const DocumentScanner = ({
                         >
                             <FileImage className="w-6 h-6 text-gray-600 dark:text-gray-400" />
                             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                {isMobile ? 'Galerie' : 'Parcourir'}
+                                {isMobile
+                                    ? (isRTL ? 'المعرض' : 'Galerie')
+                                    : (isRTL ? 'استعراض' : 'Parcourir')}
                             </span>
                         </button>
                     </motion.div>
