@@ -199,150 +199,153 @@ const TodayTasksWidget = ({ onOpenMemoModal, onOpenTaskModal, onOpenAppointmentM
       const todayStr = today.toISOString().split('T')[0];
       today.setHours(0, 0, 0, 0);
 
+      // Les 5 sources ci-dessous sont indépendantes (tâches, RDV du jour,
+      // enfants pour anniversaires, mémos, RDV en attente). On les lance en
+      // parallèle plutôt qu'en cascade pour diviser le temps de chargement
+      // par ~5 au lieu de sommer 5 allers-retours réseau successifs.
+      const [
+        tasksResult,
+        appointmentsResult,
+        childrenResult,
+        memosResult,
+        pendingAppointmentsResult
+      ] = await Promise.allSettled([
+        api.get('/api/tasks/today'),
+        api.get('/api/appointments/today'),
+        api.get('/api/children'),
+        api.get('/api/personal-memos/today'),
+        api.get('/api/appointments')
+      ]);
+
       // 1. Charger les TÂCHES depuis la table tasks (via /api/tasks/today)
       let tasksFromDb = [];
-      try {
-        const tasksResponse = await api.get('/api/tasks/today');
-        if (tasksResponse.data.success) {
-          tasksFromDb = (tasksResponse.data.tasks || []).map(task => ({
-            id: task.id,
-            type: 'task',
-            title: task.title,
-            description: task.description,
-            start_date: task.due_date,
-            priority: task.priority,
-            status: task.status,
-            assigned_to: task.assigned_to,
-            assigned_to_name: task.assigned_to_name,
-            assigned_to_role: task.assigned_to_role,
-            created_by: task.created_by,
-            created_by_name: task.created_by_name,
-            source: 'tasks' // Pour identifier la source
-          }));
-        }
-      } catch (error) {
-        console.log('Erreur chargement tâches:', error.message);
+      if (tasksResult.status === 'fulfilled' && tasksResult.value.data.success) {
+        tasksFromDb = (tasksResult.value.data.tasks || []).map(task => ({
+          id: task.id,
+          type: 'task',
+          title: task.title,
+          description: task.description,
+          start_date: task.due_date,
+          priority: task.priority,
+          status: task.status,
+          assigned_to: task.assigned_to,
+          assigned_to_name: task.assigned_to_name,
+          assigned_to_role: task.assigned_to_role,
+          created_by: task.created_by,
+          created_by_name: task.created_by_name,
+          source: 'tasks' // Pour identifier la source
+        }));
+      } else if (tasksResult.status === 'rejected') {
+        console.log('Erreur chargement tâches:', tasksResult.reason?.message);
       }
 
       // 2. Charger les RDV du jour uniquement
       let appointments = [];
-      try {
-        const apptResponse = await api.get('/api/appointments/today');
-        if (apptResponse.data.success) {
-          appointments = (apptResponse.data.appointments || []).filter(appt => {
-            const apptDate = new Date(appt.confirmed_date || appt.proposed_date);
-            apptDate.setHours(0, 0, 0, 0);
-            return apptDate.getTime() === today.getTime();
-          }).map(appt => {
-            const isInscription = appt.appointment_type === 'inscription' || appt.enrollment_id;
-            return {
-              id: `appt-${appt.id}`,
-              type: 'appointment',
-              title: isInscription
-                ? `📋 RDV Inscription: ${appt.child_name || 'Enfant'}`
-                : (appt.subject || (isRTL ? 'موعد' : 'Rendez-vous')),
-              description: isInscription
-                ? `Validation du dossier d'inscription`
-                : appt.description,
-              start_date: appt.confirmed_date || appt.proposed_date,
-              priority: 'high',
-              status: appt.status,
-              metadata: {
-                parent_name: appt.parent_name,
-                parent_phone: appt.parent_phone,
-                parent_email: appt.parent_email,
-                child_name: appt.child_name,
-                appointment_id: appt.id,
-                enrollment_id: appt.enrollment_id,
-                is_inscription: isInscription,
-                appointment_type: appt.appointment_type
-              }
-            };
-          });
-        }
-      } catch (error) {
-        console.log('Pas de RDV aujourd\'hui:', error.message);
+      if (appointmentsResult.status === 'fulfilled' && appointmentsResult.value.data.success) {
+        appointments = (appointmentsResult.value.data.appointments || []).filter(appt => {
+          const apptDate = new Date(appt.confirmed_date || appt.proposed_date);
+          apptDate.setHours(0, 0, 0, 0);
+          return apptDate.getTime() === today.getTime();
+        }).map(appt => {
+          const isInscription = appt.appointment_type === 'inscription' || appt.enrollment_id;
+          return {
+            id: `appt-${appt.id}`,
+            type: 'appointment',
+            title: isInscription
+              ? `📋 RDV Inscription: ${appt.child_name || 'Enfant'}`
+              : (appt.subject || (isRTL ? 'موعد' : 'Rendez-vous')),
+            description: isInscription
+              ? `Validation du dossier d'inscription`
+              : appt.description,
+            start_date: appt.confirmed_date || appt.proposed_date,
+            priority: 'high',
+            status: appt.status,
+            metadata: {
+              parent_name: appt.parent_name,
+              parent_phone: appt.parent_phone,
+              parent_email: appt.parent_email,
+              child_name: appt.child_name,
+              appointment_id: appt.id,
+              enrollment_id: appt.enrollment_id,
+              is_inscription: isInscription,
+              appointment_type: appt.appointment_type
+            }
+          };
+        });
+      } else if (appointmentsResult.status === 'rejected') {
+        console.log('Pas de RDV aujourd\'hui:', appointmentsResult.reason?.message);
       }
 
       // 3. Charger les anniversaires du jour
       let birthdays = [];
-      try {
-        const childrenResponse = await api.get('/api/children');
-        if (childrenResponse.data.success) {
-          const todayMonth = today.getMonth() + 1;
-          const todayDay = today.getDate();
+      if (childrenResult.status === 'fulfilled' && childrenResult.value.data.success) {
+        const todayMonth = today.getMonth() + 1;
+        const todayDay = today.getDate();
 
-          birthdays = (childrenResponse.data.children || [])
-            .filter(child => {
-              if (!child.date_of_birth) return false;
-              const birthDate = new Date(child.date_of_birth);
-              return birthDate.getMonth() + 1 === todayMonth && birthDate.getDate() === todayDay;
-            })
-            .map(child => ({
-              id: `birthday-${child.id}`,
-              type: 'birthday',
-              title: `🎂 Anniversaire de ${child.first_name} ${child.last_name}`,
-              description: `${child.first_name} fête son anniversaire aujourd'hui !`,
-              start_date: todayStr,
-              priority: 'medium',
-              status: 'pending',
-              metadata: { child_id: child.id, child_name: `${child.first_name} ${child.last_name}` }
-            }));
-        }
-      } catch (error) {
-        console.log('Erreur chargement anniversaires:', error.message);
+        birthdays = (childrenResult.value.data.children || [])
+          .filter(child => {
+            if (!child.date_of_birth) return false;
+            const birthDate = new Date(child.date_of_birth);
+            return birthDate.getMonth() + 1 === todayMonth && birthDate.getDate() === todayDay;
+          })
+          .map(child => ({
+            id: `birthday-${child.id}`,
+            type: 'birthday',
+            title: `🎂 Anniversaire de ${child.first_name} ${child.last_name}`,
+            description: `${child.first_name} fête son anniversaire aujourd'hui !`,
+            start_date: todayStr,
+            priority: 'medium',
+            status: 'pending',
+            metadata: { child_id: child.id, child_name: `${child.first_name} ${child.last_name}` }
+          }));
+      } else if (childrenResult.status === 'rejected') {
+        console.log('Erreur chargement anniversaires:', childrenResult.reason?.message);
       }
 
       // 4. Charger les mémos personnels du jour
       let memos = [];
-      try {
-        const memosResponse = await api.get('/api/personal-memos/today');
-        if (memosResponse.data.success) {
-          memos = (memosResponse.data.memos || []).map(memo => ({
-            id: `memo-${memo.id}`,
-            type: 'memo',
-            title: memo.content.substring(0, 50) + (memo.content.length > 50 ? '...' : ''),
-            description: memo.content,
-            start_date: memo.memo_date,
-            priority: 'low',
-            status: memo.is_completed ? 'completed' : 'pending',
-            source: 'personal_memos'
-          }));
-        }
-      } catch (error) {
-        console.log('Erreur chargement mémos:', error.message);
+      if (memosResult.status === 'fulfilled' && memosResult.value.data.success) {
+        memos = (memosResult.value.data.memos || []).map(memo => ({
+          id: `memo-${memo.id}`,
+          type: 'memo',
+          title: memo.content.substring(0, 50) + (memo.content.length > 50 ? '...' : ''),
+          description: memo.content,
+          start_date: memo.memo_date,
+          priority: 'low',
+          status: memo.is_completed ? 'completed' : 'pending',
+          source: 'personal_memos'
+        }));
+      } else if (memosResult.status === 'rejected') {
+        console.log('Erreur chargement mémos:', memosResult.reason?.message);
       }
 
       // 5. Charger les RDV en attente de réponse admin (nouveau workflow)
       let pendingAppointments = [];
-      try {
-        const pendingResponse = await api.get('/api/appointments');
-        if (pendingResponse.data.success) {
-          pendingAppointments = (pendingResponse.data.appointments || [])
-            .filter(apt =>
-              (apt.status === 'proposed' || apt.status === 'counter_proposed') &&
-              apt.pending_response_from === 'admin'
-            )
-            .map(apt => ({
-              id: `pending-appt-${apt.id}`,
-              type: 'pending_appointment',
-              title: apt.subject || (isRTL ? 'موعد في الانتظار' : 'RDV en attente'),
-              description: `${apt.parent_name || 'Parent'} - ${new Date(apt.proposed_date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}`,
-              start_date: apt.proposed_date,
-              priority: 'high',
-              status: apt.status,
-              metadata: {
-                appointment_id: apt.id,
-                parent_name: apt.parent_name,
-                parent_id: apt.parent_id,
-                child_name: apt.child_name,
-                proposed_date: apt.proposed_date,
-                pending_response_from: apt.pending_response_from
-              }
-            }));
-        }
-      } catch (error) {
-        console.log('Erreur chargement RDV en attente:', error.message);
+      if (pendingAppointmentsResult.status === 'fulfilled' && pendingAppointmentsResult.value.data.success) {
+        pendingAppointments = (pendingAppointmentsResult.value.data.appointments || [])
+          .filter(apt =>
+            (apt.status === 'proposed' || apt.status === 'counter_proposed') &&
+            apt.pending_response_from === 'admin'
+          )
+          .map(apt => ({
+            id: `pending-appt-${apt.id}`,
+            type: 'pending_appointment',
+            title: apt.subject || (isRTL ? 'موعد في الانتظار' : 'RDV en attente'),
+            description: `${apt.parent_name || 'Parent'} - ${new Date(apt.proposed_date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}`,
+            start_date: apt.proposed_date,
+            priority: 'high',
+            status: apt.status,
+            metadata: {
+              appointment_id: apt.id,
+              parent_name: apt.parent_name,
+              parent_id: apt.parent_id,
+              child_name: apt.child_name,
+              proposed_date: apt.proposed_date,
+              pending_response_from: apt.pending_response_from
+            }
+          }));
+      } else if (pendingAppointmentsResult.status === 'rejected') {
+        console.log('Erreur chargement RDV en attente:', pendingAppointmentsResult.reason?.message);
       }
 
       // 6. Combiner tâches, RDV, anniversaires, mémos et RDV en attente

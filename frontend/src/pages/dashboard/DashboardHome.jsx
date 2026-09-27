@@ -119,69 +119,60 @@ const DashboardHome = () => {
   };
 
   useEffect(() => {
-    const loadDashboardData = async () => {
+    const defaultStats = {
+      totalChildren: 0,
+      presentToday: 0,
+      pendingEnrollments: 0,
+      maxCapacity: 30,
+      availablePlaces: 30,
+      attendanceRate: 0,
+      newEnrollmentsThisMonth: 0
+    };
+
+    // Charge les activités récentes: nouveau système de logging, avec repli
+    // sur l'ancien système en cas d'échec (404/erreur), sans bloquer les stats.
+    const loadActivities = async () => {
       try {
-        // Charger les statistiques réelles depuis l'API
-        try {
-          const statsResponse = await api.get('/api/dashboard/stats');
-          if (statsResponse.data.success) {
-            setStats(statsResponse.data.stats);
-          } else {
-            // Valeurs par défaut si erreur
-            setStats({
-              totalChildren: 0,
-              presentToday: 0,
-              pendingEnrollments: 0,
-              maxCapacity: 30,
-              availablePlaces: 30,
-              attendanceRate: 0,
-              newEnrollmentsThisMonth: 0
-            });
-          }
-        } catch (statsError) {
-          console.log('📊 Erreur chargement stats, utilisation valeurs par défaut');
-          setStats({
-            totalChildren: 0,
-            presentToday: 0,
-            pendingEnrollments: 0,
-            maxCapacity: 30,
-            availablePlaces: 30,
-            attendanceRate: 0,
-            newEnrollmentsThisMonth: 0
-          });
+        const [activityResponse, activityStatsResponse] = await Promise.all([
+          activityLogService.getLogs({ limit: 10, period: 'week' }),
+          activityLogService.getStats({ period: 'today' })
+        ]);
+
+        if (activityResponse.success && activityResponse.logs) {
+          setRecentActivities(activityResponse.logs);
         }
-
-        // Charger les activités récentes depuis le nouveau système de logging
+        if (activityStatsResponse.success) {
+          setActivityStats(activityStatsResponse.stats);
+        }
+      } catch (activityError) {
+        console.log('📊 Système de logging non disponible, utilisation des logs classiques');
         try {
-          const activityResponse = await activityLogService.getLogs({ limit: 10, period: 'week' });
-          if (activityResponse.success && activityResponse.logs) {
-            setRecentActivities(activityResponse.logs);
-          }
-
-          // Charger les stats d'activité
-          const statsResponse = await activityLogService.getStats({ period: 'today' });
-          if (statsResponse.success) {
-            setActivityStats(statsResponse.stats);
-          }
-        } catch (activityError) {
-          console.log('📊 Système de logging non disponible, utilisation des logs classiques');
-          // Fallback sur l'ancien système
           const response = await api.get('/api/logs?limit=5');
           if (response.data.success) {
-            const formattedLogs = response.data.logs.map(log => formatLogToActivity(log));
-            setRecentActivities(formattedLogs);
+            setRecentActivities(response.data.logs.map(formatLogToActivity));
           }
+        } catch {
+          setRecentActivities([]);
         }
-      } catch (error) {
-        console.error('❌ Erreur chargement dashboard:', error);
-        // En cas d'erreur, garder un tableau vide
-        setRecentActivities([]);
-      } finally {
-        setLoading(false);
       }
     };
 
-    loadDashboardData();
+    const loadStats = async () => {
+      try {
+        const statsResponse = await api.get('/api/dashboard/stats');
+        setStats(statsResponse.data.success ? statsResponse.data.stats : defaultStats);
+      } catch (statsError) {
+        console.log('📊 Erreur chargement stats, utilisation valeurs par défaut');
+        setStats(defaultStats);
+      }
+    };
+
+    // Les deux groupes de données sont indépendants: on les lance en
+    // parallèle plutôt qu'en cascade pour diviser le temps de chargement
+    // par ~2-3 au lieu de sommer chaque aller-retour réseau.
+    Promise.all([loadStats(), loadActivities()]).finally(() => {
+      setLoading(false);
+    });
   }, []);
 
   const statsCards = [

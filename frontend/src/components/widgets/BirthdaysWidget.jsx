@@ -21,10 +21,19 @@ const EventsWidget = ({ isMobileView = false }) => {
     try {
       setLoading(true);
 
-      // Charger les anniversaires du mois
-      const birthdaysResponse = await api.get('/api/children/birthdays/month');
-      if (birthdaysResponse.data.success) {
-        const sortedBirthdays = (birthdaysResponse.data.children || []).map(b => ({
+      // Anniversaires et événements du mois sont indépendants: on les charge
+      // en parallèle plutôt qu'en cascade.
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+
+      const [birthdaysResult, eventsResult] = await Promise.allSettled([
+        api.get('/api/children/birthdays/month'),
+        api.get(`/api/events?start_date=${startOfMonth}&end_date=${endOfMonth}&limit=50`)
+      ]);
+
+      if (birthdaysResult.status === 'fulfilled' && birthdaysResult.value.data.success) {
+        const sortedBirthdays = (birthdaysResult.value.data.children || []).map(b => ({
           ...b,
           itemType: 'birthday',
           displayDate: b.start_date
@@ -32,14 +41,8 @@ const EventsWidget = ({ isMobileView = false }) => {
         setBirthdays(sortedBirthdays);
       }
 
-      // Charger les événements du mois (réunions, célébrations)
-      const now = new Date();
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
-
-      const eventsResponse = await api.get(`/api/events?start_date=${startOfMonth}&end_date=${endOfMonth}&limit=50`);
-      if (eventsResponse.data.success) {
-        const filteredEvents = (eventsResponse.data.events || [])
+      if (eventsResult.status === 'fulfilled' && eventsResult.value.data.success) {
+        const filteredEvents = (eventsResult.value.data.events || [])
           .filter(e => ['meeting', 'celebration', 'event'].includes(e.type))
           .map(e => ({
             ...e,
