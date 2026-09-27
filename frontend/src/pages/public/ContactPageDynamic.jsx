@@ -16,7 +16,7 @@ import LoadingSpinner from '../../components/ui/LoadingSpinner'
 import { Button } from '../../components/ui/Button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card'
 import { useDialogContext } from '../../contexts/DialogContext'
-import api from '../../services/api'
+import api, { cachedGet } from '../../services/api'
 
 const ContactPageDynamic = () => {
     // Hook pour la langue - v2.0 contact form fix
@@ -40,8 +40,9 @@ const ContactPageDynamic = () => {
         const loadData = async () => {
             setIsLoading(true)
             try {
-                // Récupérer les données depuis l'API
-                const response = await api.get('/api/contact/info')
+                // Récupérer les données depuis l'API (mise en cache: partagé avec
+                // le footer, évite de refetch à chaque navigation)
+                const response = await cachedGet('/api/contact/info')
                 const apiData = response.data
 
                 if (apiData.success && apiData.contact) {

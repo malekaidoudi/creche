@@ -7,7 +7,7 @@ import frLocale from '@fullcalendar/core/locales/fr';
 import { Calendar, Filter, X, ChevronRight, Clock, User, MapPin, CheckCircle } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import useIsMobile from '../../hooks/useIsMobile';
-import api from '../../services/api';
+import api, { cachedGet } from '../../services/api';
 import { useDialogContext } from '../../contexts/DialogContext';
 import QuickEventModal from '../../components/modals/QuickEventModal';
 import EventModal from '../../components/modals/EventModal';
@@ -107,7 +107,7 @@ const MonthlyPlanningPage = () => {
         // Charger les jours fériés
         let holidayEvents = [];
         try {
-          const holidaysResponse = await api.get('/api/holidays');
+          const holidaysResponse = await cachedGet('/api/holidays');
           if (holidaysResponse.data.success) {
             holidayEvents = holidaysResponse.data.holidays.map(holiday => ({
               id: `holiday-${holiday.id}`,
@@ -129,7 +129,7 @@ const MonthlyPlanningPage = () => {
         // Charger les vacances annuelles
         let vacationEvents = [];
         try {
-          const vacationResponse = await api.get('/api/nursery-settings/annual-vacation');
+          const vacationResponse = await cachedGet('/api/nursery-settings/annual-vacation');
           if (vacationResponse.data.success && vacationResponse.data.enabled) {
             const startDate = vacationResponse.data.start_date;
             const endDate = vacationResponse.data.end_date;

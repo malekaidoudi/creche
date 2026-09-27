@@ -32,7 +32,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useTheme } from '../../hooks/useTheme';
-import api from '../../services/api';
+import api, { clearApiCache } from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -696,6 +696,7 @@ const DashboardSettingsPage = () => {
                 ? { ...h, id: response.data.holiday.id, is_active: true }
                 : h
             ));
+            clearApiCache('/api/holidays')
             dialog.success(isRTL ? 'تم تفعيل العطلة - الحضانة ستكون مغلقة' : 'Jour férié activé');
           }
         } catch (postError) {
@@ -841,6 +842,11 @@ const DashboardSettingsPage = () => {
           throw new Error(`Erreur vacances: ${vacationError.response?.data?.error || vacationError.message}`);
         }
       }
+
+      // Invalider le cache partagé (footer, contact, calendriers) pour que
+      // les autres pages reflètent immédiatement les nouveaux paramètres
+      clearApiCache('/api/nursery-settings')
+      clearApiCache('/api/contact/info')
 
       dialog.success(isRTL ? 'تم حفظ الإعدادات بنجاح' : 'Paramètres sauvegardés avec succès');
     } catch (error) {

@@ -8,7 +8,7 @@ import frLocale from '@fullcalendar/core/locales/fr';
 import { useLanguage } from '../../hooks/useLanguage';
 import useIsMobile from '../../hooks/useIsMobile';
 import MobileNavigation from '../../components/mobile/MobileNavigation';
-import api from '../../services/api';
+import api, { cachedGet } from '../../services/api';
 import { useDialogContext } from '../../contexts/DialogContext';
 
 const EVENT_TYPE_COLORS = {
@@ -82,7 +82,7 @@ const ParentCalendarPage = () => {
                 // Charger les jours fériés
                 let holidayEvents = [];
                 try {
-                    const holidaysResponse = await api.get('/api/holidays');
+                    const holidaysResponse = await cachedGet('/api/holidays');
                     if (holidaysResponse.data.success) {
                         holidayEvents = holidaysResponse.data.holidays.map(holiday => ({
                             id: `holiday-${holiday.id}`,
@@ -104,7 +104,7 @@ const ParentCalendarPage = () => {
                 // Charger les vacances annuelles
                 let vacationEvents = [];
                 try {
-                    const vacationResponse = await api.get('/api/nursery-settings/annual-vacation');
+                    const vacationResponse = await cachedGet('/api/nursery-settings/annual-vacation');
                     if (vacationResponse.data.success && vacationResponse.data.enabled && vacationResponse.data.start_date && vacationResponse.data.end_date) {
                         vacationEvents = [{
                             id: 'annual-vacation',

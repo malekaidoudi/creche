@@ -133,6 +133,60 @@ export const apiRequest = {
   delete: (url, config = {}) => api.delete(url, config),
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// Cache mémoire léger pour les GET (opt-in) — évite de refetch des données
+// qui changent peu (paramètres crèche, infos contact, jours fériés...) à
+// chaque navigation entre pages. Ne touche pas aux requêtes non-cachées.
+// ─────────────────────────────────────────────────────────────────────────
+const getCache = new Map() // clé -> { promise, expiry }
+const DEFAULT_CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
+
+const buildCacheKey = (url, params) => `${url}?${JSON.stringify(params || {})}`
+
+/**
+ * GET avec cache mémoire (partagé entre toutes les pages de l'onglet).
+ * À utiliser uniquement pour des données peu volatiles (settings, contact,
+ * holidays...). Les appels concurrents pendant le chargement partagent la
+ * même promesse (pas de requêtes dupliquées en rafale).
+ *
+ * @param {string} url
+ * @param {object} config - config axios (params, headers...)
+ * @param {number} ttlMs - durée de fraîcheur du cache (défaut 5 min)
+ */
+export const cachedGet = (url, config = {}, ttlMs = DEFAULT_CACHE_TTL_MS) => {
+  const key = buildCacheKey(url, config.params)
+  const cached = getCache.get(key)
+
+  if (cached && cached.expiry > Date.now()) {
+    return cached.promise
+  }
+
+  const promise = api.get(url, config).catch((error) => {
+    // Ne pas garder une promesse rejetée en cache: on retentera au prochain appel
+    getCache.delete(key)
+    throw error
+  })
+
+  getCache.set(key, { promise, expiry: Date.now() + ttlMs })
+  return promise
+}
+
+/**
+ * Invalide le cache (partiellement via un préfixe d'URL, ou totalement).
+ * À appeler après une mutation (ex: updateSetting) pour forcer un refetch frais.
+ */
+export const clearApiCache = (urlPrefix) => {
+  if (!urlPrefix) {
+    getCache.clear()
+    return
+  }
+  for (const key of getCache.keys()) {
+    if (key.startsWith(urlPrefix)) {
+      getCache.delete(key)
+    }
+  }
+}
+
 // Fonction pour uploader des fichiers (endpoint générique /api/uploads)
 export const uploadFile = (file, onProgress = null) => {
   const formData = new FormData()
