@@ -250,6 +250,14 @@ const DashboardSidebar = ({ isOpen, onClose, onCollapsedChange }) => {
         }
       ]
     },
+    // Paramètres - Pour admin et développeur uniquement
+    {
+      key: 'settings',
+      title: isRTL ? 'الإعدادات' : 'Paramètres',
+      icon: Settings,
+      path: '/dashboard/settings',
+      roles: ['admin', 'developer']
+    },
     // Fil d'activité simplifié - Pour directeur uniquement
     {
       key: 'activity-feed',
@@ -274,7 +282,6 @@ const DashboardSidebar = ({ isOpen, onClose, onCollapsedChange }) => {
       path: '/dashboard/storage',
       roles: ['developer']
     },
-    // Paramètres supprimé de la sidebar (accessible via menu utilisateur)
   ];
 
   const hasAccess = (roles) => {
