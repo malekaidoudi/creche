@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { MapPin, Phone, Mail, Clock } from 'lucide-react'
 import { useLanguage } from '../../hooks/useLanguage'
 import { useState, useEffect } from 'react'
-import api from '../../services/api'
+import { cachedGet } from '../../services/api'
 
 const PublicFooter = () => {
   const { isRTL } = useLanguage();
@@ -14,8 +14,9 @@ const PublicFooter = () => {
   useEffect(() => {
     const loadNurserySettings = async () => {
       try {
-        // Utiliser le client API centralisé (résout automatiquement l'URL du backend courant)
-        const response = await api.get('/api/contact/info');
+        // Utiliser le client API centralisé avec cache (le footer est monté sur
+        // chaque page publique, ce cache évite de refetch à chaque navigation)
+        const response = await cachedGet('/api/contact/info');
         const data = response.data;
 
         // Adapter au format de l'API contact
