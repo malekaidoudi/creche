@@ -144,8 +144,8 @@ const MobileChildrenList = ({
                 onSearch={setSearchQuery}
                 searchPlaceholder={isRTL ? 'بحث...' : 'Rechercher...'}
                 actions={[
-                    { icon: Filter, onClick: () => setShowFilters(!showFilters), label: 'Filtrer' },
-                    { icon: Plus, onClick: onAddChild, label: 'Ajouter' }
+                    { icon: Filter, onClick: () => setShowFilters(!showFilters), label: isRTL ? 'تصفية' : 'Filtrer' },
+                    { icon: Plus, onClick: onAddChild, label: isRTL ? 'إضافة' : 'Ajouter' }
                 ]}
             />
 
