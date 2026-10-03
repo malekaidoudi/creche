@@ -146,6 +146,11 @@ temp/
 COMPTES_TEST.md
 **/COMPTES_TEST.md
 PRD app mobile.docx
+
+# Ancien brouillon de refonte homepage (non terminé, nouvelle version à venir)
+frontend/src/pages/public/HomePageV2.jsx
+frontend/src/components/homev2/
+frontend/src/styles/homev2.css
 # les migrations
 backend/database/migrations/*
 # les docs
