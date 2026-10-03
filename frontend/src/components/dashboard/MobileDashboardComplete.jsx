@@ -22,7 +22,8 @@ import {
     CreditCard,
     Plus,
     UserPlus,
-    Pill
+    Pill,
+    Image
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -297,6 +298,15 @@ const MobileDashboardComplete = ({
                         >
                             <Pill className="w-6 h-6 text-pink-600 mb-1" />
                             <span className="text-xs text-gray-700 dark:text-gray-300 text-center">{isRTL ? 'العلاجات' : 'Traitements'}</span>
+                        </button>
+
+                        {/* Activités - visible pour staff et admin */}
+                        <button
+                            onClick={() => navigate('/dashboard/activities')}
+                            className="flex flex-col items-center p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl active:scale-95 transition-transform"
+                        >
+                            <Image className="w-6 h-6 text-indigo-600 mb-1" />
+                            <span className="text-xs text-gray-700 dark:text-gray-300 text-center">{isRTL ? 'الأنشطة' : 'Activités'}</span>
                         </button>
                     </div>
                 </motion.div>

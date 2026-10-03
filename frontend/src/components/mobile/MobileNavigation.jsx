@@ -28,7 +28,8 @@ import {
     User,
     Bell,
     Clock,
-    CalendarX
+    CalendarX,
+    Image
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useAuth } from '../../contexts/AuthContext';
@@ -123,6 +124,12 @@ const MobileNavigation = () => {
     // Menu étendu "Plus"
     const moreMenuItems = [
         // Items Admin/Staff
+        {
+            icon: Image,
+            label: isRTL ? 'الأنشطة' : 'Activités',
+            path: '/dashboard/activities',
+            roles: ['admin', 'staff']
+        },
         {
             icon: Calendar,
             label: isRTL ? 'التخطيط' : 'Planning',
