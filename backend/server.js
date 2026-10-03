@@ -89,6 +89,7 @@ const cloudinaryExplorerRoutes = require('./routes_postgres/cloudinaryExplorer')
 const activityFeedRoutes = require('./routes_postgres/activityFeed');
 const testimonialsRoutes = require('./routes_postgres/testimonials');
 const treatmentsRoutes = require('./routes_postgres/treatments');
+const permissionsQuestionnaireRoutes = require('./routes_postgres/permissionsQuestionnaire');
 console.log('✅ Routes chargées\n');
 
 const app = express();
@@ -353,6 +354,9 @@ console.log('  ✓ /api/testimonials (témoignages parents) 💬');
 
 app.use('/api/treatments', treatmentsRoutes);
 console.log('  ✓ /api/treatments (traitements médicaux) 💊');
+
+app.use('/api/permissions-questionnaire', permissionsQuestionnaireRoutes);
+console.log('  ✓ /api/permissions-questionnaire (questionnaire accès éducatrices) 📝');
 
 console.log('\n✅ Toutes les routes montées avec succès\n');
 
