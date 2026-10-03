@@ -1,8 +1,56 @@
 const jwt = require('jsonwebtoken');
 const db = require('../config/db_postgres');
 const logger = require('../utils/logger');
+const permissionsService = require('../services/permissionsService');
 
 const auth = {
+
+  // Middleware de vérification d'une permission granulaire (staff)
+  // Admin/developer ont toujours accès à tout, les autres rôles doivent
+  // posséder explicitement la permission demandée.
+  requirePermission: (permissionCode) => {
+    return async (req, res, next) => {
+      try {
+        if (!req.user) {
+          return res.status(401).json({
+            success: false,
+            error: 'Authentification requise',
+            code: 'NOT_AUTHENTICATED'
+          });
+        }
+
+        const effectiveRole = req.user.role === 'developer' ? 'admin' : req.user.role;
+        if (effectiveRole === 'admin') {
+          return next();
+        }
+
+        const userId = req.user.id || req.user.userId;
+        const hasAccess = await permissionsService.userHasPermission(userId, permissionCode);
+
+        if (!hasAccess) {
+          logger.security('PERMISSION_DENIED', {
+            userId,
+            role: req.user.role,
+            requiredPermission: permissionCode
+          });
+          return res.status(403).json({
+            success: false,
+            error: 'Accès non autorisé pour cette fonctionnalité',
+            required_permission: permissionCode,
+            code: 'PERMISSION_DENIED'
+          });
+        }
+
+        next();
+      } catch (error) {
+        logger.error('❌ Erreur vérification permission:', error.message);
+        res.status(500).json({
+          success: false,
+          error: 'Erreur lors de la vérification des permissions'
+        });
+      }
+    };
+  },
 
   // Middleware d'authentification JWT
   authenticateToken: (req, res, next) => {

@@ -21,6 +21,7 @@ const router = express.Router();
 const { pool } = require('../config/db_postgres');
 const auth = require('../middleware/auth');
 const emailService = require('../emails/emailService');
+const permissionsService = require('../services/permissionsService');
 
 // =====================================================
 // CRÉATION DE COMPTE PARENT PAR L'ADMIN
@@ -259,6 +260,11 @@ router.post('/create-staff', auth.authenticateToken, auth.requireRole('admin'), 
         ]);
 
         const newUser = userResult.rows[0];
+
+        // Accorder automatiquement les permissions "communes" au nouveau membre du staff
+        permissionsService.grantCommonPermissionsToUser(newUser.id).catch((err) => {
+            console.error('❌ Erreur attribution permissions communes:', err.message);
+        });
 
         // 4. Envoyer l'email de création de mot de passe
         const createPasswordUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/create-password?token=${passwordToken}&email=${encodeURIComponent(email)}`;

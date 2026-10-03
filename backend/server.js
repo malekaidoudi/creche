@@ -90,6 +90,7 @@ const activityFeedRoutes = require('./routes_postgres/activityFeed');
 const testimonialsRoutes = require('./routes_postgres/testimonials');
 const treatmentsRoutes = require('./routes_postgres/treatments');
 const permissionsQuestionnaireRoutes = require('./routes_postgres/permissionsQuestionnaire');
+const staffPermissionsRoutes = require('./routes_postgres/staffPermissions');
 console.log('✅ Routes chargées\n');
 
 const app = express();
@@ -357,6 +358,9 @@ console.log('  ✓ /api/treatments (traitements médicaux) 💊');
 
 app.use('/api/permissions-questionnaire', permissionsQuestionnaireRoutes);
 console.log('  ✓ /api/permissions-questionnaire (questionnaire accès éducatrices) 📝');
+
+app.use('/api/staff-permissions', staffPermissionsRoutes);
+console.log('  ✓ /api/staff-permissions (gestion accès par éducatrice) 🔐');
 
 console.log('\n✅ Toutes les routes montées avec succès\n');
 

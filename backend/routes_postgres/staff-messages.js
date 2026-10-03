@@ -7,12 +7,41 @@ const express = require('express');
 const router = express.Router();
 const staffMessageService = require('../services/staffMessageService');
 const auth = require('../middleware/auth');
+const db = require('../config/db_postgres');
+const permissionsService = require('../services/permissionsService');
+
+/**
+ * Vérifie que l'expéditeur (si staff) a bien la permission de contacter des
+ * parents lorsque le destinataire est un parent. Admin/developer et les
+ * échanges staff↔direction ne sont pas concernés.
+ */
+const canContactRecipient = async (senderUser, recipientId) => {
+  const role = senderUser.role === 'developer' ? 'admin' : senderUser.role;
+  if (role !== 'staff') return true;
+
+  const recipientResult = await db.query('SELECT role FROM users WHERE id = $1', [recipientId]);
+  const recipientRole = recipientResult.rows[0]?.role;
+
+  if (recipientRole !== 'parent') return true;
+
+  const userId = senderUser.id || senderUser.userId;
+  return permissionsService.userHasPermission(userId, 'messages.parents');
+};
 
 /**
  * POST /api/staff-messages - Envoyer un message
  */
 router.post('/', auth.authenticateToken, auth.requireRole('staff', 'admin', 'parent'), async (req, res) => {
   try {
+    const allowed = await canContactRecipient(req.user, req.body.recipient_id);
+    if (!allowed) {
+      return res.status(403).json({
+        success: false,
+        error: 'Vous n\'avez pas l\'autorisation de contacter les parents',
+        code: 'PERMISSION_DENIED'
+      });
+    }
+
     const result = await staffMessageService.sendMessage(req.body, req.user.userId);
 
     if (result.success) {
