@@ -68,7 +68,6 @@ const GeneralStatsPage = lazy(() => import('../pages/dashboard/GeneralStatsPage'
 const AttendanceReportPage = lazy(() => import('../pages/dashboard/AttendanceReportPage'))
 const DashboardSettingsPage = lazy(() => import('../pages/dashboard/DashboardSettingsPage'))
 const StaffSettingsPage = lazy(() => import('../pages/dashboard/StaffSettingsPage'))
-const StaffAccessQuestionnairePage = lazy(() => import('../pages/dashboard/StaffAccessQuestionnairePage'))
 const WeeklyPlanningPage = lazy(() => import('../pages/dashboard/WeeklyPlanningPage'))
 
 // Page Activités
@@ -309,14 +308,6 @@ const AppRoutes = () => {
                                 <StaffSettingsPage />
                             </ErrorBoundary>
                         } />
-                        <Route path="staff-access-questionnaire" element={
-                            <ProtectedRoute roles={['admin', 'developer']}>
-                                <ErrorBoundary>
-                                    <StaffAccessQuestionnairePage />
-                                </ErrorBoundary>
-                            </ProtectedRoute>
-                        } />
-
                         <Route path="activity-logs" element={
                             <ProtectedRoute roles={['developer']}>
                                 <ActivityLogPage />
