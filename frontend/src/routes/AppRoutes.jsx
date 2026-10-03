@@ -13,7 +13,6 @@ import LoadingSpinner from '../components/ui/LoadingSpinner'
 
 // Pages publiques
 const HomePage = lazy(() => import('../pages/public/HomePage'))
-const HomePageV2 = lazy(() => import('../pages/public/HomePageV2'))
 const EnrollmentPage = lazy(() => import('../pages/public/EnrollmentPage'))
 const ContactPageDynamic = lazy(() => import('../pages/public/ContactPageDynamic'))
 const VirtualTourPage = lazy(() => import('../pages/public/VirtualTourPage'))
@@ -107,9 +106,6 @@ const AppRoutes = () => {
                 <Routes>
                     {/* Route de récupération d'urgence (sans authentification) */}
                     <Route path="/recovery" element={<RecoveryPage />} />
-
-                    {/* Aperçu de la refonte premium de la homepage (comparaison, ne remplace pas "/") */}
-                    <Route path="/accueil-premium" element={<HomePageV2 />} />
 
                     {/* Routes d'authentification */}
                     <Route path="/register" element={<RegisterPage />} />
