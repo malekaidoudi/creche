@@ -18,7 +18,8 @@ import {
   Users,
   ChevronDown,
   BarChart3,
-  UserX
+  UserX,
+  ShieldCheck
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useAuth } from '../../hooks/useAuth';
@@ -32,6 +33,7 @@ import { TableToListAdapter } from '../../components/mobile/adapters';
 import MobileNavigation from '../../components/mobile/MobileNavigation';
 import MobileHeader from '../../components/mobile/MobileHeader';
 import EditStaffModal from '../../components/modals/EditStaffModal';
+import StaffPermissionsModal from '../../components/modals/StaffPermissionsModal';
 
 const StaffPage = () => {
   const { isRTL } = useLanguage();
@@ -48,6 +50,8 @@ const StaffPage = () => {
   const [statsExpanded, setStatsExpanded] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [staffToEdit, setStaffToEdit] = useState(null);
+  const [showPermissionsModal, setShowPermissionsModal] = useState(false);
+  const [staffForPermissions, setStaffForPermissions] = useState(null);
 
   // Charger le personnel depuis l'API
   useEffect(() => {
@@ -117,6 +121,19 @@ const StaffPage = () => {
     setStaffToEdit(member);
     setShowEditModal(true);
     console.log('🔧 showEditModal devrait être true maintenant');
+  };
+
+  const handleManagePermissions = (member) => {
+    setStaffForPermissions(member);
+    setShowPermissionsModal(true);
+  };
+
+  const handlePermissionsModalClose = (saved) => {
+    setShowPermissionsModal(false);
+    if (saved) {
+      dialog.success(isRTL ? 'تم تحديث الصلاحيات بنجاح' : 'Accès mis à jour avec succès');
+    }
+    setStaffForPermissions(null);
   };
 
   const handleEditSuccess = (updatedStaff) => {
@@ -601,6 +618,19 @@ const StaffPage = () => {
                               <Edit className="w-4 h-4" />
                             </Button>
                           )}
+                          {isAdmin() && member.role === 'staff' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              title={isRTL ? 'إدارة الصلاحيات' : 'Gérer les accès'}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleManagePermissions(member);
+                              }}
+                            >
+                              <ShieldCheck className="w-4 h-4" />
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -710,6 +740,20 @@ const StaffPage = () => {
                           }}
                         >
                           <Edit className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
+                      {isAdmin() && member.role === 'staff' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 px-2"
+                          title={isRTL ? 'إدارة الصلاحيات' : 'Gérer les accès'}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleManagePermissions(member);
+                          }}
+                        >
+                          <ShieldCheck className="w-3.5 h-3.5" />
                         </Button>
                       )}
                     </div>
@@ -846,6 +890,14 @@ const StaffPage = () => {
         }}
         staff={staffToEdit}
         onSuccess={handleEditSuccess}
+        isRTL={isRTL}
+      />
+
+      {/* Modal de gestion des accès (permissions) */}
+      <StaffPermissionsModal
+        isOpen={showPermissionsModal}
+        onClose={handlePermissionsModalClose}
+        staff={staffForPermissions}
         isRTL={isRTL}
       />
     </div>

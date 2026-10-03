@@ -8,6 +8,32 @@ const apiResponse = require('../utils/apiResponse');
 const upload = require('../middleware/upload');
 const path = require('path');
 const cloudinaryService = require('../services/cloudinaryService');
+const permissionsService = require('../services/permissionsService');
+
+/**
+ * Retire les coordonnées des parents (téléphone/email) des lignes enfant
+ * si l'utilisateur courant (staff) n'a pas la permission correspondante.
+ * Admin/developer/parent voient toujours ces informations.
+ */
+const filterParentContacts = async (rows, user) => {
+  const role = user?.role === 'developer' ? 'admin' : user?.role;
+  if (role !== 'staff') return rows;
+
+  const userId = user.id || user.userId;
+  const [canViewPhone, canViewEmail] = await Promise.all([
+    permissionsService.userHasPermission(userId, 'parents.phone.view'),
+    permissionsService.userHasPermission(userId, 'parents.email.view')
+  ]);
+
+  if (canViewPhone && canViewEmail) return rows;
+
+  return rows.map((row) => {
+    const filtered = { ...row };
+    if (!canViewPhone && 'parent_phone' in filtered) filtered.parent_phone = null;
+    if (!canViewEmail && 'parent_email' in filtered) filtered.parent_email = null;
+    return filtered;
+  });
+};
 
 // GET /api/children/simple - Liste simple des enfants avec parent_id (pour messages)
 router.get('/simple', auth.authenticateToken, async (req, res) => {
@@ -611,10 +637,12 @@ router.get('/', auth.authenticateToken, async (req, res) => {
 
     const countResult = await pool.query(countSql, countParams);
 
+    const children = await filterParentContacts(result.rows, req.user);
+
     res.json({
       success: true,
       data: {
-        children: result.rows,
+        children,
         pagination: {
           page: parseInt(page),
           limit: parseInt(limit),

@@ -5,6 +5,7 @@ const router = express.Router();
 const db = require('../config/db_postgres');
 const auth = require('../middleware/auth');
 const logger = require('../utils/logger');
+const permissionsService = require('../services/permissionsService');
 
 // GET /api/user/children-summary - Résumé des enfants de l'utilisateur connecté
 router.get('/children-summary', auth.authenticateToken, async (req, res) => {
@@ -337,6 +338,13 @@ router.post('/', [
        RETURNING id, email, first_name, last_name, phone, role, profile_image, is_active, created_at`,
       [email, hashedPassword, first_name, last_name, phone, role, profile_image, true]
     );
+
+    // Accorder automatiquement les permissions "communes" aux nouveaux membres du staff
+    if (role === 'staff') {
+      permissionsService.grantCommonPermissionsToUser(result.rows[0].id).catch((err) => {
+        logger.error('❌ Erreur attribution permissions communes:', err.message);
+      });
+    }
 
     res.status(201).json({
       success: true,
