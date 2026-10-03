@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Maintenance en cours - Crèche Mima El Ghalia</title>
+  <link rel="icon" type="image/png" href="/logo.png">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .container {
+      background: white;
+      border-radius: 24px;
+      padding: 60px 40px;
+      max-width: 500px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      animation: fadeIn 0.6s ease-out;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .icon {
+      width: 120px;
+      height: 120px;
+      background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 30px;
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    
+    .icon svg {
+      width: 60px;
+      height: 60px;
+      color: #e67e22;
+    }
+    
+    h1 {
+      color: #1a1a2e;
+      font-size: 28px;
+      margin-bottom: 15px;
+      font-weight: 700;
+    }
+    
+    .subtitle {
+      color: #666;
+      font-size: 18px;
+      margin-bottom: 30px;
+      line-height: 1.6;
+    }
+    
+    .status-box {
+      background: #f8f9fa;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 30px;
+    }
+    
+    .status-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .status-item:last-child {
+      border-bottom: none;
+    }
+    
+    .status-label {
+      color: #333;
+      font-weight: 500;
+    }
+    
+    .status-value {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    
+    .status-dot.working {
+      background: #27ae60;
+      animation: blink 1s infinite;
+    }
+    
+    .status-dot.maintenance {
+      background: #f39c12;
+      animation: blink 1s infinite;
+    }
+    
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    .contact-info {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 25px;
+    }
+    
+    .contact-info h3 {
+      font-size: 16px;
+      margin-bottom: 10px;
+      opacity: 0.9;
+    }
+    
+    .contact-info a {
+      color: white;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 18px;
+    }
+    
+    .contact-info a:hover {
+      text-decoration: underline;
+    }
+    
+    .retry-btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 15px 40px;
+      border-radius: 50px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .retry-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    .footer {
+      margin-top: 30px;
+      color: #999;
+      font-size: 14px;
+    }
+    
+    .logo {
+      width: 80px;
+      height: 80px;
+      object-fit: contain;
+    }
+
+    /* Version arabe */
+    .ar {
+      direction: rtl;
+      font-family: 'Noto Sans Arabic', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    
+    .lang-switch {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    
+    .lang-switch:hover {
+      background: rgba(255,255,255,0.3);
+    }
+  </style>
+</head>
+<body>
+  <button class="lang-switch" onclick="toggleLang()">العربية</button>
+  
+  <div class="container" id="content-fr">
+    <div class="icon">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+    </div>
+    
+    <h1>🔧 Maintenance en cours</h1>
+    <p class="subtitle">
+      Notre site est temporairement indisponible pour amélioration.<br>
+      Nous serons de retour très bientôt !
+    </p>
+    
+    <div class="status-box">
+      <div class="status-item">
+        <span class="status-label">Site web</span>
+        <span class="status-value">
+          <span class="status-dot maintenance"></span>
+          Maintenance
+        </span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">Base de données</span>
+        <span class="status-value">
+          <span class="status-dot working"></span>
+          Opérationnel
+        </span>
+      </div>
+    </div>
+    
+    <div class="contact-info">
+      <h3>Besoin d'aide urgente ?</h3>
+      <a href="tel:+21620000000">📞 +216 XX XXX XXX</a><br>
+      <a href="mailto:contact@mima-elghalia.com">✉️ contact@mima-elghalia.com</a>
+    </div>
+    
+    <button class="retry-btn" onclick="location.reload()">
+      🔄 Réessayer
+    </button>
+    
+    <p class="footer">
+      © 2025 Crèche Mima El Ghalia - Tous droits réservés
+    </p>
+  </div>
+
+  <div class="container ar" id="content-ar" style="display: none;">
+    <div class="icon">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+    </div>
+    
+    <h1>🔧 صيانة جارية</h1>
+    <p class="subtitle">
+      موقعنا غير متاح مؤقتًا للتحسين.<br>
+      سنعود قريبًا جدًا!
+    </p>
+    
+    <div class="status-box">
+      <div class="status-item">
+        <span class="status-label">الموقع</span>
+        <span class="status-value">
+          <span class="status-dot maintenance"></span>
+          صيانة
+        </span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">قاعدة البيانات</span>
+        <span class="status-value">
+          <span class="status-dot working"></span>
+          يعمل
+        </span>
+      </div>
+    </div>
+    
+    <div class="contact-info">
+      <h3>تحتاج مساعدة عاجلة؟</h3>
+      <a href="tel:+21620000000">📞 +216 XX XXX XXX</a><br>
+      <a href="mailto:contact@mima-elghalia.com">✉️ contact@mima-elghalia.com</a>
+    </div>
+    
+    <button class="retry-btn" onclick="location.reload()">
+      🔄 إعادة المحاولة
+    </button>
+    
+    <p class="footer">
+      © 2025 حضانة ميما الغالية - جميع الحقوق محفوظة
+    </p>
+  </div>
+
+  <script>
+    let isArabic = false;
+    
+    function toggleLang() {
+      isArabic = !isArabic;
+      document.getElementById('content-fr').style.display = isArabic ? 'none' : 'block';
+      document.getElementById('content-ar').style.display = isArabic ? 'block' : 'none';
+      document.querySelector('.lang-switch').textContent = isArabic ? 'Français' : 'العربية';
+    }
+    
+    // Auto-refresh toutes les 30 secondes
+    setTimeout(() => {
+      fetch('/api/health')
+        .then(res => {
+          if (res.ok) location.href = '/';
+        })
+        .catch(() => {});
+    }, 30000);
+  </script>
+</body>
+</html>
