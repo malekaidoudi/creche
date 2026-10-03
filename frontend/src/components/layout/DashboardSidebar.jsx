@@ -258,14 +258,6 @@ const DashboardSidebar = ({ isOpen, onClose, onCollapsedChange }) => {
       path: '/dashboard/settings',
       roles: ['admin', 'developer']
     },
-    // Questionnaire accès éducatrices - Pour admin et développeur uniquement
-    {
-      key: 'staff-access-questionnaire',
-      title: isRTL ? 'استبيان صلاحيات المربيات' : 'Questionnaire accès éducatrices',
-      icon: ClipboardList,
-      path: '/dashboard/staff-access-questionnaire',
-      roles: ['admin', 'developer']
-    },
     // Fil d'activité simplifié - Pour directeur uniquement
     {
       key: 'activity-feed',
