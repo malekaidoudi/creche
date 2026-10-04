@@ -45,6 +45,8 @@ const activityService = {
           u.last_name as author_last_name,
           u.role as author_role,
           u.profile_image as author_profile_image,
+          u.gender as author_gender,
+          u.staff_position as author_position,
           (SELECT COUNT(*) FROM activity_comments WHERE activity_id = a.id AND is_visible = true) as comments_count,
           (SELECT COUNT(*) FROM activity_reactions WHERE activity_id = a.id) as reactions_total
         FROM activities a
@@ -112,7 +114,8 @@ const activityService = {
     try {
       const result = await db.query(
         `SELECT a.*, u.first_name as author_first_name, u.last_name as author_last_name,
-                u.role as author_role, u.profile_image as author_profile_image
+                u.role as author_role, u.profile_image as author_profile_image,
+                u.gender as author_gender, u.staff_position as author_position
          FROM activities a
          JOIN users u ON a.author_id = u.id
          WHERE a.id = $1`,
@@ -174,7 +177,9 @@ const activityService = {
         firstName: a.author_first_name,
         lastName: a.author_last_name,
         role: a.author_role,
-        profileImage: a.author_profile_image
+        profileImage: a.author_profile_image,
+        gender: a.author_gender,
+        staffPosition: a.author_position
       },
       title: a.title,
       description: a.description,

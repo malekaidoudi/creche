@@ -11,6 +11,7 @@ import CommentSection from './CommentSection';
 import activityService from '../../services/activityService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDialogContext } from '../../contexts/DialogContext';
+import { getStaffPositionLabel } from '../../utils/staffPosition';
 
 const FullscreenFeed = ({
     activities,
@@ -137,13 +138,17 @@ const FullscreenFeed = ({
     };
 
     // Badge de rôle
-    const getRoleBadge = (role) => {
+    const getRoleBadge = (author) => {
         const badges = {
             admin: { label: isRTL ? 'المدير' : 'Directeur', color: 'bg-red-100 text-red-700' },
             staff: { label: isRTL ? 'موظف' : 'Personnel', color: 'bg-blue-100 text-blue-700' },
             parent: { label: isRTL ? 'ولي' : 'Parent', color: 'bg-green-100 text-green-700' }
         };
-        return badges[role] || badges.parent;
+        const defaultBadge = badges[author?.role] || badges.parent;
+
+        // Si un poste précis (genré) est défini pour le personnel, on l'utilise à la place du libellé générique
+        const positionLabel = getStaffPositionLabel(author?.staffPosition, author?.gender, isRTL);
+        return positionLabel ? { ...defaultBadge, label: positionLabel } : defaultBadge;
     };
 
     // Emoji de réaction
@@ -373,8 +378,8 @@ const FullscreenFeed = ({
                                     <span className="font-bold text-white text-sm drop-shadow-lg truncate">
                                         {currentActivity.author?.firstName} {currentActivity.author?.lastName}
                                     </span>
-                                    <span className={`text-[9px] px-1 py-0.5 rounded-full flex-shrink-0 ${getRoleBadge(currentActivity.author?.role).color}`}>
-                                        {getRoleBadge(currentActivity.author?.role).label}
+                                    <span className={`text-[9px] px-1 py-0.5 rounded-full flex-shrink-0 ${getRoleBadge(currentActivity.author).color}`}>
+                                        {getRoleBadge(currentActivity.author).label}
                                     </span>
                                 </div>
                                 <h3 className="font-semibold text-white text-sm drop-shadow-lg truncate">{currentActivity.title}</h3>

@@ -12,6 +12,7 @@ import ReactorsModal from './ReactorsModal';
 import CommentSection from './CommentSection';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDialogContext } from '../../contexts/DialogContext';
+import { getStaffPositionLabel } from '../../utils/staffPosition';
 
 const ActivityCard = ({ activity, onReact, onDelete, onEdit, isRTL = false, onOpenFullscreen }) => {
   const { user } = useAuth();
@@ -54,16 +55,20 @@ const ActivityCard = ({ activity, onReact, onDelete, onEdit, isRTL = false, onOp
     return d.toLocaleDateString(isRTL ? 'ar-TN' : 'fr-FR', { day: 'numeric', month: 'short' });
   };
 
-  const getRoleBadge = (role) => {
+  const getRoleBadge = (author) => {
     const badges = {
       admin: { label: isRTL ? 'المدير' : 'Directeur', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
       staff: { label: isRTL ? 'موظف' : 'Personnel', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
       parent: { label: isRTL ? 'ولي' : 'Parent', color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' }
     };
-    return badges[role] || badges.parent;
+    const defaultBadge = badges[author?.role] || badges.parent;
+
+    // Si un poste précis (genré) est défini pour le personnel, on l'utilise à la place du libellé générique
+    const positionLabel = getStaffPositionLabel(author?.staffPosition, author?.gender, isRTL);
+    return positionLabel ? { ...defaultBadge, label: positionLabel } : defaultBadge;
   };
 
-  const badge = getRoleBadge(activity.author?.role);
+  const badge = getRoleBadge(activity.author);
 
   // Fonctions de partage sur les réseaux sociaux
   const shareOnFacebook = () => {
