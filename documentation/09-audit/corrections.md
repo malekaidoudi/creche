@@ -374,3 +374,26 @@
   3. **Résolution du Manifest Web** :
      - Remplacement du chemin relatif `./site.webmanifest` par le chemin absolu `/site.webmanifest` dans `index.html`.
 - **Résultat** : Recherche fluide et sans crash, visibilité et contrôle complet sur les membres du personnel désactivés en 1 clic, et suppression de l'erreur console de syntaxe manifest.
+
+---
+
+### Correction n°26 : Suppression du bruit et sécurisation des logs JWT décodés (Flag `DEBUG_AUTH`)
+- **Fichiers modifiés** :
+  - [`backend/middleware/auth.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/middleware/auth.js)
+  - [`backend/utils/logger.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/utils/logger.js)
+  - [`backend/tests/utils/logger.test.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/tests/utils/logger.test.js)
+  - [`backend/tests/middleware/auth.test.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/tests/middleware/auth.test.js)
+  - [`backend/.env.example`](file:///Volumes/Data/Works/Windsurf/creche/backend/.env.example)
+- **Problème identifié** :
+  - À chaque requête HTTP authentifiée (incluant le polling régulier des notifications toutes les 30s et les navigations du tableau de bord), le middleware d'authentification exécutait `logger.sensitive('🔐 Token décodé - user:', { id: user.id, userId: user.userId, role: user.role })`.
+  - Ce comportement polluait massivement les logs du terminal et de la console serveur (`[SENSITIVE] 🔐 Token décodé...`) et constituait un risque potentiel de divulgation d'informations d'identité en clair si les logs étaient capturés, archivés ou exposés par mégarde.
+- **Actions appliquées** :
+  1. **Isolation derrière le flag `DEBUG_AUTH`** :
+     - Dans [`backend/middleware/auth.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/middleware/auth.js), le log du payload JWT décodé est désormais conditionné par `process.env.DEBUG_AUTH === 'true'`. En conditions normales de développement et en production, ce log est totalement supprimé.
+  2. **Renforcement de la méthode `logger.sensitive`** :
+     - Dans [`backend/utils/logger.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/utils/logger.js), `sensitive(...)` requiert désormais explicitement un opt-in via `DEBUG_AUTH=true` ou `DEBUG_SENSITIVE=true` en environnement hors production, empêchant toute émission accidentelle même si le niveau de log est fixé à `debug`.
+  3. **Documentation et couverture de tests** :
+     - Ajout de la documentation du flag dans [`backend/.env.example`](file:///Volumes/Data/Works/Windsurf/creche/backend/.env.example).
+     - Ajout de tests unitaires dédiés dans [`backend/tests/middleware/auth.test.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/tests/middleware/auth.test.js) (validation de l'absence de log par défaut et de son activation conditionnelle) et mise à jour de [`backend/tests/utils/logger.test.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/tests/utils/logger.test.js).
+- **Résultat** : Élimination du bruit répétitif dans la console serveur, logs propres et conformes aux meilleures pratiques de sécurité, avec possibilité de réactiver le débogage fin de l'authentification à la demande via `DEBUG_AUTH=true`.
+

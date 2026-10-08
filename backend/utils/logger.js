@@ -85,10 +85,11 @@ const logger = {
   },
 
   /**
-   * Log sensible (désactivé en production, actif uniquement si LOG_LEVEL=debug en dev)
+   * Log sensible (désactivé en production, actif uniquement si DEBUG_AUTH=true ou DEBUG_SENSITIVE=true en dev)
    */
   sensitive: (...args) => {
-    if (!isProduction && currentLevel >= LOG_LEVELS.debug) {
+    const isSensitiveAllowed = !isProduction && (process.env.DEBUG_AUTH === 'true' || process.env.DEBUG_SENSITIVE === 'true');
+    if (isSensitiveAllowed && currentLevel >= LOG_LEVELS.debug) {
       console.log('[SENSITIVE]', ...args);
     }
   },

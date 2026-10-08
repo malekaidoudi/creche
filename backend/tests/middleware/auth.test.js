@@ -92,6 +92,34 @@ describe('Auth Middleware', () => {
       
       expect(mockReq.user.id).toBe(5);
     });
+
+    test('ne devrait PAS logger le payload du token par défaut (sans DEBUG_AUTH)', () => {
+      delete process.env.DEBUG_AUTH;
+      const token = jwt.sign({ id: 1, email: 'test@test.com', role: 'admin' }, process.env.JWT_SECRET);
+      mockReq.headers.authorization = `Bearer ${token}`;
+      const loggerMock = require('../../utils/logger');
+      loggerMock.sensitive.mockClear();
+
+      auth.authenticateToken(mockReq, mockRes, mockNext);
+
+      expect(loggerMock.sensitive).not.toHaveBeenCalled();
+    });
+
+    test('devrait logger le payload du token uniquement si DEBUG_AUTH=true', () => {
+      process.env.DEBUG_AUTH = 'true';
+      const token = jwt.sign({ id: 1, email: 'test@test.com', role: 'admin' }, process.env.JWT_SECRET);
+      mockReq.headers.authorization = `Bearer ${token}`;
+      const loggerMock = require('../../utils/logger');
+      loggerMock.sensitive.mockClear();
+
+      auth.authenticateToken(mockReq, mockRes, mockNext);
+
+      expect(loggerMock.sensitive).toHaveBeenCalledWith(
+        expect.stringContaining('Token décodé'),
+        expect.objectContaining({ id: 1, role: 'admin' })
+      );
+      delete process.env.DEBUG_AUTH;
+    });
   });
   
   describe('requireRole', () => {

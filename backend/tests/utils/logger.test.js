@@ -48,15 +48,32 @@ describe('Logger Module', () => {
       expect(consoleLogSpy).toHaveBeenCalledWith('[DEBUG]', 'Debug message');
     });
     
-    test('sensitive() devrait logger en dev', () => {
+    test('sensitive() ne devrait PAS logger en dev sans flag DEBUG_AUTH/DEBUG_SENSITIVE', () => {
+      delete process.env.DEBUG_AUTH;
+      delete process.env.DEBUG_SENSITIVE;
+      logger.sensitive('Sensitive data', { token: 'abc123' });
+      expect(consoleLogSpy).not.toHaveBeenCalledWith('[SENSITIVE]', expect.anything());
+    });
+
+    test('sensitive() devrait logger en dev si DEBUG_AUTH=true', () => {
+      process.env.DEBUG_AUTH = 'true';
       logger.sensitive('Sensitive data', { token: 'abc123' });
       expect(consoleLogSpy).toHaveBeenCalledWith('[SENSITIVE]', 'Sensitive data', { token: 'abc123' });
+      delete process.env.DEBUG_AUTH;
+    });
+
+    test('sensitive() devrait logger en dev si DEBUG_SENSITIVE=true', () => {
+      process.env.DEBUG_SENSITIVE = 'true';
+      logger.sensitive('Sensitive data', { token: 'abc123' });
+      expect(consoleLogSpy).toHaveBeenCalledWith('[SENSITIVE]', 'Sensitive data', { token: 'abc123' });
+      delete process.env.DEBUG_SENSITIVE;
     });
   });
   
   describe('En environnement de production', () => {
     beforeEach(() => {
       process.env.NODE_ENV = 'production';
+      process.env.DEBUG_AUTH = 'true'; // même si le flag est mis, la prod doit bloquer
       jest.resetModules();
       logger = require('../../utils/logger');
     });

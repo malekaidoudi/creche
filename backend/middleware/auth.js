@@ -99,8 +99,10 @@ const auth = {
         user.userId = user.id;
       }
 
-      // Log sensible uniquement en dev (après normalisation)
-      logger.sensitive('🔐 Token décodé - user:', { id: user.id, userId: user.userId, role: user.role });
+      // Log sensible du token décodé uniquement si le flag DEBUG_AUTH est activé (évite le bruit et les fuites en clair)
+      if (process.env.DEBUG_AUTH === 'true') {
+        logger.sensitive('🔐 [DEBUG_AUTH] Token décodé - user:', { id: user.id, userId: user.userId, role: user.role });
+      }
 
       req.user = user;
       next();
