@@ -45,7 +45,7 @@ const StaffPage = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('active');
   const [selectedStaff, setSelectedStaff] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
   const [statsExpanded, setStatsExpanded] = useState(false);
@@ -587,8 +587,8 @@ const StaffPage = () => {
                   onChange={(e) => setFilterStatus(e.target.value)}
                   className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
                 >
+                  <option value="active">{isRTL ? 'النشطون فقط' : 'Actifs uniquement'}</option>
                   <option value="all">{isRTL ? 'جميع الحالات' : 'Tous les statuts'}</option>
-                  <option value="active">{isRTL ? 'نشط فقط' : 'Actifs uniquement'}</option>
                   <option value="inactive">{isRTL ? 'غير نشط (معطل)' : 'Désactivés uniquement'}</option>
                 </select>
               </div>

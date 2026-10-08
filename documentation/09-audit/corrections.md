@@ -367,7 +367,7 @@
      - Sécurisation de la recherche avec `(val || '').toLowerCase()` pour prémunir contre tout crash sur valeur `null` ou `undefined`.
   2. **Gestion complète des comptes désactivés** :
      - Passage du paramètre `active: 'all'` dans les requêtes de chargement `/api/users` pour récupérer tous les membres (actifs et inactifs).
-     - Ajout de l'état `filterStatus` (`'all'`, `'active'`, `'inactive'`) et intégration d'un menu déroulant dédié aux statuts dans la barre de filtres.
+     - Ajout de l'état `filterStatus` (`'active'` par défaut, avec options `'all'` et `'inactive'`) et intégration d'un menu déroulant dédié aux statuts dans la barre de filtres.
      - Remplacement de la stat card factice "Expérience moyenne" par une stat card interactive **"Désactivés"** (icône `UserX`, couleur rouge). Toutes les cartes de statistiques (Total, Directeurs, Actifs, Désactivés) sont désormais cliquables pour filtrer instantanément la liste.
      - Ajout d'un bouton d'action rapide **Activer / Désactiver** (avec boîte de dialogue de confirmation) dans le tableau desktop, sur tablette et dans la modal de détails.
      - Correction de l'initialisation de `is_active` dans `EditStaffModal.jsx`.
