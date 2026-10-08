@@ -33,6 +33,9 @@
 | **21** | 08/10/2026 | `backend/utils/logger.js`, `backend/config/db_postgres.js` | Observabilité & Bruit des logs | Niveaux de log structurés (LOG_LEVEL, suppression du spam pool/query en dev, alertes slowQuery) | ✅ Validé & Appliqué |
 | **22** | 08/10/2026 | `backend/server.js` | Performance Réseau & CORS | Mise en cache du preflight CORS via `maxAge: 86400` (élimine 50% des requêtes HTTP OPTIONS) | ✅ Validé & Appliqué |
 | **23** | 08/10/2026 | `backend/routes_postgres/notifications.js` | Performance & Optimisation SQL | Window function `COUNT(*) OVER()` sur notifications (élimine la 2ème requête SQL `SELECT COUNT(*)`) | ✅ Validé & Appliqué |
+| **24** | 08/10/2026 | `backend/migrations/*`, `backend/server.js`, `package.json` | Performance Boot & Schéma DB | Système de migration versionné (`schema_migrations`) avec Baseline Pattern (0 DDL redondant) | ✅ Validé & Appliqué |
+| **25** | 08/10/2026 | `frontend/src/pages/dashboard/StaffPage.jsx`, `EditStaffModal.jsx`, `index.html` | Bug UX/UI & Robustesse | Fix crash recherche personnel (TDZ `ReferenceError`), filtre/gestion des comptes inactifs et fix manifest | ✅ Validé & Appliqué |
+| **26** | 08/10/2026 | `backend/middleware/auth.js`, `backend/utils/logger.js`, `backend/tests/*`, `.env.example` | Sécurité & Bruit Logs | Masquage et sécurisation du payload JWT décodé derrière le flag `DEBUG_AUTH` | ✅ Validé & Appliqué |
 
 ---
 
