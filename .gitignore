@@ -107,7 +107,6 @@ build/
 # Uploads
 uploads/
 backend/uploads/
-backend/migrations/
 
 # OS generated files
 .DS_Store

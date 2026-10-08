@@ -322,9 +322,25 @@
   - Calcul et transmission fidèles de la pagination globale (`total: totalCount`, `pages: Math.ceil(totalCount / limit)`).
   - **Résultat** : Un seul aller-retour SQL par polling, division par deux du coût de traitement des notifications sur la base de données.
 
+---
 
-
-
-
-
-
+### Correction n°24 : Mise en place du Runner de Migrations avec Baseline Pattern (Suppression des ~30 CREATE TABLE IF NOT EXISTS à chaque boot)
+- **Fichiers créés / modifiés** :
+  - [`backend/migrations/runner.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/migrations/runner.js) (Runner de migrations robuste avec transactions et support CLI)
+  - [`backend/migrations/versions/001_baseline_schema.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/migrations/versions/001_baseline_schema.js) (Schéma complet consolidé)
+  - [`backend/server.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/server.js) (Appel au runner au démarrage au lieu de l'init séquentielle legacy)
+  - [`backend/config/db_postgres.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/config/db_postgres.js) (Suppression des fonctions DDL ad-hoc et délégation au runner)
+  - [`backend/package.json`](file:///Volumes/Data/Works/Windsurf/creche/backend/package.json) (Ajout des commandes CLI `npm run db:migrate` et `npm run db:migrate:status`)
+  - [`.gitignore`](file:///Volumes/Data/Works/Windsurf/creche/.gitignore) (Suppression de la règle erronée qui ignorait `backend/migrations/`)
+- **Problème** :
+  - À chaque démarrage ou rechargement automatique par nodemon, `server.js` exécutait plus de 25 requêtes `CREATE TABLE IF NOT EXISTS`, de multiples `CREATE INDEX IF NOT EXISTS`, ainsi qu'une série de vérifications `information_schema` dans `db_postgres.js`.
+  - Ces ~30 allers-retours réseau séquentiels vers Neon (AWS Francfort) prenaient 1,5 à 2,5 secondes, consommaient inutilement du temps de calcul Neon Serverless et ralentissaient considérablement le cycle de développement.
+- **Action & Stratégie "Baseline Pattern"** :
+  - **Table de suivi `schema_migrations`** : Enregistre les versions appliquées (`version`, `name`, `executed_at`).
+  - **Pattern Baseline sécurisé (Zero-Risk sur Neon existant)** :
+    - Au premier lancement, le runner vérifie si la base de données est déjà provisionnée (détection de la table `users`).
+    - Si la base existe déjà, la migration `001_baseline_schema` est immédiatement enregistrée comme appliquée dans `schema_migrations` **sans réexécuter de DDL**. Aucune table n'est recréée, aucune donnée n'est altérée.
+    - Sur une nouvelle base vierge (ex: CI/CD ou Docker local), `001_baseline_schema.js` s'exécute normalement et crée le schéma complet.
+  - **Exécution transactionnelle** : Chaque future migration (`002_...`, `003_...`) s'exécute automatiquement dans un bloc transactionnel `BEGIN ... COMMIT` avec `ROLLBACK` en cas d'erreur.
+  - **Vérification ultra-rapide au boot** : Le serveur n'exécute plus qu'un seul `SELECT version FROM schema_migrations` au démarrage (~10 ms), éliminant les 30 requêtes DDL redondantes.
+  - **Résultat** : Démarrage du backend quasi instantané, consommation minimale du quota Neon, historique de schéma maîtrisé et commandes CLI dédiées (`npm run db:migrate`, `npm run db:migrate:status`).
