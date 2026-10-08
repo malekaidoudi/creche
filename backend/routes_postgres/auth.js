@@ -6,6 +6,7 @@ const { body, validationResult } = require('express-validator');
 const db = require('../config/db_postgres');
 const { logLoginSuccess, logLoginFailed } = require('../middleware/activityLogger');
 const emailService = require('../emails/emailService');
+const tokenBlacklistService = require('../services/tokenBlacklistService');
 
 const router = express.Router();
 
@@ -99,7 +100,9 @@ router.post('/register', [
       });
     }
 
-    const { email, password, first_name, last_name, phone, role = 'parent' } = req.body;
+    const { email, password, first_name, last_name, phone } = req.body;
+    // Sécurité SEC-03 : Forcer strictement le rôle 'parent' pour toute inscription publique
+    const role = 'parent';
 
     // Vérifier si l'email existe déjà
     const existingUser = await db.query('SELECT id FROM users WHERE email = $1', [email]);
@@ -176,9 +179,21 @@ router.get('/me', async (req, res) => {
   }
 });
 
-// POST /api/auth/logout - Déconnexion (côté client principalement)
-router.post('/logout', (req, res) => {
-  res.json({ message: 'Déconnexion réussie' });
+// POST /api/auth/logout - Déconnexion sécurisée côté serveur (Révocation du jeton)
+router.post('/logout', async (req, res) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = (authHeader && authHeader.split(' ')[1]) || req.body?.token;
+
+    if (token) {
+      await tokenBlacklistService.revokeToken(token);
+    }
+
+    res.json({ success: true, message: 'Déconnexion réussie' });
+  } catch (error) {
+    console.error('❌ Erreur lors de la déconnexion:', error);
+    res.json({ success: true, message: 'Déconnexion réussie' });
+  }
 });
 
 // POST /api/auth/create-password - Création mot de passe après approbation

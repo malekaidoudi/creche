@@ -19,7 +19,8 @@ import {
     Edit,
     Save,
     X,
-    Loader2
+    Loader2,
+    Trash2
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useTheme } from '../../hooks/useTheme';
@@ -52,6 +53,7 @@ const ChildDetailsPage = () => {
     const [editing, setEditing] = useState(false);
     const [saving, setSaving] = useState(false);
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
+    const [deletingPhoto, setDeletingPhoto] = useState(false);
     const [photoShared, setPhotoShared] = useState(false);
 
     const [medicalForm, setMedicalForm] = useState({
@@ -167,6 +169,24 @@ const ChildDetailsPage = () => {
             toast.error(isRTL ? 'خطأ في تحميل الصورة' : 'Erreur lors du téléchargement');
         } finally {
             setUploadingPhoto(false);
+        }
+    };
+
+    const handleDeletePhoto = async () => {
+        if (!window.confirm(isRTL ? 'هل تريد حذف صورة الطفل؟' : 'Voulez-vous supprimer la photo de l\'enfant ?')) {
+            return;
+        }
+
+        setDeletingPhoto(true);
+        try {
+            await api.delete(`/api/children/${id}/photo`);
+            setChild({ ...child, photo_url: null });
+            toast.success(isRTL ? 'تم حذف الصورة' : 'Photo supprimée');
+        } catch (err) {
+            console.error('Erreur suppression photo:', err);
+            toast.error(isRTL ? 'خطأ في حذف الصورة' : 'Erreur lors de la suppression');
+        } finally {
+            setDeletingPhoto(false);
         }
     };
 
@@ -290,6 +310,20 @@ const ChildDetailsPage = () => {
                                 )}
                             </div>
                         </button>
+                        {photoUrl && (
+                            <button
+                                onClick={handleDeletePhoto}
+                                disabled={deletingPhoto}
+                                title={isRTL ? 'حذف الصورة' : 'Supprimer la photo'}
+                                className="absolute bottom-0 left-0 w-8 h-8 bg-red-600 hover:bg-red-700 rounded-full flex items-center justify-center border-2 border-gray-800 transition-colors"
+                            >
+                                {deletingPhoto ? (
+                                    <Loader2 className="w-4 h-4 text-white animate-spin" />
+                                ) : (
+                                    <Trash2 className="w-4 h-4 text-white" />
+                                )}
+                            </button>
+                        )}
                     </div>
 
                     <p className="text-gray-400 text-sm mb-3">

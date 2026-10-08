@@ -15,7 +15,8 @@ router.get('/', auth.authenticateToken, async (req, res) => {
       SELECT n.id, n.user_id, n.title, n.message, n.type, n.is_read, n.created_at,
              n.related_id,
              u.first_name as user_first_name, u.last_name as user_last_name, 
-             u.email as user_email, u.role as user_role
+             u.email as user_email, u.role as user_role,
+             COUNT(*) OVER() AS total_count
       FROM notifications n
       JOIN users u ON n.user_id = u.id
       WHERE 1=1
@@ -61,9 +62,13 @@ router.get('/', auth.authenticateToken, async (req, res) => {
     params.push(offset);
 
     const result = await db.query(sql, params);
+    const totalCount = result.rows.length > 0 ? parseInt(result.rows[0].total_count, 10) : 0;
 
     // Filtrer les notifications d'absence validées
-    let filteredNotifications = result.rows;
+    let filteredNotifications = result.rows.map(row => {
+      const { total_count, ...notif } = row;
+      return notif;
+    });
 
     // Pour chaque notification d'absence, vérifier le statut
     if (filteredNotifications.some(n => n.type === 'absence_request')) {
@@ -94,44 +99,17 @@ router.get('/', auth.authenticateToken, async (req, res) => {
       }
     }
 
-    // Compter le total
-    let countSql = `
-      SELECT COUNT(*) as total 
-      FROM notifications n
-      JOIN users u ON n.user_id = u.id
-      WHERE 1=1
-    `;
-    const countParams = [];
-    let countParamCount = 0;
-
-    if (user_id) {
-      countParamCount++;
-      countSql += ` AND n.user_id = $${countParamCount}`;
-      countParams.push(user_id);
-    }
-
-    if (type) {
-      countParamCount++;
-      countSql += ` AND n.type = $${countParamCount}`;
-      countParams.push(type);
-    }
-
-    if (is_read !== undefined) {
-      countParamCount++;
-      countSql += ` AND n.is_read = $${countParamCount}`;
-      countParams.push(is_read === 'true');
-    }
-
-    const countResult = await db.query(countSql, countParams);
+    const parsedLimit = parseInt(limit, 10) || 50;
+    const parsedPage = parseInt(page, 10) || 1;
 
     res.json({
       success: true,
       notifications: filteredNotifications,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total: filteredNotifications.length,
-        pages: Math.ceil(filteredNotifications.length / limit)
+        page: parsedPage,
+        limit: parsedLimit,
+        total: totalCount,
+        pages: Math.ceil(totalCount / parsedLimit) || 1
       }
     });
 

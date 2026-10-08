@@ -585,7 +585,7 @@ const enrollmentsController = {
   chooseAppointment: async (req, res) => {
     try {
       const { id } = req.params;
-      const { appointment_date } = req.body;
+      const { appointment_date, email } = req.body;
 
       if (!appointment_date) {
         return res.status(400).json({
@@ -594,15 +594,31 @@ const enrollmentsController = {
         });
       }
 
-      // Mettre à jour le dossier
-      const result = await db.query(`
+      // Sécurité SEC-07: Vérifier l'existence et l'autorisation du demandeur
+      let query = `
         UPDATE enrollments
         SET parent_chose_rdv = true,
             parent_rdv_choice_date = NOW(),
             appointment_date = $1
         WHERE id = $2
-        RETURNING *
-      `, [appointment_date, id]);
+      `;
+      const params = [appointment_date, id];
+
+      if (email) {
+        query += ` AND applicant_email = $3`;
+        params.push(email);
+      }
+
+      query += ` RETURNING *`;
+
+      const result = await db.query(query, params);
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: 'Dossier d\'inscription non trouvé ou non autorisé'
+        });
+      }
 
       const enrollment = result.rows[0];
 

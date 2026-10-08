@@ -1,57 +1,94 @@
 /**
- * Logger utilitaire avec gestion des environnements
+ * Logger utilitaire avec gestion des environnements et niveaux de log
  * 
- * En production, les logs sensibles sont désactivés
- * En développement, tous les logs sont affichés
+ * Niveaux supportés : error (0), warn (1), info (2), debug (3)
+ * Configurable via la variable d'environnement LOG_LEVEL (défaut : 'info' en dev et prod)
+ * Pour activer le debug détaillé de la base de données : DEBUG_DB=true ou LOG_LEVEL=debug
  */
 
 const isProduction = process.env.NODE_ENV === 'production';
 
+const LOG_LEVELS = {
+  error: 0,
+  warn: 1,
+  info: 2,
+  debug: 3
+};
+
+// Niveau courant (défaut: 'info' pour éviter le spam, activable en 'debug' via env)
+const configuredLevel = (process.env.LOG_LEVEL || 'info').toLowerCase();
+const currentLevel = LOG_LEVELS[configuredLevel] !== undefined ? LOG_LEVELS[configuredLevel] : LOG_LEVELS.info;
+
+const isDbDebug = process.env.DEBUG_DB === 'true' || currentLevel >= LOG_LEVELS.debug;
+
 const logger = {
-  /**
-   * Log d'information général (toujours affiché)
-   */
-  info: (...args) => {
-    console.log('[INFO]', ...args);
-  },
-
-  /**
-   * Log de succès (toujours affiché)
-   */
-  success: (...args) => {
-    console.log('[SUCCESS]', ...args);
-  },
-
   /**
    * Log d'erreur (toujours affiché)
    */
   error: (...args) => {
-    console.error('[ERROR]', ...args);
+    if (currentLevel >= LOG_LEVELS.error) {
+      console.error('[ERROR]', ...args);
+    }
   },
 
   /**
-   * Log d'avertissement (toujours affiché)
+   * Log d'avertissement
    */
   warn: (...args) => {
-    console.warn('[WARN]', ...args);
+    if (currentLevel >= LOG_LEVELS.warn) {
+      console.warn('[WARN]', ...args);
+    }
   },
 
   /**
-   * Log de debug (désactivé en production)
-   * Utilisé pour les logs de développement/débogage
+   * Log d'information général
+   */
+  info: (...args) => {
+    if (currentLevel >= LOG_LEVELS.info) {
+      console.log('[INFO]', ...args);
+    }
+  },
+
+  /**
+   * Log de succès
+   */
+  success: (...args) => {
+    if (currentLevel >= LOG_LEVELS.info) {
+      console.log('[SUCCESS]', ...args);
+    }
+  },
+
+  /**
+   * Log de debug (actif uniquement si LOG_LEVEL=debug)
    */
   debug: (...args) => {
-    if (!isProduction) {
+    if (!isProduction && currentLevel >= LOG_LEVELS.debug) {
       console.log('[DEBUG]', ...args);
     }
   },
 
   /**
-   * Log sensible (désactivé en production)
-   * Utilisé pour les données sensibles comme tokens, passwords, req.body
+   * Log de debug de la base de données (actif si DEBUG_DB=true ou LOG_LEVEL=debug)
+   */
+  dbDebug: (...args) => {
+    if (!isProduction && isDbDebug) {
+      console.log('[DB-DEBUG]', ...args);
+    }
+  },
+
+  /**
+   * Log des requêtes anormalement lentes (> 500 ms)
+   */
+  slowQuery: (text, duration) => {
+    const cleanText = (text || '').substring(0, 120).replace(/\s+/g, ' ');
+    console.warn(`⚠️ [SLOW QUERY] (${duration}ms) : ${cleanText}...`);
+  },
+
+  /**
+   * Log sensible (désactivé en production, actif uniquement si LOG_LEVEL=debug en dev)
    */
   sensitive: (...args) => {
-    if (!isProduction) {
+    if (!isProduction && currentLevel >= LOG_LEVELS.debug) {
       console.log('[SENSITIVE]', ...args);
     }
   },
@@ -61,10 +98,8 @@ const logger = {
    */
   request: (req, message = '') => {
     if (isProduction) {
-      // En production: juste la méthode et le path
       console.log(`[REQUEST] ${req.method} ${req.path} ${message}`);
-    } else {
-      // En dev: plus de détails
+    } else if (currentLevel >= LOG_LEVELS.debug) {
       console.log(`[REQUEST] ${req.method} ${req.path} ${message}`, {
         query: req.query,
         params: req.params,
@@ -74,7 +109,7 @@ const logger = {
   },
 
   /**
-   * Log de sécurité (toujours affiché mais sans données sensibles)
+   * Log de sécurité (sans données sensibles)
    */
   security: (event, details = {}) => {
     const safeDetails = {
@@ -88,16 +123,15 @@ const logger = {
   },
 
   /**
-   * Log de base de données (version réduite en production)
+   * Log général de base de données
    */
   db: (operation, details = '') => {
     if (isProduction) {
       console.log(`[DB] ${operation}`);
-    } else {
+    } else if (isDbDebug) {
       console.log(`[DB] ${operation}`, details);
     }
   }
 };
 
 module.exports = logger;
-

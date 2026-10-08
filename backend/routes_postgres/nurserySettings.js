@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db_postgres');
+const auth = require('../middleware/auth');
 
 // GET /api/nursery-settings - Récupérer tous les paramètres (public)
 router.get('/', async (req, res) => {
@@ -42,8 +43,8 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /api/nursery-settings/raw - Récupérer les paramètres bruts (admin)
-router.get('/raw', async (req, res) => {
+// GET /api/nursery-settings/raw - Récupérer les paramètres bruts (admin/developer)
+router.get('/raw', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => {
   try {
     const result = await db.query(
       'SELECT * FROM nursery_settings ORDER BY category, setting_key'
@@ -64,7 +65,7 @@ router.get('/raw', async (req, res) => {
   }
 });
 
-// GET /api/nursery-settings/annual-vacation - Récupérer les vacances annuelles
+// GET /api/nursery-settings/annual-vacation - Récupérer les vacances annuelles (public)
 router.get('/annual-vacation', async (req, res) => {
   try {
     const result = await db.query(
@@ -100,8 +101,8 @@ router.get('/annual-vacation', async (req, res) => {
   }
 });
 
-// PUT /api/nursery-settings/annual-vacation - Mettre à jour les vacances annuelles (admin)
-router.put('/annual-vacation', async (req, res) => {
+// PUT /api/nursery-settings/annual-vacation - Mettre à jour les vacances annuelles (admin/developer)
+router.put('/annual-vacation', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => {
   try {
     const { enabled, start_date, end_date } = req.body;
 
@@ -190,9 +191,9 @@ router.put('/annual-vacation', async (req, res) => {
   }
 });
 
-// POST /api/nursery-settings/simple-update - Mise à jour simplifiée de plusieurs paramètres (admin)
+// POST /api/nursery-settings/simple-update - Mise à jour simplifiée de plusieurs paramètres (admin/developer)
 // Met à jour value_fr ET value_ar pour les valeurs qui sont identiques (horaires, capacité, etc.)
-router.post('/simple-update', async (req, res) => {
+router.post('/simple-update', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => {
   try {
     const updates = req.body;
 
@@ -277,8 +278,8 @@ router.post('/simple-update', async (req, res) => {
   }
 });
 
-// PUT /api/nursery-settings/:key - Mettre à jour un paramètre (admin)
-router.put('/:key', async (req, res) => {
+// PUT /api/nursery-settings/:key - Mettre à jour un paramètre (admin/developer)
+router.put('/:key', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => {
   try {
     const { key } = req.params;
     const { value_fr, value_ar, category, is_active } = req.body;
@@ -318,8 +319,8 @@ router.put('/:key', async (req, res) => {
   }
 });
 
-// POST /api/nursery-settings - Créer un nouveau paramètre (admin)
-router.post('/', async (req, res) => {
+// POST /api/nursery-settings - Créer un nouveau paramètre (admin/developer)
+router.post('/', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => {
   try {
     const { setting_key, value_fr, value_ar, category = 'general', is_active = true } = req.body;
 
@@ -362,132 +363,6 @@ router.post('/', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Erreur lors de la création du paramètre'
-    });
-  }
-});
-
-// GET /api/nursery-settings/annual-vacation - Récupérer les vacances annuelles
-router.get('/annual-vacation', async (req, res) => {
-  try {
-    const result = await db.query(
-      `SELECT annual_vacation_enabled, annual_vacation_start_date, annual_vacation_end_date 
-       FROM nursery_settings 
-       WHERE setting_key = 'annual_vacation'
-       LIMIT 1`
-    );
-
-    if (result.rows.length === 0) {
-      return res.json({
-        success: true,
-        enabled: false,
-        start_date: null,
-        end_date: null
-      });
-    }
-
-    const vacation = result.rows[0];
-    res.json({
-      success: true,
-      enabled: vacation.annual_vacation_enabled || false,
-      start_date: vacation.annual_vacation_start_date,
-      end_date: vacation.annual_vacation_end_date
-    });
-
-  } catch (error) {
-    console.error('Erreur récupération vacances annuelles:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Erreur lors de la récupération des vacances annuelles'
-    });
-  }
-});
-
-// PUT /api/nursery-settings/annual-vacation - Mettre à jour les vacances annuelles (admin)
-router.put('/annual-vacation', async (req, res) => {
-  try {
-    const { enabled, start_date, end_date } = req.body;
-
-    console.log('💾 Mise à jour vacances annuelles:', { enabled, start_date, end_date });
-
-    // Vérifier d'abord si les colonnes existent
-    const checkColumns = await db.query(`
-      SELECT column_name 
-      FROM information_schema.columns 
-      WHERE table_name = 'nursery_settings' 
-        AND column_name IN ('annual_vacation_enabled', 'annual_vacation_start_date', 'annual_vacation_end_date')
-    `);
-
-    console.log('🔍 Colonnes trouvées:', checkColumns.rows.map(r => r.column_name));
-
-    if (checkColumns.rows.length < 3) {
-      console.error('❌ Les colonnes annual_vacation_* n\'existent pas toutes');
-      console.error('📋 Colonnes manquantes:', 3 - checkColumns.rows.length);
-      console.error('📋 Veuillez exécuter la migration: backend/database/migrations/add_annual_vacation.sql');
-
-      return res.status(500).json({
-        success: false,
-        error: 'Migration requise: les colonnes de vacances annuelles n\'existent pas encore. Veuillez exécuter add_annual_vacation.sql'
-      });
-    }
-
-    // Les colonnes existent, procéder à la mise à jour
-    console.log('✅ Toutes les colonnes existent, mise à jour...');
-
-    // Vérifier si l'entrée existe
-    const checkEntry = await db.query(
-      'SELECT id, setting_key FROM nursery_settings WHERE setting_key = $1',
-      ['annual_vacation']
-    );
-
-    console.log('🔍 Entrée trouvée:', checkEntry.rows);
-
-    if (checkEntry.rows.length === 0) {
-      // Créer l'entrée
-      console.log('➕ Création de l\'entrée annual_vacation');
-      const insertResult = await db.query(
-        `INSERT INTO nursery_settings (
-          setting_key, value_fr, value_ar, category, 
-          annual_vacation_enabled, annual_vacation_start_date, annual_vacation_end_date
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING id`,
-        [
-          'annual_vacation',
-          'Vacances annuelles de la crèche',
-          'العطلة السنوية للحضانة',
-          'schedule',
-          enabled,
-          start_date,
-          end_date
-        ]
-      );
-      console.log('✅ Entrée créée avec ID:', insertResult.rows[0].id);
-    } else {
-      // Mettre à jour l'entrée existante
-      console.log('🔄 Mise à jour de l\'entrée existante ID:', checkEntry.rows[0].id);
-      const updateResult = await db.query(
-        `UPDATE nursery_settings 
-         SET annual_vacation_enabled = $1, 
-             annual_vacation_start_date = $2, 
-             annual_vacation_end_date = $3,
-             updated_at = CURRENT_TIMESTAMP
-         WHERE setting_key = 'annual_vacation'
-         RETURNING id`,
-        [enabled, start_date, end_date]
-      );
-      console.log('✅ Entrée mise à jour, lignes affectées:', updateResult.rowCount);
-    }
-
-    console.log('✅ Vacances annuelles mises à jour avec succès');
-    res.json({
-      success: true,
-      message: 'Vacances annuelles mises à jour avec succès'
-    });
-
-  } catch (error) {
-    console.error('💥 Erreur mise à jour vacances annuelles:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message || 'Erreur lors de la mise à jour des vacances annuelles'
     });
   }
 });

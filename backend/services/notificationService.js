@@ -4,7 +4,6 @@
  */
 
 const { pool } = require('../config/db_postgres');
-const pushNotificationService = require('./pushNotificationService');
 
 /**
  * Types de notifications supportés
@@ -74,21 +73,12 @@ async function createNotification(userId, { title, message, type, relatedId = nu
 }
 
 /**
- * Envoyer une notification à un utilisateur (DB + Push)
+ * Envoyer une notification à un utilisateur (DB)
  */
 async function sendNotification(userId, notificationData) {
     try {
         // Créer en base
         const notification = await createNotification(userId, notificationData);
-
-        // Envoyer push notification
-        await pushNotificationService.sendPushNotification(userId, {
-            title: notificationData.title,
-            message: notificationData.message,
-            type: notificationData.type,
-            related_id: notificationData.relatedId
-        });
-
         return notification;
     } catch (error) {
         console.error('❌ Erreur sendNotification:', error);

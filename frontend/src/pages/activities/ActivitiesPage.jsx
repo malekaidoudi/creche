@@ -9,11 +9,10 @@ import ActivityCard from '../../components/activities/ActivityCard';
 import ActivityForm from '../../components/activities/ActivityForm';
 import FullscreenFeed from '../../components/activities/FullscreenFeed';
 import useActivities from '../../hooks/useActivities';
-import { useAuth } from '../../contexts/AuthContext';
 import { useDialogContext } from '../../contexts/DialogContext';
+import { useAccess } from '../../access';
 
 const ActivitiesPage = () => {
-  const { user } = useAuth();
   const dialog = useDialogContext();
   const [showForm, setShowForm] = useState(false);
   const [isRTL, setIsRTL] = useState(false);
@@ -36,7 +35,11 @@ const ActivitiesPage = () => {
     toggleReaction
   } = useActivities(1, 10);
 
-  const canCreate = user?.role === 'admin' || user?.role === 'staff';
+  const { can } = useAccess();
+  // Permission "activities.photos.publish" : un admin l'a toujours (accordée
+  // implicitement côté backend), un staff doit l'avoir reçue explicitement.
+  // Sans elle, l'utilisateur ne peut que consulter le fil.
+  const canCreate = can('ACTIVITIES_PUBLISH');
 
   // Détection RTL
   useEffect(() => {

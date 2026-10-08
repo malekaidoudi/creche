@@ -14,6 +14,20 @@
 const db = require('../config/db_postgres');
 
 /**
+ * Notifier le job cron d'un changement de traitement pour ajuster la mise en veille
+ */
+const notifyTreatmentChange = () => {
+    try {
+        const { treatmentEvents } = require('../jobs/treatmentJob');
+        if (treatmentEvents) {
+            treatmentEvents.emit('change');
+        }
+    } catch (err) {
+        // Ignorer si le job n'est pas encore initialisé
+    }
+};
+
+/**
  * Initialiser les tables pour les traitements médicaux
  */
 const initTreatmentsTables = async () => {
@@ -147,6 +161,8 @@ const createTreatment = async (req, res) => {
             treatment: result.rows[0]
         });
 
+        notifyTreatmentChange();
+
     } catch (error) {
         console.error('Erreur création traitement:', error);
         res.status(500).json({
@@ -260,6 +276,8 @@ const updateTreatment = async (req, res) => {
             treatment: result.rows[0]
         });
 
+        notifyTreatmentChange();
+
     } catch (error) {
         console.error('Erreur modification traitement:', error);
         res.status(500).json({
@@ -301,6 +319,8 @@ const cancelTreatment = async (req, res) => {
             success: true,
             message: 'Traitement annulé'
         });
+
+        notifyTreatmentChange();
 
     } catch (error) {
         console.error('Erreur annulation traitement:', error);

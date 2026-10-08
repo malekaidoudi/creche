@@ -122,19 +122,6 @@ app.use(helmet({
 }));
 console.log('🔒 Helmet: activé');
 
-// Rate Limiting - Protection contre les abus
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000, // 1000 requêtes max
-  standardHeaders: true,
-  legacyHeaders: false,
-  trustProxy: true,
-  validate: { trustProxy: false }, // Évite le warning
-  message: 'Trop de requêtes, veuillez réessayer plus tard.'
-});
-app.use(limiter);
-console.log('⏱️  Rate limiting: 1000 req/15min');
-
 // Compression
 app.use(compression());
 console.log('📦 Compression: activée');
@@ -151,6 +138,9 @@ if (process.env.NODE_ENV === 'production') {
 // ═══════════════════════════════════════════════════════════════════════════
 // CONFIGURATION CORS - FLEXIBLE ET SÉCURISÉ
 // ═══════════════════════════════════════════════════════════════════════════
+// ⚠️ Le CORS doit être monté AVANT le rate limiter : sinon, une réponse 429
+// (trop de requêtes) ne porte pas les en-têtes Access-Control-Allow-Origin,
+// et le navigateur masque l'erreur 429 réelle derrière une fausse erreur CORS.
 
 const corsOptions = {
   origin: function (origin, callback) {
@@ -160,7 +150,6 @@ const corsOptions = {
       'http://localhost:3000',
       'http://127.0.0.1:5173',
       'http://192.168.1.60:5173',
-      'https://creche-mima-elghalia.netlify.app',
       'https://mimaelghalia.tn',
       'https://www.mimaelghalia.tn',
       'https://www.mima-elghalia.com',
@@ -202,11 +191,28 @@ const corsOptions = {
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  optionsSuccessStatus: 200
+  optionsSuccessStatus: 200,
+  maxAge: 86400 // Cache preflight CORS pendant 24h (supprime le preflight OPTIONS systématique)
 };
 
 app.use(cors(corsOptions));
 console.log('🌐 CORS: configuré (flexible + sécurisé)\n');
+
+// Rate Limiting - Protection contre les abus
+// Limite plus généreuse en développement car le dashboard interroge en continu
+// plusieurs endpoints (notifications, auth/me, etc.) pendant les sessions de test.
+const RATE_LIMIT_MAX = process.env.NODE_ENV === 'production' ? 1000 : 10000;
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: RATE_LIMIT_MAX,
+  standardHeaders: true,
+  legacyHeaders: false,
+  trustProxy: true,
+  validate: { trustProxy: false }, // Évite le warning
+  message: 'Trop de requêtes, veuillez réessayer plus tard.'
+});
+app.use(limiter);
+console.log(`⏱️  Rate limiting: ${RATE_LIMIT_MAX} req/15min`);
 
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
@@ -216,6 +222,14 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 const { activityLogger } = require('./middleware/activityLogger');
 app.use(activityLogger({ logErrors: true }));
 console.log('📊 Activity Logger: activé');
+
+// Middleware de normalisation d'URL pour corriger d'éventuels doublons /api/api
+app.use((req, res, next) => {
+  if (req.url.startsWith('/api/api/')) {
+    req.url = req.url.replace('/api/api/', '/api/');
+  }
+  next();
+});
 
 // Static files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

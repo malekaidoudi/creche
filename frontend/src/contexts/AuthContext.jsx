@@ -71,28 +71,7 @@ export const AuthProvider = ({ children }) => {
       const token = localStorage.getItem('token');
 
       if (token) {
-        // Si c'est un token mock pour les tests, utiliser directement les données du localStorage
-        if (token.startsWith('mock_token_')) {
-          const userStr = localStorage.getItem('user');
-          if (userStr) {
-            try {
-              const user = JSON.parse(userStr);
-              console.log('🧪 Mode test: Utilisation du token mock', user);
-              dispatch({
-                type: 'LOGIN_SUCCESS',
-                payload: {
-                  user,
-                  token
-                }
-              });
-              return;
-            } catch (e) {
-              console.error('Erreur parsing user mock:', e);
-            }
-          }
-        }
-
-        // Token normal, vérifier avec le backend
+        // Vérifier le token avec le backend
         try {
           const userData = await authService.verifyToken(token);
           dispatch({
@@ -175,9 +154,16 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Fonction de déconnexion
-  const logout = () => {
-    localStorage.removeItem('token');
-    dispatch({ type: 'LOGOUT' });
+  const logout = async () => {
+    try {
+      await authService.logout();
+    } catch (e) {
+      // Ignorer l'erreur réseau éventuelle
+    } finally {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      dispatch({ type: 'LOGOUT' });
+    }
   };
 
   // Fonction de mise à jour du profil utilisateur

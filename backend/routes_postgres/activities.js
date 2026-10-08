@@ -90,6 +90,7 @@ router.get('/:id', auth.authenticateToken, async (req, res) => {
 router.post('/',
   auth.authenticateToken,
   auth.requireRole('admin', 'staff'),
+  auth.requirePermission('activities.photos.publish'),
   upload.single('media'),
   async (req, res) => {
     try {

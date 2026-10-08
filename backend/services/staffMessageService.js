@@ -4,7 +4,6 @@
  */
 
 const { pool } = require('../config/db_postgres');
-const pushNotificationService = require('./pushNotificationService');
 
 /**
  * Envoyer un message
@@ -41,14 +40,6 @@ async function sendMessage(messageData, senderId) {
     ]);
 
     await client.query('COMMIT');
-
-    // Envoyer une notification push au destinataire
-    pushNotificationService.sendPushNotification(recipient_id, {
-      title: `${sender.first_name} ${sender.last_name}`,
-      message: content.substring(0, 100),
-      type: 'staff_message',
-      related_id: senderId,
-    }).catch(err => console.error('Erreur push notification:', err));
 
     console.log(`✅ Message envoyé: ${senderId} → ${recipient_id}`);
 

@@ -2,12 +2,17 @@ const jwt = require('jsonwebtoken');
 const db = require('../config/db_postgres');
 const logger = require('../utils/logger');
 const permissionsService = require('../services/permissionsService');
+const tokenBlacklistService = require('../services/tokenBlacklistService');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 const auth = {
 
-  // Middleware de vérification d'une permission granulaire (staff)
-  // Admin/developer ont toujours accès à tout, les autres rôles doivent
-  // posséder explicitement la permission demandée.
+  // Middleware de vérification d'une permission granulaire.
+  // Toute la logique (y compris le fait qu'un admin/developer possède
+  // implicitement toutes les permissions) vit dans permissionsService :
+  // ce middleware ne fait que lui déléguer la décision, il ne connaît pas
+  // les rôles lui-même.
   requirePermission: (permissionCode) => {
     return async (req, res, next) => {
       try {
@@ -19,13 +24,8 @@ const auth = {
           });
         }
 
-        const effectiveRole = req.user.role === 'developer' ? 'admin' : req.user.role;
-        if (effectiveRole === 'admin') {
-          return next();
-        }
-
         const userId = req.user.id || req.user.userId;
-        const hasAccess = await permissionsService.userHasPermission(userId, permissionCode);
+        const hasAccess = await permissionsService.userHasPermission(userId, permissionCode, req.user.role);
 
         if (!hasAccess) {
           logger.security('PERMISSION_DENIED', {
@@ -53,7 +53,7 @@ const auth = {
   },
 
   // Middleware d'authentification JWT
-  authenticateToken: (req, res, next) => {
+  authenticateToken: async (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
 
@@ -65,7 +65,22 @@ const auth = {
       });
     }
 
-    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    // Vérification de révocation (déconnexion côté serveur)
+    try {
+      const isRevoked = await tokenBlacklistService.isTokenRevoked(token);
+      if (isRevoked) {
+        logger.security('REVOKED_TOKEN_USED', { ip: req.ip });
+        return res.status(401).json({
+          success: false,
+          error: 'Session terminée. Veuillez vous reconnecter.',
+          code: 'TOKEN_REVOKED'
+        });
+      }
+    } catch (blacklistErr) {
+      logger.error('Erreur vérification blacklist token:', blacklistErr.message);
+    }
+
+    jwt.verify(token, JWT_SECRET, (err, user) => {
       if (err) {
         logger.security('TOKEN_VERIFICATION_FAILED', { error: err.message });
         return res.status(403).json({
@@ -157,12 +172,25 @@ const auth = {
               break;
 
             case 'child':
-              // Vérifier si l'enfant appartient au parent via enrollment
+              // Vérifier si l'enfant appartient au parent.
+              // On croise les 3 sources possibles de la relation parent-enfant
+              // (children.parent_id est la source canonique, les autres sont
+              // des relais historiques/complémentaires) pour éviter les faux
+              // négatifs si l'une des tables n'a pas été synchronisée.
               const childId = req.params.id || req.params.childId;
               const childCheck = await db.query(`
-                SELECT 1 FROM enrollments e
-                JOIN users u ON e.parent_id = u.id
-                WHERE e.child_id = $1 AND u.id = $2 AND e.status = 'approved'
+                SELECT 1 FROM children c
+                WHERE c.id = $1 AND (
+                  c.parent_id = $2
+                  OR EXISTS (
+                    SELECT 1 FROM parent_children pc
+                    WHERE pc.child_id = c.id AND pc.parent_id = $2
+                  )
+                  OR EXISTS (
+                    SELECT 1 FROM enrollments e
+                    WHERE e.child_id = c.id AND e.parent_id = $2 AND e.status = 'approved'
+                  )
+                )
               `, [childId, userId]);
               hasAccess = childCheck.rows.length > 0;
               break;

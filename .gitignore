@@ -144,6 +144,7 @@ temp/
 
 # Fichiers sensibles - Ne jamais versionner
 COMPTES_TEST.md
+COMPTES_TEST.txt
 **/COMPTES_TEST.md
 PRD app mobile.docx
 

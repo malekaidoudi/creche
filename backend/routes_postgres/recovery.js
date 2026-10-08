@@ -13,6 +13,24 @@ const db = require('../config/db_postgres');
 
 const BACKUP_DIR = path.join(__dirname, '..', 'backups', 'data');
 
+/**
+ * Valide et sécurise un nom de fichier de sauvegarde pour prévenir le Path Traversal
+ */
+const getSafeBackupPath = (filename) => {
+    if (!filename || typeof filename !== 'string') return null;
+    const safeName = path.basename(filename);
+    if (!safeName.endsWith('.json') || safeName !== filename) {
+        return null;
+    }
+    const filepath = path.join(BACKUP_DIR, safeName);
+    const resolvedPath = path.resolve(filepath);
+    const resolvedDir = path.resolve(BACKUP_DIR);
+    if (!resolvedPath.startsWith(resolvedDir)) {
+        return null;
+    }
+    return { safeName, filepath: resolvedPath };
+};
+
 // Rate limiting strict pour la récupération (5 tentatives par heure)
 const recoveryLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1 heure
@@ -136,14 +154,16 @@ router.get('/status', recoveryLimiter, verifyRecoveryKey, async (req, res) => {
 // POST /api/recovery/restore/:filename - Restaurer depuis un backup
 router.post('/restore/:filename', recoveryLimiter, verifyRecoveryKey, async (req, res) => {
     try {
-        const { filename } = req.params;
-        const filepath = path.join(BACKUP_DIR, filename);
+        const safe = getSafeBackupPath(req.params.filename);
+        if (!safe) {
+            return res.status(400).json({ error: 'Nom de fichier de backup invalide' });
+        }
 
-        if (!fs.existsSync(filepath)) {
+        if (!fs.existsSync(safe.filepath)) {
             return res.status(404).json({ error: 'Backup non trouvé' });
         }
 
-        console.log(`🔄 [RECOVERY] Restauration du backup: ${filename}`);
+        console.log(`🔄 [RECOVERY] Restauration du backup: ${safe.safeName}`);
 
         // Vérifier d'abord si la DB est accessible
         try {
@@ -157,7 +177,7 @@ router.post('/restore/:filename', recoveryLimiter, verifyRecoveryKey, async (req
         }
 
         // Lire le backup
-        const backupData = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+        const backupData = JSON.parse(fs.readFileSync(safe.filepath, 'utf8'));
 
         // Tables à restaurer dans l'ordre (respecter les FK)
         const tablesToRestore = [
@@ -182,17 +202,20 @@ router.post('/restore/:filename', recoveryLimiter, verifyRecoveryKey, async (req
 
         let totalRestored = 0;
         const restoredTables = [];
-        const errors = [];
 
-        // Restaurer chaque table
-        for (const tableName of tablesToRestore) {
-            const tableData = backupData.tables[tableName];
+        // Exécution transactionnelle pour garantir l'atomicité et l'intégrité
+        const client = await db.getClient();
+        try {
+            await client.query('BEGIN');
 
-            if (!tableData || tableData.length === 0) continue;
+            // Restaurer chaque table
+            for (const tableName of tablesToRestore) {
+                const tableData = backupData.tables[tableName];
 
-            try {
+                if (!tableData || tableData.length === 0) continue;
+
                 // Vider la table
-                await db.query(`TRUNCATE TABLE ${tableName} RESTART IDENTITY CASCADE`);
+                await client.query(`TRUNCATE TABLE ${tableName} RESTART IDENTITY CASCADE`);
 
                 // Obtenir les colonnes
                 const columns = Object.keys(tableData[0]);
@@ -203,20 +226,16 @@ router.post('/restore/:filename', recoveryLimiter, verifyRecoveryKey, async (req
                     const values = columns.map(col => row[col]);
                     const placeholders = columns.map((_, i) => `$${i + 1}`).join(', ');
 
-                    try {
-                        await db.query(
-                            `INSERT INTO ${tableName} (${columns.join(', ')}) VALUES (${placeholders}) ON CONFLICT DO NOTHING`,
-                            values
-                        );
-                        insertedCount++;
-                    } catch (e) {
-                        // Ignorer les erreurs d'insertion individuelles
-                    }
+                    await client.query(
+                        `INSERT INTO ${tableName} (${columns.join(', ')}) VALUES (${placeholders}) ON CONFLICT DO NOTHING`,
+                        values
+                    );
+                    insertedCount++;
                 }
 
                 // Réinitialiser la séquence
                 try {
-                    await db.query(`
+                    await client.query(`
                         SELECT setval(pg_get_serial_sequence('${tableName}', 'id'), 
                                       COALESCE((SELECT MAX(id) FROM ${tableName}), 1))
                     `);
@@ -227,26 +246,29 @@ router.post('/restore/:filename', recoveryLimiter, verifyRecoveryKey, async (req
                 totalRestored += insertedCount;
                 restoredTables.push({ table: tableName, rows: insertedCount });
                 console.log(`  ✓ ${tableName}: ${insertedCount} lignes restaurées`);
-
-            } catch (e) {
-                console.log(`  ⚠️ ${tableName}: ${e.message}`);
-                errors.push({ table: tableName, error: e.message });
             }
+
+            await client.query('COMMIT');
+            console.log(`✅ [RECOVERY] Restauration transactionnelle terminée: ${totalRestored} lignes`);
+
+            res.json({
+                success: true,
+                message: 'Restauration terminée avec succès',
+                restored: {
+                    filename: safe.safeName,
+                    tables: restoredTables.length,
+                    rows: totalRestored,
+                    details: restoredTables
+                }
+            });
+
+        } catch (txError) {
+            await client.query('ROLLBACK');
+            console.error('❌ [RECOVERY] Échec restauration, ROLLBACK exécuté:', txError);
+            throw txError;
+        } finally {
+            client.release();
         }
-
-        console.log(`✅ [RECOVERY] Restauration terminée: ${totalRestored} lignes`);
-
-        res.json({
-            success: true,
-            message: 'Restauration terminée avec succès',
-            restored: {
-                filename,
-                tables: restoredTables.length,
-                rows: totalRestored,
-                details: restoredTables
-            },
-            errors: errors.length > 0 ? errors : undefined
-        });
 
     } catch (error) {
         console.error('❌ [RECOVERY] Erreur restauration:', error);
@@ -257,14 +279,16 @@ router.post('/restore/:filename', recoveryLimiter, verifyRecoveryKey, async (req
 // GET /api/recovery/download/:filename - Télécharger un backup
 router.get('/download/:filename', recoveryLimiter, verifyRecoveryKey, (req, res) => {
     try {
-        const { filename } = req.params;
-        const filepath = path.join(BACKUP_DIR, filename);
+        const safe = getSafeBackupPath(req.params.filename);
+        if (!safe) {
+            return res.status(400).json({ error: 'Nom de fichier de backup invalide' });
+        }
 
-        if (!fs.existsSync(filepath)) {
+        if (!fs.existsSync(safe.filepath)) {
             return res.status(404).json({ error: 'Backup non trouvé' });
         }
 
-        res.download(filepath, filename);
+        res.download(safe.filepath, safe.safeName);
 
     } catch (error) {
         console.error('❌ Erreur téléchargement:', error);

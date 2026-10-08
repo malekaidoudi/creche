@@ -685,7 +685,7 @@ async function completeAppointment(appointmentId, notes) {
  */
 async function updateAppointmentStatus(appointmentId, status, userId) {
   try {
-    const validStatuses = ['proposed', 'counter_proposed', 'confirmed', 'completed', 'cancelled', 'failed', 'no_show'];
+    const validStatuses = ['proposed', 'counter_proposed', 'confirmed', 'completed', 'cancelled', 'failed', 'no_show', 'rescheduled'];
 
     if (!validStatuses.includes(status)) {
       return { success: false, error: `Statut invalide. Valeurs acceptées: ${validStatuses.join(', ')}` };

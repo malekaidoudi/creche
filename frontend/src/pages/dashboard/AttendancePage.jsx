@@ -1,15 +1,15 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { useLocation, Link } from 'react-router-dom';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import {
   Clock,
   Calendar,
   BarChart3,
   RefreshCw
 } from 'lucide-react';
-import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
 import useIsMobile from '../../hooks/useIsMobile';
+import { useAccess } from '../../access';
 import api from '../../services/api';
 import { useDialogContext } from '../../contexts/DialogContext';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
@@ -23,20 +23,27 @@ import MobileAttendance from '../../components/mobile/MobileAttendance';
 import MobileNavigation from '../../components/mobile/MobileNavigation';
 
 const AttendancePage = () => {
-  const { isAdmin, isStaff } = useAuth();
   const { isRTL } = useLanguage();
   const isMobile = useIsMobile();
   const dialog = useDialogContext();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { can, loading: accessLoading } = useAccess();
   const [loading, setLoading] = useState(true);
+
+  // Sans la permission "attendance.manage" (Enregistrer les présences), pas
+  // d'accès à l'onglet/bouton "Aujourd'hui" : consultation de l'historique
+  // et des statistiques uniquement. Tant que les accès ne sont pas encore
+  // chargés, on ne bloque pas (évite un flash d'accès refusé à tort).
+  const canManageAttendance = accessLoading || can('ATTENDANCE_TODAY');
 
   // Déterminer la section active basée sur l'URL
   const getActiveSection = () => {
     const path = location.pathname;
-    if (path.includes('/today')) return 'today';
+    if (path.includes('/today')) return canManageAttendance ? 'today' : 'history';
     if (path.includes('/history')) return 'history';
     if (path.includes('/stats')) return 'stats';
-    return 'today'; // Par défaut
+    return canManageAttendance ? 'today' : 'history'; // Par défaut
   };
 
   const [activeSection, setActiveSection] = useState(getActiveSection());
@@ -49,9 +56,9 @@ const AttendancePage = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [actionLoading, setActionLoading] = useState(null);
 
-  // Configuration des onglets
+  // Configuration des onglets ("Aujourd'hui" masqué si la permission n'est pas accordée)
   const tabs = [
-    {
+    canManageAttendance && {
       id: 'today',
       label: isRTL ? 'اليوم' : 'Aujourd\'hui',
       icon: Clock,
@@ -69,7 +76,7 @@ const AttendancePage = () => {
       icon: BarChart3,
       path: '/dashboard/attendance/stats'
     }
-  ];
+  ].filter(Boolean);
 
   // Fonction pour charger les données selon la section active
   const loadData = async () => {
@@ -176,10 +183,18 @@ const AttendancePage = () => {
     loadData();
   }, [activeSection, selectedDate]);
 
-  // Mettre à jour la section active quand l'URL change
+  // Mettre à jour la section active quand l'URL change (ou que les permissions se chargent)
   useEffect(() => {
     setActiveSection(getActiveSection());
-  }, [location.pathname]);
+  }, [location.pathname, canManageAttendance]);
+
+  // Si un utilisateur sans la permission accède directement à /today par URL,
+  // on le redirige vers l'historique une fois les accès chargés.
+  useEffect(() => {
+    if (!accessLoading && !canManageAttendance && location.pathname.includes('/today')) {
+      navigate('/dashboard/attendance/history', { replace: true });
+    }
+  }, [accessLoading, canManageAttendance, location.pathname, navigate]);
 
   // Fonction pour rafraîchir les données
   const handleRefresh = () => {
@@ -268,6 +283,7 @@ const AttendancePage = () => {
           onCheckIn={handleCheckIn}
           onCheckOut={handleCheckOut}
           onRefresh={handleRefresh}
+          canManage={canManageAttendance}
         />
         <MobileNavigation />
       </>

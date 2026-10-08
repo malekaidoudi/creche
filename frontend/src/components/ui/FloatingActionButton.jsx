@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useDialogContext } from '../../contexts/DialogContext';
 import { useNavigate } from 'react-router-dom';
+import { useAccess } from '../../access';
 import CreateAppointmentModal from '../modals/CreateAppointmentModal';
 import TaskModal from '../modals/TaskModal';
 import MemoModal from '../modals/MemoModal';
@@ -14,6 +15,7 @@ import RequestAppointmentModal from '../modals/RequestAppointmentModal';
 export default function FloatingActionButton() {
   const { user } = useAuth();
   const { isRTL } = useLanguage();
+  const { can } = useAccess();
   const dialog = useDialogContext();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
@@ -104,12 +106,12 @@ export default function FloatingActionButton() {
 
   // Sous-menu Actions rapides
   const quickActionsSubmenu = [
-    {
+    can('ATTENDANCE_TODAY') ? {
       icon: Clock,
       label: 'Enregistrer présence',
       action: 'attendance-today',
       color: 'bg-green-600 hover:bg-green-700'
-    },
+    } : null,
     {
       icon: Calendar,
       label: 'Gestion absences',
@@ -122,7 +124,7 @@ export default function FloatingActionButton() {
       action: 'pending-enrollments',
       color: 'bg-orange-600 hover:bg-orange-700'
     }
-  ];
+  ].filter(Boolean);
 
   // Menu selon le rôle
   const menuItems = user?.role === 'staff' ? [

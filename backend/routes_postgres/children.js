@@ -7,8 +7,81 @@ const logger = require('../utils/logger');
 const apiResponse = require('../utils/apiResponse');
 const upload = require('../middleware/upload');
 const path = require('path');
+const fs = require('fs');
 const cloudinaryService = require('../services/cloudinaryService');
 const permissionsService = require('../services/permissionsService');
+
+/**
+ * Vérifie l'accès à la gestion de la photo d'un enfant (upload/suppression) :
+ * - admin/developer : toujours autorisé
+ * - staff : autorisé seulement avec la permission 'children.photos.manage'
+ * - parent : autorisé seulement s'il est le parent de l'enfant
+ */
+const requireChildPhotoAccess = async (req, res, next) => {
+  try {
+    const role = req.user.role === 'developer' ? 'admin' : req.user.role;
+    if (role === 'admin') return next();
+
+    const userId = req.user.id || req.user.userId;
+    const childId = req.params.id;
+
+    if (role === 'staff') {
+      const canManage = await permissionsService.userHasPermission(userId, 'children.photos.manage', req.user.role);
+      if (canManage) return next();
+      return res.status(403).json({
+        success: false,
+        error: 'Accès non autorisé pour cette fonctionnalité',
+        required_permission: 'children.photos.manage',
+        code: 'PERMISSION_DENIED'
+      });
+    }
+
+    if (role === 'parent') {
+      const childCheck = await pool.query(`
+        SELECT 1 FROM children c
+        WHERE c.id = $1 AND (
+          c.parent_id = $2
+          OR EXISTS (SELECT 1 FROM parent_children pc WHERE pc.child_id = c.id AND pc.parent_id = $2)
+          OR EXISTS (SELECT 1 FROM enrollments e WHERE e.child_id = c.id AND e.parent_id = $2 AND e.status = 'approved')
+        )
+      `, [childId, userId]);
+      if (childCheck.rows.length > 0) return next();
+    }
+
+    return res.status(403).json({
+      success: false,
+      error: 'Accès refusé - Ressource non autorisée',
+      code: 'RESOURCE_ACCESS_DENIED'
+    });
+  } catch (error) {
+    logger.error('❌ Erreur vérification accès photo enfant:', error.message);
+    return res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la vérification des permissions'
+    });
+  }
+};
+
+/**
+ * Supprime un fichier de photo uploadé localement (best-effort, ne lève jamais).
+ * Ignore les URLs externes (Cloudinary, http...) qui ne vivent pas sur ce disque.
+ */
+const deleteLocalPhotoFile = (photoUrl) => {
+  if (!photoUrl || typeof photoUrl !== 'string' || !photoUrl.startsWith('/uploads/')) return;
+  try {
+    const uploadsDir = path.resolve(__dirname, '../uploads');
+    const absolutePath = path.resolve(__dirname, '..', photoUrl.replace(/^\/+/, ''));
+    if (!absolutePath.startsWith(uploadsDir)) {
+      logger.warn('⚠️ Tentative de suppression en dehors de uploads évitée:', photoUrl);
+      return;
+    }
+    if (fs.existsSync(absolutePath)) {
+      fs.unlinkSync(absolutePath);
+    }
+  } catch (err) {
+    logger.error('❌ Erreur suppression ancien fichier photo:', err.message);
+  }
+};
 
 /**
  * Retire les coordonnées des parents (téléphone/email) des lignes enfant
@@ -32,6 +105,23 @@ const filterParentContacts = async (rows, user) => {
     if (!canViewPhone && 'parent_phone' in filtered) filtered.parent_phone = null;
     if (!canViewEmail && 'parent_email' in filtered) filtered.parent_email = null;
     return filtered;
+  });
+};
+
+/**
+ * Masque la photo d'un enfant pour le staff si le parent n'a pas activé
+ * le partage (photo_shared_with_staff = false). Admin/developer/parent
+ * voient toujours la photo.
+ */
+const filterChildPhotos = (rows, user) => {
+  const role = user?.role === 'developer' ? 'admin' : user?.role;
+  if (role !== 'staff') return rows;
+
+  return rows.map((row) => {
+    if ('photo_url' in row && row.photo_shared_with_staff === false) {
+      return { ...row, photo_url: null };
+    }
+    return row;
   });
 };
 
@@ -111,7 +201,7 @@ router.get('/my-count', auth.authenticateToken, async (req, res) => {
 });
 
 // GET /api/children/available - Enfants disponibles (sans parent)
-router.get('/available', async (req, res) => {
+router.get('/available', auth.authenticateToken, auth.requireStaff, async (req, res) => {
   try {
     const sql = `
       SELECT c.id, c.first_name, c.last_name, c.birth_date, c.gender, 
@@ -141,7 +231,7 @@ router.get('/available', async (req, res) => {
 
 // GET /api/children/orphans - Enfants orphelins (sans parent associé)
 // Utilisé par l'admin pour associer un enfant à un nouveau compte parent
-router.get('/orphans', async (req, res) => {
+router.get('/orphans', auth.authenticateToken, auth.requireStaff, async (req, res) => {
   try {
     const { search } = req.query;
 
@@ -208,9 +298,25 @@ router.get('/orphans', async (req, res) => {
 });
 
 // GET /api/children/parent/:parentId - Enfants d'un parent spécifique
-router.get('/parent/:parentId', async (req, res) => {
+router.get('/parent/:parentId', auth.authenticateToken, async (req, res) => {
   try {
     const { parentId } = req.params;
+
+    // Un parent ne peut consulter que ses propres enfants, admin/staff voient tout
+    const requesterRole = req.user.role === 'developer' ? 'admin' : req.user.role;
+    const requesterId = req.user.id || req.user.userId;
+    if (requesterRole === 'parent' && String(requesterId) !== String(parentId)) {
+      return res.status(403).json({
+        success: false,
+        error: 'Accès non autorisé'
+      });
+    }
+    if (!['admin', 'staff', 'parent'].includes(requesterRole)) {
+      return res.status(403).json({
+        success: false,
+        error: 'Accès non autorisé'
+      });
+    }
 
     // Utiliser directement children.parent_id - simple et efficace
     const sql = `
@@ -342,7 +448,7 @@ router.get('/stats', async (req, res) => {
 
 // PUT /api/children/:id/associate-parent - Associer un enfant à un parent
 // Workflow: Admin crée un parent → sélectionne un enfant orphelin → association
-router.put('/:id/associate-parent', auth.authenticateToken, async (req, res) => {
+router.put('/:id/associate-parent', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
   try {
     const { id } = req.params;
     const { parentId, isPrimary = true } = req.body;
@@ -421,7 +527,7 @@ router.put('/:id/associate-parent', auth.authenticateToken, async (req, res) => 
 });
 
 // PUT /api/children/:id/deactivate-parent - Désactiver le compte parent d'un enfant
-router.put('/:id/deactivate-parent', auth.authenticateToken, async (req, res) => {
+router.put('/:id/deactivate-parent', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -637,7 +743,7 @@ router.get('/', auth.authenticateToken, async (req, res) => {
 
     const countResult = await pool.query(countSql, countParams);
 
-    const children = await filterParentContacts(result.rows, req.user);
+    const children = filterChildPhotos(await filterParentContacts(result.rows, req.user), req.user);
 
     res.json({
       success: true,
@@ -662,16 +768,20 @@ router.get('/', auth.authenticateToken, async (req, res) => {
 });
 
 // GET /api/children/:id - Récupérer un enfant par ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', auth.authenticateToken, auth.requireChildAccess, async (req, res) => {
   try {
     const { id } = req.params;
 
     const result = await pool.query(
-      `SELECT id, first_name, last_name, birth_date, gender, medical_info, 
-              emergency_contact_name, emergency_contact_phone, photo_url, photo_shared_with_staff,
-              is_active, created_at, updated_at,
-              EXTRACT(YEAR FROM AGE(birth_date)) as age
-       FROM children WHERE id = $1`,
+      `SELECT c.id, c.first_name, c.last_name, c.birth_date, c.gender, c.medical_info, 
+              c.emergency_contact_name, c.emergency_contact_phone, c.photo_url, c.photo_shared_with_staff,
+              c.is_active, c.created_at, c.updated_at, c.parent_id,
+              EXTRACT(YEAR FROM AGE(c.birth_date)) as age,
+              u.first_name as parent_first_name, u.last_name as parent_last_name,
+              u.email as parent_email, u.phone as parent_phone
+       FROM children c
+       LEFT JOIN users u ON c.parent_id = u.id
+       WHERE c.id = $1`,
       [id]
     );
 
@@ -682,11 +792,18 @@ router.get('/:id', async (req, res) => {
       });
     }
 
+    // Masquer la photo et les coordonnées parent pour le staff selon les
+    // mêmes règles que la liste (photo_shared_with_staff, permissions
+    // parents.phone.view / parents.email.view).
+    const [child] = filterChildPhotos(
+      await filterParentContacts(result.rows, req.user),
+      req.user
+    );
+
     // Récupérer les inscriptions de cet enfant
     const enrollments = await pool.query(
-      `SELECT e.*, u.first_name as parent_first_name, u.last_name as parent_last_name, u.email as parent_email
+      `SELECT e.*
        FROM enrollments e
-       JOIN users u ON e.parent_id = u.id
        WHERE e.child_id = $1
        ORDER BY e.created_at DESC`,
       [id]
@@ -705,7 +822,7 @@ router.get('/:id', async (req, res) => {
     res.json({
       success: true,
       child: {
-        ...result.rows[0],
+        ...child,
         enrollments: enrollments.rows,
         recent_attendance: attendance.rows
       }
@@ -723,6 +840,8 @@ router.get('/:id', async (req, res) => {
 // POST /api/children - Créer un nouvel enfant (via dashboard admin)
 // Utilise le service centralisé childLifecycleService
 router.post('/', [
+  auth.authenticateToken,
+  auth.requireStaff,
   body('first_name').notEmpty().withMessage('Prénom requis'),
   body('last_name').notEmpty().withMessage('Nom requis'),
   body('birth_date').isISO8601().withMessage('Date de naissance invalide'),
@@ -852,6 +971,8 @@ router.post('/', [
 
 // PUT /api/children/:id - Mettre à jour un enfant
 router.put('/:id', [
+  auth.authenticateToken,
+  auth.requireChildAccess,
   body('first_name').optional().notEmpty().withMessage('Prénom requis'),
   body('last_name').optional().notEmpty().withMessage('Nom requis'),
   body('birth_date').optional().isISO8601().withMessage('Date de naissance invalide'),
@@ -1028,7 +1149,7 @@ router.put('/:id', [
 
 // DELETE /api/children/:id - Supprimer un enfant (soft delete)
 // Utilise le service centralisé childLifecycleService
-router.delete('/:id', auth.authenticateToken, async (req, res) => {
+router.delete('/:id', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
   const childLifecycleService = require('../services/childLifecycleService');
 
   try {
@@ -1143,12 +1264,12 @@ router.delete('/:id', auth.authenticateToken, async (req, res) => {
 });
 
 // POST /api/children/:id/photo - Upload photo d'un enfant
-router.post('/:id/photo', auth.authenticateToken, upload.single('photo'), async (req, res) => {
+router.post('/:id/photo', auth.authenticateToken, requireChildPhotoAccess, upload.single('photo'), async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Vérifier si l'enfant existe
-    const existingChild = await pool.query('SELECT id, first_name, last_name FROM children WHERE id = $1', [id]);
+    // Vérifier si l'enfant existe (et récupérer l'ancienne photo pour nettoyage)
+    const existingChild = await pool.query('SELECT id, first_name, last_name, photo_url FROM children WHERE id = $1', [id]);
     if (existingChild.rows.length === 0) {
       return res.status(404).json({
         success: false,
@@ -1166,6 +1287,7 @@ router.post('/:id/photo', auth.authenticateToken, upload.single('photo'), async 
 
     // Construire l'URL de la photo
     const photoUrl = `/uploads/profiles/${req.file.filename}`;
+    const previousPhotoUrl = existingChild.rows[0].photo_url;
 
     // Mettre à jour la photo dans la base de données
     const result = await pool.query(
@@ -1175,6 +1297,11 @@ router.post('/:id/photo', auth.authenticateToken, upload.single('photo'), async 
        RETURNING id, first_name, last_name, photo_url`,
       [photoUrl, id]
     );
+
+    // Nettoyer l'ancien fichier du disque (best-effort, n'affecte pas la réponse)
+    if (previousPhotoUrl && previousPhotoUrl !== photoUrl) {
+      deleteLocalPhotoFile(previousPhotoUrl);
+    }
 
     logger.info(`📸 Photo mise à jour pour enfant ${id}: ${photoUrl}`);
 
@@ -1190,6 +1317,48 @@ router.post('/:id/photo', auth.authenticateToken, upload.single('photo'), async 
     res.status(500).json({
       success: false,
       error: 'Erreur lors de l\'upload de la photo'
+    });
+  }
+});
+
+// DELETE /api/children/:id/photo - Supprimer la photo d'un enfant
+router.delete('/:id/photo', auth.authenticateToken, requireChildPhotoAccess, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const existingChild = await pool.query('SELECT id, photo_url FROM children WHERE id = $1', [id]);
+    if (existingChild.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Enfant non trouvé'
+      });
+    }
+
+    const previousPhotoUrl = existingChild.rows[0].photo_url;
+
+    const result = await pool.query(
+      `UPDATE children 
+       SET photo_url = NULL, updated_at = CURRENT_TIMESTAMP 
+       WHERE id = $1 
+       RETURNING id, first_name, last_name, photo_url`,
+      [id]
+    );
+
+    deleteLocalPhotoFile(previousPhotoUrl);
+
+    logger.info(`🗑️ Photo supprimée pour enfant ${id}`);
+
+    res.json({
+      success: true,
+      message: 'Photo supprimée avec succès',
+      child: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error('Erreur suppression photo enfant:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la suppression de la photo'
     });
   }
 });

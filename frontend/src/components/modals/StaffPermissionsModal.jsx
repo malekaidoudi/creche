@@ -135,11 +135,6 @@ const StaffPermissionsModal = ({ isOpen, onClose, staff, isRTL }) => {
                         >
                           <span className="text-sm text-gray-700 dark:text-gray-200 flex-1">
                             {perm.label[lang] || perm.label.fr}
-                            {perm.isCommon && (
-                              <span className="ml-2 rtl:ml-0 rtl:mr-2 text-[10px] uppercase text-primary-500 font-medium">
-                                {isRTL ? 'شائع' : 'commun'}
-                              </span>
-                            )}
                           </span>
                           <ToggleSwitch
                             checked={perm.granted}

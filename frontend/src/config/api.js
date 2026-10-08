@@ -3,31 +3,32 @@
  * 
  * Ce fichier gère automatiquement les différentes URLs d'API :
  * - Développement local : http://localhost:3003
- * - Production : Variable VITE_API_URL (Railway)
+ * - Production : Variable VITE_API_URL (Render : https://creche-lx4u.onrender.com)
  */
 
 // Déterminer l'URL du backend en fonction de l'environnement
 const getBaseUrl = () => {
+  let url = '';
+
   // Si une variable d'environnement est définie, l'utiliser
   if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL;
+    url = import.meta.env.VITE_API_URL;
+  } else {
+    const hostname = window.location.hostname;
+    const isDev = import.meta.env.DEV;
+
+    // En développement uniquement: Si on accède via une IP locale (192.168.x.x), utiliser cette même IP pour le backend
+    if (isDev && hostname.startsWith('192.168.')) {
+      url = `http://${hostname}:3003`;
+    } else if (isDev && (hostname === 'localhost' || hostname === '127.0.0.1')) {
+      url = 'http://localhost:3003';
+    } else {
+      url = 'https://creche-lx4u.onrender.com';
+    }
   }
 
-  const hostname = window.location.hostname;
-  const isDev = import.meta.env.DEV;
-
-  // En développement uniquement: Si on accède via une IP locale (192.168.x.x), utiliser cette même IP pour le backend
-  if (isDev && hostname.startsWith('192.168.')) {
-    return `http://${hostname}:3003`;
-  }
-
-  // Développement local
-  if (isDev && (hostname === 'localhost' || hostname === '127.0.0.1')) {
-    return 'http://localhost:3003';
-  }
-
-  // Production - URL Fly.io (à configurer dans Vercel env vars si besoin)
-  return 'https://creche-backend-mima.fly.dev';
+  // Normalisation : retirer tout '/api' ou '/' final car les routes Axios / services commencent par /api
+  return url.replace(/\/api\/?$/, '').replace(/\/+$/, '');
 };
 
 // Configuration API pour différents environnements

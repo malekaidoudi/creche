@@ -13,7 +13,7 @@ async function initializeDatabase() {
         first_name VARCHAR(100) NOT NULL,
         last_name VARCHAR(100) NOT NULL,
         phone VARCHAR(20),
-        role VARCHAR(20) DEFAULT 'parent' CHECK (role IN ('admin', 'staff', 'parent')),
+        role VARCHAR(20) DEFAULT 'parent' CHECK (role IN ('admin', 'staff', 'parent', 'developer')),
         profile_image VARCHAR(500),
         is_active BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -94,13 +94,18 @@ async function initializeDatabase() {
     `);
     console.log('✅ Table holidays créée/vérifiée');
 
-    // Table nursery_settings (déjà créée mais on s'assure)
+    // Table nursery_settings (paramètres bilingues et vacances)
     await db.query(`
       CREATE TABLE IF NOT EXISTS nursery_settings (
         id SERIAL PRIMARY KEY,
-        key VARCHAR(100) UNIQUE NOT NULL,
-        value TEXT,
-        description TEXT,
+        setting_key VARCHAR(100) UNIQUE NOT NULL,
+        value_fr TEXT,
+        value_ar TEXT,
+        category VARCHAR(50) DEFAULT 'general',
+        is_active BOOLEAN DEFAULT TRUE,
+        annual_vacation_enabled BOOLEAN DEFAULT FALSE,
+        annual_vacation_start_date DATE,
+        annual_vacation_end_date DATE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
@@ -250,6 +255,20 @@ async function initializeDatabase() {
     console.log('✅ Table staff_age_assignments créée/vérifiée');
     await db.query(`CREATE INDEX IF NOT EXISTS idx_staff_age_assignments_staff ON staff_age_assignments(staff_id)`);
 
+    // Table revoked_tokens (liste noire de jetons JWT pour déconnexion sécurisée)
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS revoked_tokens (
+        id SERIAL PRIMARY KEY,
+        token TEXT NOT NULL UNIQUE,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_revoked_tokens_token ON revoked_tokens(token)`);
+    await db.query(`CREATE INDEX IF NOT EXISTS idx_revoked_tokens_expires ON revoked_tokens(expires_at)`);
+    console.log('✅ Table revoked_tokens créée/vérifiée');
+
     // Insérer des données de test si les tables sont vides
     await insertTestData();
 
@@ -384,24 +403,25 @@ async function insertTestData() {
       );
     }
 
-    // Insérer des paramètres de crèche
+    // Insérer des paramètres de crèche bilingues par défaut
     const settings = [
-      { key: 'nursery_name', value: 'Crèche Mima Elghalia', description: 'Nom de la crèche' },
-      { key: 'address', value: '16 Rue Bizerte, Medenine 4100, Tunisie', description: 'Adresse de la crèche' },
-      { key: 'phone', value: '+216 25 95 35 32', description: 'Numéro de téléphone' },
-      { key: 'email', value: 'contact@mimaelghalia.tn', description: 'Email de contact' },
-      { key: 'capacity', value: '40 enfants', description: 'Capacité d\'accueil' },
-      { key: 'working_hours_weekdays', value: '07:00-18:00', description: 'Horaires en semaine' },
-      { key: 'working_hours_saturday', value: '08:00-15:00', description: 'Horaires le samedi' },
-      { key: 'saturday_open', value: 'true', description: 'Ouvert le samedi' }
+      { setting_key: 'nursery_name', value_fr: 'Crèche Mima Elghalia', value_ar: 'روضة ميما الغالية', category: 'general' },
+      { setting_key: 'address', value_fr: '16 Rue Bizerte, Medenine 4100, Tunisie', value_ar: '16 نهج بنزرت، مدنين 4100، تونس', category: 'contact' },
+      { setting_key: 'phone', value_fr: '+216 25 95 35 32', value_ar: '+216 25 95 35 32', category: 'contact' },
+      { setting_key: 'email', value_fr: 'contact@mima-elghalia.com', value_ar: 'contact@mima-elghalia.com', category: 'contact' },
+      { setting_key: 'capacity', value_fr: '40 enfants', value_ar: '40 طفل', category: 'general' },
+      { setting_key: 'working_hours_weekdays', value_fr: '07:00-18:00', value_ar: '07:00-18:00', category: 'hours' },
+      { setting_key: 'working_hours_saturday', value_fr: '08:00-15:00', value_ar: '08:00-15:00', category: 'hours' },
+      { setting_key: 'saturday_open', value_fr: 'true', value_ar: 'true', category: 'hours' },
+      { setting_key: 'annual_vacation', value_fr: 'false', value_ar: 'false', category: 'vacation' }
     ];
 
     for (const setting of settings) {
       await db.query(
-        `INSERT INTO nursery_settings (key, value, description) 
-         VALUES ($1, $2, $3)
-         ON CONFLICT (key) DO UPDATE SET value = $2, description = $3`,
-        [setting.key, setting.value, setting.description]
+        `INSERT INTO nursery_settings (setting_key, value_fr, value_ar, category, is_active) 
+         VALUES ($1, $2, $3, $4, TRUE)
+         ON CONFLICT (setting_key) DO UPDATE SET value_fr = $2, value_ar = $3, category = $4`,
+        [setting.setting_key, setting.value_fr, setting.value_ar, setting.category]
       );
     }
 

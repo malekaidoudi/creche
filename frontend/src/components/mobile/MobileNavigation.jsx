@@ -34,11 +34,13 @@ import {
 import { useLanguage } from '../../hooks/useLanguage';
 import { useAuth } from '../../contexts/AuthContext';
 import { useProfileImage } from '../../hooks/useProfileImage';
+import { useAccess } from '../../access';
 
 const MobileNavigation = () => {
     const { isRTL } = useLanguage();
     const { user, logout } = useAuth();
     const { getImageUrl, hasImage } = useProfileImage();
+    const { can } = useAccess();
     const navigate = useNavigate();
     const location = useLocation();
     const [showMore, setShowMore] = useState(false);
@@ -57,7 +59,8 @@ const MobileNavigation = () => {
             icon: ClipboardCheck,
             label: isRTL ? 'الحضور' : 'Présences',
             path: '/dashboard/attendance/today',
-            roles: ['admin', 'staff']
+            roles: ['admin', 'staff'],
+            feature: 'ATTENDANCE_TODAY'
         },
         {
             id: 'children',
@@ -184,13 +187,15 @@ const MobileNavigation = () => {
     // Sélectionner la navigation en fonction du rôle
     const navItems = effectiveRole === 'parent' ? parentNavItems : mainNavItems;
 
-    // Filtrer les éléments selon le rôle
+    // Filtrer les éléments selon le rôle et, si précisée, la fonctionnalité (FEATURES)
     const filteredNavItems = navItems.filter(item =>
-        item.roles.includes(effectiveRole) || item.roles.includes(user?.role)
+        (item.roles.includes(effectiveRole) || item.roles.includes(user?.role)) &&
+        (!item.feature || can(item.feature))
     );
 
     const filteredMoreItems = moreMenuItems.filter(item =>
-        item.roles.includes(effectiveRole) || item.roles.includes(user?.role)
+        (item.roles.includes(effectiveRole) || item.roles.includes(user?.role)) &&
+        (!item.feature || can(item.feature))
     );
 
     const isActive = (path) => {

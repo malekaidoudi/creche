@@ -7,11 +7,29 @@ const express = require('express');
 const router = express.Router();
 const path = require('path');
 const fs = require('fs');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, requireRole } = require('../middleware/auth');
 const db = require('../config/db_postgres');
 
 // Dossier de backup
 const BACKUP_DIR = path.join(__dirname, '../backups/data');
+
+/**
+ * Valide et sécurise un nom de fichier de sauvegarde pour prévenir le Path Traversal
+ */
+const getSafeBackupPath = (filename) => {
+    if (!filename || typeof filename !== 'string') return null;
+    const safeName = path.basename(filename);
+    if (!safeName.endsWith('.json') || safeName !== filename) {
+        return null;
+    }
+    const filepath = path.join(BACKUP_DIR, safeName);
+    const resolvedPath = path.resolve(filepath);
+    const resolvedDir = path.resolve(BACKUP_DIR);
+    if (!resolvedPath.startsWith(resolvedDir)) {
+        return null;
+    }
+    return { safeName, filepath: resolvedPath };
+};
 
 // Tables à sauvegarder
 const TABLES_TO_BACKUP = [
@@ -58,8 +76,8 @@ function generateBackupFilename() {
     return `backup_${timestamp}.json`;
 }
 
-// GET /api/backup - Lister les backups disponibles
-router.get('/', authenticateToken, async (req, res) => {
+// GET /api/backup - Lister les backups disponibles (admin/developer)
+router.get('/', authenticateToken, requireRole('admin', 'developer'), async (req, res) => {
     try {
         if (req.user.role !== 'admin' && req.user.role !== 'developer') {
             return res.status(403).json({ error: 'Accès réservé aux administrateurs' });
@@ -109,8 +127,8 @@ router.get('/', authenticateToken, async (req, res) => {
     }
 });
 
-// POST /api/backup - Créer un nouveau backup
-router.post('/', authenticateToken, async (req, res) => {
+// POST /api/backup - Créer un nouveau backup (admin/developer)
+router.post('/', authenticateToken, requireRole('admin', 'developer'), async (req, res) => {
     try {
         if (req.user.role !== 'admin' && req.user.role !== 'developer') {
             return res.status(403).json({ error: 'Accès réservé aux administrateurs' });
@@ -200,21 +218,23 @@ router.post('/', authenticateToken, async (req, res) => {
     }
 });
 
-// GET /api/backup/download/:filename - Télécharger un backup
-router.get('/download/:filename', authenticateToken, async (req, res) => {
+// GET /api/backup/download/:filename - Télécharger un backup (admin/developer)
+router.get('/download/:filename', authenticateToken, requireRole('admin', 'developer'), async (req, res) => {
     try {
         if (req.user.role !== 'admin' && req.user.role !== 'developer') {
             return res.status(403).json({ error: 'Accès réservé aux administrateurs' });
         }
 
-        const { filename } = req.params;
-        const filepath = path.join(BACKUP_DIR, filename);
+        const safe = getSafeBackupPath(req.params.filename);
+        if (!safe) {
+            return res.status(400).json({ error: 'Nom de fichier de backup invalide' });
+        }
 
-        if (!fs.existsSync(filepath)) {
+        if (!fs.existsSync(safe.filepath)) {
             return res.status(404).json({ error: 'Backup non trouvé' });
         }
 
-        res.download(filepath, filename);
+        res.download(safe.filepath, safe.safeName);
 
     } catch (error) {
         console.error('❌ Erreur téléchargement backup:', error);
@@ -222,22 +242,24 @@ router.get('/download/:filename', authenticateToken, async (req, res) => {
     }
 });
 
-// DELETE /api/backup/:filename - Supprimer un backup
-router.delete('/:filename', authenticateToken, async (req, res) => {
+// DELETE /api/backup/:filename - Supprimer un backup (admin/developer)
+router.delete('/:filename', authenticateToken, requireRole('admin', 'developer'), async (req, res) => {
     try {
         if (req.user.role !== 'admin' && req.user.role !== 'developer') {
             return res.status(403).json({ error: 'Accès réservé aux administrateurs' });
         }
 
-        const { filename } = req.params;
-        const filepath = path.join(BACKUP_DIR, filename);
+        const safe = getSafeBackupPath(req.params.filename);
+        if (!safe) {
+            return res.status(400).json({ error: 'Nom de fichier de backup invalide' });
+        }
 
-        if (!fs.existsSync(filepath)) {
+        if (!fs.existsSync(safe.filepath)) {
             return res.status(404).json({ error: 'Backup non trouvé' });
         }
 
-        fs.unlinkSync(filepath);
-        console.log(`🗑️  Backup supprimé: ${filename}`);
+        fs.unlinkSync(safe.filepath);
+        console.log(`🗑️  Backup supprimé: ${safe.safeName}`);
 
         res.json({
             success: true,
@@ -250,24 +272,26 @@ router.delete('/:filename', authenticateToken, async (req, res) => {
     }
 });
 
-// POST /api/backup/restore/:filename - Restaurer depuis un backup
-router.post('/restore/:filename', authenticateToken, async (req, res) => {
+// POST /api/backup/restore/:filename - Restaurer depuis un backup (admin/developer)
+router.post('/restore/:filename', authenticateToken, requireRole('admin', 'developer'), async (req, res) => {
     try {
         if (req.user.role !== 'admin' && req.user.role !== 'developer') {
             return res.status(403).json({ error: 'Accès réservé aux administrateurs' });
         }
 
-        const { filename } = req.params;
-        const filepath = path.join(BACKUP_DIR, filename);
+        const safe = getSafeBackupPath(req.params.filename);
+        if (!safe) {
+            return res.status(400).json({ error: 'Nom de fichier de backup invalide' });
+        }
 
-        if (!fs.existsSync(filepath)) {
+        if (!fs.existsSync(safe.filepath)) {
             return res.status(404).json({ error: 'Backup non trouvé' });
         }
 
-        console.log(`🔄 Restauration du backup: ${filename}`);
+        console.log(`🔄 Restauration du backup: ${safe.safeName}`);
 
         // Lire le backup
-        const backupData = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+        const backupData = JSON.parse(fs.readFileSync(safe.filepath, 'utf8'));
 
         // Tables à restaurer dans l'ordre (respecter les FK)
         const tablesToRestore = [
@@ -293,15 +317,19 @@ router.post('/restore/:filename', authenticateToken, async (req, res) => {
         let totalRestored = 0;
         const restoredTables = [];
 
-        // Restaurer chaque table
-        for (const tableName of tablesToRestore) {
-            const tableData = backupData.tables[tableName];
+        // Exécution transactionnelle pour garantir l'atomicité et l'intégrité
+        const client = await db.getClient();
+        try {
+            await client.query('BEGIN');
 
-            if (!tableData || tableData.length === 0) continue;
+            // Restaurer chaque table
+            for (const tableName of tablesToRestore) {
+                const tableData = backupData.tables[tableName];
 
-            try {
+                if (!tableData || tableData.length === 0) continue;
+
                 // Vider la table
-                await db.query(`TRUNCATE TABLE ${tableName} RESTART IDENTITY CASCADE`);
+                await client.query(`TRUNCATE TABLE ${tableName} RESTART IDENTITY CASCADE`);
 
                 // Obtenir les colonnes
                 const columns = Object.keys(tableData[0]);
@@ -311,19 +339,15 @@ router.post('/restore/:filename', authenticateToken, async (req, res) => {
                     const values = columns.map(col => row[col]);
                     const placeholders = columns.map((_, i) => `$${i + 1}`).join(', ');
 
-                    try {
-                        await db.query(
-                            `INSERT INTO ${tableName} (${columns.join(', ')}) VALUES (${placeholders}) ON CONFLICT DO NOTHING`,
-                            values
-                        );
-                    } catch (e) {
-                        // Ignorer les erreurs d'insertion individuelles
-                    }
+                    await client.query(
+                        `INSERT INTO ${tableName} (${columns.join(', ')}) VALUES (${placeholders}) ON CONFLICT DO NOTHING`,
+                        values
+                    );
                 }
 
                 // Réinitialiser la séquence
                 try {
-                    await db.query(`
+                    await client.query(`
                         SELECT setval(pg_get_serial_sequence('${tableName}', 'id'), 
                                       COALESCE((SELECT MAX(id) FROM ${tableName}), 1))
                     `);
@@ -334,24 +358,29 @@ router.post('/restore/:filename', authenticateToken, async (req, res) => {
                 totalRestored += tableData.length;
                 restoredTables.push({ table: tableName, rows: tableData.length });
                 console.log(`  ✓ ${tableName}: ${tableData.length} lignes restaurées`);
-
-            } catch (e) {
-                console.log(`  ⚠️ ${tableName}: ${e.message}`);
             }
+
+            await client.query('COMMIT');
+            console.log(`✅ Restauration transactionnelle terminée avec succès: ${totalRestored} lignes`);
+
+            res.json({
+                success: true,
+                message: 'Restauration terminée avec succès',
+                restored: {
+                    filename: safe.safeName,
+                    tables: restoredTables.length,
+                    rows: totalRestored,
+                    details: restoredTables
+                }
+            });
+
+        } catch (txError) {
+            await client.query('ROLLBACK');
+            console.error('❌ Échec restauration, ROLLBACK exécuté:', txError);
+            throw txError;
+        } finally {
+            client.release();
         }
-
-        console.log(`✅ Restauration terminée: ${totalRestored} lignes`);
-
-        res.json({
-            success: true,
-            message: 'Restauration terminée avec succès',
-            restored: {
-                filename,
-                tables: restoredTables.length,
-                rows: totalRestored,
-                details: restoredTables
-            }
-        });
 
     } catch (error) {
         console.error('❌ Erreur restauration backup:', error);
@@ -359,8 +388,8 @@ router.post('/restore/:filename', authenticateToken, async (req, res) => {
     }
 });
 
-// GET /api/backup/status - Statut du système de backup
-router.get('/status', authenticateToken, async (req, res) => {
+// GET /api/backup/status - Statut du système de backup (admin/developer)
+router.get('/status', authenticateToken, requireRole('admin', 'developer'), async (req, res) => {
     try {
         ensureBackupDir();
 

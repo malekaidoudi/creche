@@ -44,6 +44,23 @@ class AuthService {
     return response.data;
   }
 
+  // Déconnexion avec révocation côté serveur
+  async logout() {
+    const token = this.getToken();
+    if (token) {
+      try {
+        await api.post('/api/auth/logout', {}, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+      } catch (error) {
+        // Ignorer les erreurs réseau pour ne pas bloquer la déconnexion locale
+      }
+    }
+    this.removeToken();
+  }
+
   // Obtenir le token actuel
   getToken() {
     return localStorage.getItem('token');

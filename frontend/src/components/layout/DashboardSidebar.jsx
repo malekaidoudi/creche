@@ -30,12 +30,14 @@ import {
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useHasChildren } from '../../hooks/useHasChildren';
+import { useAccess } from '../../access';
 import { ImageWithFallback, defaultImages } from '../../utils/imageUtils.jsx';
 
 const DashboardSidebar = ({ isOpen, onClose, onCollapsedChange }) => {
   const { user, isAdmin, isStaff } = useAuth();
   const { isRTL, currentLanguage } = useLanguage();
   const { hasChildren } = useHasChildren();
+  const { can } = useAccess();
   const location = useLocation();
   const [expandedMenus, setExpandedMenus] = useState({});
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -172,7 +174,8 @@ const DashboardSidebar = ({ isOpen, onClose, onCollapsedChange }) => {
         {
           title: isRTL ? 'اليوم' : 'Aujourd\'hui',
           path: '/dashboard/attendance/today',
-          roles: ['admin', 'staff']
+          roles: ['admin', 'staff'],
+          feature: 'ATTENDANCE_TODAY'
         },
         {
           title: isRTL ? 'التاريخ' : 'Historique',
@@ -375,7 +378,7 @@ const DashboardSidebar = ({ isOpen, onClose, onCollapsedChange }) => {
               } : {}}
             >
               {item.submenu
-                .filter(subItem => hasAccess(subItem.roles))
+                .filter(subItem => hasAccess(subItem.roles) && (!subItem.feature || can(subItem.feature)))
                 .map((subItem, index) => (
                   <Link
                     key={index}

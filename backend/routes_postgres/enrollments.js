@@ -114,9 +114,7 @@ router.post('/check-child', [
         exists: true,
         type: 'pending_child',
         message: 'Un dossier d\'inscription pour cet enfant est déjà en cours de traitement. Veuillez patienter, nous vous contacterons prochainement.',
-        suggestion: 'redirect_home',
-        enrollmentId: existingEnrollment.id,
-        parentName: `${existingEnrollment.applicant_first_name} ${existingEnrollment.applicant_last_name}`
+        suggestion: 'redirect_home'
       });
     }
 
@@ -155,8 +153,7 @@ router.post('/check-child', [
         exists: true,
         type: 'already_enrolled',
         message: 'Cet enfant est déjà inscrit à la crèche. Si vous êtes le parent, connectez-vous à votre espace.',
-        suggestion: 'login',
-        childId: childCheck.rows[0].id
+        suggestion: 'login'
       });
     }
 

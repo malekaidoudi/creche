@@ -28,6 +28,7 @@ import {
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useNotifications } from '../../hooks/useNotifications';
+import { Can } from '../../access';
 import TodayTasksWidget from '../widgets/TodayTasksWidget';
 import TodayTasksWidgetMobile from '../widgets/TodayTasksWidgetMobile';
 import TodayAppointmentsWidget from '../widgets/TodayAppointmentsWidget';
@@ -233,14 +234,16 @@ const MobileDashboardComplete = ({
                         {isRTL ? 'إجراءات سريعة' : 'Actions rapides'}
                     </h3>
                     <div className="grid gap-2 grid-cols-4">
-                        {/* Présences - visible pour staff et admin */}
-                        <button
-                            onClick={() => navigate('/dashboard/attendance')}
-                            className="flex flex-col items-center p-3 bg-green-50 dark:bg-green-900/20 rounded-xl active:scale-95 transition-transform"
-                        >
-                            <UserCheck className="w-6 h-6 text-green-600 mb-1" />
-                            <span className="text-xs text-gray-700 dark:text-gray-300 text-center">{isRTL ? 'الحضور' : 'Présences'}</span>
-                        </button>
+                        {/* Présences - masqué si la permission "attendance.manage" n'est pas accordée */}
+                        <Can feature="ATTENDANCE_TODAY">
+                            <button
+                                onClick={() => navigate('/dashboard/attendance')}
+                                className="flex flex-col items-center p-3 bg-green-50 dark:bg-green-900/20 rounded-xl active:scale-95 transition-transform"
+                            >
+                                <UserCheck className="w-6 h-6 text-green-600 mb-1" />
+                                <span className="text-xs text-gray-700 dark:text-gray-300 text-center">{isRTL ? 'الحضور' : 'Présences'}</span>
+                            </button>
+                        </Can>
 
                         {/* Inscriptions - admin seulement */}
                         {isAdmin() && (

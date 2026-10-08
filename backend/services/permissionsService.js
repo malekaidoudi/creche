@@ -40,6 +40,8 @@ const PERMISSIONS_CATALOG = [
     label: { fr: 'Remplir le rapport journalier', ar: 'تعبئة التقرير اليومي' } },
   { code: 'children.photos.view', module: 'daily', isCommon: true,
     label: { fr: 'Voir les photos des enfants', ar: 'رؤية صور الأطفال' } },
+  { code: 'children.photos.manage', module: 'daily', isCommon: false,
+    label: { fr: 'Ajouter/supprimer la photo de profil d\'un enfant', ar: 'إضافة/حذف صورة الملف الشخصي للطفل' } },
   { code: 'activities.photos.publish', module: 'daily', isCommon: true,
     label: { fr: 'Publier des photos / activités', ar: 'نشر الصور / الأنشطة' } },
 
@@ -146,11 +148,47 @@ const grantCommonPermissionsToUser = async (userId) => {
   userPermissionsCache.delete(userId);
 };
 
+// Cache du catalogue complet des codes (statique pour la durée de vie du process,
+// comme `schemaReady` : le catalogue ne change qu'au déploiement).
+let allPermissionCodesCache = null;
+const getAllPermissionCodes = async () => {
+  await ensureSchema();
+  if (allPermissionCodesCache) return allPermissionCodesCache;
+  const result = await db.query('SELECT code FROM permissions');
+  allPermissionCodesCache = new Set(result.rows.map((r) => r.code));
+  return allPermissionCodesCache;
+};
+
+/**
+ * Résout le rôle effectif d'un utilisateur (developer == admin), en le
+ * récupérant en base si on ne l'a pas déjà sous la main.
+ */
+const resolveEffectiveRole = async (userId, role) => {
+  let effectiveRole = role;
+  if (!effectiveRole) {
+    const userResult = await db.query('SELECT role FROM users WHERE id = $1', [userId]);
+    effectiveRole = userResult.rows[0]?.role;
+  }
+  return effectiveRole === 'developer' ? 'admin' : effectiveRole;
+};
+
 /**
  * Récupère la liste des codes de permissions accordées à un utilisateur.
+ *
+ * ⚠️ Point central du système : un admin (ou developer) possède ICI,
+ * implicitement, TOUTES les permissions du catalogue. C'est la SEULE
+ * fonction qui connaît cette règle — aucun autre module (middleware,
+ * route, frontend) ne doit ré-implémenter un bypass "si admin alors ok".
+ * Il suffit d'appeler `userHasPermission`/`getUserPermissionCodes` et de
+ * raisonner uniquement en permissions, jamais en rôle.
  */
-const getUserPermissionCodes = async (userId) => {
+const getUserPermissionCodes = async (userId, role = null) => {
   await ensureSchema();
+
+  const effectiveRole = await resolveEffectiveRole(userId, role);
+  if (effectiveRole === 'admin') {
+    return getAllPermissionCodes();
+  }
 
   const cached = userPermissionsCache.get(userId);
   if (cached && cached.expiresAt > Date.now()) {
@@ -171,17 +209,17 @@ const getUserPermissionCodes = async (userId) => {
 /**
  * Vérifie si un utilisateur possède une permission donnée.
  */
-const userHasPermission = async (userId, code) => {
-  const codes = await getUserPermissionCodes(userId);
+const userHasPermission = async (userId, code, role = null) => {
+  const codes = await getUserPermissionCodes(userId, role);
   return codes.has(code);
 };
 
 /**
  * Catalogue complet des permissions, avec statut accordé/non pour un utilisateur donné.
  */
-const getCatalogForUser = async (userId) => {
+const getCatalogForUser = async (userId, role = null) => {
   await ensureSchema();
-  const granted = userId ? await getUserPermissionCodes(userId) : new Set();
+  const granted = userId ? await getUserPermissionCodes(userId, role) : new Set();
 
   const result = await db.query('SELECT code, module, label_fr, label_ar, is_common FROM permissions ORDER BY module, code');
   return result.rows.map((row) => ({

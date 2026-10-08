@@ -1,5 +1,6 @@
 const { Pool } = require('pg');
 const path = require('path');
+const logger = require('../utils/logger');
 
 // Charger le .env depuis la racine du projet
 require('dotenv').config({ path: path.join(__dirname, '../../.env') });
@@ -21,15 +22,17 @@ const dbConfig = process.env.DATABASE_URL
     ssl: process.env.NODE_ENV === 'production' ? true : { rejectUnauthorized: true },
   };
 
-// Configuration du pool optimisée pour Neon
+// Configuration du pool optimisée pour Neon (Free tier & sessions actives)
 Object.assign(dbConfig, {
-  max: 5,
-  min: 0,
-  idleTimeoutMillis: 10000,
-  connectionTimeoutMillis: 10000,
+  max: 10,
+  min: 0,                          // Permet la mise en veille automatique de Neon lors d'inactivité
+  idleTimeoutMillis: 60000,        // 60s : garde la connexion chaude pendant la navigation et le polling
+  connectionTimeoutMillis: 10000,  // Tolère le réveil (cold start ~1-2s) de Neon sans erreur
   query_timeout: 30000,
   statement_timeout: 30000,
-  allowExitOnIdle: true,
+  allowExitOnIdle: true,           // Libère la socket quand le délai d'inactivité est écoulé
+  keepAlive: true,                 // Évite les coupures silencieuses par les routeurs cloud
+  keepAliveInitialDelayMillis: 10000,
 });
 
 console.log('🔧 Configuration PostgreSQL Neon:', {
@@ -45,26 +48,19 @@ const pool = new Pool(dbConfig);
 
 // Gestion des événements du pool
 pool.on('error', (err, client) => {
-  console.error('❌ Erreur inattendue sur client PostgreSQL idle:', err.message);
-  // Ne pas crasher l'application, juste logger
+  logger.error('Erreur inattendue sur client PostgreSQL idle:', err.message);
 });
 
 pool.on('connect', (client) => {
-  if (process.env.NODE_ENV === 'development') {
-    console.log('✅ Nouvelle connexion PostgreSQL établie');
-  }
+  logger.dbDebug('✅ Nouvelle connexion PostgreSQL établie');
 });
 
 pool.on('acquire', (client) => {
-  if (process.env.NODE_ENV === 'development') {
-    console.log('🔗 Client PostgreSQL acquis du pool');
-  }
+  logger.dbDebug('🔗 Client PostgreSQL acquis du pool');
 });
 
 pool.on('remove', (client) => {
-  if (process.env.NODE_ENV === 'development') {
-    console.log('🔌 Client PostgreSQL retiré du pool');
-  }
+  logger.dbDebug('🔌 Client PostgreSQL retiré du pool');
 });
 
 // Test de connexion
@@ -97,10 +93,12 @@ const query = async (text, params, retries = 3) => {
       const res = await pool.query(text, params);
       const duration = Date.now() - start;
 
-      // Log seulement en développement pour éviter le spam
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🔍 Requête exécutée:', {
-          text: text.substring(0, 50) + '...',
+      // Alerte uniquement sur les requêtes anormalement lentes (> 500 ms) ou debug DB explicite
+      if (duration > 500) {
+        logger.slowQuery(text, duration);
+      } else {
+        logger.dbDebug('🔍 Requête exécutée:', {
+          text: text.substring(0, 50).replace(/\s+/g, ' ') + '...',
           duration: duration + 'ms',
           rows: res.rowCount
         });
@@ -272,6 +270,28 @@ const ensureAdminDocumentsTable = async () => {
   }
 };
 
+// Migration automatique: Créer la table revoked_tokens pour la déconnexion sécurisée (blacklist JWT)
+const ensureRevokedTokensTable = async () => {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS revoked_tokens (
+        id SERIAL PRIMARY KEY,
+        token TEXT NOT NULL UNIQUE,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_revoked_tokens_token ON revoked_tokens(token);
+      CREATE INDEX IF NOT EXISTS idx_revoked_tokens_expires ON revoked_tokens(expires_at);
+    `);
+    console.log('✅ Table revoked_tokens prête');
+  } catch (error) {
+    if (!error.message.includes('already exists')) {
+      console.log('⚠️ Migration revoked_tokens:', error.message);
+    }
+  }
+};
+
 // Fonction pour exécuter les migrations secondaires (appelée depuis server.js)
 const runMigrations = async () => {
   try {
@@ -280,6 +300,7 @@ const runMigrations = async () => {
     await ensureTestimonialsTable();
     await ensureLastActiveColumn();
     await ensureAdminDocumentsTable();
+    await ensureRevokedTokensTable();
     console.log('✅ Toutes les migrations DB terminées');
   } catch (err) {
     console.error('❌ Migration DB échouée:', err.message);

@@ -205,6 +205,8 @@ npm install
 ```
 
 ### Démarrage
+
+**Option 1 — Manuellement (2 terminaux)**
 ```bash
 # Terminal 1 - Backend
 cd backend
@@ -214,6 +216,12 @@ npm start
 cd frontend
 npm run dev
 ```
+
+**Option 2 — Script unifié (depuis la racine)**
+```bash
+./start.sh
+```
+Lance le backend (nodemon) et le frontend (Vite) en parallèle : nettoie les ports 3003/5173, installe les dépendances si absentes, vérifie la configuration, puis affiche les URLs. `Ctrl+C` arrête les deux services.
 
 ## 🤝 Contribution
 

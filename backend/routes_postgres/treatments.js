@@ -30,10 +30,10 @@ router.delete('/:id', authenticateToken, treatmentsController.cancelTreatment);
 // ═══════════════════════════════════════════════════════════════════════════
 
 // Récupérer les traitements à administrer aujourd'hui
-router.get('/today', authenticateToken, requireRole('staff', 'admin', 'direction'), treatmentsController.getTodayTreatments);
+router.get('/today', authenticateToken, requireRole('staff', 'admin', 'developer'), treatmentsController.getTodayTreatments);
 
 // Confirmer l'administration d'un traitement
-router.post('/:id/administer', authenticateToken, requireRole('staff', 'admin', 'direction'), treatmentsController.administerTreatment);
+router.post('/:id/administer', authenticateToken, requireRole('staff', 'admin', 'developer'), treatmentsController.administerTreatment);
 
 // Récupérer l'historique des administrations
 router.get('/:id/history', authenticateToken, treatmentsController.getTreatmentHistory);

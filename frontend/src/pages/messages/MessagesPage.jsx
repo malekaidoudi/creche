@@ -16,6 +16,7 @@ import { useAuth } from '../../hooks/useAuth';
 import useIsMobile from '../../hooks/useIsMobile';
 import MobileNavigation from '../../components/mobile/MobileNavigation';
 import API_CONFIG from '../../config/api';
+import { useAccess } from '../../access';
 
 const API_URL = `${API_CONFIG.BASE_URL}/api`;
 
@@ -24,6 +25,7 @@ export default function MessagesPage() {
   const { user } = useAuth();
   const isMobile = useIsMobile();
   const [searchParams] = useSearchParams();
+  const { can, loading: accessLoading } = useAccess();
 
   // États
   const [contacts, setContacts] = useState([]);
@@ -237,6 +239,14 @@ export default function MessagesPage() {
   async function loadContacts(user) {
     try {
       const token = localStorage.getItem('token');
+
+      // Sans la permission "messages.parents", les parents ne doivent même pas
+      // apparaître dans la liste de contacts : cela évite de tenter de leur
+      // écrire pour se heurter ensuite à un refus serveur. `can()` vient du
+      // module d'accès central (voir access/) ; l'appelant garantit que les
+      // accès sont déjà chargés avant d'invoquer cette fonction.
+      const canMessageParents = can('MESSAGES_PARENTS');
+
       const response = await axios.get(`${API_URL}/users?limit=100`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -247,6 +257,8 @@ export default function MessagesPage() {
           if (isCurrentUser) return false;
 
           if (user.role === 'parent' && u.role === 'parent') return false;
+
+          if (u.role === 'parent' && !canMessageParents) return false;
 
           return u.is_active;
         });
@@ -449,13 +461,20 @@ export default function MessagesPage() {
   // ============================================================================
 
   useEffect(() => {
+    // On attend que les accès (permissions) soient chargés avant de récupérer
+    // les contacts, pour ne jamais afficher brièvement des parents à un staff
+    // qui n'a pas le droit de les contacter.
+    if (accessLoading) return;
+
     const initData = async () => {
       const user = await loadCurrentUser();
       await loadContacts(user);
       await loadChildren();
     };
     initData();
+  }, [accessLoading]);
 
+  useEffect(() => {
     // Heartbeat présence: notifier le serveur qu'on est actif toutes les 30s
     const presenceInterval = setInterval(() => {
       const token = localStorage.getItem('token');

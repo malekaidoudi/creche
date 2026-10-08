@@ -68,36 +68,6 @@ router.get('/has-children', auth.authenticateToken, async (req, res) => {
   }
 });
 
-// GET /api/user/children-summary - Récupérer le résumé des enfants de l'utilisateur
-router.get('/children-summary', auth.authenticateToken, async (req, res) => {
-  try {
-    const userId = req.user.id;
-
-    const sql = `
-      SELECT c.id, c.first_name, c.last_name, c.birth_date, c.gender, 
-             c.medical_info, c.photo_url, c.created_at,
-             e.status as enrollment_status, e.enrollment_date,
-             EXTRACT(YEAR FROM AGE(c.birth_date)) as age
-      FROM children c
-      JOIN enrollments e ON c.id = e.child_id
-      WHERE e.parent_id = $1 AND c.is_active = true
-      ORDER BY c.first_name, c.last_name
-    `;
-
-    const result = await db.query(sql, [userId]);
-
-    res.json({
-      success: true,
-      children: result.rows
-    });
-  } catch (error) {
-    console.error('Erreur récupération enfants utilisateur:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Erreur lors de la récupération des enfants'
-    });
-  }
-});
 
 // GET /api/users/contacts - Récupérer les contacts pour la messagerie
 router.get('/contacts', auth.authenticateToken, async (req, res) => {
@@ -256,18 +226,8 @@ router.get('/online', auth.authenticateToken, async (req, res) => {
   }
 });
 
-// GET /api/user/has-children - Vérifier si l'utilisateur a des enfants (AVANT la route /:id)
-router.get('/has-children', (req, res) => {
-  res.json({
-    success: true,
-    hasChildren: false,
-    count: 0,
-    message: 'Route fonctionnelle - ordre corrigé'
-  });
-});
-
 // GET /api/users/:id - Récupérer un utilisateur par ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', auth.authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -299,13 +259,13 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// POST /api/users - Créer un nouvel utilisateur
-router.post('/', [
+// POST /api/users - Créer un nouvel utilisateur (Admin / Developer)
+router.post('/', auth.authenticateToken, auth.requireRole('admin', 'developer'), [
   body('email').isEmail().withMessage('Email invalide'),
   body('password').isLength({ min: 6 }).withMessage('Mot de passe minimum 6 caractères'),
   body('first_name').notEmpty().withMessage('Prénom requis'),
   body('last_name').notEmpty().withMessage('Nom requis'),
-  body('role').isIn(['admin', 'staff', 'parent']).withMessage('Rôle invalide')
+  body('role').isIn(['admin', 'staff', 'parent', 'developer']).withMessage('Rôle invalide')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -362,11 +322,11 @@ router.post('/', [
 });
 
 // PUT /api/users/:id - Mettre à jour un utilisateur
-router.put('/:id', [
+router.put('/:id', auth.authenticateToken, [
   body('email').optional().isEmail().withMessage('Email invalide'),
   body('first_name').optional().notEmpty().withMessage('Prénom requis'),
   body('last_name').optional().notEmpty().withMessage('Nom requis'),
-  body('role').optional().isIn(['admin', 'staff', 'parent']).withMessage('Rôle invalide')
+  body('role').optional().isIn(['admin', 'staff', 'parent', 'developer']).withMessage('Rôle invalide')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -379,6 +339,18 @@ router.put('/:id', [
     }
 
     const { id } = req.params;
+    const currentUserId = req.user.userId || req.user.id;
+    const currentUserRole = req.user.role;
+    const isAdminOrDev = ['admin', 'developer'].includes(currentUserRole);
+
+    // Un utilisateur non admin/dev ne peut modifier que son propre compte
+    if (!isAdminOrDev && parseInt(id) !== currentUserId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Accès non autorisé : vous ne pouvez modifier que votre propre profil'
+      });
+    }
+
     const { email, first_name, last_name, phone, role, profile_image, is_active, gender, staff_position } = req.body;
 
     // Vérifier si l'utilisateur existe
@@ -430,7 +402,8 @@ router.put('/:id', [
       params.push(phone);
     }
 
-    if (role !== undefined) {
+    // Seuls admin et developer peuvent modifier le rôle
+    if (role !== undefined && isAdminOrDev) {
       paramCount++;
       updates.push(`role = $${paramCount}`);
       params.push(role);
@@ -442,7 +415,8 @@ router.put('/:id', [
       params.push(profile_image);
     }
 
-    if (is_active !== undefined) {
+    // Seuls admin et developer peuvent modifier le statut d'activation
+    if (is_active !== undefined && isAdminOrDev) {
       paramCount++;
       updates.push(`is_active = $${paramCount}`);
       params.push(is_active);
@@ -454,7 +428,8 @@ router.put('/:id', [
       params.push(gender);
     }
 
-    if (staff_position !== undefined) {
+    // Seuls admin et developer peuvent modifier le poste staff
+    if (staff_position !== undefined && isAdminOrDev) {
       paramCount++;
       updates.push(`staff_position = $${paramCount}`);
       params.push(staff_position);
@@ -500,8 +475,8 @@ router.put('/:id', [
   }
 });
 
-// DELETE /api/users/:id - Supprimer un utilisateur (soft delete)
-router.delete('/:id', async (req, res) => {
+// DELETE /api/users/:id - Supprimer un utilisateur (soft delete) (Admin / Developer)
+router.delete('/:id', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -534,8 +509,8 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// PUT /api/users/:id/password - Changer le mot de passe
-router.put('/:id/password', [
+// PUT /api/users/:id/password - Réinitialiser le mot de passe d'un utilisateur (Admin / Developer)
+router.put('/:id/password', auth.authenticateToken, auth.requireRole('admin', 'developer'), [
   body('newPassword').isLength({ min: 6 }).withMessage('Nouveau mot de passe minimum 6 caractères')
 ], async (req, res) => {
   try {
@@ -766,50 +741,6 @@ router.put('/change-password', auth.authenticateToken, [
     res.status(500).json({
       success: false,
       error: 'Erreur lors du changement de mot de passe'
-    });
-  }
-});
-
-// POST /api/users/push-token - Enregistrer le token push pour les notifications
-router.post('/push-token', auth.authenticateToken, async (req, res) => {
-  try {
-    const userId = req.user.userId || req.user.id;
-    const { push_token } = req.body;
-
-    if (!push_token) {
-      return res.status(400).json({
-        success: false,
-        error: 'Token push requis'
-      });
-    }
-
-    // Vérifier si la colonne push_token existe, sinon la créer
-    try {
-      await db.query(`
-        ALTER TABLE users ADD COLUMN IF NOT EXISTS push_token VARCHAR(255)
-      `);
-    } catch (alterError) {
-      // Ignorer si la colonne existe déjà
-    }
-
-    // Mettre à jour le token push de l'utilisateur
-    await db.query(
-      'UPDATE users SET push_token = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
-      [push_token, userId]
-    );
-
-    console.log(`✅ Token push enregistré pour l'utilisateur ${userId}`);
-
-    res.json({
-      success: true,
-      message: 'Token push enregistré avec succès'
-    });
-
-  } catch (error) {
-    console.error('Erreur enregistrement token push:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Erreur lors de l\'enregistrement du token push'
     });
   }
 });

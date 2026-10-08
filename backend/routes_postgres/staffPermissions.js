@@ -25,6 +25,23 @@ router.get('/catalog', auth.authenticateToken, auth.requireRole('admin', 'develo
 });
 
 /**
+ * GET /api/staff-permissions/me - Permissions accordées à l'utilisateur connecté
+ * Accessible à tout utilisateur authentifié (staff inclus) pour adapter son
+ * propre affichage (ex: masquer les parents s'il n'a pas le droit de les
+ * contacter), sans exposer les permissions des autres membres du personnel.
+ */
+router.get('/me', auth.authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id || req.user.userId;
+    const codes = await permissionsService.getUserPermissionCodes(userId, req.user.role);
+    res.json({ success: true, codes: Array.from(codes) });
+  } catch (error) {
+    logger.error('❌ Erreur GET /api/staff-permissions/me:', error.message);
+    res.status(500).json({ success: false, error: 'Erreur lors de la récupération de vos permissions' });
+  }
+});
+
+/**
  * GET /api/staff-permissions/:userId - Permissions accordées à un utilisateur
  */
 router.get('/:userId', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => {
@@ -36,7 +53,7 @@ router.get('/:userId', auth.authenticateToken, auth.requireRole('admin', 'develo
       return res.status(404).json({ success: false, error: 'Utilisateur non trouvé' });
     }
 
-    const catalog = await permissionsService.getCatalogForUser(userId);
+    const catalog = await permissionsService.getCatalogForUser(userId, userCheck.rows[0].role);
     res.json({ success: true, catalog });
   } catch (error) {
     logger.error('❌ Erreur GET /api/staff-permissions/:userId:', error.message);

@@ -265,6 +265,15 @@ router.patch('/:id/complete', auth.authenticateToken, auth.requireRole('admin', 
 });
 
 /**
+ * POST /api/appointments/:id/failed - Marquer un RDV comme échoué (admin/staff)
+ * Supporte outcome = 'reschedule' (reprogrammer) ou outcome = 'abandon' (archiver inscription)
+ */
+router.post('/:id/failed', auth.authenticateToken, auth.requireRole('admin', 'staff'), async (req, res) => {
+  const appointmentsController = require('../controllers/appointmentsController');
+  return appointmentsController.markAppointmentFailed(req, res);
+});
+
+/**
  * PATCH /api/appointments/:id/status - Changer le statut (admin)
  */
 router.patch('/:id/status', auth.authenticateToken, auth.requireRole('admin', 'staff'), async (req, res) => {

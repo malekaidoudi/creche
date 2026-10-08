@@ -33,7 +33,8 @@ const MobileAttendance = ({
     onCheckIn,
     onCheckOut,
     onRefresh,
-    selectedDate = new Date()
+    selectedDate = new Date(),
+    canManage = true
 }) => {
     const { isRTL } = useLanguage();
     const [searchQuery, setSearchQuery] = useState('');
@@ -279,40 +280,42 @@ const MobileAttendance = ({
                                             </div>
                                         </div>
 
-                                        {/* Actions */}
-                                        <div className="flex gap-2">
-                                            {status === 'absent' && (
-                                                <button
-                                                    onClick={() => handleCheckIn(child.id)}
-                                                    disabled={isProcessing}
-                                                    className="w-14 h-14 rounded-xl bg-green-500 hover:bg-green-600 active:scale-95 text-white flex items-center justify-center transition-all disabled:opacity-50"
-                                                >
-                                                    {isProcessing ? (
-                                                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                                    ) : (
-                                                        <UserCheck className="w-6 h-6" />
-                                                    )}
-                                                </button>
-                                            )}
-                                            {status === 'present' && (
-                                                <button
-                                                    onClick={() => handleCheckOut(child.id)}
-                                                    disabled={isProcessing}
-                                                    className="w-14 h-14 rounded-xl bg-orange-500 hover:bg-orange-600 active:scale-95 text-white flex items-center justify-center transition-all disabled:opacity-50"
-                                                >
-                                                    {isProcessing ? (
-                                                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                                    ) : (
-                                                        <UserX className="w-6 h-6" />
-                                                    )}
-                                                </button>
-                                            )}
-                                            {status === 'left' && (
-                                                <div className="w-14 h-14 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                                                    <CheckCircle className="w-6 h-6 text-gray-400" />
-                                                </div>
-                                            )}
-                                        </div>
+                                        {/* Actions - masquées si l'utilisateur n'a pas le droit d'enregistrer les présences */}
+                                        {canManage && (
+                                            <div className="flex gap-2">
+                                                {status === 'absent' && (
+                                                    <button
+                                                        onClick={() => handleCheckIn(child.id)}
+                                                        disabled={isProcessing}
+                                                        className="w-14 h-14 rounded-xl bg-green-500 hover:bg-green-600 active:scale-95 text-white flex items-center justify-center transition-all disabled:opacity-50"
+                                                    >
+                                                        {isProcessing ? (
+                                                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                        ) : (
+                                                            <UserCheck className="w-6 h-6" />
+                                                        )}
+                                                    </button>
+                                                )}
+                                                {status === 'present' && (
+                                                    <button
+                                                        onClick={() => handleCheckOut(child.id)}
+                                                        disabled={isProcessing}
+                                                        className="w-14 h-14 rounded-xl bg-orange-500 hover:bg-orange-600 active:scale-95 text-white flex items-center justify-center transition-all disabled:opacity-50"
+                                                    >
+                                                        {isProcessing ? (
+                                                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                        ) : (
+                                                            <UserX className="w-6 h-6" />
+                                                        )}
+                                                    </button>
+                                                )}
+                                                {status === 'left' && (
+                                                    <div className="w-14 h-14 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                                                        <CheckCircle className="w-6 h-6 text-gray-400" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 </motion.div>
                             );

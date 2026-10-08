@@ -1,0 +1,305 @@
+absenceRequests.js:7:router.get('/all', auth.authenticateToken, async (req, res) => { try { // Vérifier que l'utilisateur est admin ou staff if (req.user.role !== 'admin' && req.use
+absenceRequests.js:55:router.get('/today', auth.authenticateToken, async (req, res) => { try { const { date } = req.query; const targetDate = date || new Date().toISOString().split('
+absenceRequests.js:100:router.get('/parent/:parentId', auth.authenticateToken, async (req, res) => { try { const { parentId } = req.params; const userId = req.user.userId;
+absenceRequests.js:149:router.post('/', auth.authenticateToken, async (req, res) => { try { const { child_id, start_date, end_date, reason, notes } = req.body; const userId = req.user
+absenceRequests.js:244:router.put('/:id/acknowledge', auth.authenticateToken, async (req, res) => { try { const { id } = req.params; const { acknowledged_by } = req.body;
+activities.js:49:router.get('/', auth.authenticateToken, async (req, res) => { try { const { page = 1, limit = 10 } = req.query; const result = await activityService.getActiviti
+activities.js:72:router.get('/:id', auth.authenticateToken, async (req, res) => { try { const result = await activityService.getActivityById(req.params.id, req.user.userId); 
+activities.js:90:router.post('/', auth.authenticateToken, auth.requireRole('admin', 'staff'), auth.requirePermission('activities.photos.publish'),
+activities.js:206:router.delete('/:id', auth.authenticateToken, async (req, res) => { try { const result = await activityService.deleteActivity( req.params.id,
+activities.js:228:router.post('/:id/reactions', auth.authenticateToken, async (req, res) => { try { const { reactionType } = req.body; 
+activities.js:256:router.get('/:id/reactions/details', auth.authenticateToken, async (req, res) => { try { const result = await activityService.getReactionDetails(req.params.id);
+activities.js:274:router.get('/:id/comments', auth.authenticateToken, async (req, res) => { try { const { page = 1, limit = 20 } = req.query; const result = await activityService
+activities.js:297:router.post('/:id/comments', auth.authenticateToken, async (req, res) => { try { const { content, parentCommentId } = req.body; 
+activities.js:326:router.delete('/:id/comments/:commentId', auth.authenticateToken, async (req, res) => { try { const result = await activityService.deleteComment( req.params.com
+activityFeed.js:21:router.get('/', requireAdmin, async (req, res) => { try { const { page, limit, role, date, userId } = req.query; 
+activityFeed.js:50:router.get('/summary', requireAdmin, async (req, res) => { try { const { date } = req.query; const summary = await activityFeedService.getDailySummary(date || n
+activityFeed.js:72:router.get('/calendar/:year/:month', requireAdmin, async (req, res) => { try { const { year, month } = req.params; const calendarData = await activityFeedServic
+activityFeed.js:97:router.get('/user/:userId', requireAdmin, async (req, res) => { try { const { userId } = req.params; const { limit } = req.query;
+activityLogs.js:26:router.get('/dashboard', requireDeveloper, activityLogController.getDashboard); // ==================== LOGS ==================== 
+activityLogs.js:44:router.get('/', requireDeveloper, activityLogController.getAll); /** * @route GET /api/activity-logs/stats
+activityLogs.js:54:router.get('/stats', requireDeveloper, activityLogController.getStats); /** * @route GET /api/activity-logs/actions
+activityLogs.js:61:router.get('/actions', requireDeveloper, activityLogController.getAvailableActions); /** * @route GET /api/activity-logs/archive
+activityLogs.js:68:router.get('/archive', auth.requireRole('admin'), activityLogController.searchArchive); /** * @route POST /api/activity-logs/archive
+activityLogs.js:75:router.post('/archive', auth.requireRole('admin'), activityLogController.triggerArchive); /** * @route DELETE /api/activity-logs/cleanup
+activityLogs.js:82:router.delete('/cleanup', auth.requireRole('admin'), activityLogController.cleanup); /** * @route POST /api/activity-logs
+activityLogs.js:89:router.post('/', auth.requireRole('admin'), activityLogController.create); // ==================== ALERTES ==================== 
+activityLogs.js:98:router.get('/alerts', requireDeveloper, activityLogController.getAlerts); /** * @route GET /api/activity-logs/alerts/active
+activityLogs.js:105:router.get('/alerts/active', requireDeveloper, activityLogController.getActiveAlerts); /** * @route GET /api/activity-logs/alerts/stats
+activityLogs.js:112:router.get('/alerts/stats', requireDeveloper, activityLogController.getAlertStats); /** * @route GET /api/activity-logs/alerts/:id
+activityLogs.js:119:router.get('/alerts/:id', requireDeveloper, activityLogController.getAlertById); /** * @route PUT /api/activity-logs/alerts/:id/acknowledge
+activityLogs.js:126:router.put('/alerts/:id/acknowledge', requireDeveloper, activityLogController.acknowledgeAlert); /** * @route PUT /api/activity-logs/alerts/:id/resolve
+activityLogs.js:133:router.put('/alerts/:id/resolve', requireDeveloper, activityLogController.resolveAlert); /** * @route PUT /api/activity-logs/alerts/:id/dismiss
+activityLogs.js:140:router.put('/alerts/:id/dismiss', requireDeveloper, activityLogController.dismissAlert); // ==================== RAPPORTS ==================== 
+activityLogs.js:150:router.get('/reports/daily', requireDeveloper, activityLogController.getDailyReport); /** * @route GET /api/activity-logs/reports/weekly
+activityLogs.js:158:router.get('/reports/weekly', requireDeveloper, activityLogController.getWeeklyReport); /** * @route GET /api/activity-logs/reports/monthly
+activityLogs.js:167:router.get('/reports/monthly', requireDeveloper, activityLogController.getMonthlyReport); /** * @route GET /api/activity-logs/reports/history
+activityLogs.js:174:router.get('/reports/history', requireDeveloper, activityLogController.getReportHistory); /** * @route GET /api/activity-logs/reports/:id
+activityLogs.js:181:router.get('/reports/:id', requireDeveloper, activityLogController.getReportById); /** * @route GET /api/activity-logs/reports/:type/export/:format
+activityLogs.js:190:router.get('/reports/:type/export/:format', requireDeveloper, activityLogController.exportReport); // ==================== ROUTE DYNAMIQUE (doit être en dernier
+activityLogs.js:200:router.get('/:id', requireDeveloper, activityLogController.getById); module.exports = router;
+announcements.js:14:router.post('/', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => { try { const result = await announcementService.createAnnouncement(req.
+announcements.js:36:router.get('/', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => { try { const { is_published, event_type } = req.query; const result = aw
+announcements.js:58:router.get('/my', auth.authenticateToken, async (req, res) => { try { const userRole = req.user.role; 
+announcements.js:87:router.patch('/:id/publish', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => { try { const result = await announcementService.publishAnno
+announcements.js:109:router.delete('/:id', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => { try { const result = await announcementService.deleteAnnouncement
+appointments.js:18:router.post('/', auth.authenticateToken, async (req, res) => { try { // Si parent, définir automatiquement parent_id if (req.user.role === 'parent') {
+appointments.js:45:router.get('/', auth.authenticateToken, async (req, res) => { try { const { status } = req.query; const result = await appointmentService.getAppointments(
+appointments.js:68:router.get('/my', auth.authenticateToken, async (req, res) => { try { const { pool } = require('../config/db_postgres'); 
+appointments.js:108:router.get('/today', auth.authenticateToken, auth.requireRole('admin', 'staff'), async (req, res) => { try { const result = await appointmentService.getTodayApp
+appointments.js:125:router.get('/pending', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => { try { const result = await appointmentService.getPendingAppointm
+appointments.js:142:router.get('/:id', auth.authenticateToken, async (req, res) => { try { const result = await appointmentService.getAppointmentById( parseInt(req.params.id),
+appointments.js:172:router.patch('/:id/confirm', auth.authenticateToken, async (req, res) => { try { const result = await appointmentService.confirmAppointment( parseInt(req.params
+appointments.js:198:router.patch('/:id/counter-propose', auth.authenticateToken, async (req, res) => { try { const { proposed_date } = req.body; 
+appointments.js:234:router.patch('/:id/cancel', auth.authenticateToken, async (req, res) => { try { const result = await appointmentService.cancelAppointment( parseInt(req.params.i
+appointments.js:260:router.patch('/:id/complete', auth.authenticateToken, auth.requireRole('admin', 'staff'), async (req, res) => { const appointmentsController = require('../contr
+appointments.js:270:router.post('/:id/failed', auth.authenticateToken, auth.requireRole('admin', 'staff'), async (req, res) => { const appointmentsController = require('../control
+appointments.js:279:router.patch('/:id/status', auth.authenticateToken, auth.requireRole('admin', 'staff'), async (req, res) => { try { const { status } = req.body; const result = 
+appointments.js:301:router.get('/by-enrollment/:enrollmentId', async (req, res) => { try { const { enrollmentId } = req.params; const { email } = req.query;
+appointments.js:351:router.post('/public/confirm', async (req, res) => { try { const { enrollment_id, email } = req.body; 
+appointments.js:404:router.post('/public/counter-propose', async (req, res) => { try { const { enrollment_id, email, proposed_date } = req.body; 
+attendance.js:8:router.get('/today', auth.authenticateToken, async (req, res) => { try { const { page = 1, limit = 50 } = req.query; const today = new Date().toISOString().spli
+attendance.js:47:router.get('/child/:id/month', auth.authenticateToken, async (req, res) => { try { const { id } = req.params; const { year, month } = req.query;
+attendance.js:99:router.get('/currently-present', auth.authenticateToken, async (req, res) => { try { const today = new Date().toISOString().split('T')[0]; 
+attendance.js:130:router.get('/stats', auth.authenticateToken, async (req, res) => { try { const { date } = req.query; const targetDate = date || new Date().toISOString().split('
+attendance.js:170:router.get('/date/:date', auth.authenticateToken, async (req, res) => { try { const { date } = req.params; const { page = 1, limit = 100 } = req.query;
+attendance.js:209:router.get('/report', auth.authenticateToken, async (req, res) => { try { res.json({ success: true,
+attendance.js:231:router.get('/', auth.authenticateToken, async (req, res) => { try { const { child_id, date, start_date, end_date, page = 1, limit = 50 } = req.query; 
+attendance.js:343:router.get('/:id', auth.authenticateToken, async (req, res) => { try { const { id } = req.params; 
+attendance.js:380:router.get('/stats/overview', auth.authenticateToken, async (req, res) => { try { const { start_date, end_date } = req.query; 
+attendance.js:428:router.post('/check-in', auth.authenticateToken, auth.requirePermission('attendance.manage'), async (req, res) => { try { const { child_id, notes } = req.body; 
+attendance.js:471:router.post('/check-out', auth.authenticateToken, auth.requirePermission('attendance.manage'), async (req, res) => { try { const { child_id, notes } = req.body;
+attendance.js:505:router.get('/child/:id/calendar', auth.authenticateToken, async (req, res) => { try { const { id } = req.params; const { year, month } = req.query;
+auth.js:17:router.post('/login', [ body('email').isEmail().withMessage('Email invalide'), body('password').isLength({ min: 1 }).withMessage('Mot de passe requis') ], async
+auth.js:87:router.post('/register', [ body('email').isEmail().withMessage('Email invalide'), body('password').isLength({ min: 6 }).withMessage('Mot de passe minimum 6 cara
+auth.js:149:router.get('/me', async (req, res) => { try { const token = req.headers.authorization?.replace('Bearer ', ''); 
+auth.js:182:router.post('/logout', (req, res) => { res.json({ message: 'Déconnexion réussie' }); }); 
+auth.js:188:router.post('/create-password', [ body('token').notEmpty().withMessage('Token requis'), body('email').isEmail().withMessage('Email invalide'), body('password').
+auth.js:359:router.post('/forgot-password', [ body('email').isEmail().withMessage('Email invalide') ], async (req, res) => { try {
+auth.js:440:router.post('/reset-password', [ body('token').notEmpty().withMessage('Token requis'), body('password').isLength({ min: 6 }).withMessage('Mot de passe minimum 6
+auth.js:528:router.get('/verify-reset-token/:token', async (req, res) => { try { const { token } = req.params; 
+backup.js:62:router.get('/', authenticateToken, requireRole('admin', 'developer'), async (req, res) => { try { if (req.user.role !== 'admin' && req.user.role !== 'developer'
+backup.js:113:router.post('/', authenticateToken, requireRole('admin', 'developer'), async (req, res) => { try { if (req.user.role !== 'admin' && req.user.role !== 'developer
+backup.js:204:router.get('/download/:filename', authenticateToken, requireRole('admin', 'developer'), async (req, res) => { try { if (req.user.role !== 'admin' && req.user.ro
+backup.js:226:router.delete('/:filename', authenticateToken, requireRole('admin', 'developer'), async (req, res) => { try { if (req.user.role !== 'admin' && req.user.role !==
+backup.js:254:router.post('/restore/:filename', authenticateToken, requireRole('admin', 'developer'), async (req, res) => { try { if (req.user.role !== 'admin' && req.user.ro
+backup.js:363:router.get('/status', authenticateToken, requireRole('admin', 'developer'), async (req, res) => { try { ensureBackupDir(); 
+children.js:124:router.get('/simple', auth.authenticateToken, async (req, res) => { try { const sql = ` SELECT DISTINCT ON (c.id)
+children.js:157:router.get('/my-count', auth.authenticateToken, async (req, res) => { try { const parentId = req.user.userId || req.user.id; 
+children.js:199:router.get('/available', auth.authenticateToken, auth.requireStaff, async (req, res) => { try { const sql = ` SELECT c.id, c.first_name, c.last_name, c.birth_da
+children.js:229:router.get('/orphans', auth.authenticateToken, auth.requireStaff, async (req, res) => { try { const { search } = req.query; 
+children.js:296:router.get('/parent/:parentId', auth.authenticateToken, async (req, res) => { try { const { parentId } = req.params; 
+children.js:343:router.get('/birthdays/month', async (req, res) => { try { const now = new Date(); const currentMonth = now.getMonth() + 1; // JavaScript months are 0-indexed
+children.js:410:router.get('/stats', async (req, res) => { try { const statsQuery = ` SELECT
+children.js:446:router.put('/:id/associate-parent', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => { try { const { id } = req.params; const { parentId, 
+children.js:525:router.put('/:id/deactivate-parent', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => { try { const { id } = req.params; 
+children.js:577:router.get('/unassociated', async (req, res) => { try { res.json({ success: true,
+children.js:594:router.get('/', auth.authenticateToken, async (req, res) => { try { const { status = 'active', search, gender, age, age_min, age_max, page = 1, limit = 50 } = r
+children.js:766:router.get('/:id', auth.authenticateToken, auth.requireChildAccess, async (req, res) => { try { const { id } = req.params; 
+children.js:837:router.post('/', [ auth.authenticateToken, auth.requireStaff, body('first_name').notEmpty().withMessage('Prénom requis'),
+children.js:968:router.put('/:id', [ auth.authenticateToken, auth.requireChildAccess, body('first_name').optional().notEmpty().withMessage('Prénom requis'),
+children.js:1147:router.delete('/:id', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => { const childLifecycleService = require('../services/childLifecycle
+children.js:1262:router.post('/:id/photo', auth.authenticateToken, requireChildPhotoAccess, upload.single('photo'), async (req, res) => { try { const { id } = req.params; 
+children.js:1320:router.delete('/:id/photo', auth.authenticateToken, requireChildPhotoAccess, async (req, res) => { try { const { id } = req.params; 
+children.js:1362:router.get('/stats/overview', async (req, res) => { try { const stats = await pool.query(` SELECT
+children.js:1395:router.get('/:id/medical', auth.authenticateToken, async (req, res) => { try { const { id } = req.params; 
+children.js:1444:router.put('/:id/medical', auth.authenticateToken, async (req, res) => { try { const { id } = req.params; const { allergies, medications, conditions, blood_type
+children.js:1500:router.get('/:id/emergency-contacts', auth.authenticateToken, async (req, res) => { try { const { id } = req.params; 
+children.js:1531:router.put('/:id/emergency-contacts', auth.authenticateToken, async (req, res) => { try { const { id } = req.params; const { contacts } = req.body;
+cloudinary.js:11:router.post('/signature', authenticateToken, async (req, res) => { try { const timestamp = Math.round(new Date().getTime() / 1000); const folder = 'activities';
+cloudinaryExplorer.js:15:router.get('/stats', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => { try { const result = await cloudinaryService.getUsage
+cloudinaryExplorer.js:34:router.get('/folders', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => { try { const result = await cloudinaryService.listFo
+cloudinaryExplorer.js:53:router.get('/folders/:path(*)', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => { try { const { path } = req.params; const r
+cloudinaryExplorer.js:69:router.get('/resources', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => { try { const { folder, type, max_results, next_cur
+cloudinaryExplorer.js:91:router.get('/all-resources', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => { try { const { folder, max_results } = req.que
+cloudinaryExplorer.js:130:router.get('/search', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => { try { const { q, max_results } = req.query; 
+cloudinaryExplorer.js:151:router.delete('/resource/:publicId(*)', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => { try { const { publicId } = req.par
+cloudinaryExplorer.js:172:router.delete('/folder/:path(*)', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => { try { const { path } = req.params; 
+cloudinaryExplorer.js:193:router.post('/move', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => { try { const { publicId, targetFolder } = req.body; 
+cloudinaryExplorer.js:218:router.post('/copy', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => { try { const { publicId, targetFolder } = req.body; 
+cloudinaryExplorer.js:243:router.post('/create-folder', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => { try { const { folderPath } = req.body; 
+cloudinaryExplorer.js:268:router.put('/rename', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => { try { const { publicId, newName } = req.body; 
+contactMessages.js:11:router.get('/', authenticateToken, async (req, res) => { try { // Vérifier que l'utilisateur est admin if (req.user.role !== 'admin' && req.user.role !== 'devel
+contactMessages.js:81:router.get('/:id', authenticateToken, async (req, res) => { try { if (req.user.role !== 'admin' && req.user.role !== 'developer') { return res.status(403).json(
+contactMessages.js:135:router.post('/:id/reply', authenticateToken, async (req, res) => { try { if (req.user.role !== 'admin' && req.user.role !== 'developer') { return res.status(403
+contactMessages.js:222:router.patch('/:id/status', authenticateToken, async (req, res) => { try { if (req.user.role !== 'admin' && req.user.role !== 'developer') { return res.status(4
+contactMessages.js:265:router.delete('/:id', authenticateToken, async (req, res) => { try { if (req.user.role !== 'admin' && req.user.role !== 'developer') { return res.status(403).js
+contactMessages.js:296:router.get('/stats/summary', authenticateToken, async (req, res) => { try { if (req.user.role !== 'admin' && req.user.role !== 'developer') { return res.status(
+contacts.js:11:router.post('/', [ body('name').trim().notEmpty().withMessage('Le nom est requis'), body('email').isEmail().withMessage('Email invalide'), body('message').trim(
+contacts.js:94:router.get('/', async (req, res) => { try { const result = await db.query(` SELECT id, name, email, phone, subject, message, created_at
+contacts.js:122:router.get('/info', async (req, res) => { try { // Récupérer tous les paramètres nécessaires const result = await db.query(`
+contacts.js:189:router.get('/test-smtp', async (req, res) => { try { const emailConfig = { provider: process.env.RESEND_API_KEY ? 'resend' : (process.env.SMTP_HOST ? 'smtp' : '
+dailyReports.js:16:router.get('/children/today', authenticateToken, requireRole('admin', 'staff'), dailyReportsController.getChildrenForToday
+dailyReports.js:23:router.post('/', authenticateToken, requireRole('admin', 'staff'), dailyReportsController.createOrUpdateReport
+dailyReports.js:30:router.patch('/:id/status', authenticateToken, requireRole('admin', 'staff'), dailyReportsController.updateReportStatus
+dailyReports.js:37:router.delete('/:id', authenticateToken, requireRole('admin', 'staff'), dailyReportsController.deleteReport
+dailyReports.js:48:router.get('/parent/my-children', authenticateToken, requireRole('parent', 'admin', 'staff'), dailyReportsController.getParentChildrenReports
+dailyReports.js:59:router.get('/:childId/history', authenticateToken, dailyReportsController.getReportHistory );
+dailyReports.js:65:router.get('/:childId/:date', authenticateToken, dailyReportsController.getReport );
+dashboardStats.js:10:router.get('/stats', authenticateToken, async (req, res) => { try { console.log('📊 Chargement des statistiques du dashboard...'); 
+dashboardStats.js:118:router.get('/overview', authenticateToken, async (req, res) => { try { const today = new Date().toISOString().split('T')[0]; 
+debugEnrollments.js:11:router.get('/enrollments', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => { try { const result = await db.query(` SELECT
+debugEnrollments.js:41:router.get('/parents', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => { try { const result = await db.query(` SELECT id, email, first_na
+debugEnrollments.js:62:router.get('/children-without-parent', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => { try { const result = await db.query(` SELECT
+debugEnrollments.js:92:router.post('/assign-child', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => { try { const { childId, parentId } = req.body; 
+documents.js:51:router.get('/admin', auth.authenticateToken, async (req, res) => { try { const result = await db.query(` SELECT
+documents.js:77:router.post('/admin', auth.authenticateToken, auth.requireRole('admin'), upload.single('document'),
+documents.js:150:router.delete('/admin/:id', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
+documents.js:187:router.get('/admin/:id/download', auth.authenticateToken, async (req, res) => { try { const { id } = req.params; 
+documents.js:222:router.get('/public/reglement', async (req, res) => { try { // Fallback: URL Cloudinary directe configurée via variable d'environnement const envUrl = process.e
+documents.js:272:router.get('/children', auth.authenticateToken, async (req, res) => { try { const result = await db.query(` SELECT
+documents.js:304:router.get('/children/:childId', auth.authenticateToken, async (req, res) => { try { const { childId } = req.params; 
+documents.js:336:router.post('/children/:childId', auth.authenticateToken, upload.single('document'), async (req, res) => {
+documents.js:428:router.get('/archives', auth.authenticateToken, async (req, res) => { try { const result = await db.query(` SELECT
+documents.js:461:router.get('/', auth.authenticateToken, async (req, res) => { try { const { type = 'all' } = req.query; 
+documents.js:545:router.get('/stats', auth.authenticateToken, async (req, res) => { try { const [adminCount, childrenDocsCount, archivesCount] = await Promise.all([ db.query('SE
+enrollments.js:22:router.post('/', [ // Validation applicant body('applicant_first_name').notEmpty().withMessage('Prénom du candidat requis'), body('applicant_last_name').notEmpt
+enrollments.js:56:router.post('/check-child', [ body('child_first_name').notEmpty().withMessage('Prénom de l\'enfant requis'), body('child_last_name').notEmpty().withMessage('Nom
+enrollments.js:186:router.post('/check-email', [ body('email').isEmail().withMessage('Email valide requis'), body('first_name').notEmpty().withMessage('Prénom requis'), body('last
+enrollments.js:311:router.post('/:id/documents', upload.fields([ { name: 'carnet_medical', maxCount: 1 }, { name: 'acte_naissance', maxCount: 1 },
+enrollments.js:324:router.get('/:id/status', async (req, res) => { try { const { id } = req.params; const { email } = req.query;
+enrollments.js:378:router.get('/appointments/today', auth.authenticateToken, auth.requireRole('staff', 'admin', 'developer'), async (req, res) => {
+enrollments.js:456:router.get('/', auth.authenticateToken, auth.requireRole('staff', 'admin', 'developer'), enrollmentsController.getAllEnrollments
+enrollments.js:466:router.get('/:id', auth.authenticateToken, auth.requireRole('staff', 'admin', 'developer'), async (req, res) => {
+enrollments.js:525:router.post('/:id/approve', auth.authenticateToken, auth.requireRole('admin', 'developer'), [
+enrollments.js:549:router.put('/:id/reject', auth.authenticateToken, auth.requireRole('admin', 'developer'), [
+enrollments.js:575:router.post('/:id/choose-appointment', [ body('appointment_date').notEmpty().withMessage('Date de rendez-vous requise') ],
+enrollments.js:597:router.put('/:id/status', auth.authenticateToken, auth.requireRole('admin', 'developer'), [
+enrollments.js:632:router.delete('/:id', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => {
+enrollments.js:683:router.get('/:id/documents/:docId', auth.authenticateToken, auth.requireRole('staff', 'admin', 'developer'), async (req, res) => {
+enrollments.js:751:router.get('/:id/documents', auth.authenticateToken, auth.requireRole('staff', 'admin', 'developer'), async (req, res) => {
+enrollments.js:816:router.post('/add-child', auth.authenticateToken, auth.requireRole('parent'), upload.fields([
+events.js:18:router.get('/', authenticateToken, async (req, res) => { try { const filters = { type: req.query.type,
+events.js:51:router.get('/:id', authenticateToken, async (req, res) => { try { const result = await eventService.getEventById(req.params.id); 
+events.js:74:router.post('/', authenticateToken, async (req, res) => { try { const eventData = req.body; 
+events.js:102:router.put('/:id', authenticateToken, async (req, res) => { try { const updates = req.body; const result = await eventService.updateEvent(req.params.id, updates
+events.js:121:router.patch('/:id/status', authenticateToken, async (req, res) => { try { const { status } = req.body; 
+events.js:148:router.delete('/:id', authenticateToken, async (req, res) => { try { const result = await eventService.deleteEvent(req.params.id, req.user.id); res.json(result)
+events.js:170:router.get('/views/upcoming', authenticateToken, async (req, res) => { try { const days = req.query.days ? parseInt(req.query.days) : 7; const result = await ev
+events.js:191:router.get('/views/overdue', authenticateToken, async (req, res) => { try { const result = await eventService.getOverdueEvents(req.user.id, req.user.role); res.
+events.js:209:router.get('/views/calendar', authenticateToken, async (req, res) => { try { const { start, end, type } = req.query; 
+events.js:240:router.get('/tasks/kanban', authenticateToken, async (req, res) => { try { const result = await eventService.getTasksKanban(req.user.id); res.json(result);
+events.js:262:router.post('/:id/comments', authenticateToken, async (req, res) => { try { const { comment } = req.body; 
+health.js:7:router.get('/', async (req, res) => { // Si paramètre setup=true, créer les utilisateurs de test if (req.query.setup === 'true') { try {
+health.js:87:router.get('/db', async (req, res) => { try { const healthCheck = { status: 'OK',
+health.js:131:router.get('/detailed', async (req, res) => { try { const detailedCheck = { status: 'OK',
+holidays.js:85:router.get('/', async (req, res) => { try { console.log('📅 Récupération des jours fériés depuis la table holidays'); 
+holidays.js:131:router.post('/', authenticateToken, async (req, res) => { try { // Vérifier que l'utilisateur est admin if (req.user.role !== 'admin' && req.user.role !== 'deve
+holidays.js:187:router.put('/:id', authenticateToken, async (req, res) => { try { // Vérifier que l'utilisateur est admin if (req.user.role !== 'admin' && req.user.role !== 'de
+holidays.js:296:router.delete('/:id', authenticateToken, async (req, res) => { try { // Vérifier que l'utilisateur est admin if (req.user.role !== 'admin' && req.user.role !== 
+holidays.js:339:router.post('/sync', authenticateToken, async (req, res) => { try { // Vérifier que l'utilisateur est admin if (req.user.role !== 'admin' && req.user.role !== '
+holidays.js:403:router.post('/init', async (req, res) => { try { console.log('🚀 Initialisation des jours fériés tunisiens...'); 
+holidays.js:488:router.get('/check/:date', async (req, res) => { try { const { date } = req.params; 
+logs.js:7:router.get('/', auth.authenticateToken, async (req, res) => { try { const { limit = 10 } = req.query; 
+logs.js:50:router.post('/', auth.authenticateToken, async (req, res) => { try { const { action, description, category, severity } = req.body; const userId = req.user?.user
+logs.js:97:router.get('/email', auth.authenticateToken, async (req, res) => { try { // Vérifier que l'utilisateur est admin, staff ou developer if (!['admin', 'staff', 'de
+logs.js:150:router.delete('/email/:id', auth.authenticateToken, async (req, res) => { try { if (!['admin', 'staff', 'developer'].includes(req.user?.role)) { return res.stat
+notifications.js:8:router.get('/', auth.authenticateToken, async (req, res) => { try { // Utiliser l'utilisateur connecté au lieu du query param const user_id = req.user.userId;
+notifications.js:151:router.get('/:id', auth.authenticateToken, async (req, res) => { try { const { id } = req.params; 
+notifications.js:187:router.post('/', [ body('user_id').isInt().withMessage('ID utilisateur requis'), body('title').notEmpty().withMessage('Titre requis'), body('message').notEmpty(
+notifications.js:238:router.post('/broadcast', [ body('user_ids').isArray().withMessage('Liste d\'IDs utilisateurs requise'), body('title').notEmpty().withMessage('Titre requis'), b
+notifications.js:305:router.put('/:id/read', auth.authenticateToken, async (req, res) => { try { const { id } = req.params; 
+notifications.js:341:router.put('/read-all', async (req, res) => { try { const userId = req.body.user_id || req.query.user_id; 
+notifications.js:377:router.put('/user/:user_id/read-all', async (req, res) => { try { const { user_id } = req.params; 
+notifications.js:415:router.delete('/:id', async (req, res) => { try { const { id } = req.params; 
+notifications.js:446:router.get('/user/:user_id/unread-count', async (req, res) => { try { const { user_id } = req.params; 
+notifications.js:481:router.get('/stats/overview', async (req, res) => { try { const stats = await db.query(` SELECT
+nurserySettings.js:7:router.get('/', async (req, res) => { try { const { lang = 'fr', category } = req.query; 
+nurserySettings.js:47:router.get('/raw', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => { try { const result = await db.query( 'SELECT * FROM nur
+nurserySettings.js:69:router.get('/annual-vacation', async (req, res) => { try { const result = await db.query( `SELECT annual_vacation_enabled, annual_vacation_start_date, annual_va
+nurserySettings.js:105:router.put('/annual-vacation', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => { try { const { enabled, start_date, end_date
+nurserySettings.js:196:router.post('/simple-update', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => { try { const updates = req.body; 
+nurserySettings.js:282:router.put('/:key', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => { try { const { key } = req.params; const { value_fr, va
+nurserySettings.js:323:router.post('/', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => { try { const { setting_key, value_fr, value_ar, category =
+paymentAlerts.js:14:router.post('/', auth.authenticateToken, auth.requireRole('admin', 'staff'), async (req, res) => { try { const { recipient_type, parent_ids, amount, due_date, m
+paymentAlerts.js:94:router.get('/history', auth.authenticateToken, auth.requireRole('admin', 'staff'), async (req, res) => { try { const result = await pool.query(` SELECT
+personal-memos.js:14:router.post('/', auth.authenticateToken, async (req, res) => { try { const result = await personalMemoService.createMemo(req.body, req.user.userId); 
+personal-memos.js:36:router.get('/', auth.authenticateToken, async (req, res) => { try { const { date, is_completed } = req.query; const result = await personalMemoService.getUserMe
+personal-memos.js:58:router.get('/today', auth.authenticateToken, async (req, res) => { try { const result = await personalMemoService.getTodayMemos(req.user.userId); 
+personal-memos.js:76:router.patch('/:id/complete', auth.authenticateToken, async (req, res) => { try { const result = await personalMemoService.completeMemo( parseInt(req.params.id)
+personal-memos.js:101:router.delete('/:id', auth.authenticateToken, async (req, res) => { try { const result = await personalMemoService.deleteMemo( parseInt(req.params.id),
+profile.js:42:router.get('/', auth.authenticateToken, async (req, res) => { try { const userId = req.user.userId || req.user.id; 
+profile.js:75:router.put('/', [ auth.authenticateToken, body('first_name').optional().trim().notEmpty().withMessage('Prénom requis'), body('last_name').optional().trim().notE
+profile.js:240:router.post('/upload', upload.single('image'), auth.authenticateToken, async (req, res) => { try { console.log('📸 Upload - req.user:', req.user); console.log('📸
+profile.js:345:router.delete('/image', auth.authenticateToken, async (req, res) => { try { const userId = req.user.userId || req.user.id; 
+recovery.js:57:router.get('/verify', recoveryLimiter, verifyRecoveryKey, (req, res) => { res.json({ success: true, message: 'Clé de récupération valide',
+recovery.js:66:router.get('/backups', recoveryLimiter, verifyRecoveryKey, (req, res) => { try { ensureBackupDir(); 
+recovery.js:110:router.get('/status', recoveryLimiter, verifyRecoveryKey, async (req, res) => { let dbStatus = 'unknown'; let dbError = null; 
+recovery.js:137:router.post('/restore/:filename', recoveryLimiter, verifyRecoveryKey, async (req, res) => { try { const { filename } = req.params; const filepath = path.join(BA
+recovery.js:258:router.get('/download/:filename', recoveryLimiter, verifyRecoveryKey, (req, res) => { try { const { filename } = req.params; const filepath = path.join(BACKUP_D
+schedule-settings.js:6:router.get('/closed-days/:year/:month', async (req, res) => { try { const { year, month } = req.params; 
+setup.js:7:router.get('/', (req, res) => { res.json({ message: 'Service de configuration initial' }); }); 
+setup.js:12:router.post('/create-admin', async (req, res) => { try { // Sécurité SEC-04 : interdire formellement cet endpoint en production ou sans flag explicite if (proce
+setup.js:86:router.get('/check-users', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => { try { const result = await db.query('SELECT id,
+staff-messages.js:34:router.post('/', auth.authenticateToken, auth.requireRole('staff', 'admin', 'parent'), async (req, res) => { try { const allowed = await canContactRecipient(req
+staff-messages.js:65:router.get('/', auth.authenticateToken, auth.requireRole('staff', 'admin', 'parent'), async (req, res) => { try { const result = await staffMessageService.getUs
+staff-messages.js:83:router.get('/unread', auth.authenticateToken, auth.requireRole('staff', 'admin', 'parent'), async (req, res) => { try { const result = await staffMessageService
+staff-messages.js:101:router.get('/conversations', auth.authenticateToken, auth.requireRole('staff', 'admin', 'parent'), async (req, res) => { try { const userId = req.user.userId ||
+staff-messages.js:121:router.get('/conversation/:contactId', auth.authenticateToken, auth.requireRole('staff', 'admin', 'parent'), async (req, res) => { try { const contactId = parse
+staff-messages.js:142:router.get('/:id/conversation', auth.authenticateToken, auth.requireRole('staff', 'admin', 'parent'), async (req, res) => { try { const result = await staffMess
+staff-messages.js:163:router.patch('/:id/read', auth.authenticateToken, auth.requireRole('staff', 'admin', 'parent'), async (req, res) => { try { const result = await staffMessageSer
+staffAssignments.js:11:router.get('/', authenticateToken, requireRole('admin'), getStaffAssignments); router.put('/:staffId', authenticateToken, requireRole('admin'), updateStaffAssig
+staffAssignments.js:12:router.put('/:staffId', authenticateToken, requireRole('admin'), updateStaffAssignment); // Route pour récupérer son propre affectation (staff/admin) router.get
+staffAssignments.js:15:router.get('/my-assignment', authenticateToken, requireRole('admin', 'staff'), getMyAssignment); module.exports = router;
+staffPermissions.js:17:router.get('/catalog', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => { try { const catalog = await permissionsService.getC
+staffPermissions.js:33:router.get('/me', auth.authenticateToken, async (req, res) => { try { const userId = req.user.id || req.user.userId; const codes = await permissionsService.getU
+staffPermissions.js:47:router.get('/:userId', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => { try { const userId = parseInt(req.params.userId, 10
+staffPermissions.js:68:router.put('/:userId', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => { try { const userId = parseInt(req.params.userId, 10
+supplies.js:12:router.get('/child/:childId', authenticateToken, suppliesController.getChildSupplies );
+supplies.js:18:router.post('/child/:childId/refill', authenticateToken, requireRole('admin', 'staff'), suppliesController.refillSupply
+supplies.js:25:router.post('/child/:childId/use', authenticateToken, requireRole('admin', 'staff'), suppliesController.useSupply
+supplies.js:32:router.get('/child/:childId/history', authenticateToken, suppliesController.getSuppliesHistory );
+supplies.js:38:router.post('/daily-brought', authenticateToken, requireRole('admin', 'staff'), suppliesController.recordDailySupplies
+supplies.js:45:router.get('/today/:childId', authenticateToken, suppliesController.getTodaySupplies );
+supplies.js:51:router.get('/child/:childId/food-options', authenticateToken, suppliesController.getFoodOptions );
+tasks.js:18:router.post('/', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => { try { const result = await taskService.createTask(req.body, req.user.u
+tasks.js:40:router.get('/my', auth.authenticateToken, async (req, res) => { try { const { status, date } = req.query; const result = await taskService.getUserTasks(req.user
+tasks.js:59:router.get('/today', auth.authenticateToken, async (req, res) => { try { const result = await taskService.getTodayTasks(req.user.userId); 
+tasks.js:77:router.get('/overdue', auth.authenticateToken, async (req, res) => { try { const result = await taskService.getOverdueTasks(req.user.userId, req.user.role); 
+tasks.js:95:router.patch('/:id/status', auth.authenticateToken, async (req, res) => { try { const { status } = req.body; const result = await taskService.updateTaskStatus(
+tasks.js:122:router.post('/:id/remind', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => { try { const result = await taskService.sendTaskReminder( par
+tasks.js:147:router.delete('/:id', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => { try { const result = await taskService.deleteTask(parseInt(req.pa
+testimonials.js:20:router.get('/approved', async (req, res) => { try { const { limit = 10, featured_only = false } = req.query; 
+testimonials.js:65:router.get('/stats', async (req, res) => { try { const result = await db.query(` SELECT
+testimonials.js:97:router.post('/', auth.authenticateToken, async (req, res) => { try { const userId = req.user.userId || req.user.id; const userRole = req.user.role;
+testimonials.js:189:router.get('/my', auth.authenticateToken, async (req, res) => { try { const userId = req.user.userId || req.user.id; 
+testimonials.js:218:router.delete('/:id', auth.authenticateToken, async (req, res) => { try { const userId = req.user.userId || req.user.id; const userRole = req.user.role;
+testimonials.js:286:router.get('/all', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => { try { const { status, page = 1, limit = 20 } = req.quer
+testimonials.js:375:router.put('/:id/approve', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => { try { const adminId = req.user.userId || req.us
+testimonials.js:419:router.put('/:id/reject', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => { try { const { id } = req.params; const { admin_n
+testimonials.js:460:router.put('/:id/feature', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => { try { const { id } = req.params; const { is_fea
+treatments.js:17:router.post('/', authenticateToken, treatmentsController.createTreatment); // Récupérer les traitements de mes enfants router.get('/my-children', authenticateTo
+treatments.js:20:router.get('/my-children', authenticateToken, treatmentsController.getMyChildrenTreatments); // Modifier un traitement router.put('/:id', authenticateToken, tre
+treatments.js:23:router.put('/:id', authenticateToken, treatmentsController.updateTreatment); // Annuler un traitement router.delete('/:id', authenticateToken, treatmentsControl
+treatments.js:26:router.delete('/:id', authenticateToken, treatmentsController.cancelTreatment); // ═══════════════════════════════════════════════════════════════════════════ /
+treatments.js:33:router.get('/today', authenticateToken, requireRole('staff', 'admin', 'developer'), treatmentsController.getTodayTreatments); // Confirmer l'administration d'un
+treatments.js:36:router.post('/:id/administer', authenticateToken, requireRole('staff', 'admin', 'developer'), treatmentsController.administerTreatment); // Récupérer l'historiq
+treatments.js:39:router.get('/:id/history', authenticateToken, treatmentsController.getTreatmentHistory); // Récupérer les traitements d'un enfant pour le rapport journalier rou
+treatments.js:42:router.get('/child/:childId/today', authenticateToken, treatmentsController.getChildTodayTreatments); // ═══════════════════════════════════════════════════════
+treatments.js:49:router.post('/check-notifications', async (req, res) => { // Vérifier le secret pour les appels cron const cronSecret = req.headers['x-cron-secret']; if (cronSe
+userChildren.js:7:router.get('/has-children', auth.authenticateToken, async (req, res) => { try { const userId = req.user.userId || req.user.id; 
+userChildren.js:38:router.get('/children', auth.authenticateToken, async (req, res) => { try { const userId = req.user.userId || req.user.id; 
+userChildren.js:72:router.get('/children-summary', auth.authenticateToken, async (req, res) => { try { const userId = req.user.userId || req.user.id; console.log('👶 children-summa
+userWorkflow.js:35:router.post('/create-parent', auth.authenticateToken, auth.requireRole('admin'), [ body('first_name').notEmpty().withMessage('Prénom requis'), body('last_name')
+userWorkflow.js:203:router.post('/create-staff', auth.authenticateToken, auth.requireRole('admin'), [ body('first_name').notEmpty().withMessage('Prénom requis'), body('last_name').
+userWorkflow.js:319:router.post('/set-password', [ body('token').notEmpty().withMessage('Token requis'), body('email').isEmail().withMessage('Email invalide'), body('password').isL
+userWorkflow.js:407:router.post('/register-parent', [ body('first_name').notEmpty().withMessage('Prénom requis'), body('last_name').notEmpty().withMessage('Nom requis'), body('emai
+userWorkflow.js:539:router.post('/resend-password-link', auth.authenticateToken, auth.requireRole('admin'), [ body('user_id').isInt().withMessage('ID utilisateur requis') ], async 
+users.js:11:router.get('/children-summary', auth.authenticateToken, async (req, res) => { try { const userId = req.user.id; 
+users.js:43:router.get('/has-children', auth.authenticateToken, async (req, res) => { try { const userId = req.user.id; 
+users.js:73:router.get('/contacts', auth.authenticateToken, async (req, res) => { try { const userId = req.user.userId || req.user.id; const userRole = req.user.role;
+users.js:109:router.get('/', auth.authenticateToken, async (req, res) => { try { const { role, active, search, page = 1, limit = 50 } = req.query; 
+users.js:202:router.post('/presence', auth.authenticateToken, async (req, res) => { try { const userId = req.user.id || req.user.userId; await db.query('UPDATE users SET las
+users.js:214:router.get('/online', auth.authenticateToken, async (req, res) => { try { const result = await db.query( `SELECT id, email, first_name, last_name, role, last_ac
+users.js:230:router.get('/:id', auth.authenticateToken, async (req, res) => { try { const { id } = req.params; 
+users.js:263:router.post('/', auth.authenticateToken, auth.requireRole('admin', 'developer'), [ body('email').isEmail().withMessage('Email invalide'), body('password').isLen
+users.js:325:router.put('/:id', auth.authenticateToken, [ body('email').optional().isEmail().withMessage('Email invalide'), body('first_name').optional().notEmpty().withMess
+users.js:479:router.delete('/:id', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => { try { const { id } = req.params; 
+users.js:513:router.put('/:id/password', auth.authenticateToken, auth.requireRole('admin', 'developer'), [ body('newPassword').isLength({ min: 6 }).withMessage('Nouveau mot 
+users.js:562:router.get('/profile', auth.authenticateToken, async (req, res) => { try { const userId = req.user.id; 
+users.js:595:router.put('/profile', auth.authenticateToken, [ body('first_name').optional().isString().withMessage('Prénom invalide'), body('last_name').optional().isString(
+users.js:691:router.put('/change-password', auth.authenticateToken, [ body('currentPassword').notEmpty().withMessage('Mot de passe actuel requis'), body('newPassword').isLen
+virtualTour.js:86:router.get('/images', (req, res) => { try { // Charger les images depuis le fichier JSON const storedImages = loadImagesFromJson();
+virtualTour.js:114:router.get('/images/:viewId', (req, res) => { try { const { viewId } = req.params; 
+virtualTour.js:148:router.post('/images/:viewId', authenticateToken, requireRole('admin'), (req, res) => { const { viewId } = req.params; // Valider l'ID de la vue
+virtualTour.js:264:router.delete('/images/:viewId', authenticateToken, requireRole('admin'), async (req, res) => { try { const { viewId } = req.params; 

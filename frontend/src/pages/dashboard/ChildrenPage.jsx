@@ -22,7 +22,8 @@ import {
   RefreshCw,
   UserPlus,
   FileText,
-  Download
+  Download,
+  Trash
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -31,6 +32,7 @@ import { Button } from '../../components/ui/Button';
 import MobileChildrenList from '../../components/mobile/MobileChildrenList';
 import MobileNavigation from '../../components/mobile/MobileNavigation';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
+import CompactImageUpload from '../../components/ui/CompactImageUpload';
 import { useDialogContext } from '../../contexts/DialogContext';
 import childrenService from '../../services/childrenService';
 import api from '../../services/api';
@@ -38,6 +40,14 @@ import userService from '../../services/userService';
 import { documentService } from '../../services/documentService';
 import approvalService from '../../services/approvalService';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card';
+import API_CONFIG from '../../config/api';
+
+// Construit l'URL complète d'une photo enfant (le backend ne renvoie qu'un chemin relatif)
+const getChildPhotoUrl = (photoUrl) => {
+  if (!photoUrl) return null;
+  if (photoUrl.startsWith('http') || photoUrl.startsWith('blob:') || photoUrl.startsWith('data:')) return photoUrl;
+  return `${API_CONFIG.BASE_URL}${photoUrl.startsWith('/') ? '' : '/'}${photoUrl}`;
+};
 
 const ChildrenPage = () => {
   const { user, isAdmin, isStaff } = useAuth();
@@ -59,6 +69,9 @@ const ChildrenPage = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterAge, setFilterAge] = useState('all');
   const [editFormData, setEditFormData] = useState({});
+  const [selectedPhotoFile, setSelectedPhotoFile] = useState(null);
+  const [photoActionLoading, setPhotoActionLoading] = useState(false);
+  const [photoImageKey, setPhotoImageKey] = useState(Date.now());
   const [childDocuments, setChildDocuments] = useState([]);
   const [documentsLoading, setDocumentsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -211,7 +224,68 @@ const ChildrenPage = () => {
       emergency_contact_phone: child.emergency_contact_phone || '',
       status: child.status || 'pending'
     });
+    setSelectedPhotoFile(null);
     setShowEditModal(true);
+  };
+
+  // Fonction pour uploader la photo de l'enfant sélectionné
+  const handleUploadPhoto = async (file) => {
+    if (!file || !selectedChild) return;
+
+    try {
+      setPhotoActionLoading(true);
+      const formData = new FormData();
+      formData.append('photo', file);
+
+      const response = await api.post(`/api/children/${selectedChild.id}/photo`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      if (response.data?.success) {
+        dialog.success(isRTL ? 'تم تحديث الصورة بنجاح' : 'Photo mise à jour avec succès');
+        setSelectedChild(prev => ({ ...prev, photo_url: response.data.photo_url }));
+        setSelectedPhotoFile(null);
+        setPhotoImageKey(Date.now());
+        loadChildren();
+      } else {
+        throw new Error(response.data?.error || 'Erreur lors de l\'upload');
+      }
+    } catch (error) {
+      console.error('Erreur upload photo:', error);
+      dialog.error(error.response?.data?.error || (isRTL ? 'خطأ في رفع الصورة' : 'Erreur lors de l\'upload de la photo'));
+    } finally {
+      setPhotoActionLoading(false);
+    }
+  };
+
+  // Fonction pour supprimer la photo de l'enfant sélectionné
+  const handleDeletePhoto = async () => {
+    if (!selectedChild) return;
+
+    const confirmed = await dialog.confirm(
+      isRTL ? 'هل تريد حذف صورة الطفل؟' : 'Voulez-vous supprimer la photo de l\'enfant ?',
+      isRTL ? 'تأكيد الحذف' : 'Confirmer la suppression',
+      { type: 'danger', confirmText: isRTL ? 'حذف' : 'Supprimer', cancelText: isRTL ? 'إلغاء' : 'Annuler' }
+    );
+    if (!confirmed) return;
+
+    try {
+      setPhotoActionLoading(true);
+      const response = await api.delete(`/api/children/${selectedChild.id}/photo`);
+
+      if (response.data?.success) {
+        dialog.success(isRTL ? 'تم حذف الصورة بنجاح' : 'Photo supprimée avec succès');
+        setSelectedChild(prev => ({ ...prev, photo_url: null }));
+        loadChildren();
+      } else {
+        throw new Error(response.data?.error || 'Erreur lors de la suppression');
+      }
+    } catch (error) {
+      console.error('Erreur suppression photo:', error);
+      dialog.error(error.response?.data?.error || (isRTL ? 'خطأ في حذف الصورة' : 'Erreur lors de la suppression de la photo'));
+    } finally {
+      setPhotoActionLoading(false);
+    }
   };
 
   // Fonction pour désactiver le compte parent (remplace la suppression)
@@ -788,8 +862,16 @@ const ChildrenPage = () => {
                 <CardHeader className="p-3 sm:p-6">
                   <div className="flex flex-col xs:flex-row items-start xs:items-center justify-between gap-3">
                     <div className="flex items-center space-x-3 rtl:space-x-reverse min-w-0 flex-1">
-                      <div className="w-10 h-10 xs:w-12 xs:h-12 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center flex-shrink-0">
-                        <Baby className="w-5 h-5 xs:w-6 xs:h-6 text-primary-600 dark:text-primary-400" />
+                      <div className="w-10 h-10 xs:w-12 xs:h-12 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
+                        {getChildPhotoUrl(child.photo_url) ? (
+                          <img
+                            src={getChildPhotoUrl(child.photo_url)}
+                            alt={`${child.first_name} ${child.last_name}`}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <Baby className="w-5 h-5 xs:w-6 xs:h-6 text-primary-600 dark:text-primary-400" />
+                        )}
                       </div>
                       <div className="min-w-0 flex-1">
                         <CardTitle className="text-base xs:text-lg truncate">
@@ -1087,6 +1169,21 @@ const ChildrenPage = () => {
               </div>
 
               <div className="space-y-4">
+                {/* Photo de l'enfant */}
+                <div className="flex justify-center">
+                  <div className="w-24 h-24 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center overflow-hidden border-2 border-gray-200 dark:border-gray-600">
+                    {getChildPhotoUrl(selectedChild.photo_url) ? (
+                      <img
+                        src={getChildPhotoUrl(selectedChild.photo_url)}
+                        alt={`${selectedChild.first_name} ${selectedChild.last_name}`}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <Baby className="w-10 h-10 text-primary-600 dark:text-primary-400" />
+                    )}
+                  </div>
+                </div>
+
                 {/* Informations de base */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -1329,6 +1426,34 @@ const ChildrenPage = () => {
               </div>
 
               <form className="space-y-6" onSubmit={handleSaveChild}>
+                {/* Photo de profil */}
+                <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                  <CompactImageUpload
+                    currentImage={selectedChild.photo_url}
+                    selectedFile={selectedPhotoFile}
+                    imageKey={photoImageKey}
+                    onImageSelect={(file) => {
+                      setSelectedPhotoFile(file);
+                      if (file) handleUploadPhoto(file);
+                    }}
+                  />
+                  {selectedChild.photo_url && (
+                    <div className="flex justify-center mt-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="text-red-600 border-red-300 hover:bg-red-50"
+                        onClick={handleDeletePhoto}
+                        disabled={photoActionLoading}
+                      >
+                        <Trash className="w-3.5 h-3.5 mr-1 rtl:mr-0 rtl:ml-1" />
+                        {isRTL ? 'حذف الصورة' : 'Supprimer la photo'}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
                 {/* Informations non modifiables */}
                 <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
                   <h4 className="font-medium text-gray-900 dark:text-white mb-3">
