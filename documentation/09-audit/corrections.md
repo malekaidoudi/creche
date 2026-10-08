@@ -344,3 +344,33 @@
   - **Exécution transactionnelle** : Chaque future migration (`002_...`, `003_...`) s'exécute automatiquement dans un bloc transactionnel `BEGIN ... COMMIT` avec `ROLLBACK` en cas d'erreur.
   - **Vérification ultra-rapide au boot** : Le serveur n'exécute plus qu'un seul `SELECT version FROM schema_migrations` au démarrage (~10 ms), éliminant les 30 requêtes DDL redondantes.
   - **Résultat** : Démarrage du backend quasi instantané, consommation minimale du quota Neon, historique de schéma maîtrisé et commandes CLI dédiées (`npm run db:migrate`, `npm run db:migrate:status`).
+
+---
+
+### Correction n°25 : Correction du crash de la recherche personnel (TDZ `ReferenceError`), affichage et gestion des comptes désactivés, et résolution du Manifest
+- **Fichiers modifiés** :
+  - [`frontend/src/pages/dashboard/StaffPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/StaffPage.jsx)
+  - [`frontend/src/components/modals/EditStaffModal.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/modals/EditStaffModal.jsx)
+  - [`frontend/index.html`](file:///Volumes/Data/Works/Windsurf/creche/frontend/index.html)
+- **Problèmes identifiés** :
+  1. **Crash critique à la saisie dans la barre de recherche** :
+     - `ReferenceError: Cannot access 'I' before initialization at StaffPage.jsx:107:7 at Array.filter`.
+     - La fonction `getDepartmentLabel` était déclarée avec `const` plus bas dans le composant (ligne 163), après le filtre `filteredStaff` (ligne 107). En production minifiée, cela violait la *Temporal Dead Zone* (TDZ) JavaScript et provoquait un crash complet de l'écran React dès le premier caractère tapé dans la recherche.
+  2. **Impossibilité de visualiser et gérer les comptes du personnel désactivés** :
+     - L'appel API dans `StaffPage` forçait `active: 'true'` dans les paramètres (`/api/users?role=staff&active=true`). Les membres du personnel désactivés étaient donc ignorés côté backend et invisibles pour l'administrateur.
+     - L'interface ne proposait aucun filtre par statut, et la modal d'édition réinitialisait par erreur `is_active` à `true` si le statut d'origine était inactif.
+  3. **Erreur console `site.webmanifest:1 Manifest: Line: 1, column: 1, Syntax error`** :
+     - Le lien dans `index.html` utilisait un chemin relatif `./site.webmanifest`. Lors de la navigation SPA sur une route imbriquée comme `/dashboard/staff`, le navigateur demandait `/dashboard/site.webmanifest` qui retournait la page HTML de fallback (débutant par `<!DOCTYPE html>`), générant une erreur de parsing JSON.
+- **Actions appliquées** :
+  1. **Résolution du crash de recherche (TDZ)** :
+     - Déplacement de `getDepartmentLabel` et `getRoleBadge` en haut du composant, avant tout usage.
+     - Sécurisation de la recherche avec `(val || '').toLowerCase()` pour prémunir contre tout crash sur valeur `null` ou `undefined`.
+  2. **Gestion complète des comptes désactivés** :
+     - Passage du paramètre `active: 'all'` dans les requêtes de chargement `/api/users` pour récupérer tous les membres (actifs et inactifs).
+     - Ajout de l'état `filterStatus` (`'all'`, `'active'`, `'inactive'`) et intégration d'un menu déroulant dédié aux statuts dans la barre de filtres.
+     - Remplacement de la stat card factice "Expérience moyenne" par une stat card interactive **"Désactivés"** (icône `UserX`, couleur rouge). Toutes les cartes de statistiques (Total, Directeurs, Actifs, Désactivés) sont désormais cliquables pour filtrer instantanément la liste.
+     - Ajout d'un bouton d'action rapide **Activer / Désactiver** (avec boîte de dialogue de confirmation) dans le tableau desktop, sur tablette et dans la modal de détails.
+     - Correction de l'initialisation de `is_active` dans `EditStaffModal.jsx`.
+  3. **Résolution du Manifest Web** :
+     - Remplacement du chemin relatif `./site.webmanifest` par le chemin absolu `/site.webmanifest` dans `index.html`.
+- **Résultat** : Recherche fluide et sans crash, visibilité et contrôle complet sur les membres du personnel désactivés en 1 clic, et suppression de l'erreur console de syntaxe manifest.

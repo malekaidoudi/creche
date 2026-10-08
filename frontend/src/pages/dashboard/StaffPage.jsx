@@ -45,6 +45,7 @@ const StaffPage = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
   const [selectedStaff, setSelectedStaff] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
   const [statsExpanded, setStatsExpanded] = useState(false);
@@ -53,16 +54,35 @@ const StaffPage = () => {
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
   const [staffForPermissions, setStaffForPermissions] = useState(null);
 
-  // Charger le personnel depuis l'API
+  // Dérivé de `role` à l'affichage (défini avant filteredStaff pour éviter toute TDZ ReferenceError)
+  const getDepartmentLabel = (role) =>
+    role === 'admin'
+      ? (isRTL ? 'الإدارة' : 'Administration')
+      : (isRTL ? 'التعليم' : 'Éducation');
+
+  const getRoleBadge = (role) => {
+    const roleConfig = {
+      admin: {
+        label: isRTL ? 'مدير' : 'Admin',
+        color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400'
+      },
+      staff: {
+        label: isRTL ? 'موظف' : 'Staff',
+        color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+      }
+    };
+    return roleConfig[role] || roleConfig.staff;
+  };
+
+  // Charger le personnel depuis l'API (actifs ET inactifs pour permettre la gestion des comptes désactivés)
   useEffect(() => {
     const loadStaff = async () => {
       try {
         setLoading(true);
 
-        // Récupérer les utilisateurs actifs avec les rôles 'admin' et 'staff'
         const [adminResponse, staffResponse] = await Promise.all([
-          api.get('/api/users', { params: { role: 'admin', active: 'true' } }),
-          api.get('/api/users', { params: { role: 'staff', active: 'true' } })
+          api.get('/api/users', { params: { role: 'admin', active: 'all' } }),
+          api.get('/api/users', { params: { role: 'staff', active: 'all' } })
         ]);
 
         const admins = adminResponse.data.success ? adminResponse.data.users : [];
@@ -71,19 +91,19 @@ const StaffPage = () => {
         // Combiner et formater les données
         const allStaff = [...admins, ...staffMembers].map(user => ({
           id: user.id,
-          first_name: user.first_name,
-          last_name: user.last_name,
-          email: user.email,
+          first_name: user.first_name || '',
+          last_name: user.last_name || '',
+          email: user.email || '',
           phone: user.phone || '',
           role: user.role,
+          is_active: user.is_active,
           status: user.is_active ? 'active' : 'inactive',
           hire_date: user.created_at?.split('T')[0] || '',
           last_login: user.updated_at?.split('T')[0] || '',
-          // Le libellé traduit est dérivé de `role` au moment de l'affichage
-          // (voir getDepartmentLabel) pour rester correct si la langue change
-          // après ce chargement initial.
+          gender: user.gender || '',
+          staff_position: user.staff_position || '',
           experience_years: 0,
-          specialization: ''
+          specialization: user.staff_position || ''
         }));
 
         setStaff(allStaff);
@@ -100,15 +120,19 @@ const StaffPage = () => {
   }, []);
 
   const filteredStaff = staff.filter(member => {
-    const matchesSearch =
-      member.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      member.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      member.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      getDepartmentLabel(member.role).toLowerCase().includes(searchTerm.toLowerCase());
+    const q = (searchTerm || '').trim().toLowerCase();
+    const matchesSearch = !q || (
+      (member.first_name || '').toLowerCase().includes(q) ||
+      (member.last_name || '').toLowerCase().includes(q) ||
+      (member.email || '').toLowerCase().includes(q) ||
+      (member.phone || '').toLowerCase().includes(q) ||
+      getDepartmentLabel(member.role).toLowerCase().includes(q)
+    );
 
-    const matchesFilter = filterRole === 'all' || member.role === filterRole;
+    const matchesRole = filterRole === 'all' || member.role === filterRole;
+    const matchesStatus = filterStatus === 'all' || member.status === filterStatus;
 
-    return matchesSearch && matchesFilter;
+    return matchesSearch && matchesRole && matchesStatus;
   });
 
   const handleViewDetails = (member) => {
@@ -117,10 +141,50 @@ const StaffPage = () => {
   };
 
   const handleEditStaff = (member) => {
-    console.log('🔧 handleEditStaff appelé avec:', member);
     setStaffToEdit(member);
     setShowEditModal(true);
-    console.log('🔧 showEditModal devrait être true maintenant');
+  };
+
+  const handleToggleStatus = async (member) => {
+    const newActive = member.status !== 'active';
+    const confirmMsg = newActive
+      ? (isRTL ? `هل أنت متأكد من إعادة تفعيل حساب ${member.first_name} ${member.last_name}؟` : `Voulez-vous réactiver le compte de ${member.first_name} ${member.last_name} ?`)
+      : (isRTL ? `هل أنت متأكد من تعطيل حساب ${member.first_name} ${member.last_name}؟` : `Voulez-vous désactiver le compte de ${member.first_name} ${member.last_name} ?`);
+
+    const confirmed = await dialog.confirm({
+      title: newActive ? (isRTL ? 'تفعيل الحساب' : 'Réactiver le compte') : (isRTL ? 'تعطيل الحساب' : 'Désactiver le compte'),
+      message: confirmMsg,
+      confirmText: newActive ? (isRTL ? 'تفعيل' : 'Réactiver') : (isRTL ? 'تعطيل' : 'Désactiver'),
+      confirmVariant: newActive ? 'primary' : 'danger'
+    });
+
+    if (!confirmed) return;
+
+    try {
+      const response = await api.put(`/api/users/${member.id}`, { is_active: newActive });
+      if (response.data.success) {
+        setStaff(prev => prev.map(s => s.id === member.id ? {
+          ...s,
+          is_active: newActive,
+          status: newActive ? 'active' : 'inactive'
+        } : s));
+
+        if (selectedStaff?.id === member.id) {
+          setSelectedStaff(prev => ({
+            ...prev,
+            is_active: newActive,
+            status: newActive ? 'active' : 'inactive'
+          }));
+        }
+
+        dialog.success(newActive
+          ? (isRTL ? 'تم تفعيل الحساب بنجاح' : 'Compte réactivé avec succès')
+          : (isRTL ? 'تم تعطيل الحساب بنجاح' : 'Compte désactivé avec succès'));
+      }
+    } catch (error) {
+      console.error('Erreur modification statut:', error);
+      dialog.error(isRTL ? 'حدث خطأ أثناء تعديل الحساب' : 'Erreur lors de la modification du statut');
+    }
   };
 
   const handleManagePermissions = (member) => {
@@ -138,32 +202,21 @@ const StaffPage = () => {
 
   const handleEditSuccess = (updatedStaff) => {
     setStaff(prev => prev.map(s =>
-      s.id === updatedStaff.id ? { ...s, ...updatedStaff } : s
+      s.id === updatedStaff.id ? {
+        ...s,
+        ...updatedStaff,
+        status: updatedStaff.is_active ? 'active' : 'inactive'
+      } : s
     ));
+    if (selectedStaff?.id === updatedStaff.id) {
+      setSelectedStaff(prev => ({
+        ...prev,
+        ...updatedStaff,
+        status: updatedStaff.is_active ? 'active' : 'inactive'
+      }));
+    }
     dialog.success(isRTL ? 'تم تحديث معلومات الموظف بنجاح' : 'Informations mises à jour avec succès');
   };
-
-  const getRoleBadge = (role) => {
-    const roleConfig = {
-      admin: {
-        label: isRTL ? 'مدير' : 'Admin',
-        color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400'
-      },
-      staff: {
-        label: isRTL ? 'موظف' : 'Staff',
-        color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
-      }
-    };
-
-    return roleConfig[role] || roleConfig.staff;
-  };
-
-  // Dérivé de `role` à l'affichage (et non stocké en state) pour rester
-  // correct si la langue change après le chargement initial des données.
-  const getDepartmentLabel = (role) =>
-    role === 'admin'
-      ? (isRTL ? 'الإدارة' : 'Administration')
-      : (isRTL ? 'التعليم' : 'Éducation');
 
   const exportStaff = () => {
     const csvContent = "data:text/csv;charset=utf-8," +
@@ -301,7 +354,10 @@ const StaffPage = () => {
         transition={{ duration: 0.6, delay: 0.1 }}
         className="hidden md:grid grid-cols-1 md:grid-cols-4 gap-4"
       >
-        <Card>
+        <Card
+          onClick={() => { setFilterRole('all'); setFilterStatus('all'); }}
+          className={`cursor-pointer transition-all hover:shadow-md ${filterRole === 'all' && filterStatus === 'all' ? 'ring-2 ring-primary-500' : ''}`}
+        >
           <CardContent className="p-4">
             <div className="flex items-center">
               <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
@@ -319,7 +375,10 @@ const StaffPage = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card
+          onClick={() => setFilterRole(prev => prev === 'admin' ? 'all' : 'admin')}
+          className={`cursor-pointer transition-all hover:shadow-md ${filterRole === 'admin' ? 'ring-2 ring-purple-500' : ''}`}
+        >
           <CardContent className="p-4">
             <div className="flex items-center">
               <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
@@ -337,7 +396,10 @@ const StaffPage = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card
+          onClick={() => setFilterStatus(prev => prev === 'active' ? 'all' : 'active')}
+          className={`cursor-pointer transition-all hover:shadow-md ${filterStatus === 'active' ? 'ring-2 ring-green-500' : ''}`}
+        >
           <CardContent className="p-4">
             <div className="flex items-center">
               <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
@@ -355,18 +417,21 @@ const StaffPage = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card
+          onClick={() => setFilterStatus(prev => prev === 'inactive' ? 'all' : 'inactive')}
+          className={`cursor-pointer transition-all hover:shadow-md ${filterStatus === 'inactive' ? 'ring-2 ring-red-500' : ''}`}
+        >
           <CardContent className="p-4">
             <div className="flex items-center">
-              <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
-                <Award className="w-5 h-5 text-orange-600" />
+              <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg">
+                <UserX className="w-5 h-5 text-red-600" />
               </div>
               <div className="ml-3 rtl:ml-0 rtl:mr-3">
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                  {isRTL ? 'متوسط الخبرة' : 'Expérience Moy.'}
+                  {isRTL ? 'غير نشط (معطل)' : 'Désactivés'}
                 </p>
                 <p className="text-xl font-bold text-gray-900 dark:text-white">
-                  {Math.round(staff.reduce((sum, s) => sum + s.experience_years, 0) / staff.length || 0)} {isRTL ? 'سنوات' : 'ans'}
+                  {staff.filter(s => s.status === 'inactive').length}
                 </p>
               </div>
             </div>
@@ -418,7 +483,10 @@ const StaffPage = () => {
             >
               <div className="p-4 pt-0 space-y-3 border-t border-gray-100 dark:border-gray-700">
                 {/* Total Personnel */}
-                <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <div
+                  onClick={() => { setFilterRole('all'); setFilterStatus('all'); }}
+                  className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg cursor-pointer"
+                >
                   <div className="flex items-center gap-2">
                     <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -431,7 +499,10 @@ const StaffPage = () => {
                 </div>
 
                 {/* Directeurs */}
-                <div className="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                <div
+                  onClick={() => setFilterRole(prev => prev === 'admin' ? 'all' : 'admin')}
+                  className="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg cursor-pointer"
+                >
                   <div className="flex items-center gap-2">
                     <Shield className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -444,7 +515,10 @@ const StaffPage = () => {
                 </div>
 
                 {/* Actifs */}
-                <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                <div
+                  onClick={() => setFilterStatus(prev => prev === 'active' ? 'all' : 'active')}
+                  className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg cursor-pointer"
+                >
                   <div className="flex items-center gap-2">
                     <UserCheck className="w-4 h-4 text-green-600 dark:text-green-400" />
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -456,16 +530,19 @@ const StaffPage = () => {
                   </span>
                 </div>
 
-                {/* Expérience Moyenne */}
-                <div className="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+                {/* Inactifs / Désactivés */}
+                <div
+                  onClick={() => setFilterStatus(prev => prev === 'inactive' ? 'all' : 'inactive')}
+                  className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/20 rounded-lg cursor-pointer"
+                >
                   <div className="flex items-center gap-2">
-                    <Award className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                    <UserX className="w-4 h-4 text-red-600 dark:text-red-400" />
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {isRTL ? 'متوسط الخبرة' : 'Expérience Moy.'}
+                      {isRTL ? 'غير نشط (معطل)' : 'Désactivés'}
                     </span>
                   </div>
-                  <span className="text-lg font-bold text-orange-600 dark:text-orange-400">
-                    {Math.round(staff.reduce((sum, s) => sum + s.experience_years, 0) / staff.length || 0)} {isRTL ? 'سنوات' : 'ans'}
+                  <span className="text-lg font-bold text-red-600 dark:text-red-400">
+                    {staff.filter(s => s.status === 'inactive').length}
                   </span>
                 </div>
               </div>
@@ -487,22 +564,32 @@ const StaffPage = () => {
                 <Search className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="text"
-                  placeholder={isRTL ? 'البحث عن موظف...' : 'Rechercher un membre du personnel...'}
+                  placeholder={isRTL ? 'البحث عن موظف (الاسم، البريد، الهاتف...)' : 'Rechercher un membre (nom, email, tél...)'}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-10 rtl:pl-4 rtl:pr-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
-              <div className="flex items-center space-x-2 rtl:space-x-reverse">
+              <div className="flex items-center gap-2">
                 <Filter className="w-4 h-4 text-gray-400" />
                 <select
                   value={filterRole}
                   onChange={(e) => setFilterRole(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
                 >
                   <option value="all">{isRTL ? 'جميع الأدوار' : 'Tous les rôles'}</option>
                   <option value="admin">{isRTL ? 'المدير' : 'Directeur'}</option>
                   <option value="staff">{isRTL ? 'موظف' : 'Personnel'}</option>
+                </select>
+
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                >
+                  <option value="all">{isRTL ? 'جميع الحالات' : 'Tous les statuts'}</option>
+                  <option value="active">{isRTL ? 'نشط فقط' : 'Actifs uniquement'}</option>
+                  <option value="inactive">{isRTL ? 'غير نشط (معطل)' : 'Désactivés uniquement'}</option>
                 </select>
               </div>
             </div>
@@ -616,6 +703,24 @@ const StaffPage = () => {
                               }}
                             >
                               <Edit className="w-4 h-4" />
+                            </Button>
+                          )}
+                          {isAdmin() && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              title={member.status === 'active' ? (isRTL ? 'تعطيل الحساب' : 'Désactiver le compte') : (isRTL ? 'تفعيل الحساب' : 'Réactiver le compte')}
+                              className={member.status === 'active' ? 'text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20' : 'text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20'}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleStatus(member);
+                              }}
+                            >
+                              {member.status === 'active' ? (
+                                <UserX className="w-4 h-4" />
+                              ) : (
+                                <UserCheck className="w-4 h-4" />
+                              )}
                             </Button>
                           )}
                           {isAdmin() && member.role === 'staff' && (
@@ -742,6 +847,24 @@ const StaffPage = () => {
                           <Edit className="w-3.5 h-3.5" />
                         </Button>
                       )}
+                      {isAdmin() && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 px-2"
+                          title={member.status === 'active' ? (isRTL ? 'تعطيل الحساب' : 'Désactiver le compte') : (isRTL ? 'تفعيل الحساب' : 'Réactiver le compte')}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleStatus(member);
+                          }}
+                        >
+                          {member.status === 'active' ? (
+                            <UserX className="w-3.5 h-3.5 text-red-600" />
+                          ) : (
+                            <UserCheck className="w-3.5 h-3.5 text-green-600" />
+                          )}
+                        </Button>
+                      )}
                       {isAdmin() && member.role === 'staff' && (
                         <Button
                           size="sm"
@@ -799,6 +922,19 @@ const StaffPage = () => {
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                  {isRTL ? 'الحالة' : 'Statut'}
+                </label>
+                <div className="mt-1">
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${selectedStaff.status === 'active'
+                    ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                    : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                    }`}>
+                    {selectedStaff.status === 'active' ? (isRTL ? 'نشط' : 'Actif') : (isRTL ? 'غير نشط (معطل)' : 'Inactif (Désactivé)')}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
                   {isRTL ? 'الدور' : 'Rôle'}
                 </label>
                 <p className="text-gray-900 dark:text-white">{getRoleBadge(selectedStaff.role).label}</p>
@@ -844,7 +980,6 @@ const StaffPage = () => {
                   variant="outline"
                   onClick={() => {
                     setShowDetails(false);
-                    // Logique pour voir les détails complets
                   }}
                   className="w-full justify-start"
                 >
@@ -864,6 +999,27 @@ const StaffPage = () => {
                   >
                     <Edit className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
                     {isRTL ? 'تعديل' : 'Modifier'}
+                  </Button>
+                )}
+
+                {isAdmin() && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleToggleStatus(selectedStaff)}
+                    className={`w-full justify-start ${selectedStaff.status === 'active' ? 'text-red-600 hover:text-red-700' : 'text-green-600 hover:text-green-700'}`}
+                  >
+                    {selectedStaff.status === 'active' ? (
+                      <>
+                        <UserX className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                        {isRTL ? 'تعطيل الحساب' : 'Désactiver le compte'}
+                      </>
+                    ) : (
+                      <>
+                        <UserCheck className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                        {isRTL ? 'إعادة تفعيل الحساب' : 'Réactiver le compte'}
+                      </>
+                    )}
                   </Button>
                 )}
               </div>

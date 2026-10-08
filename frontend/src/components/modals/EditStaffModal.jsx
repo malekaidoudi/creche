@@ -119,7 +119,7 @@ const EditStaffModal = ({ isOpen, onClose, staff, onSuccess, isRTL }) => {
                 phone: staff.phone || '',
                 gender: staff.gender || '',
                 staff_position: staff.staff_position || '',
-                is_active: staff.status === 'active' || staff.is_active !== false
+                is_active: staff.is_active !== undefined ? Boolean(staff.is_active) : staff.status === 'active'
             });
             setErrors({});
         }
