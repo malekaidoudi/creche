@@ -61,9 +61,26 @@ const ensureChildStatusColumns = async () => {
   }
 };
 
+// Assurer les colonnes d'identité familiale et contacts de confiance
+const ensureFamilyAndContactColumns = async () => {
+  try {
+    await pool.query(`
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS father_name VARCHAR(100);
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS mother_name VARCHAR(100);
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS second_parent_name VARCHAR(100);
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS second_parent_phone VARCHAR(20);
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS emergency_contact_choice VARCHAR(20) DEFAULT 'custom';
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS trusted_contacts JSONB DEFAULT '[]'::jsonb;
+    `);
+  } catch (err) {
+    console.warn('⚠️ Note: vérification colonnes famille et contacts children:', err.message);
+  }
+};
+
 ensureMedicalColumns()
   .then(() => cleanupLegacyEmergencyContacts())
-  .then(() => ensureChildStatusColumns());
+  .then(() => ensureChildStatusColumns())
+  .then(() => ensureFamilyAndContactColumns());
 
 /**
  * Vérifie l'accès à la gestion de la photo d'un enfant (upload/suppression) :
@@ -829,12 +846,16 @@ router.get('/', auth.authenticateToken, async (req, res) => {
         c.is_active, c.created_at, c.updated_at, c.parent_id,
         COALESCE(c.status, 'active') as status,
         c.suspension_reason, c.suspended_at, c.expected_return_date,
+        c.father_name, c.mother_name, c.second_parent_name, c.second_parent_phone,
+        COALESCE(c.emergency_contact_choice, 'custom') as emergency_contact_choice,
+        COALESCE(c.trusted_contacts, '[]'::jsonb) as trusted_contacts,
         EXTRACT(YEAR FROM AGE(c.birth_date)) as age,
         u.id as parent_user_id,
         u.first_name as parent_first_name,
         u.last_name as parent_last_name,
         u.email as parent_email,
         u.phone as parent_phone,
+        u.gender as parent_gender,
         e.enrollment_date,
         e.status as enrollment_status,
         COUNT(cd.id) as documents_count
@@ -903,7 +924,9 @@ router.get('/', auth.authenticateToken, async (req, res) => {
              c.allergies, c.medical_notes, c.doctor_name, c.doctor_phone, c.blood_type,
              c.emergency_contact_name, c.emergency_contact_phone, c.photo_url, 
              c.is_active, c.created_at, c.updated_at, c.parent_id,
-             u.id, u.first_name, u.last_name, u.email, u.phone,
+             c.father_name, c.mother_name, c.second_parent_name, c.second_parent_phone,
+             c.emergency_contact_choice, c.trusted_contacts,
+             u.id, u.first_name, u.last_name, u.email, u.phone, u.gender,
              e.enrollment_date, e.status`;
     sql += ` ORDER BY c.created_at DESC`;
     const offset = (page - 1) * limit;
@@ -1007,9 +1030,13 @@ router.get('/:id', auth.authenticateToken, auth.requireChildAccess, async (req, 
               c.is_active, c.created_at, c.updated_at, c.parent_id,
               COALESCE(c.status, 'active') as status,
               c.suspension_reason, c.suspended_at, c.expected_return_date,
+              c.father_name, c.mother_name, c.second_parent_name, c.second_parent_phone,
+              COALESCE(c.emergency_contact_choice, 'custom') as emergency_contact_choice,
+              COALESCE(c.trusted_contacts, '[]'::jsonb) as trusted_contacts,
               EXTRACT(YEAR FROM AGE(c.birth_date)) as age,
               u.first_name as parent_first_name, u.last_name as parent_last_name,
-              u.email as parent_email, u.phone as parent_phone
+              u.email as parent_email, u.phone as parent_phone,
+              u.gender as parent_gender
        FROM children c
        LEFT JOIN users u ON c.parent_id = u.id
        WHERE c.id = $1`,
@@ -1277,18 +1304,57 @@ router.put('/:id', [
       doctor_phone,
       emergency_contact_name,
       emergency_contact_phone,
+      father_name,
+      mother_name,
+      second_parent_name,
+      second_parent_phone,
+      emergency_contact_choice,
+      trusted_contacts,
+      parent_email,
+      parent_phone,
       photo_url,
       photo_shared_with_staff,
       is_active
     } = req.body;
 
     // Vérifier si l'enfant existe
-    const existingChild = await pool.query('SELECT id FROM children WHERE id = $1', [id]);
+    const existingChild = await pool.query('SELECT id, parent_id FROM children WHERE id = $1', [id]);
     if (existingChild.rows.length === 0) {
       return res.status(404).json({
         success: false,
         error: 'Enfant non trouvé'
       });
+    }
+
+    const currentParentId = existingChild.rows[0].parent_id;
+    let parentUserUpdated = false;
+
+    // Mise à jour éventuelle des coordonnées du compte parent titulaire (email / téléphone)
+    if (currentParentId && (parent_email !== undefined || parent_phone !== undefined)) {
+      const uUpdates = [];
+      const uParams = [];
+      let uCount = 0;
+
+      if (parent_email !== undefined && parent_email.trim()) {
+        uCount++;
+        uUpdates.push(`email = $${uCount}`);
+        uParams.push(parent_email.trim().toLowerCase());
+      }
+      if (parent_phone !== undefined) {
+        uCount++;
+        uUpdates.push(`phone = $${uCount}`);
+        uParams.push(parent_phone.trim());
+      }
+
+      if (uUpdates.length > 0) {
+        uCount++;
+        uParams.push(currentParentId);
+        await pool.query(
+          `UPDATE users SET ${uUpdates.join(', ')}, updated_at = NOW() WHERE id = $${uCount}`,
+          uParams
+        );
+        parentUserUpdated = true;
+      }
     }
 
     // Protection médicale : vérifier la permission medical.view si un membre du staff envoie des données médicales
@@ -1433,6 +1499,43 @@ router.put('/:id', [
       params.push(emergency_contact_phone);
     }
 
+    if (father_name !== undefined) {
+      paramCount++;
+      updates.push(`father_name = $${paramCount}`);
+      params.push(father_name);
+    }
+
+    if (mother_name !== undefined) {
+      paramCount++;
+      updates.push(`mother_name = $${paramCount}`);
+      params.push(mother_name);
+    }
+
+    if (second_parent_name !== undefined) {
+      paramCount++;
+      updates.push(`second_parent_name = $${paramCount}`);
+      params.push(second_parent_name);
+    }
+
+    if (second_parent_phone !== undefined) {
+      paramCount++;
+      updates.push(`second_parent_phone = $${paramCount}`);
+      params.push(second_parent_phone);
+    }
+
+    if (emergency_contact_choice !== undefined) {
+      paramCount++;
+      updates.push(`emergency_contact_choice = $${paramCount}`);
+      params.push(emergency_contact_choice);
+    }
+
+    if (trusted_contacts !== undefined) {
+      paramCount++;
+      updates.push(`trusted_contacts = $${paramCount}`);
+      const validContacts = Array.isArray(trusted_contacts) ? trusted_contacts.slice(0, 2) : [];
+      params.push(JSON.stringify(validContacts));
+    }
+
     if (photo_url !== undefined) {
       paramCount++;
       updates.push(`photo_url = $${paramCount}`);
@@ -1452,6 +1555,12 @@ router.put('/:id', [
     }
 
     if (updates.length === 0) {
+      if (parentUserUpdated) {
+        return res.json({
+          success: true,
+          message: 'Coordonnées du compte parent mises à jour avec succès'
+        });
+      }
       return res.status(400).json({
         success: false,
         error: 'Aucune donnée à mettre à jour'
@@ -1473,8 +1582,10 @@ router.put('/:id', [
       WHERE id = $${paramCount}
       RETURNING id, first_name, last_name, birth_date, gender, medical_info, 
                 allergies, medical_notes, doctor_name, doctor_phone,
-                emergency_contact_name, emergency_contact_phone, photo_url, 
-                photo_shared_with_staff, is_active, updated_at
+                emergency_contact_name, emergency_contact_phone,
+                father_name, mother_name, second_parent_name, second_parent_phone,
+                emergency_contact_choice, trusted_contacts,
+                photo_url, photo_shared_with_staff, is_active, updated_at
     `;
 
     const result = await pool.query(sql, params);
@@ -1846,24 +1957,41 @@ router.get('/:id/emergency-contacts', auth.authenticateToken, async (req, res) =
   try {
     const { id } = req.params;
 
-    // Vérifier l'accès
-    const childCheck = await pool.query(
-      'SELECT parent_id, emergency_contacts FROM children WHERE id = $1',
-      [id]
-    );
+    // Récupérer l'enfant et les infos du parent titulaire
+    const childCheck = await pool.query(`
+      SELECT c.parent_id, c.emergency_contacts,
+             c.emergency_contact_name, c.emergency_contact_phone,
+             c.emergency_contact_choice,
+             COALESCE(c.trusted_contacts, '[]'::jsonb) as trusted_contacts,
+             c.second_parent_name, c.second_parent_phone,
+             u.first_name as parent_first_name, u.last_name as parent_last_name,
+             u.phone as parent_phone, u.gender as parent_gender
+      FROM children c
+      LEFT JOIN users u ON c.parent_id = u.id
+      WHERE c.id = $1
+    `, [id]);
 
     if (childCheck.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Enfant non trouvé' });
     }
 
     const child = childCheck.rows[0];
-    if (req.user.role === 'parent' && child.parent_id !== req.user.userId) {
+    if (req.user.role === 'parent' && child.parent_id !== (req.user.userId || req.user.id)) {
       return res.status(403).json({ success: false, error: 'Accès non autorisé' });
     }
 
     res.json({
       success: true,
-      contacts: child.emergency_contacts || []
+      contacts: child.emergency_contacts || [],
+      emergency_contact_name: child.emergency_contact_name,
+      emergency_contact_phone: child.emergency_contact_phone,
+      emergency_contact_choice: child.emergency_contact_choice || 'custom',
+      trusted_contacts: child.trusted_contacts || [],
+      second_parent_name: child.second_parent_name,
+      second_parent_phone: child.second_parent_phone,
+      parent_name: `${child.parent_first_name || ''} ${child.parent_last_name || ''}`.trim(),
+      parent_phone: child.parent_phone,
+      parent_gender: child.parent_gender
     });
 
   } catch (error) {
@@ -1876,7 +2004,16 @@ router.get('/:id/emergency-contacts', auth.authenticateToken, async (req, res) =
 router.put('/:id/emergency-contacts', auth.authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { contacts } = req.body;
+    const {
+      contacts,
+      emergency_contact_name,
+      emergency_contact_phone,
+      emergency_contact_choice,
+      trusted_contacts,
+      second_parent_name,
+      second_parent_phone,
+      parent_phone
+    } = req.body;
 
     // Vérifier l'accès
     const childCheck = await pool.query(
@@ -1889,19 +2026,84 @@ router.put('/:id/emergency-contacts', auth.authenticateToken, async (req, res) =
     }
 
     const child = childCheck.rows[0];
-    if (req.user.role === 'parent' && child.parent_id !== req.user.userId) {
+    const currentUserId = req.user.userId || req.user.id;
+    if (req.user.role === 'parent' && child.parent_id !== currentUserId) {
       return res.status(403).json({ success: false, error: 'Accès non autorisé' });
     }
 
-    // Mettre à jour
+    // Mettre à jour le téléphone du parent si renseigné
+    if (parent_phone !== undefined && child.parent_id) {
+      await pool.query(
+        'UPDATE users SET phone = $1, updated_at = NOW() WHERE id = $2',
+        [parent_phone.trim(), child.parent_id]
+      );
+    }
+
+    // Préparer les mises à jour pour children
+    const updates = [];
+    const params = [];
+    let pCount = 0;
+
+    if (contacts !== undefined) {
+      pCount++;
+      updates.push(`emergency_contacts = $${pCount}`);
+      params.push(JSON.stringify(contacts || []));
+    }
+
+    if (emergency_contact_name !== undefined) {
+      pCount++;
+      updates.push(`emergency_contact_name = $${pCount}`);
+      params.push(emergency_contact_name);
+    }
+
+    if (emergency_contact_phone !== undefined) {
+      pCount++;
+      updates.push(`emergency_contact_phone = $${pCount}`);
+      params.push(emergency_contact_phone);
+    }
+
+    if (emergency_contact_choice !== undefined) {
+      pCount++;
+      updates.push(`emergency_contact_choice = $${pCount}`);
+      params.push(emergency_contact_choice);
+    }
+
+    if (trusted_contacts !== undefined) {
+      pCount++;
+      updates.push(`trusted_contacts = $${pCount}`);
+      const validTrusted = Array.isArray(trusted_contacts) ? trusted_contacts.slice(0, 2) : [];
+      params.push(JSON.stringify(validTrusted));
+    }
+
+    if (second_parent_name !== undefined) {
+      pCount++;
+      updates.push(`second_parent_name = $${pCount}`);
+      params.push(second_parent_name);
+    }
+
+    if (second_parent_phone !== undefined) {
+      pCount++;
+      updates.push(`second_parent_phone = $${pCount}`);
+      params.push(second_parent_phone);
+    }
+
+    pCount++;
+    updates.push(`updated_at = $${pCount}`);
+    params.push(new Date());
+
+    pCount++;
+    params.push(id);
+
     await pool.query(`
       UPDATE children SET 
-        emergency_contacts = $1,
-        updated_at = NOW()
-      WHERE id = $2
-    `, [JSON.stringify(contacts || []), id]);
+        ${updates.join(', ')}
+      WHERE id = $${pCount}
+    `, params);
 
-    res.json({ success: true, message: 'Contacts d\'urgence mis à jour' });
+    res.json({
+      success: true,
+      message: 'Contacts et coordonnées mis à jour avec succès'
+    });
 
   } catch (error) {
     console.error('Erreur PUT emergency-contacts:', error);

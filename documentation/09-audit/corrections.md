@@ -1044,3 +1044,42 @@
      - **Composant Mobile (`MobileChildrenList.jsx`)** :
        - Badge orange *"Suspendu (en pause)"* sur les fiches mobiles.
 - **Résultat** : Gestion complète, ergonomique et sans impact régressif des interruptions temporaires d'enfants avec traçabilité et exclusion automatique de l'appel.
+
+---
+
+### Fiche 46 - Refonte Modales Enfant (Détails & Modifier) et Gestion des Contacts / Suspension
+
+- **Date** : 10 Octobre 2026
+- **Fichiers modifiés** :
+  - [`backend/routes_postgres/children.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/children.js)
+  - [`frontend/src/pages/dashboard/ChildrenPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/ChildrenPage.jsx)
+  - [`frontend/src/pages/parent/ChildEmergencyContactsPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/ChildEmergencyContactsPage.jsx)
+- **Objectifs & Besoins** :
+  1. **Modale Détails d'un enfant (`selectedChild`)** :
+     - **Section 1 - Identité de l'enfant** : Nom, Prénom, Genre, Date de naissance, Âge, Nom complet père (`father_name`), Nom complet mère (`mother_name`), Groupe sanguin.
+     - **Section 2 - Parents & Moyens de contact** :
+       - 1er parent titulaire du compte : étiqueté dynamiquement `"Père : (Titulaire)"` si `parent_gender === 'male'` sinon `"Mère : (Titulaire)"`, avec email (masqué si technique/bidon) et téléphone + boutons d'appel/SMS.
+       - 2ème parent : étiqueté à l'inverse (`"Mère :"` ou `"Père :"`), avec son numéro de téléphone + bouton d'appel.
+       - Contact d'urgence : affiche le tiers désigné ou le parent prioritaire choisi, avec téléphone et boutons d'appel/SMS.
+       - Personnes de confiance : liste des personnes autorisées à récupérer l'enfant le soir (**2 maximum** hors parents et contact d'urgence), visible par toute l'équipe pour sécuriser la remise de l'enfant.
+     - **Section 3 - Santé & Suivi Médical** :
+       - Médecin traitant, téléphone du médecin, allergies & régimes alimentaires.
+       - Notes & Informations médicales : mention claire *"Non renseigné (R.S) — Espace réservé au médecin conventionné (prochainement avec le rôle Doctor)"*.
+       - Traitements médicaux actuels.
+     - **Action de suspension** : Bouton `⏸ Suspendre` dans l'en-tête de la modale détails pour l'administrateur si l'enfant est actif.
+  2. **Modale Modifier un enfant (`showEditModal`)** :
+     - **Identité de l'enfant** : affichée en **lecture seule** (Nom, Prénom, Genre, Date de naissance, Âge) pour garantir l'intégrité du registre civil.
+     - **Photo de profil** : modifiable par les membres autorisés de la direction (`children.photos.manage`).
+     - **Section Coordonnées & Parents (modifiables par la direction)** :
+       - Email du parent titulaire du compte (permet à l'administration de remplacer une adresse provisoire ou de corriger le compte de connexion).
+       - Téléphone du 1er parent.
+       - Téléphone du 2ème parent.
+       - Contact d'urgence : Nom complet + Téléphone.
+     - **Suppression du champ "Informations médicales"** de cette modale de modification.
+     - **Bouton Suspendre** : disponible dans la modale pour l'administrateur uniquement.
+  3. **Carte enfant (`ChildrenPage.jsx`)** :
+     - Suppression du bouton `⏸ Suspendre` de la barre d'action de la carte pour alléger l'affichage et éviter la surcharge visuelle.
+  4. **Espace Parent (`ChildEmergencyContactsPage.jsx`)** :
+     - Interface dédiée permettant au parent connecté de renseigner les numéros des parents (Père / Mère), de choisir la priorité d'urgence (Père, Mère ou tiers dédié), et de déclarer jusqu'à **2 personnes de confiance** autorisées à récupérer l'enfant.
+- **Résultat** : Ergonomie et sécurité renforcées, structuration rigoureuse en 3 sections cohérentes, dissociation propre entre identité civile fixe, coordonnées administratives modifiables et dossier médical protégé.
+
