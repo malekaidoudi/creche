@@ -266,6 +266,7 @@ const AppRoutes = () => {
                     >
                         <Route index element={<DashboardHome />} />
                         <Route path="children" element={<ChildrenPage />} />
+                        <Route path="children/add" element={<Navigate to="/dashboard/add-child" replace />} />
                         <Route path="add-child" element={
                             <ProtectedRoute roles={['admin', 'developer']}>
                                 <DashboardAddChildPage />

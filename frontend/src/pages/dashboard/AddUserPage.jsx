@@ -379,13 +379,30 @@ const AddUserPage = () => {
                             )}
 
                             {/* Actions */}
-                            <div className="flex gap-3">
+                            <div className="flex flex-col sm:flex-row gap-3">
                                 <Button
                                     onClick={handleResetForAnotherUser}
                                     className="flex-1"
                                 >
                                     <UserPlus className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
                                     {isRTL ? 'إضافة مستخدم آخر' : 'Ajouter un autre utilisateur'}
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                        if (selectedRole === 'parent' && createdUser) {
+                                            const params = new URLSearchParams();
+                                            if (createdUser.id) params.set('parentId', createdUser.id);
+                                            if (createdUser.last_name) params.set('lastName', createdUser.last_name);
+                                            navigate(`/dashboard/add-child?${params.toString()}`);
+                                        } else {
+                                            navigate('/dashboard/add-child');
+                                        }
+                                    }}
+                                    className="flex-1 border-primary-200 dark:border-primary-800 text-primary-700 dark:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20"
+                                >
+                                    <Baby className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                                    {isRTL ? 'إضافة طفل' : 'Ajouter un enfant'}
                                 </Button>
                                 <Button
                                     variant="outline"

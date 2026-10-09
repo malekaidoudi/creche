@@ -68,12 +68,16 @@ const AddChildPage = () => {
     loadParents();
   }, [isPersonal]);
 
-  // Pré-remplir la date d'inscription avec aujourd'hui
+  // Pré-remplir la date d'inscription avec aujourd'hui et le nom de famille si passé en paramètre
   useEffect(() => {
     const today = new Date();
     const formattedDate = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
     setValue('enrollment_date', formattedDate);
-  }, [setValue]);
+    const preselectedLastName = searchParams.get('lastName');
+    if (preselectedLastName) {
+      setValue('last_name', preselectedLastName);
+    }
+  }, [setValue, searchParams]);
 
   const onSubmit = async (data) => {
     setLoading(true);
