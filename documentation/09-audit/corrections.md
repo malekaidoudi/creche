@@ -967,3 +967,35 @@
   5. **Persistance complète de `enrollment_date` dans le backend (`children.js`)** :
      - Enregistrement de la date d'inscription saisie dans `enrollments` et `enrollments_archive` au lieu de forcer `NOW()`.
 - **Résultat** : La modification de la date d'inscription se fait désormais d'un simple clic direct sur le calendrier, l'enchaînement de création d'utilisateurs/parents actualise instantanément les enfants orphelins sans recharger la page, et le libellé du bouton parent sans email est 100% cohérent.
+
+---
+
+### 44. Masquage des emails techniques et dissociation stricte Parent Responsable / Contact d'Urgence
+
+- **Fichiers modifiés** :
+  - [`backend/routes_postgres/userWorkflow.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/userWorkflow.js)
+  - [`backend/routes_postgres/children.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/children.js)
+  - [`frontend/src/pages/dashboard/AddUserPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/AddUserPage.jsx)
+  - [`frontend/src/pages/dashboard/ChildrenPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/ChildrenPage.jsx)
+  - [`frontend/src/pages/dashboard/StaffChildDetailPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/StaffChildDetailPage.jsx)
+- **Problème identifié** :
+  1. **Affichage d'un email bidon/technique** : les parents créés sans adresse email recevaient un email interne placeholder (`parent.noemail.[tel].[suffix]@creche.local`) pour respecter les contraintes de base SQL. Cet email technique apparaissait textuellement et dans un lien `mailto:` sous la section « Parent responsable » de la modal détails d'un enfant.
+  2. **Mélange et duplication Parent Responsable / Contact d'Urgence** :
+     - Lors de la création d'un compte parent (`userWorkflow.js`), le backend écrasait automatiquement le contact d'urgence de l'enfant avec le nom et téléphone du parent responsable si aucun contact n'était fourni.
+     - De plus, dans `AddUserPage.jsx`, les champs de contact d'urgence n'étaient pas transmis au endpoint `createParent`.
+     - Dans la modal de détails ([`ChildrenPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/ChildrenPage.jsx)), un fallback automatique dupliquait le parent responsable dans la carte « Contact d'urgence », créant deux cartes identiques côte à côte avec le même nom et numéro.
+- **Actions appliquées** :
+  1. **Purge et masquage systématique des emails techniques (`@creche.local` / `noemail`)** :
+     - Helper de détection `isNoEmail(email)` côté frontend et assainissement côté backend (`sanitizeChildContacts`).
+     - Si le parent n'a pas d'email réel, l'email bidon n'est plus jamais affiché : un badge clair *"Sans adresse email"* s'affiche avec icône ambrée discrète.
+     - Protection identique appliquée dans [`StaffChildDetailPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/StaffChildDetailPage.jsx).
+  2. **Dissociation stricte Parent Responsable / Contact d'Urgence** :
+     - **Backend (`userWorkflow.js`)** : suppression de la duplication automatique du parent comme contact d'urgence. Le contact d'urgence n'est mis à jour que si un contact distinct est explicitement fourni.
+     - **Formulaire (`AddUserPage.jsx`)** : transmission effective de `emergency_contact_name` et `emergency_contact_phone` au backend, et mise à jour du texte d'aide pour clarifier qu'il s'agit d'une personne de confiance tierce (grand-parent, oncle, voisin...).
+     - **Modal détails ([`ChildrenPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/ChildrenPage.jsx))** :
+       - Élimination du fallback dupliqué vers le parent.
+       - Détection des anciens enregistrements dupliqués (`emergency_contact_name === parentFullName`) : ils sont traités comme "Non renseigné".
+       - Si aucun contact d'urgence distinct n'existe : affichage de *"Non renseigné (R.S)"* avec mention d'aide *"En cas d'urgence, contacter le parent responsable ci-contre"*, sans boutons d'appel/SMS parasites dupliqués.
+       - La carte « Parent responsable » intègre désormais ses propres boutons d'action rapide **Appeler** et **SMS** si son téléphone est renseigné.
+       - Nettoyage automatique au démarrage du backend des contacts d'urgence hérités qui avaient été dupliqués sur le nom du parent.
+- **Résultat** : Plus aucun email technique interne n'est visible nulle part dans l'application, et les rôles de parent responsable et de contact d'urgence sont désormais distincts, clairs et sans ambiguïté.

@@ -71,6 +71,8 @@ const parseAllergies = (allergies) => {
   return [];
 };
 
+const isNoEmail = (email) => Boolean(!email || email.includes('@creche.local') || email.includes('noemail'));
+
 const ChildrenPage = () => {
   const { user, isAdmin, isStaff } = useAuth();
   const { isRTL } = useLanguage();
@@ -1349,28 +1351,20 @@ const ChildrenPage = () => {
 
                 {/* 2. DÉTAILS DES PARENTS ET CONTACTS D'URGENCE */}
                 {(() => {
+                  const parentFullName = `${selectedChild.parent_first_name || ''} ${selectedChild.parent_last_name || ''}`.trim();
+
+                  // Détection d'un contact d'urgence tiers distinct (différent du parent responsable)
+                  const isDuplicateOfParent = Boolean(
+                    parentFullName &&
+                    selectedChild.emergency_contact_name &&
+                    selectedChild.emergency_contact_name.trim().toLowerCase() === parentFullName.toLowerCase()
+                  );
                   const hasDedicatedEmergency = Boolean(
-                    selectedChild.emergency_contact_name || selectedChild.emergency_contact_phone
+                    (selectedChild.emergency_contact_name || selectedChild.emergency_contact_phone) && !isDuplicateOfParent
                   );
-                  const hasParent = Boolean(
-                    selectedChild.parent_first_name || selectedChild.parent_last_name || selectedChild.parent_phone
-                  );
-                  // Si aucun contact d'urgence n'est renseigné, le parent responsable devient automatiquement le contact d'urgence
-                  const fallbackToParent = !hasDedicatedEmergency && hasParent;
 
-                  const emergencyName = hasDedicatedEmergency
-                    ? selectedChild.emergency_contact_name
-                    : fallbackToParent
-                    ? `${selectedChild.parent_first_name || ''} ${selectedChild.parent_last_name || ''}`.trim()
-                    : null;
-
-                  const emergencyPhone = hasDedicatedEmergency
-                    ? selectedChild.emergency_contact_phone
-                    : fallbackToParent
-                    ? selectedChild.parent_phone
-                    : null;
-
-                  const emergencyEmail = fallbackToParent ? selectedChild.parent_email : null;
+                  const emergencyName = hasDedicatedEmergency ? selectedChild.emergency_contact_name.trim() : null;
+                  const emergencyPhone = hasDedicatedEmergency ? selectedChild.emergency_contact_phone : null;
 
                   return (
                     <div className="bg-blue-50/50 dark:bg-blue-950/20 rounded-2xl p-5 border border-blue-200/70 dark:border-blue-900/40 shadow-sm">
@@ -1404,7 +1398,7 @@ const ChildrenPage = () => {
                                       <Lock className="w-3.5 h-3.5 flex-shrink-0 text-amber-500" />
                                       <span>{isRTL ? 'محمي (خاص بالإدارة)' : '•••••••• (Confidentiel)'}</span>
                                     </p>
-                                  ) : selectedChild.parent_email ? (
+                                  ) : (selectedChild.parent_email && !isNoEmail(selectedChild.parent_email)) ? (
                                     <a
                                       href={`mailto:${selectedChild.parent_email}`}
                                       className="text-primary-600 dark:text-primary-400 hover:underline text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
@@ -1415,9 +1409,9 @@ const ChildrenPage = () => {
                                       <span>{selectedChild.parent_email}</span>
                                     </a>
                                   ) : (
-                                    <p className="text-gray-400 dark:text-gray-500 text-xs flex items-center gap-1.5 italic" dir="ltr">
-                                      <Mail className="w-3.5 h-3.5 flex-shrink-0 text-gray-400" />
-                                      <span>{isRTL ? 'غير محدد (RS)' : 'Non renseigné (R.S)'}</span>
+                                    <p className="text-amber-600 dark:text-amber-400 text-xs flex items-center gap-1.5 italic" dir="ltr">
+                                      <Mail className="w-3.5 h-3.5 flex-shrink-0 text-amber-500" />
+                                      <span>{isRTL ? 'بدون بريد إلكتروني' : 'Sans adresse email'}</span>
                                     </p>
                                   )}
 
@@ -1450,6 +1444,30 @@ const ChildrenPage = () => {
                               </p>
                             )}
                           </div>
+
+                          {/* Actions rapides d'appel/SMS vers le parent responsable */}
+                          {(isAdmin() || can(FEATURES.PARENTS_PHONE_VIEW)) && selectedChild.parent_phone && (
+                            <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-green-300 text-green-700 dark:text-green-300 hover:bg-green-50 text-xs"
+                                onClick={() => window.location.href = `tel:${selectedChild.parent_phone}`}
+                              >
+                                <Phone className="w-3.5 h-3.5 mr-1 rtl:mr-0 rtl:ml-1" />
+                                {isRTL ? 'اتصال' : 'Appeler'}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-purple-300 text-purple-700 dark:text-purple-300 hover:bg-purple-50 text-xs"
+                                onClick={() => window.location.href = `sms:${selectedChild.parent_phone}`}
+                              >
+                                <MessageSquare className="w-3.5 h-3.5 mr-1 rtl:mr-0 rtl:ml-1" />
+                                SMS
+                              </Button>
+                            </div>
+                          )}
                         </div>
 
                         {/* Carte Contact d'urgence */}
@@ -1467,31 +1485,40 @@ const ChildrenPage = () => {
                                 )}
                               </p>
                               <div className="space-y-1.5 pt-1 border-t border-gray-100 dark:border-gray-700/60">
-                                {(!isAdmin() && (selectedChild.emergency_contact_restricted || !can(FEATURES.PARENTS_PHONE_VIEW))) ? (
-                                  <p className="text-gray-400 dark:text-gray-500 text-xs flex items-center gap-1.5 italic" dir="ltr">
-                                    <Lock className="w-3.5 h-3.5 flex-shrink-0 text-amber-500" />
-                                    <span>{isRTL ? 'محمي (خاص بالإدارة)' : '•••••••• (Confidentiel)'}</span>
-                                  </p>
-                                ) : emergencyPhone ? (
-                                  <a
-                                    href={`tel:${emergencyPhone}`}
-                                    className="text-gray-700 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 hover:underline text-xs flex items-center gap-1.5 transition-colors"
-                                    dir="ltr"
-                                  >
-                                    <Phone className="w-3.5 h-3.5 flex-shrink-0 text-red-500" />
-                                    <span>{emergencyPhone}</span>
-                                  </a>
+                                {emergencyName ? (
+                                  (!isAdmin() && (selectedChild.emergency_contact_restricted || !can(FEATURES.PARENTS_PHONE_VIEW))) ? (
+                                    <p className="text-gray-400 dark:text-gray-500 text-xs flex items-center gap-1.5 italic" dir="ltr">
+                                      <Lock className="w-3.5 h-3.5 flex-shrink-0 text-amber-500" />
+                                      <span>{isRTL ? 'محمي (خاص بالإدارة)' : '•••••••• (Confidentiel)'}</span>
+                                    </p>
+                                  ) : emergencyPhone ? (
+                                    <a
+                                      href={`tel:${emergencyPhone}`}
+                                      className="text-gray-700 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 hover:underline text-xs flex items-center gap-1.5 transition-colors"
+                                      dir="ltr"
+                                    >
+                                      <Phone className="w-3.5 h-3.5 flex-shrink-0 text-red-500" />
+                                      <span>{emergencyPhone}</span>
+                                    </a>
+                                  ) : (
+                                    <p className="text-gray-400 dark:text-gray-500 text-xs flex items-center gap-1.5 italic" dir="ltr">
+                                      <Phone className="w-3.5 h-3.5 flex-shrink-0 text-gray-400" />
+                                      <span>{isRTL ? 'غير محدد (RS)' : 'Non renseigné (R.S)'}</span>
+                                    </p>
+                                  )
                                 ) : (
-                                  <p className="text-gray-400 dark:text-gray-500 text-xs flex items-center gap-1.5 italic" dir="ltr">
-                                    <Phone className="w-3.5 h-3.5 flex-shrink-0 text-gray-400" />
-                                    <span>{isRTL ? 'غير محدد (RS)' : 'Non renseigné (R.S)'}</span>
+                                  <p className="text-gray-400 dark:text-gray-500 text-xs italic text-center py-1">
+                                    {isRTL
+                                      ? 'في حالات الطوارئ، يرجى الاتصال بالولي المسؤول'
+                                      : 'En cas d\'urgence, contacter le parent responsable ci-contre.'
+                                    }
                                   </p>
                                 )}
                               </div>
                             </div>
                           </div>
 
-                          {/* Actions de contact d'urgence : UNIQUEMENT pour admin ou staff avec permission d'appel */}
+                          {/* Actions de contact d'urgence : UNIQUEMENT pour admin ou staff avec permission d'appel, ET si contact d'urgence distinct existe */}
                           {(isAdmin() || can(FEATURES.PARENTS_PHONE_VIEW)) && emergencyPhone && (
                             <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
                               <Button

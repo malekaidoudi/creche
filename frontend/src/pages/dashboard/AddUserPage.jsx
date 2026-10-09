@@ -240,7 +240,9 @@ const AddUserPage = () => {
                     email: formData.email,
                     phone: formData.phone,
                     gender: formData.gender,
-                    child_ids: selectedChildren.map(c => c.id)
+                    child_ids: selectedChildren.map(c => c.id),
+                    emergency_contact_name: formData.emergency_contact_name?.trim() || '',
+                    emergency_contact_phone: formData.emergency_contact_phone?.trim() || ''
                 });
             } else {
                 // Créer un compte personnel
@@ -783,8 +785,8 @@ const AddUserPage = () => {
                                         </h3>
                                         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                                             {isRTL
-                                                ? 'إذا تركت هذه الحقول فارغة، سيتم استخدام معلومات الوالد كجهة اتصال للطوارئ'
-                                                : 'Si vous laissez ces champs vides, les informations du parent seront utilisées comme contact d\'urgence'
+                                                ? 'اختياري: شخص موثوق للاتصال به في حالات الطوارئ مختلف عن الولي (مثل الجد، العم، الجار...)'
+                                                : 'Optionnel : personne de confiance à contacter en cas d\'urgence autre que le parent responsable (ex: grand-parent, oncle, voisin...)'
                                             }
                                         </p>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

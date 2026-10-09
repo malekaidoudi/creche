@@ -26,8 +26,22 @@ const ensureMedicalColumns = async () => {
   } catch (err) {
     console.warn('⚠️ Note: vérification colonnes médicales children:', err.message);
   }
+// Nettoyer les contacts d'urgence dupliqués du parent créés par l'ancienne logique
+const cleanupLegacyEmergencyContacts = async () => {
+  try {
+    await pool.query(`
+      UPDATE children c
+      SET emergency_contact_name = NULL, emergency_contact_phone = NULL, updated_at = NOW()
+      FROM users u
+      WHERE c.parent_id = u.id
+        AND c.emergency_contact_name IS NOT NULL
+        AND LOWER(TRIM(c.emergency_contact_name)) = LOWER(TRIM(CONCAT(u.first_name, ' ', u.last_name)));
+    `);
+  } catch (err) {
+    // Log silencieux si table indisponible
+  }
 };
-ensureMedicalColumns();
+ensureMedicalColumns().then(() => cleanupLegacyEmergencyContacts());
 
 /**
  * Vérifie l'accès à la gestion de la photo d'un enfant (upload/suppression) :
@@ -106,10 +120,32 @@ const deleteLocalPhotoFile = (photoUrl) => {
  * si l'utilisateur courant (staff) n'a pas la permission correspondante.
  * Admin/developer/parent voient toujours ces informations.
  */
+/**
+ * Nettoie les données de contact d'une ligne enfant :
+ * 1. Purge l'email placeholder technique pour les parents sans email (@creche.local / parent.noemail.)
+ * 2. Dissocie le contact d'urgence s'il s'agit d'une duplication automatique du nom du parent responsable
+ */
+const sanitizeChildContacts = (row) => {
+  const r = { ...row };
+  // Purger l'email technique interne pour ne jamais l'exposer
+  if (r.parent_email && (r.parent_email.endsWith('@creche.local') || r.parent_email.includes('noemail'))) {
+    r.parent_email = null;
+    r.parent_has_no_email = true;
+  }
+  // Dissocier le contact d'urgence dupliqué du parent
+  const parentFullName = `${r.parent_first_name || ''} ${r.parent_last_name || ''}`.trim().toLowerCase();
+  if (r.emergency_contact_name && parentFullName && r.emergency_contact_name.trim().toLowerCase() === parentFullName) {
+    r.emergency_contact_name = null;
+    r.emergency_contact_phone = null;
+  }
+  return r;
+};
+
 const filterParentContacts = async (rows, user) => {
+  const sanitizedRows = rows.map(sanitizeChildContacts);
   const role = user?.role === 'developer' ? 'admin' : user?.role;
   if (role !== 'staff') {
-    return rows.map((r) => ({
+    return sanitizedRows.map((r) => ({
       ...r,
       can_view_parent_phone: true,
       can_view_parent_email: true,
@@ -146,7 +182,7 @@ const filterParentContacts = async (rows, user) => {
     }
   }
 
-  return rows.map((row) => {
+  return sanitizedRows.map((row) => {
     const filtered = { ...row };
     filtered.can_view_parent_phone = !!canViewPhone;
     filtered.can_view_parent_email = !!canViewEmail;

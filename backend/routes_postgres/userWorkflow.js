@@ -56,7 +56,9 @@ router.post('/create-parent', auth.authenticateToken, auth.requireRole('admin'),
             last_name,
             email,
             phone,
-            child_ids // Tableau d'IDs d'enfants
+            child_ids, // Tableau d'IDs d'enfants
+            emergency_contact_name,
+            emergency_contact_phone
         } = req.body;
 
         const hasRealEmail = Boolean(email && typeof email === 'string' && email.trim() !== '');
@@ -139,12 +141,18 @@ router.post('/create-parent', auth.authenticateToken, auth.requireRole('admin'),
             `, [child_id, newUser.id]);
         }
 
-        // 6. Mettre à jour le contact d'urgence des enfants
-        await client.query(`
-            UPDATE children 
-            SET emergency_contact_name = $1, emergency_contact_phone = $2, updated_at = NOW()
-            WHERE id = ANY($3) AND emergency_contact_name IS NULL
-        `, [`${first_name} ${last_name}`, phone, child_ids]);
+        // 6. Mettre à jour le contact d'urgence des enfants UNIQUEMENT si un contact distinct a été explicitement saisi
+        const cleanEmergencyName = (emergency_contact_name || '').trim();
+        const cleanEmergencyPhone = (emergency_contact_phone || '').trim();
+        const parentFullName = `${first_name} ${last_name}`.trim().toLowerCase();
+
+        if (cleanEmergencyName && cleanEmergencyName.toLowerCase() !== parentFullName) {
+            await client.query(`
+                UPDATE children 
+                SET emergency_contact_name = $1, emergency_contact_phone = $2, updated_at = NOW()
+                WHERE id = ANY($3)
+            `, [cleanEmergencyName, cleanEmergencyPhone || null, child_ids]);
+        }
 
         await client.query('COMMIT');
 
