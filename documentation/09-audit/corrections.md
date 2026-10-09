@@ -944,9 +944,10 @@
      - L'appel `setDate()` lors de l'ouverture du calendrier déclenchait l'événement `changeDate`, qui appelait immédiatement `hide()` et fermait le calendrier instantanément.
      - L'absence de vérification sur l'année de l'objet date permettait à des années incomplètes ou corrompues d'être écrites dans le formulaire.
 - **Actions appliquées** :
-  1. **Bouton dynamique dans `AddUserPage.jsx`** :
-     - Si `formData.no_email` est activé : le bouton affiche simplement **"Créer"** (`إنشاء`) avec l'icône `UserPlus`.
-     - Si une adresse email est présente : le bouton conserve **"Créer et envoyer l'invitation"** (`إنشاء وإرسال الدعوة`) avec l'icône `Send`.
+  1. **Bouton dynamique et écran de succès dans `AddUserPage.jsx`** :
+     - Liaison directe du bouton avec le state réactif `noEmail` de la case à cocher : affiche **"Créer"** (`إنشاء`) avec l'icône `UserPlus` lorsque cochée, et **"Créer et envoyer l'invitation"** (`إنشاء وإرسال الدعوة`) avec l'icône `Send` si un email est présent.
+     - **Écran de confirmation** : si le parent est créé sans email, élimination du libellé erroné *"envoyé à null"* au profit d'un encart explicatif dédié informant que le parent est enregistré et l'enfant associé, sans envoi de lien d'invitation.
+     - **Actualisation automatique des enfants orphelins** : retrait immédiat des enfants associés du state local, et lors du clic sur *"Ajouter un autre utilisateur"*, réinitialisation complète des formulaires, purge de `location.state` et rechargement API (`fetchOrphanChildren(true)`) garantissant que seuls les enfants réellement orphelins restants s'affichent sans avoir besoin de rafraîchir la page.
   2. **Algorithme de préservation du curseur (`DatePicker.jsx`)** :
      - Comptage précis des chiffres avant le curseur (`digitsBefore`) avant formatage.
      - Plafond strict à 8 chiffres (JJMMAAAA) éliminant tout risque de débordement d'année.
@@ -961,4 +962,4 @@
      - L'édition manuelle est désactivée (`readOnly`, `inputMode="none"`, `cursor-pointer`, `select-none`), et **un simple clic sur le champ ou sur l'icône calendrier ouvre instantanément le calendrier** pour une sélection visuelle directe sans risque d'erreur.
   5. **Persistance complète de `enrollment_date` dans le backend (`children.js`)** :
      - Enregistrement de la date d'inscription saisie dans `enrollments` et `enrollments_archive` au lieu de forcer `NOW()`.
-- **Résultat** : La modification de la date d'inscription se fait désormais d'un simple clic direct sur le calendrier, sans clavier virtuel ni conflit de frappe, garantissant une ergonomie 100% intuitive et sans erreur.
+- **Résultat** : La modification de la date d'inscription se fait désormais d'un simple clic direct sur le calendrier, l'enchaînement de création d'utilisateurs/parents actualise instantanément les enfants orphelins sans recharger la page, et le libellé du bouton parent sans email est 100% cohérent.

@@ -13,7 +13,7 @@
  * 3. Email envoyé au personnel avec lien de création de mot de passe
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -89,34 +89,35 @@ const AddUserPage = () => {
         }
     }, [location.state]);
 
-    // Charger les enfants orphelins quand le rôle parent est sélectionné
-    useEffect(() => {
-        const fetchOrphanChildren = async () => {
-            if (selectedRole !== 'parent') return;
+    // Charger les enfants orphelins (fonction réutilisable)
+    const fetchOrphanChildren = useCallback(async (ignoreState = false) => {
+        if (selectedRole !== 'parent') return;
 
-            setLoadingChildren(true);
-            try {
-                const response = await userWorkflowService.getOrphanChildren();
-                if (response.success) {
-                    let children = response.children || [];
-                    if (location.state?.preselectedChild) {
-                        const preChild = location.state.preselectedChild;
-                        if (!children.some(c => c.id === preChild.id)) {
-                            children = [preChild, ...children];
-                        }
+        setLoadingChildren(true);
+        try {
+            const response = await userWorkflowService.getOrphanChildren();
+            if (response.success) {
+                let children = response.children || [];
+                // N'injecter l'enfant du location.state que si on n'a pas explicitement demandé de l'ignorer
+                if (!ignoreState && location.state?.preselectedChild) {
+                    const preChild = location.state.preselectedChild;
+                    if (!children.some(c => c.id === preChild.id)) {
+                        children = [preChild, ...children];
                     }
-                    setOrphanChildren(children);
                 }
-            } catch (error) {
-                console.error('Erreur chargement enfants orphelins:', error);
-                setOrphanChildren(location.state?.preselectedChild ? [location.state.preselectedChild] : []);
-            } finally {
-                setLoadingChildren(false);
+                setOrphanChildren(children);
             }
-        };
-
-        fetchOrphanChildren();
+        } catch (error) {
+            console.error('Erreur chargement enfants orphelins:', error);
+            setOrphanChildren(!ignoreState && location.state?.preselectedChild ? [location.state.preselectedChild] : []);
+        } finally {
+            setLoadingChildren(false);
+        }
     }, [selectedRole, location.state]);
+
+    useEffect(() => {
+        fetchOrphanChildren();
+    }, [fetchOrphanChildren]);
 
     // Options de rôle
     const roleOptions = [
@@ -254,6 +255,12 @@ const AddUserPage = () => {
             }
 
             if (response.success) {
+                // Retirer immédiatement les enfants associés de la liste locale des orphelins
+                if (selectedRole === 'parent' && selectedChildren.length > 0) {
+                    const associatedIds = selectedChildren.map(c => c.id);
+                    setOrphanChildren(prev => prev.filter(c => !associatedIds.includes(c.id)));
+                }
+
                 setCreatedUser(response.user);
                 setShowSuccess(true);
                 dialog.success(
@@ -270,8 +277,32 @@ const AddUserPage = () => {
         }
     };
 
+    const handleResetForAnotherUser = () => {
+        setShowSuccess(false);
+        setCreatedUser(null);
+        setSelectedChildren([]);
+        setNoEmail(false);
+        setFormData({
+            first_name: '',
+            last_name: '',
+            email: '',
+            phone: '',
+            gender: '',
+            staff_position: '',
+            emergency_contact_name: '',
+            emergency_contact_phone: ''
+        });
+        setErrors({});
+        // Purgation de l'état de navigation pour ne plus injecter l'enfant précédent
+        navigate('/dashboard/users/add', { replace: true, state: {} });
+        // Recharger immédiatement la liste fraîche des enfants orphelins depuis l'API
+        fetchOrphanChildren(true);
+    };
+
     // Écran de succès
     if (showSuccess && createdUser) {
+        const isNoEmailUser = !createdUser.email || createdUser.email.includes('@creche.local');
+
         return (
             <div className="space-y-6">
                 <motion.div
@@ -293,23 +324,42 @@ const AddUserPage = () => {
                                 </p>
                             </div>
 
-                            {/* Email envoyé */}
-                            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 mb-6">
-                                <div className="flex items-start gap-3">
-                                    <Mail className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
-                                    <div>
-                                        <h3 className="font-semibold text-blue-800 dark:text-blue-300">
-                                            {isRTL ? 'تم إرسال البريد الإلكتروني' : 'Email envoyé'}
-                                        </h3>
-                                        <p className="text-blue-700 dark:text-blue-400 text-sm mt-1">
-                                            {isRTL
-                                                ? `تم إرسال رابط إنشاء كلمة المرور إلى ${createdUser.email}`
-                                                : `Un lien de création de mot de passe a été envoyé à ${createdUser.email}`
-                                            }
-                                        </p>
+                            {/* Statut Email */}
+                            {isNoEmailUser ? (
+                                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 mb-6">
+                                    <div className="flex items-start gap-3">
+                                        <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                                        <div>
+                                            <h3 className="font-semibold text-amber-800 dark:text-amber-300">
+                                                {isRTL ? 'ولي أمر مسجل بدون بريد إلكتروني' : 'Parent enregistré sans adresse email'}
+                                            </h3>
+                                            <p className="text-amber-700 dark:text-amber-400 text-sm mt-1">
+                                                {isRTL
+                                                    ? 'لم يتم إرسال رابط دعوة. تم ربط الطفل بالولي بنجاح، ويمكنك إضافة بريد إلكتروني لاحقاً لتفعيل حسابه.'
+                                                    : 'Aucun lien de création de mot de passe n\'a été envoyé. L\'enfant est bien associé, et vous pourrez ajouter un email ultérieurement pour activer son compte.'
+                                                }
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            ) : (
+                                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 mb-6">
+                                    <div className="flex items-start gap-3">
+                                        <Mail className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+                                        <div>
+                                            <h3 className="font-semibold text-blue-800 dark:text-blue-300">
+                                                {isRTL ? 'تم إرسال البريد الإلكتروني' : 'Email envoyé'}
+                                            </h3>
+                                            <p className="text-blue-700 dark:text-blue-400 text-sm mt-1">
+                                                {isRTL
+                                                    ? `تم إرسال رابط إنشاء كلمة المرور إلى ${createdUser.email}`
+                                                    : `Un lien de création de mot de passe a été envoyé à ${createdUser.email}`
+                                                }
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Info enfants associés (pour parent) */}
                             {selectedRole === 'parent' && selectedChildren.length > 0 && (
@@ -331,21 +381,7 @@ const AddUserPage = () => {
                             {/* Actions */}
                             <div className="flex gap-3">
                                 <Button
-                                    onClick={() => {
-                                        setShowSuccess(false);
-                                        setCreatedUser(null);
-                                        setSelectedChildren([]);
-                                        setFormData({
-                                            first_name: '',
-                                            last_name: '',
-                                            email: '',
-                                            phone: '',
-                                            gender: '',
-                                            staff_position: '',
-                                            emergency_contact_name: '',
-                                            emergency_contact_phone: ''
-                                        });
-                                    }}
+                                    onClick={handleResetForAnotherUser}
                                     className="flex-1"
                                 >
                                     <UserPlus className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
