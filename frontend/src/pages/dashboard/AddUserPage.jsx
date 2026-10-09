@@ -390,12 +390,15 @@ const AddUserPage = () => {
                                 <Button
                                     variant="outline"
                                     onClick={() => {
-                                        if (selectedRole === 'parent' && createdUser) {
+                                        const hasLinkedChild = selectedRole === 'parent' && selectedChildren && selectedChildren.length > 0;
+                                        if (selectedRole === 'parent' && createdUser && !hasLinkedChild) {
+                                            // Le parent n'a pas encore d'enfant associé : pré-remplissage de ce parent et de son nom
                                             const params = new URLSearchParams();
                                             if (createdUser.id) params.set('parentId', createdUser.id);
                                             if (createdUser.last_name) params.set('lastName', createdUser.last_name);
                                             navigate(`/dashboard/add-child?${params.toString()}`);
                                         } else {
+                                            // Le parent a déjà son enfant associé (ou autre rôle) : création d'un nouvel enfant indépendant
                                             navigate('/dashboard/add-child');
                                         }
                                     }}

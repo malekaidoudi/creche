@@ -947,7 +947,10 @@
   1. **Bouton dynamique et écran de succès dans `AddUserPage.jsx`** :
      - Liaison directe du bouton avec le state réactif `noEmail` de la case à cocher : affiche **"Créer"** (`إنشاء`) avec l'icône `UserPlus` lorsque cochée, et **"Créer et envoyer l'invitation"** (`إنشاء وإرسال الدعوة`) avec l'icône `Send` si un email est présent.
      - **Écran de confirmation** : si le parent est créé sans email, élimination du libellé erroné *"envoyé à null"* au profit d'un encart explicatif dédié informant que le parent est enregistré et l'enfant associé, sans envoi de lien d'invitation.
-     - **Actions post-création** : ajout d'un bouton direct **"Ajouter un enfant"** (`/dashboard/add-child?parentId=...&lastName=...`) permettant d'enchaîner immédiatement la création d'un enfant lié au parent avec pré-remplissage automatique du nom de famille, en plus des boutons *"Ajouter un autre utilisateur"* et *"Retour au dashboard"*. Un alias de route `/dashboard/children/add` a également été configuré pour garantir la robustesse de la navigation.
+     - **Actions post-création** : ajout d'un bouton direct **"Ajouter un enfant"** avec logique contextuelle :
+       - Si le parent créé **n'a pas encore d'enfant associé** (`selectedChildren` vide) : redirection avec paramètres (`/dashboard/add-child?parentId=...&lastName=...`) pour pré-associer immédiatement le parent et pré-remplir le nom de famille de l'enfant.
+       - Si le parent **a déjà un ou plusieurs enfants associés** : redirection neutre vers un formulaire vierge (`/dashboard/add-child`) car l'utilisateur s'oriente alors vers l'inscription d'un nouvel enfant indépendant.
+       - Alias de route `/dashboard/children/add` configuré dans `AppRoutes.jsx` pour la robustesse de navigation.
      - **Actualisation automatique des enfants orphelins** : retrait immédiat des enfants associés du state local, et lors du clic sur *"Ajouter un autre utilisateur"*, réinitialisation complète des formulaires, purge de `location.state` et rechargement API (`fetchOrphanChildren(true)`) garantissant que seuls les enfants réellement orphelins restants s'affichent sans avoir besoin de rafraîchir la page.
   2. **Algorithme de préservation du curseur (`DatePicker.jsx`)** :
      - Comptage précis des chiffres avant le curseur (`digitsBefore`) avant formatage.
