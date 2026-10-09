@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { useLanguage } from '../../hooks/useLanguage'
@@ -20,6 +20,7 @@ const LoginFormHero = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [showJoinModal, setShowJoinModal] = useState(false)
+  const passwordInputRef = useRef(null)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -113,6 +114,14 @@ const LoginFormHero = () => {
               name="email"
               value={formData.email}
               onChange={handleChange}
+              onKeyDown={(e) => {
+                // Tab -> passer directement au champ mot de passe
+                // (sinon le focus irait sur le lien "Mot de passe oublie ?")
+                if (e.key === 'Tab' && !e.shiftKey) {
+                  e.preventDefault()
+                  passwordInputRef.current?.focus()
+                }
+              }}
               required
               className="block w-full pl-10 rtl:pl-3 rtl:pr-10 pr-3 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 transition-all"
               placeholder={isRTL ? 'أدخل بريدك الإلكتروني' : 'Votre email'}
@@ -138,6 +147,7 @@ const LoginFormHero = () => {
               <Lock className="w-5 h-5 text-gray-400" />
             </div>
             <input
+              ref={passwordInputRef}
               type={showPassword ? 'text' : 'password'}
               name="password"
               value={formData.password}

@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { motion } from 'framer-motion';
-import { Baby, User, Calendar, Phone, AlertTriangle, Save, ArrowLeft, CheckCircle, UserPlus, ArrowRight, FileText, Search, Users } from 'lucide-react';
+import { Baby, User, Calendar, Phone, AlertTriangle, Save, ArrowLeft, CheckCircle, UserPlus, ArrowRight, FileText, Search, Users, Lock } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
+import { useAccess, FEATURES } from '../../access';
 import { useDialogContext } from '../../contexts/DialogContext';
 import { Button } from '../../components/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card';
@@ -19,6 +20,7 @@ import { uploadToEndpoint } from '../../services/api';
 const AddChildPage = () => {
   const { user } = useAuth();
   const { isRTL } = useLanguage();
+  const { can } = useAccess();
   const dialog = useDialogContext();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -84,7 +86,7 @@ const AddChildPage = () => {
         last_name: data.last_name,
         birth_date: convertToISO(data.birth_date), // Convertir dd/mm/yyyy → yyyy-mm-dd
         gender: data.gender,
-        medical_info: data.medical_info || '',
+        medical_info: can(FEATURES.MEDICAL_VIEW) ? (data.medical_info || '') : '',
         parent_id: data.parent_id || null,
       };
 
@@ -465,20 +467,31 @@ const AddChildPage = () => {
             </div>
 
             {/* Informations médicales */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                {isRTL ? 'المعلومات الطبية' : 'Informations médicales'}
-              </label>
-              <div className="relative">
-                <AlertTriangle className="absolute left-3 rtl:left-auto rtl:right-3 top-3 text-gray-400 w-5 h-5" />
-                <textarea
-                  {...register('medical_info')}
-                  rows={3}
-                  className="w-full pl-10 rtl:pl-4 rtl:pr-10 pr-4 py-3 border rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors border-gray-300 dark:border-gray-600"
-                  placeholder={isRTL ? 'الحساسية، الأدوية، ملاحظات طبية...' : 'Allergies, médicaments, notes médicales...'}
-                />
+            {can(FEATURES.MEDICAL_VIEW) ? (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  {isRTL ? 'المعلومات الطبية' : 'Informations médicales'}
+                </label>
+                <div className="relative">
+                  <AlertTriangle className="absolute left-3 rtl:left-auto rtl:right-3 top-3 text-gray-400 w-5 h-5" />
+                  <textarea
+                    {...register('medical_info')}
+                    rows={3}
+                    className="w-full pl-10 rtl:pl-4 rtl:pr-10 pr-4 py-3 border rounded-xl bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-colors border-gray-300 dark:border-gray-600"
+                    placeholder={isRTL ? 'الحساسية، الأدوية، ملاحظات طبية...' : 'Allergies, médicaments, notes médicales...'}
+                  />
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="p-3.5 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-xl text-xs text-amber-700 dark:text-amber-400 flex items-center gap-2.5">
+                <Lock className="w-4 h-4 flex-shrink-0" />
+                <span>
+                  {isRTL
+                    ? 'المعلومات الطبية سرية وتتطلب صلاحية خاصة (medical.view).'
+                    : 'Informations médicales confidentielles (réservées au personnel autorisé avec la permission medical.view).'}
+                </span>
+              </div>
+            )}
 
 
             {/* Documents (optionnel - scanner sur mobile) */}

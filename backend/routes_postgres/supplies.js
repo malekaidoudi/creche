@@ -5,7 +5,7 @@
 
 const express = require('express');
 const router = express.Router();
-const { authenticateToken, requireRole } = require('../middleware/auth');
+const { authenticateToken, requireRole, requirePermission } = require('../middleware/auth');
 const suppliesController = require('../controllers/suppliesController');
 
 // GET - Stock de fournitures d'un enfant
@@ -17,14 +17,14 @@ router.get('/child/:childId',
 // POST - Ajouter des fournitures au stock (parent apporte)
 router.post('/child/:childId/refill',
     authenticateToken,
-    requireRole('admin', 'staff'),
+    requirePermission('daily_reports.manage'),
     suppliesController.refillSupply
 );
 
 // POST - Utiliser une fourniture (décrémenter le stock)
 router.post('/child/:childId/use',
     authenticateToken,
-    requireRole('admin', 'staff'),
+    requirePermission('daily_reports.manage'),
     suppliesController.useSupply
 );
 
@@ -37,7 +37,7 @@ router.get('/child/:childId/history',
 // POST - Enregistrer les fournitures apportées aujourd'hui
 router.post('/daily-brought',
     authenticateToken,
-    requireRole('admin', 'staff'),
+    requirePermission('daily_reports.manage'),
     suppliesController.recordDailySupplies
 );
 

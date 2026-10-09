@@ -101,7 +101,7 @@ const initTreatmentsTables = async () => {
  */
 const createTreatment = async (req, res) => {
     try {
-        const parentId = req.user.id;
+        const parentId = req.user.id || req.user.userId;
         const {
             child_id,
             medication_name,
@@ -122,24 +122,30 @@ const createTreatment = async (req, res) => {
             });
         }
 
-        // Vérifier que l'enfant appartient au parent
-        const childCheck = await db.query(`
-            SELECT c.id FROM children c
-            JOIN users u ON c.parent_id = u.id
-            WHERE c.id = $1 AND c.parent_id = $2
-        `, [child_id, parentId]);
+        // Vérifier que l'enfant appartient au parent (ou admin/developer)
+        const role = req.user.role === 'developer' ? 'admin' : req.user.role;
+        if (role !== 'admin') {
+            const childCheck = await db.query(`
+                SELECT c.id FROM children c
+                WHERE c.id = $1 AND (
+                    c.parent_id = $2
+                    OR EXISTS (SELECT 1 FROM parent_children pc WHERE pc.child_id = c.id AND pc.parent_id = $2)
+                    OR EXISTS (SELECT 1 FROM enrollments e WHERE e.child_id = c.id AND e.parent_id = $2 AND e.status = 'approved')
+                )
+            `, [child_id, parentId]);
 
-        if (childCheck.rows.length === 0) {
-            return res.status(403).json({
-                success: false,
-                message: 'Vous n\'êtes pas autorisé à gérer cet enfant'
-            });
+            if (childCheck.rows.length === 0) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Vous n\'êtes pas autorisé à gérer cet enfant'
+                });
+            }
         }
 
         // Calculer la durée en jours
         const start = new Date(start_date);
         const end = new Date(end_date);
-        const duration_days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+        const duration_days = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1);
 
         // Insérer le traitement
         const result = await db.query(`
@@ -151,7 +157,7 @@ const createTreatment = async (req, res) => {
             RETURNING *
         `, [
             child_id, parentId, medication_name, dose, notes || null,
-            timing_type, interval_hours, specific_times,
+            timing_type, interval_hours, JSON.stringify(specific_times),
             start_date, end_date, duration_days
         ]);
 
@@ -178,12 +184,19 @@ const createTreatment = async (req, res) => {
  */
 const getMyChildrenTreatments = async (req, res) => {
     try {
-        const parentId = req.user.id;
-        const { status = 'all' } = req.query;
+        const parentId = req.user.id || req.user.userId;
+        const { status = 'all', child_id } = req.query;
 
         let statusFilter = '';
         if (status !== 'all') {
             statusFilter = `AND ct.status = '${status}'`;
+        }
+
+        const params = [parentId];
+        let childFilter = '';
+        if (child_id) {
+            params.push(child_id);
+            childFilter = `AND ct.child_id = $${params.length}`;
         }
 
         const result = await db.query(`
@@ -203,9 +216,13 @@ const getMyChildrenTreatments = async (req, res) => {
                 ) as last_administration
             FROM child_treatments ct
             JOIN children c ON ct.child_id = c.id
-            WHERE ct.parent_id = $1 ${statusFilter}
+            WHERE (
+                ct.parent_id = $1
+                OR c.parent_id = $1
+                OR EXISTS (SELECT 1 FROM parent_children pc WHERE pc.child_id = c.id AND pc.parent_id = $1)
+            ) ${statusFilter} ${childFilter}
             ORDER BY ct.status = 'active' DESC, ct.created_at DESC
-        `, [parentId]);
+        `, params);
 
         res.json({
             success: true,
@@ -375,7 +392,6 @@ const getTodayTreatments = async (req, res) => {
             LEFT JOIN attendance a ON c.id = a.child_id AND a.date = $1
             WHERE ct.status = 'active'
             AND $1 BETWEEN ct.start_date AND ct.end_date
-            AND a.check_in_time IS NOT NULL
             ORDER BY c.first_name, c.last_name
         `, [today]);
 

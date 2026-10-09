@@ -7,6 +7,34 @@ const express = require('express');
 const router = express.Router();
 const announcementService = require('../services/announcementService');
 const auth = require('../middleware/auth');
+const permissionsService = require('../services/permissionsService');
+
+/**
+ * Middleware d'accès aux annonces :
+ * - admin / developer : accès total
+ * - parent : accès aux annonces de ses enfants
+ * - staff : accès conditionné à la permission 'announcements.view'
+ */
+async function requireAnnouncementAccess(req, res, next) {
+  if (!req.user) {
+    return res.status(401).json({ success: false, error: 'Non authentifié' });
+  }
+  const role = req.user.role === 'developer' ? 'admin' : req.user.role;
+  if (role === 'admin' || role === 'parent') {
+    return next();
+  }
+  if (role === 'staff') {
+    const userId = req.user.id || req.user.userId;
+    const hasAccess = await permissionsService.userHasPermission(userId, 'announcements.view');
+    if (hasAccess) return next();
+    return res.status(403).json({
+      success: false,
+      code: 'PERMISSION_DENIED',
+      error: 'Accès non autorisé aux annonces (permission requise: announcements.view)'
+    });
+  }
+  return res.status(403).json({ success: false, error: 'Accès non autorisé' });
+}
 
 /**
  * POST /api/announcements - Créer une annonce (admin uniquement)
@@ -31,13 +59,21 @@ router.post('/', auth.authenticateToken, auth.requireRole('admin'), async (req, 
 });
 
 /**
- * GET /api/announcements - Récupérer toutes les annonces (admin)
+ * GET /api/announcements - Récupérer les annonces (admin, staff avec permission, parent)
  */
-router.get('/', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
+router.get('/', auth.authenticateToken, requireAnnouncementAccess, async (req, res) => {
   try {
+    const userRole = req.user.role === 'developer' ? 'admin' : req.user.role;
+    const userId = req.user.id || req.user.userId;
+
+    if (userRole === 'parent') {
+      const result = await announcementService.getParentAnnouncements(userId);
+      return res.json(result);
+    }
+
     const { is_published, event_type } = req.query;
     const result = await announcementService.getAnnouncements({ 
-      is_published: is_published === 'true', 
+      is_published: userRole === 'admin' ? (is_published !== undefined ? is_published === 'true' : undefined) : true, 
       event_type 
     });
     
@@ -53,9 +89,9 @@ router.get('/', auth.authenticateToken, auth.requireRole('admin'), async (req, r
 });
 
 /**
- * GET /api/announcements/my - Récupérer mes annonces (parent/staff)
+ * GET /api/announcements/my - Récupérer mes annonces (parent/staff avec permission)
  */
-router.get('/my', auth.authenticateToken, async (req, res) => {
+router.get('/my', auth.authenticateToken, requireAnnouncementAccess, async (req, res) => {
   try {
     const userRole = req.user.role;
     

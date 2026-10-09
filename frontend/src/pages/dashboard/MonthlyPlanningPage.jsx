@@ -4,8 +4,10 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import frLocale from '@fullcalendar/core/locales/fr';
-import { Calendar, Filter, X, ChevronRight, Clock, User, MapPin, CheckCircle } from 'lucide-react';
+import { Calendar, Filter, X, ChevronRight, Clock, User, MapPin, CheckCircle, Lock } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
+import { useAuth } from '../../hooks/useAuth';
+import { useAccess, FEATURES } from '../../access';
 import useIsMobile from '../../hooks/useIsMobile';
 import api, { cachedGet } from '../../services/api';
 import { useDialogContext } from '../../contexts/DialogContext';
@@ -27,10 +29,14 @@ const EVENT_TYPE_COLORS = {
 
 const MonthlyPlanningPage = () => {
   const { isRTL } = useLanguage();
+  const { user } = useAuth();
+  const { can, loading: accessLoading } = useAccess();
   const isMobile = useIsMobile();
   const dialog = useDialogContext();
   const calendarRef = useRef(null);
   const [searchParams] = useSearchParams();
+
+  const canViewPlanning = user?.role === 'admin' || user?.role === 'developer' || can(FEATURES.STAFF_PLANNING_VIEW);
 
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -216,8 +222,14 @@ const MonthlyPlanningPage = () => {
   }, [selectedTypes, isRTL]);
 
   useEffect(() => {
-    loadEvents();
-  }, [loadEvents]);
+    if (!accessLoading) {
+      if (canViewPlanning) {
+        loadEvents();
+      } else {
+        setLoading(false);
+      }
+    }
+  }, [loadEvents, accessLoading, canViewPlanning]);
 
   // Appliquer le filtre initial depuis l'URL
   useEffect(() => {
@@ -451,6 +463,32 @@ const MonthlyPlanningPage = () => {
     { value: 'rdv', label: isRTL ? 'موعد' : 'RDV', icon: '🩺' },
     { value: 'meeting', label: isRTL ? 'اجتماع' : 'Réunion', icon: '👥' }
   ];
+
+  if (!canViewPlanning) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 flex items-center justify-center">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-amber-200 dark:border-amber-800/40 p-8 text-center max-w-lg mx-auto shadow-sm">
+          <div className="w-14 h-14 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto mb-4">
+            <Lock className="w-7 h-7" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+            {isRTL ? 'الاطلاع على جدول الفريق مقيد' : 'Accès au planning d\'équipe restreint'}
+          </h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+            {isRTL
+              ? 'يتطلب هذا القسم صلاحية الاطلاع على جدول عمل الفريق (staff.planning.view).'
+              : 'Cette section requiert l\'autorisation de consultation du planning d\'équipe (staff.planning.view).'}
+          </p>
+          <a
+            href="/dashboard"
+            className="inline-block px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium transition-colors"
+          >
+            {isRTL ? 'العودة إلى لوحة التحكم' : 'Retour au tableau de bord'}
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   // Version Mobile
   if (isMobile) {

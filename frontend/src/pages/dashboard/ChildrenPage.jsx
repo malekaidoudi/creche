@@ -23,11 +23,18 @@ import {
   UserPlus,
   FileText,
   Download,
-  Trash
+  Trash,
+  Stethoscope,
+  Lock,
+  ShieldCheck,
+  AlertTriangle,
+  Pill,
+  HeartPulse
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
 import useIsMobile from '../../hooks/useIsMobile';
+import { useAccess, FEATURES } from '../../access';
 import { Button } from '../../components/ui/Button';
 import MobileChildrenList from '../../components/mobile/MobileChildrenList';
 import MobileNavigation from '../../components/mobile/MobileNavigation';
@@ -49,12 +56,34 @@ const getChildPhotoUrl = (photoUrl) => {
   return `${API_CONFIG.BASE_URL}${photoUrl.startsWith('/') ? '' : '/'}${photoUrl}`;
 };
 
+const parseAllergies = (allergies) => {
+  if (!allergies) return [];
+  if (Array.isArray(allergies)) return allergies.filter(Boolean);
+  if (typeof allergies === 'string') {
+    try {
+      const parsed = JSON.parse(allergies);
+      if (Array.isArray(parsed)) return parsed.filter(Boolean);
+      return [allergies].filter(Boolean);
+    } catch {
+      return allergies.split(',').map(s => s.trim()).filter(Boolean);
+    }
+  }
+  return [];
+};
+
 const ChildrenPage = () => {
   const { user, isAdmin, isStaff } = useAuth();
   const { isRTL } = useLanguage();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const dialog = useDialogContext();
+  const { can } = useAccess();
+  const userIsAdmin = (typeof isAdmin === 'function' ? isAdmin() : !!isAdmin) || user?.role === 'developer';
+  const canViewMedical = userIsAdmin || can(FEATURES.MEDICAL_VIEW);
+  const canManagePhotos = userIsAdmin || can(FEATURES.CHILDREN_PHOTOS_MANAGE);
+  const canManageMedical = canViewMedical;
+  const canManageEmergencyPhone = userIsAdmin || can(FEATURES.PARENTS_PHONE_VIEW);
+  const canEditOnlyPhoto = canManagePhotos && !canManageMedical && !canManageEmergencyPhone;
   const [loading, setLoading] = useState(true);
   const [searchLoading, setSearchLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(null);
@@ -80,6 +109,18 @@ const ChildrenPage = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [missingInfoOpenId, setMissingInfoOpenId] = useState(null);
   const missingInfoPopoverRef = useRef(null);
+  const [directorPhone, setDirectorPhone] = useState('+216 25 95 35 32');
+
+  // Récupérer le numéro de téléphone de contact de la direction / admin pour les urgences
+  useEffect(() => {
+    api.get('/contact/info')
+      .then((res) => {
+        if (res.data?.contact?.phone) {
+          setDirectorPhone(res.data.contact.phone);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Fermer la bulle d'info "dossier incomplet" en cliquant à l'extérieur
   useEffect(() => {
@@ -196,6 +237,16 @@ const ChildrenPage = () => {
     setShowAssociateModal(false);
     setShowEditModal(false);
 
+    // Charger les détails complets (traitements récents, données médicales à jour)
+    try {
+      const response = await childrenService.getChildById(child.id);
+      if (response?.success && response.child) {
+        setSelectedChild(prev => (prev && prev.id === child.id ? { ...prev, ...response.child } : response.child));
+      }
+    } catch (err) {
+      console.warn('Erreur chargement détails complets enfant:', err);
+    }
+
     // Charger les documents de l'enfant
     try {
       setDocumentsLoading(true);
@@ -219,9 +270,9 @@ const ChildrenPage = () => {
       last_name: child.last_name || '',
       birth_date: child.birth_date ? child.birth_date.split('T')[0] : '',
       gender: child.gender || 'male',
-      medical_info: child.medical_info || '',
-      emergency_contact_name: child.emergency_contact_name || '',
-      emergency_contact_phone: child.emergency_contact_phone || '',
+      medical_info: canManageMedical ? (child.medical_info || child.medical_notes || '') : '',
+      emergency_contact_name: canManageEmergencyPhone ? (child.emergency_contact_name || '') : '',
+      emergency_contact_phone: canManageEmergencyPhone ? (child.emergency_contact_phone || '') : '',
       status: child.status || 'pending'
     });
     setSelectedPhotoFile(null);
@@ -231,6 +282,10 @@ const ChildrenPage = () => {
   // Fonction pour uploader la photo de l'enfant sélectionné
   const handleUploadPhoto = async (file) => {
     if (!file || !selectedChild) return;
+    if (!isAdmin() && !can(FEATURES.CHILDREN_PHOTOS_MANAGE)) {
+      dialog.error(isRTL ? 'ليس لديك صلاحية تعديل صورة الطفل' : 'Permission requise pour modifier la photo de l\'enfant');
+      return;
+    }
 
     try {
       setPhotoActionLoading(true);
@@ -261,6 +316,10 @@ const ChildrenPage = () => {
   // Fonction pour supprimer la photo de l'enfant sélectionné
   const handleDeletePhoto = async () => {
     if (!selectedChild) return;
+    if (!isAdmin() && !can(FEATURES.CHILDREN_PHOTOS_MANAGE)) {
+      dialog.error(isRTL ? 'ليس لديك صلاحية حذف صورة الطفل' : 'Permission requise pour modifier la photo de l\'enfant');
+      return;
+    }
 
     const confirmed = await dialog.confirm(
       isRTL ? 'هل تريد حذف صورة الطفل؟' : 'Voulez-vous supprimer la photo de l\'enfant ?',
@@ -397,25 +456,53 @@ const ChildrenPage = () => {
 
     if (!selectedChild) return;
 
+    // Si l'utilisateur n'a le droit de modifier que la photo (pas de droits médicaux ni contacts)
+    if (canEditOnlyPhoto || (!canManageMedical && !canManageEmergencyPhone)) {
+      dialog.success(isRTL ? 'تم حفظ التعديلات بنجاح' : 'Modifications enregistrées avec succès');
+      setShowEditModal(false);
+      setSelectedChild(null);
+      setEditFormData({});
+      setSelectedPhotoFile(null);
+      loadChildren();
+      return;
+    }
+
     try {
       setActionLoading('save');
 
-      // Appeler l'API pour mettre à jour l'enfant
-      const response = await childrenService.updateChild(selectedChild.id, editFormData);
-
-      if (response.success) {
-        dialog.success(isRTL ? 'تم تحديث بيانات الطفل بنجاح' : 'Informations de l\'enfant mises à jour avec succès');
-
-        // Fermer le modal
-        setShowEditModal(false);
-        setSelectedChild(null);
-        setEditFormData({});
-
-        // Recharger la liste des enfants
-        loadChildren();
-      } else {
-        dialog.error(response.error || (isRTL ? 'خطأ في التحديث' : 'Erreur lors de la mise à jour'));
+      // Préparer le payload en incluant uniquement les champs autorisés
+      const payload = {};
+      if (canManageMedical) {
+        payload.medical_info = editFormData.medical_info !== undefined ? editFormData.medical_info : '';
       }
+      if (canManageEmergencyPhone) {
+        if (editFormData.emergency_contact_name !== undefined) {
+          payload.emergency_contact_name = editFormData.emergency_contact_name;
+        }
+        if (editFormData.emergency_contact_phone !== undefined) {
+          payload.emergency_contact_phone = editFormData.emergency_contact_phone;
+        }
+      }
+
+      if (Object.keys(payload).length > 0) {
+        const response = await childrenService.updateChild(selectedChild.id, payload);
+
+        if (!response.success) {
+          dialog.error(response.error || (isRTL ? 'خطأ في التحديث' : 'Erreur lors de la mise à jour'));
+          return;
+        }
+      }
+
+      dialog.success(isRTL ? 'تم تحديث بيانات الطفل بنجاح' : 'Informations de l\'enfant mises à jour avec succès');
+
+      // Fermer le modal
+      setShowEditModal(false);
+      setSelectedChild(null);
+      setEditFormData({});
+      setSelectedPhotoFile(null);
+
+      // Recharger la liste des enfants
+      loadChildren();
     } catch (error) {
       console.error('Erreur sauvegarde enfant:', error);
       dialog.error(error.response?.data?.error || (isRTL ? 'خطأ في الاتصال' : 'Erreur de connexion'));
@@ -718,27 +805,8 @@ const ChildrenPage = () => {
 
   // Les données sont déjà filtrées côté serveur via l'API
 
-  // Version Mobile
-  if (isMobile) {
-    return (
-      <>
-        <MobileChildrenList
-          children={children}
-          groups={[]} // À connecter avec l'API des groupes si disponible
-          loading={loading}
-          onViewChild={(child) => handleViewChild(child)}
-          onEditChild={(child) => handleViewChild(child)}
-          onDeleteChild={(child) => handleDelete(child.id)}
-          onAddChild={() => navigate('/dashboard/add-child')}
-          onRefresh={() => loadChildren()}
-        />
-        <MobileNavigation />
-      </>
-    );
-  }
-
-  // Version Desktop
-  if (loading) {
+  // Version Desktop loading
+  if (!isMobile && loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <LoadingSpinner size="lg" />
@@ -747,7 +815,23 @@ const ChildrenPage = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <>
+      {isMobile ? (
+        <>
+          <MobileChildrenList
+            children={children}
+            groups={[]} // À connecter avec l'API des groupes si disponible
+            loading={loading}
+            onViewChild={(child) => handleViewChild(child)}
+            onEditChild={(child) => handleEditChild(child)}
+            onDeleteChild={(child) => handleDelete(child.id)}
+            onAddChild={() => navigate('/dashboard/add-child')}
+            onRefresh={() => loadChildren()}
+          />
+          <MobileNavigation />
+        </>
+      ) : (
+        <div className="space-y-6">
       {/* En-tête */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -960,8 +1044,13 @@ const ChildrenPage = () => {
                               <span>{child.parent_first_name} {child.parent_last_name}</span>
                             </div>
                             <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                              <Phone className="w-3 h-3" />
-                              {child.parent_phone ? (
+                              <Phone className="w-3 h-3 text-gray-400" />
+                              {(!isAdmin() && (child.parent_phone_restricted || !can(FEATURES.PARENTS_PHONE_VIEW))) ? (
+                                <span className="text-gray-400 dark:text-gray-500 italic flex items-center gap-1 text-xs" dir="ltr">
+                                  <Lock className="w-2.5 h-2.5 text-amber-500" />
+                                  <span>••••••••</span>
+                                </span>
+                              ) : child.parent_phone ? (
                                 <a
                                   href={`tel:${child.parent_phone}`}
                                   className="text-blue-600 hover:text-blue-800 underline"
@@ -1061,6 +1150,8 @@ const ChildrenPage = () => {
           </p>
         </div>
       )}
+        </div>
+      )}
 
       {/* Modal d'association parent */}
       {showAssociateModal && selectedChild && (
@@ -1152,246 +1243,480 @@ const ChildrenPage = () => {
 
       {/* Modal de visualisation d'enfant */}
       {selectedChild && !showAssociateModal && !showEditModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-100 dark:border-gray-700">
             <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {isRTL ? 'تفاصيل الطفل' : 'Détails de l\'enfant'}
-                </h3>
+              {/* En-tête du modal */}
+              <div className="flex items-center justify-between pb-4 mb-5 border-b border-gray-100 dark:border-gray-700">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                    {isRTL ? 'تفاصيل الطفل' : "Détails de l'enfant"}
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    {selectedChild.first_name} {selectedChild.last_name}
+                  </p>
+                </div>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setSelectedChild(null)}
+                  className="rounded-full w-8 h-8 p-0 border-gray-200 dark:border-gray-700"
+                  onClick={() => {
+                    setSelectedChild(null);
+                    setChildDocuments([]);
+                  }}
                 >
                   ✕
                 </Button>
               </div>
 
-              <div className="space-y-4">
-                {/* Photo de l'enfant */}
-                <div className="flex justify-center">
-                  <div className="w-24 h-24 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center overflow-hidden border-2 border-gray-200 dark:border-gray-600">
-                    {getChildPhotoUrl(selectedChild.photo_url) ? (
-                      <img
-                        src={getChildPhotoUrl(selectedChild.photo_url)}
-                        alt={`${selectedChild.first_name} ${selectedChild.last_name}`}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <Baby className="w-10 h-10 text-primary-600 dark:text-primary-400" />
-                    )}
+              <div className="space-y-5">
+                {/* 1. IDENTITÉ DE L'ENFANT */}
+                <div className="bg-slate-50 dark:bg-gray-800/80 rounded-2xl p-5 border border-slate-200/80 dark:border-gray-700 shadow-sm">
+                  <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-200 dark:border-gray-700">
+                    <div className="flex items-center gap-2">
+                      <span className="p-1.5 bg-primary-100 dark:bg-primary-900/50 text-primary-600 dark:text-primary-400 rounded-lg">
+                        <Baby className="w-5 h-5" />
+                      </span>
+                      <h4 className="font-semibold text-gray-900 dark:text-white text-base">
+                        {isRTL ? 'هوية الطفل' : "Identité de l'enfant"}
+                      </h4>
+                    </div>
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      selectedChild.is_active !== false 
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' 
+                        : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                    }`}>
+                      {selectedChild.is_active !== false ? (isRTL ? 'نشط' : 'Actif') : (isRTL ? 'غير نشط' : 'Inactif')}
+                    </span>
                   </div>
-                </div>
 
-                {/* Informations de base */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {isRTL ? 'الاسم الأول' : 'Prénom'}
-                    </label>
-                    <p className="mt-1 text-sm text-gray-900 dark:text-white">{selectedChild.first_name}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {isRTL ? 'اسم العائلة' : 'Nom de famille'}
-                    </label>
-                    <p className="mt-1 text-sm text-gray-900 dark:text-white">{selectedChild.last_name}</p>
-                  </div>
-                </div>
+                  {/* Photo & Grille identité */}
+                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
+                    <div className="w-24 h-24 rounded-full flex-shrink-0 bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center overflow-hidden border-2 border-primary-200 dark:border-primary-700 shadow-sm">
+                      {getChildPhotoUrl(selectedChild.photo_url) ? (
+                        <img
+                          src={getChildPhotoUrl(selectedChild.photo_url)}
+                          alt={`${selectedChild.first_name} ${selectedChild.last_name}`}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <Baby className="w-12 h-12 text-primary-500 dark:text-primary-400" />
+                      )}
+                    </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {isRTL ? 'تاريخ الميلاد' : 'Date de naissance'}
-                    </label>
-                    <p className="mt-1 text-sm text-gray-900 dark:text-white">
-                      {new Date(selectedChild.birth_date).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {isRTL ? 'العمر' : 'Âge'}
-                    </label>
-                    <p className="mt-1 text-sm text-gray-900 dark:text-white">
-                      {calculateAge(selectedChild.birth_date)}
-                    </p>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {isRTL ? 'الجنس' : 'Genre'}
-                  </label>
-                  <p className="mt-1 text-sm text-gray-900 dark:text-white">
-                    {selectedChild.gender === 'male' ? (isRTL ? 'ذكر' : 'Garçon') : (isRTL ? 'أنثى' : 'Fille')}
-                  </p>
-                </div>
-
-                {selectedChild.medical_info && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {isRTL ? 'المعلومات الطبية' : 'Informations médicales'}
-                    </label>
-                    <p className="mt-1 text-sm text-gray-900 dark:text-white">{selectedChild.medical_info}</p>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {isRTL ? 'جهة الاتصال الطارئة' : 'Contact d\'urgence'}
-                    </label>
-                    <p className="mt-1 text-sm text-gray-900 dark:text-white">{selectedChild.emergency_contact_name}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {isRTL ? 'هاتف الطوارئ' : 'Téléphone d\'urgence'}
-                    </label>
-                    <p className="mt-1 text-sm text-gray-900 dark:text-white" dir="ltr">
-                      {selectedChild.emergency_contact_phone}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Informations et actions de contact */}
-                <div className="border-t pt-6">
-                  <h4 className="font-medium text-gray-900 dark:text-white mb-4">
-                    {isRTL ? 'معلومات ووسائل الاتصال' : 'Informations et moyens de contact'}
-                  </h4>
-
-                  {/* Contact Parent */}
-                  {selectedChild.parent_first_name && (
-                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <h5 className="font-medium text-blue-900 dark:text-blue-100">
-                          {isRTL ? '👤 الوالد' : '👤 Parent'}
-                        </h5>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 w-full">
+                      <div className="bg-white dark:bg-gray-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-gray-700/50">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{isRTL ? 'الاسم الأول' : 'Prénom'}</p>
+                        <p className="font-semibold text-gray-900 dark:text-white text-sm mt-0.5">{selectedChild.first_name || '-'}</p>
                       </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        <div>
-                          <label className="block text-sm font-medium text-blue-700 dark:text-blue-300">
-                            {isRTL ? 'الاسم' : 'Nom'}
-                          </label>
-                          <p className="mt-1 text-sm text-blue-900 dark:text-blue-100">
-                            {selectedChild.parent_first_name} {selectedChild.parent_last_name}
-                          </p>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-blue-700 dark:text-blue-300">
-                            {isRTL ? 'البريد الإلكتروني' : 'Email'}
-                          </label>
-                          <p className="mt-1 text-sm text-blue-900 dark:text-blue-100" dir="ltr">
-                            {selectedChild.parent_email || (isRTL ? 'غير محدد' : 'Non renseigné')}
-                          </p>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-blue-700 dark:text-blue-300">
-                            {isRTL ? 'الهاتف' : 'Téléphone'}
-                          </label>
-                          <p className="mt-1 text-sm text-blue-900 dark:text-blue-100" dir="ltr">
-                            {selectedChild.parent_phone}
-                          </p>
-                        </div>
+                      <div className="bg-white dark:bg-gray-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-gray-700/50">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{isRTL ? 'اسم العائلة' : 'Nom de famille'}</p>
+                        <p className="font-semibold text-gray-900 dark:text-white text-sm mt-0.5">{selectedChild.last_name || '-'}</p>
                       </div>
-
-                      {/* Actions de contact parent */}
-                      <div className="flex flex-wrap gap-2">
-                        {selectedChild.parent_email && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-blue-300 text-blue-700 hover:bg-blue-100"
-                            onClick={() => window.location.href = `mailto:${selectedChild.parent_email}`}
-                          >
-                            <Mail className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
-                            {isRTL ? 'إرسال إيميل' : 'Envoyer email'}
-                          </Button>
-                        )}
-                        {selectedChild.parent_phone && (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="border-green-300 text-green-700 hover:bg-green-100"
-                              onClick={() => window.location.href = `tel:${selectedChild.parent_phone}`}
-                            >
-                              <Phone className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
-                              {isRTL ? 'اتصال' : 'Appeler'}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="border-purple-300 text-purple-700 hover:bg-purple-100"
-                              onClick={() => window.location.href = `sms:${selectedChild.parent_phone}`}
-                            >
-                              <MessageSquare className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
-                              {isRTL ? 'رسالة نصية' : 'SMS'}
-                            </Button>
-                          </>
-                        )}
+                      <div className="bg-white dark:bg-gray-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-gray-700/50">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{isRTL ? 'الجنس' : 'Genre'}</p>
+                        <p className="font-semibold text-gray-900 dark:text-white text-sm mt-0.5">
+                          {selectedChild.gender === 'male' ? (isRTL ? 'ذكر' : 'Garçon') : (isRTL ? 'أنثى' : 'Fille')}
+                        </p>
+                      </div>
+                      <div className="bg-white dark:bg-gray-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-gray-700/50">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{isRTL ? 'تاريخ الميلاد' : 'Date de naissance'}</p>
+                        <p className="font-semibold text-gray-900 dark:text-white text-sm mt-0.5">
+                          {selectedChild.birth_date ? new Date(selectedChild.birth_date).toLocaleDateString() : (isRTL ? 'غير محدد (RS)' : 'Non renseigné (R.S)')}
+                        </p>
+                      </div>
+                      <div className="bg-white dark:bg-gray-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-gray-700/50">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{isRTL ? 'العمر' : 'Âge'}</p>
+                        <p className="font-semibold text-gray-900 dark:text-white text-sm mt-0.5">
+                          {selectedChild.birth_date ? calculateAge(selectedChild.birth_date) : (isRTL ? 'غير محدد (RS)' : 'Non renseigné (R.S)')}
+                        </p>
+                      </div>
+                      <div className="bg-white dark:bg-gray-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-gray-700/50">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{isRTL ? 'فصيلة الدم' : 'Groupe sanguin'}</p>
+                        <p className="font-semibold text-gray-900 dark:text-white text-sm mt-0.5">
+                          {selectedChild.blood_type ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">
+                              {selectedChild.blood_type}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400 italic text-xs">{isRTL ? 'غير محدد (RS)' : 'Non renseigné (R.S)'}</span>
+                          )}
+                        </p>
                       </div>
                     </div>
-                  )}
-
-                  {/* Contact d'urgence (si différent du parent) */}
-                  {selectedChild.emergency_contact_name &&
-                    selectedChild.emergency_contact_name !== `${selectedChild.parent_first_name} ${selectedChild.parent_last_name}` && (
-                      <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <h5 className="font-medium text-orange-900 dark:text-orange-100">
-                            {isRTL ? '🚨 جهة الاتصال للطوارئ' : '🚨 Contact d\'urgence'}
-                          </h5>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                          <div>
-                            <label className="block text-sm font-medium text-orange-700 dark:text-orange-300">
-                              {isRTL ? 'الاسم' : 'Nom'}
-                            </label>
-                            <p className="mt-1 text-sm text-orange-900 dark:text-orange-100">
-                              {selectedChild.emergency_contact_name}
-                            </p>
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-orange-700 dark:text-orange-300">
-                              {isRTL ? 'الهاتف' : 'Téléphone'}
-                            </label>
-                            <p className="mt-1 text-sm text-orange-900 dark:text-orange-100" dir="ltr">
-                              {selectedChild.emergency_contact_phone}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Actions de contact urgence */}
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-red-300 text-red-700 hover:bg-red-100"
-                            onClick={() => window.location.href = `tel:${selectedChild.emergency_contact_phone}`}
-                          >
-                            <Phone className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
-                            {isRTL ? 'اتصال طارئ' : 'Appel d\'urgence'}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-red-300 text-red-700 hover:bg-red-100"
-                            onClick={() => window.location.href = `sms:${selectedChild.emergency_contact_phone}`}
-                          >
-                            <MessageSquare className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
-                            {isRTL ? 'رسالة طارئة' : 'SMS d\'urgence'}
-                          </Button>
-                        </div>
-                      </div>
-                    )}
+                  </div>
                 </div>
 
+                {/* 2. DÉTAILS DES PARENTS ET CONTACTS D'URGENCE */}
+                {(() => {
+                  const hasDedicatedEmergency = Boolean(
+                    selectedChild.emergency_contact_name || selectedChild.emergency_contact_phone
+                  );
+                  const hasParent = Boolean(
+                    selectedChild.parent_first_name || selectedChild.parent_last_name || selectedChild.parent_phone
+                  );
+                  // Si aucun contact d'urgence n'est renseigné, le parent responsable devient automatiquement le contact d'urgence
+                  const fallbackToParent = !hasDedicatedEmergency && hasParent;
+
+                  const emergencyName = hasDedicatedEmergency
+                    ? selectedChild.emergency_contact_name
+                    : fallbackToParent
+                    ? `${selectedChild.parent_first_name || ''} ${selectedChild.parent_last_name || ''}`.trim()
+                    : null;
+
+                  const emergencyPhone = hasDedicatedEmergency
+                    ? selectedChild.emergency_contact_phone
+                    : fallbackToParent
+                    ? selectedChild.parent_phone
+                    : null;
+
+                  const emergencyEmail = fallbackToParent ? selectedChild.parent_email : null;
+
+                  return (
+                    <div className="bg-blue-50/50 dark:bg-blue-950/20 rounded-2xl p-5 border border-blue-200/70 dark:border-blue-900/40 shadow-sm">
+                      <div className="flex items-center gap-2 pb-3 mb-4 border-b border-blue-200/60 dark:border-blue-900/40">
+                        <span className="p-1.5 bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded-lg">
+                          <User className="w-5 h-5" />
+                        </span>
+                        <h4 className="font-semibold text-gray-900 dark:text-white text-base">
+                          {isRTL ? 'الأولياء وجهات الاتصال للطوارئ' : 'Parents & Moyens de contact'}
+                        </h4>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Carte Parent responsable */}
+                        <div className="bg-white dark:bg-gray-800/90 rounded-xl p-4 border border-blue-100 dark:border-blue-900/30 flex flex-col justify-between">
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wider">
+                                {isRTL ? 'الولي المسؤول' : 'Parent responsable'}
+                              </span>
+                            </div>
+                            {selectedChild.parent_first_name ? (
+                              <div className="space-y-2 text-sm">
+                                <p className="font-semibold text-gray-900 dark:text-white text-base text-center my-2">
+                                  {selectedChild.parent_first_name} {selectedChild.parent_last_name}
+                                </p>
+                                <div className="space-y-1.5 pt-1 border-t border-gray-100 dark:border-gray-700/60">
+                                  {/* Email parent */}
+                                  {(!isAdmin() && (selectedChild.parent_email_restricted || !can(FEATURES.PARENTS_EMAIL_VIEW))) ? (
+                                    <p className="text-gray-400 dark:text-gray-500 text-xs flex items-center gap-1.5 italic" dir="ltr">
+                                      <Lock className="w-3.5 h-3.5 flex-shrink-0 text-amber-500" />
+                                      <span>{isRTL ? 'محمي (خاص بالإدارة)' : '•••••••• (Confidentiel)'}</span>
+                                    </p>
+                                  ) : selectedChild.parent_email ? (
+                                    <a
+                                      href={`mailto:${selectedChild.parent_email}`}
+                                      className="text-primary-600 dark:text-primary-400 hover:underline text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+                                      dir="ltr"
+                                      title={isRTL ? 'إرسال بريد إلكتروني' : 'Envoyer un email'}
+                                    >
+                                      <Mail className="w-3.5 h-3.5 flex-shrink-0 text-primary-500" />
+                                      <span>{selectedChild.parent_email}</span>
+                                    </a>
+                                  ) : (
+                                    <p className="text-gray-400 dark:text-gray-500 text-xs flex items-center gap-1.5 italic" dir="ltr">
+                                      <Mail className="w-3.5 h-3.5 flex-shrink-0 text-gray-400" />
+                                      <span>{isRTL ? 'غير محدد (RS)' : 'Non renseigné (R.S)'}</span>
+                                    </p>
+                                  )}
+
+                                  {/* Téléphone parent */}
+                                  {(!isAdmin() && (selectedChild.parent_phone_restricted || !can(FEATURES.PARENTS_PHONE_VIEW))) ? (
+                                    <p className="text-gray-400 dark:text-gray-500 text-xs flex items-center gap-1.5 italic" dir="ltr">
+                                      <Lock className="w-3.5 h-3.5 flex-shrink-0 text-amber-500" />
+                                      <span>{isRTL ? 'محمي (خاص بالإدارة)' : '•••••••• (Confidentiel)'}</span>
+                                    </p>
+                                  ) : selectedChild.parent_phone ? (
+                                    <a
+                                      href={`tel:${selectedChild.parent_phone}`}
+                                      className="text-gray-700 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400 hover:underline text-xs flex items-center gap-1.5 transition-colors"
+                                      dir="ltr"
+                                    >
+                                      <Phone className="w-3.5 h-3.5 flex-shrink-0 text-green-500" />
+                                      <span>{selectedChild.parent_phone}</span>
+                                    </a>
+                                  ) : (
+                                    <p className="text-gray-400 dark:text-gray-500 text-xs flex items-center gap-1.5 italic" dir="ltr">
+                                      <Phone className="w-3.5 h-3.5 flex-shrink-0 text-gray-400" />
+                                      <span>{isRTL ? 'غير محدد (RS)' : 'Non renseigné (R.S)'}</span>
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="text-xs text-gray-400 italic py-2 text-center">
+                                {isRTL ? 'لا يوجد ولي أمر مسجل (غير محدد)' : 'Aucun parent associé (Non renseigné)'}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Carte Contact d'urgence */}
+                        <div className="bg-white dark:bg-gray-800/90 rounded-xl p-4 border border-orange-100 dark:border-orange-900/30 flex flex-col justify-between">
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-semibold text-orange-700 dark:text-orange-300 uppercase tracking-wider">
+                                {isRTL ? 'جهة اتصال الطوارئ' : "Contact d'urgence"}
+                              </span>
+                            </div>
+                            <div className="space-y-2 text-sm">
+                              <p className="font-semibold text-gray-900 dark:text-white text-base text-center my-2">
+                                {emergencyName || (
+                                  <span className="text-gray-400 italic text-xs">{isRTL ? 'غير محدد (RS)' : 'Non renseigné (R.S)'}</span>
+                                )}
+                              </p>
+                              <div className="space-y-1.5 pt-1 border-t border-gray-100 dark:border-gray-700/60">
+                                {(!isAdmin() && (selectedChild.emergency_contact_restricted || !can(FEATURES.PARENTS_PHONE_VIEW))) ? (
+                                  <p className="text-gray-400 dark:text-gray-500 text-xs flex items-center gap-1.5 italic" dir="ltr">
+                                    <Lock className="w-3.5 h-3.5 flex-shrink-0 text-amber-500" />
+                                    <span>{isRTL ? 'محمي (خاص بالإدارة)' : '•••••••• (Confidentiel)'}</span>
+                                  </p>
+                                ) : emergencyPhone ? (
+                                  <a
+                                    href={`tel:${emergencyPhone}`}
+                                    className="text-gray-700 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 hover:underline text-xs flex items-center gap-1.5 transition-colors"
+                                    dir="ltr"
+                                  >
+                                    <Phone className="w-3.5 h-3.5 flex-shrink-0 text-red-500" />
+                                    <span>{emergencyPhone}</span>
+                                  </a>
+                                ) : (
+                                  <p className="text-gray-400 dark:text-gray-500 text-xs flex items-center gap-1.5 italic" dir="ltr">
+                                    <Phone className="w-3.5 h-3.5 flex-shrink-0 text-gray-400" />
+                                    <span>{isRTL ? 'غير محدد (RS)' : 'Non renseigné (R.S)'}</span>
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Actions de contact d'urgence : UNIQUEMENT pour admin ou staff avec permission d'appel */}
+                          {(isAdmin() || can(FEATURES.PARENTS_PHONE_VIEW)) && emergencyPhone && (
+                            <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-green-300 text-green-700 dark:text-green-300 hover:bg-green-50 text-xs"
+                                onClick={() => window.location.href = `tel:${emergencyPhone}`}
+                              >
+                                <Phone className="w-3.5 h-3.5 mr-1 rtl:mr-0 rtl:ml-1" />
+                                {isRTL ? 'اتصال' : 'Appeler'}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-purple-300 text-purple-700 dark:text-purple-300 hover:bg-purple-50 text-xs"
+                                onClick={() => window.location.href = `sms:${emergencyPhone}`}
+                              >
+                                <MessageSquare className="w-3.5 h-3.5 mr-1 rtl:mr-0 rtl:ml-1" />
+                                SMS
+                              </Button>
+                            </div>
+                          )}
+
+                          {/* Pour le personnel SANS autorisation de contacter les parents : Bouton pour appeler l'admin (directeur) */}
+                          {(!isAdmin() && (selectedChild.emergency_contact_restricted || !can(FEATURES.PARENTS_PHONE_VIEW))) && (
+                            <div className="mt-3 pt-3 border-t border-orange-100 dark:border-orange-900/30">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="w-full border-blue-400 dark:border-blue-600 bg-blue-50/70 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-xs flex items-center justify-center gap-1.5 font-medium transition-colors"
+                                onClick={() => {
+                                  const targetPhone = selectedChild.director_phone || selectedChild.admin_phone || directorPhone || '+216 25 95 35 32';
+                                  window.location.href = `tel:${targetPhone}`;
+                                }}
+                              >
+                                <Phone className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                                <span>{isRTL ? 'الاتصال بالإدارة (المدير)' : "Appeler directeur"}</span>
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* 3. SANTÉ ET SUIVI MÉDICAL (AVEC CONTRÔLE D'ACCÈS) */}
+                {(() => {
+                  const isRestricted = !canViewMedical || selectedChild.medical_restricted || selectedChild.can_view_medical === false;
+                  const allergiesList = parseAllergies(selectedChild.allergies);
+                  const treatmentsList = Array.isArray(selectedChild.treatments) ? selectedChild.treatments : [];
+
+                  return (
+                    <div className="bg-emerald-50/40 dark:bg-emerald-950/20 rounded-2xl p-5 border border-emerald-200/70 dark:border-emerald-900/40 shadow-sm">
+                      <div className="flex items-center justify-between pb-3 mb-4 border-b border-emerald-200/60 dark:border-emerald-900/40">
+                        <div className="flex items-center gap-2">
+                          <span className="p-1.5 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 rounded-lg">
+                            <Stethoscope className="w-5 h-5" />
+                          </span>
+                          <h4 className="font-semibold text-gray-900 dark:text-white text-base">
+                            {isRTL ? 'الصحة والمتابعة الطبية' : 'Santé & Suivi Médical'}
+                          </h4>
+                        </div>
+                        {isRestricted ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                            <Lock className="w-3 h-3" />
+                            {isRTL ? 'محمي ومحجوب' : 'Accès Restreint'}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+                            <ShieldCheck className="w-3 h-3" />
+                            {isRTL ? 'مصرح به' : 'Accès Autorisé'}
+                          </span>
+                        )}
+                      </div>
+
+                      {isRestricted ? (
+                        /* Vue Masquée pour utilisateurs non autorisés */
+                        <div className="bg-white/80 dark:bg-gray-800/80 rounded-xl p-5 border border-amber-200/80 dark:border-amber-900/40 text-center">
+                          <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <Lock className="w-6 h-6" />
+                          </div>
+                          <h5 className="font-medium text-gray-900 dark:text-white text-sm mb-1">
+                            {isRTL ? 'المعلومات الطبية محجوبة' : 'Données médicales protégées'}
+                          </h5>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 max-w-md mx-auto mb-4">
+                            {isRTL 
+                              ? 'لا تملك الصلاحية الكافية للاطلاع على الملف الصحي، الحساسية والعلاجات لهذا الطفل (الصلاحية المطلوبة: medical.view).'
+                              : "Vous ne disposez pas des autorisations requises pour consulter le dossier de santé, les allergies et les traitements de cet enfant (permission requise : Consultation médicale)."
+                            }
+                          </p>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-gray-400 dark:text-gray-500">
+                            <div className="bg-gray-50 dark:bg-gray-900/50 p-2 rounded-lg">
+                              <p className="font-semibold">{isRTL ? 'الطبيب' : 'Médecin'}</p>
+                              <p className="tracking-widest">••••••••</p>
+                            </div>
+                            <div className="bg-gray-50 dark:bg-gray-900/50 p-2 rounded-lg">
+                              <p className="font-semibold">{isRTL ? 'الحساسية' : 'Allergies'}</p>
+                              <p className="tracking-widest">••••••••</p>
+                            </div>
+                            <div className="bg-gray-50 dark:bg-gray-900/50 p-2 rounded-lg">
+                              <p className="font-semibold">{isRTL ? 'العلاجات' : 'Traitements'}</p>
+                              <p className="tracking-widest">••••••••</p>
+                            </div>
+                            <div className="bg-gray-50 dark:bg-gray-900/50 p-2 rounded-lg">
+                              <p className="font-semibold">{isRTL ? 'ملاحظات' : 'Notes'}</p>
+                              <p className="tracking-widest">••••••••</p>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        /* Vue Détaillée Claire pour utilisateurs autorisés */
+                        <div className="space-y-3.5">
+                          {/* Médecin traitant & Téléphone */}
+                          <div className="bg-white dark:bg-gray-800/90 rounded-xl p-3.5 border border-emerald-100 dark:border-emerald-900/30">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div>
+                                <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider mb-1">
+                                  {isRTL ? 'الطبيب المتابع' : 'Médecin traitant'}
+                                </p>
+                                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                  {selectedChild.doctor_name || (
+                                    <span className="text-gray-400 italic text-xs">{isRTL ? 'غير محدد (RS)' : 'Non renseigné (R.S)'}</span>
+                                  )}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider mb-1">
+                                  {isRTL ? 'هاتف الطبيب' : 'Téléphone du médecin'}
+                                </p>
+                                {selectedChild.doctor_phone ? (
+                                  <a 
+                                    href={`tel:${selectedChild.doctor_phone}`}
+                                    className="text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline flex items-center gap-1.5"
+                                    dir="ltr"
+                                  >
+                                    <Phone className="w-3.5 h-3.5" />
+                                    {selectedChild.doctor_phone}
+                                  </a>
+                                ) : (
+                                  <span className="text-gray-400 italic text-xs">{isRTL ? 'غير محدد (RS)' : 'Non renseigné (R.S)'}</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Allergies & Régimes */}
+                          <div className="bg-white dark:bg-gray-800/90 rounded-xl p-3.5 border border-emerald-100 dark:border-emerald-900/30">
+                            <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                              <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                              {isRTL ? 'الحساسية والمحاذير الغذائية' : 'Allergies & Régimes alimentaires'}
+                            </p>
+                            {allergiesList.length > 0 ? (
+                              <div className="flex flex-wrap gap-1.5 mt-1">
+                                {allergiesList.map((allergy, idx) => (
+                                  <span 
+                                    key={idx}
+                                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+                                  >
+                                    {allergy}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-xs text-gray-500 dark:text-gray-400 italic">
+                                {isRTL ? 'لا توجد حساسية مسجلة (RS)' : 'R.S (Aucune allergie renseignée)'}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Notes médicales */}
+                          <div className="bg-white dark:bg-gray-800/90 rounded-xl p-3.5 border border-emerald-100 dark:border-emerald-900/30">
+                            <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider mb-1.5">
+                              {isRTL ? 'ملاحظات وتوجيهات طبية' : 'Notes & Informations médicales'}
+                            </p>
+                            {selectedChild.medical_notes || selectedChild.medical_info ? (
+                              <p className="text-xs sm:text-sm text-gray-800 dark:text-gray-200 whitespace-pre-line leading-relaxed">
+                                {selectedChild.medical_notes || selectedChild.medical_info}
+                              </p>
+                            ) : (
+                              <p className="text-xs text-gray-500 dark:text-gray-400 italic">
+                                {isRTL ? 'لا توجد ملاحظات طبية مسجلة (RS)' : 'R.S (Aucune note médicale renseignée)'}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Traitements en cours */}
+                          <div className="bg-white dark:bg-gray-800/90 rounded-xl p-3.5 border border-emerald-100 dark:border-emerald-900/30">
+                            <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                              <Pill className="w-3.5 h-3.5 text-emerald-600" />
+                              {isRTL ? 'العلاجات الطبية' : 'Traitements médicaux'}
+                            </p>
+                            {treatmentsList.length > 0 ? (
+                              <div className="space-y-2">
+                                {treatmentsList.map((t, idx) => (
+                                  <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-800 text-xs">
+                                    <div>
+                                      <span className="font-semibold text-gray-900 dark:text-white">{t.medication_name}</span>
+                                      <span className="text-gray-500 dark:text-gray-400 ml-2">({t.dosage})</span>
+                                    </div>
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                                      t.status === 'active' 
+                                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300'
+                                        : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                                    }`}>
+                                      {t.status === 'active' ? (isRTL ? 'ساري' : 'En cours') : t.status}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-xs text-gray-500 dark:text-gray-400 italic">
+                                {isRTL ? 'لا توجد علاجات حالية (RS)' : 'R.S (Aucun traitement en cours)'}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
-              <div className="flex justify-end mt-6">
+              {/* Pied du modal */}
+              <div className="flex justify-end mt-6 pt-4 border-t border-gray-100 dark:border-gray-700">
                 <Button onClick={() => {
                   setSelectedChild(null);
                   setChildDocuments([]);
@@ -1411,7 +1736,9 @@ const ChildrenPage = () => {
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {isRTL ? 'تعديل معلومات الاتصال والطبية' : 'Modifier les contacts et informations médicales'}
+                  {canEditOnlyPhoto
+                    ? (isRTL ? 'تعديل صورة الملف الشخصي للطفل' : 'Modifier la photo de profil de l\'enfant')
+                    : (isRTL ? 'تعديل معلومات الطفل' : 'Modifier les contacts et informations médicales')}
                 </h3>
                 <Button
                   variant="outline"
@@ -1419,6 +1746,7 @@ const ChildrenPage = () => {
                   onClick={() => {
                     setShowEditModal(false);
                     setSelectedChild(null);
+                    setSelectedPhotoFile(null);
                   }}
                 >
                   ✕
@@ -1428,28 +1756,57 @@ const ChildrenPage = () => {
               <form className="space-y-6" onSubmit={handleSaveChild}>
                 {/* Photo de profil */}
                 <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                  <CompactImageUpload
-                    currentImage={selectedChild.photo_url}
-                    selectedFile={selectedPhotoFile}
-                    imageKey={photoImageKey}
-                    onImageSelect={(file) => {
-                      setSelectedPhotoFile(file);
-                      if (file) handleUploadPhoto(file);
-                    }}
-                  />
-                  {selectedChild.photo_url && (
-                    <div className="flex justify-center mt-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="text-red-600 border-red-300 hover:bg-red-50"
-                        onClick={handleDeletePhoto}
-                        disabled={photoActionLoading}
-                      >
-                        <Trash className="w-3.5 h-3.5 mr-1 rtl:mr-0 rtl:ml-1" />
-                        {isRTL ? 'حذف الصورة' : 'Supprimer la photo'}
-                      </Button>
+                  {(isAdmin() || can(FEATURES.CHILDREN_PHOTOS_MANAGE)) ? (
+                    <>
+                      <CompactImageUpload
+                        currentImage={selectedChild.photo_url}
+                        selectedFile={selectedPhotoFile}
+                        imageKey={photoImageKey}
+                        onImageSelect={(file) => {
+                          setSelectedPhotoFile(file);
+                          if (file) handleUploadPhoto(file);
+                        }}
+                      />
+                      {selectedChild.photo_url && (
+                        <div className="flex justify-center mt-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="text-red-600 border-red-300 hover:bg-red-50"
+                            onClick={handleDeletePhoto}
+                            disabled={photoActionLoading}
+                          >
+                            <Trash className="w-3.5 h-3.5 mr-1 rtl:mr-0 rtl:ml-1" />
+                            {isRTL ? 'حذف الصورة' : 'Supprimer la photo'}
+                          </Button>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-600 flex items-center justify-center flex-shrink-0">
+                        {getChildPhotoUrl(selectedChild.photo_url) ? (
+                          <img
+                            src={getChildPhotoUrl(selectedChild.photo_url)}
+                            alt=""
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <Baby className="w-8 h-8 text-gray-400" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400 font-medium">
+                          <Lock className="w-3.5 h-3.5" />
+                          <span>{isRTL ? 'تعديل الصورة مخصص للمخولين فقط' : 'Modification de photo réservée'}</span>
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                          {isRTL
+                            ? 'تتطلب هذه العملية صلاحية إدارة صور الأطفال (children.photos.manage)'
+                            : 'Requiert la permission d\'administration des photos d\'enfants'}
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1475,58 +1832,106 @@ const ChildrenPage = () => {
                   </div>
                 </div>
 
-                {/* Informations médicales - Modifiable */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    {isRTL ? 'المعلومات الطبية' : 'Informations médicales'}
-                  </label>
-                  <textarea
-                    value={editFormData.medical_info || ''}
-                    onChange={(e) => handleFormChange('medical_info', e.target.value)}
-                    rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    placeholder={isRTL ? 'أدخل المعلومات الطبية (حساسية، أدوية، ملاحظات خاصة...)' : 'Entrez les informations médicales (allergies, médicaments, notes spéciales...)'}
-                  />
-                </div>
-
-                {/* Contact d'urgence - Modifiable */}
-                <div>
-                  <h4 className="font-medium text-gray-900 dark:text-white mb-3">
-                    {isRTL ? 'جهة الاتصال للطوارئ' : 'Contact d\'urgence'}
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        {isRTL ? 'الاسم الكامل' : 'Nom complet'}
-                      </label>
-                      <input
-                        type="text"
-                        value={editFormData.emergency_contact_name || ''}
-                        onChange={(e) => handleFormChange('emergency_contact_name', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        placeholder={isRTL ? 'اسم جهة الاتصال للطوارئ' : 'Nom du contact d\'urgence'}
-                        required
-                      />
+                {/* Informations médicales - Modifiable si autorisé */}
+                {canManageMedical ? (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      <Stethoscope className="inline w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1 text-primary-500" />
+                      {isRTL ? 'المعلومات الطبية' : 'Informations médicales'}
+                    </label>
+                    <textarea
+                      value={editFormData.medical_info || ''}
+                      onChange={(e) => handleFormChange('medical_info', e.target.value)}
+                      rows={4}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      placeholder={isRTL ? 'أدخل المعلومات الطبية (حساسية، أدوية، ملاحظات خاصة...)' : 'Entrez les informations médicales (allergies, médicaments, notes spéciales...)'}
+                    />
+                  </div>
+                ) : (
+                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3.5 border border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 flex items-center gap-1.5">
+                        <Stethoscope className="w-3.5 h-3.5 text-gray-400" />
+                        {isRTL ? 'المعلومات الطبية' : 'Informations médicales'}
+                      </span>
+                      <span className="flex items-center gap-1 text-[11px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-900/30">
+                        <Lock className="w-3 h-3" />
+                        {isRTL ? 'سرية طبية' : 'Confidentiel'}
+                      </span>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        {isRTL ? 'رقم الهاتف' : 'Numéro de téléphone'}
-                      </label>
-                      <input
-                        type="tel"
-                        value={editFormData.emergency_contact_phone || ''}
-                        onChange={(e) => handleFormChange('emergency_contact_phone', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                        placeholder={isRTL ? '+33 6 12 34 56 78' : '+33 6 12 34 56 78'}
-                        required
-                        dir="ltr"
-                      />
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {isRTL
+                        ? 'تعديل المعلومات الطبية مخصص للجهة الطبية والإدارة (medical.view).'
+                        : 'La consultation et modification des données médicales sont réservées au personnel médical habilité (medical.view).'}
+                    </p>
+                  </div>
+                )}
+
+                {/* Contact d'urgence - Modifiable uniquement si autorisé */}
+                {canManageEmergencyPhone ? (
+                  <div>
+                    <h4 className="font-medium text-gray-900 dark:text-white mb-3">
+                      {isRTL ? 'جهة الاتصال للطوارئ' : 'Contact d\'urgence'}
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          {isRTL ? 'الاسم الكامل' : 'Nom complet'}
+                        </label>
+                        <input
+                          type="text"
+                          value={editFormData.emergency_contact_name || ''}
+                          onChange={(e) => handleFormChange('emergency_contact_name', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                          placeholder={isRTL ? 'اسم جهة الاتصال للطوارئ' : 'Nom du contact d\'urgence'}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          {isRTL ? 'رقم الهاتف' : 'Numéro de téléphone'}
+                        </label>
+                        <input
+                          type="tel"
+                          value={editFormData.emergency_contact_phone || ''}
+                          onChange={(e) => handleFormChange('emergency_contact_phone', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                          placeholder={isRTL ? '+33 6 12 34 56 78' : '+33 6 12 34 56 78'}
+                          dir="ltr"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                      {isRTL ? 'يمكن أن يكون هذا الشخص هو الوالد أو شخص آخر موثوق' : 'Peut être le parent ou une autre personne de confiance'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3.5 border border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-semibold text-gray-600 dark:text-gray-300 flex items-center gap-1.5">
+                        <Phone className="w-3.5 h-3.5 text-blue-500" />
+                        {isRTL ? 'جهة الاتصال للطوارئ' : 'Contact d\'urgence'}
+                      </span>
+                      <span className="flex items-center gap-1 text-[11px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-900/30">
+                        <Lock className="w-3 h-3" />
+                        {isRTL ? 'محمي للإدارة' : 'Confidentiel'}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <span className="text-gray-400 block">{isRTL ? 'الاسم' : 'Nom'}</span>
+                        <span className="font-medium text-gray-800 dark:text-gray-200">
+                          {selectedChild.emergency_contact_name || (isRTL ? 'غير مسجل' : 'Non renseigné')}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-400 block">{isRTL ? 'الهاتف' : 'Numéro'}</span>
+                        <span className="text-gray-500 dark:text-gray-400 font-mono">
+                          ••••••••
+                        </span>
+                      </div>
                     </div>
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                    {isRTL ? 'يمكن أن يكون هذا الشخص هو الوالد أو شخص آخر موثوق' : 'Peut être le parent ou une autre personne de confiance'}
-                  </p>
-                </div>
+                )}
 
                 <div className="flex gap-3 mt-6">
                   <Button
@@ -1535,6 +1940,7 @@ const ChildrenPage = () => {
                       setShowEditModal(false);
                       setSelectedChild(null);
                       setEditFormData({});
+                      setSelectedPhotoFile(null);
                     }}
                     variant="outline"
                     className="flex-1"
@@ -1552,6 +1958,8 @@ const ChildrenPage = () => {
                         <RefreshCw className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2 animate-spin" />
                         {isRTL ? 'جاري الحفظ...' : 'Sauvegarde...'}
                       </>
+                    ) : canEditOnlyPhoto ? (
+                      isRTL ? 'إغلاق وحفظ' : 'Terminer'
                     ) : (
                       isRTL ? 'حفظ التغييرات' : 'Sauvegarder'
                     )}
@@ -1562,8 +1970,7 @@ const ChildrenPage = () => {
           </div>
         </div>
       )}
-
-    </div>
+    </>
   );
 };
 

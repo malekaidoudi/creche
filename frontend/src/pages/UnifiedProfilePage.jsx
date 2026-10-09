@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { User, Mail, Phone, Lock, Camera, Save, ArrowLeft, Eye, EyeOff, Shield, Edit3, Upload } from 'lucide-react';
+import { User, Mail, Phone, Lock, Camera, Save, ArrowLeft, Eye, EyeOff, Shield, Edit3, Upload, Loader2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useLanguage } from '../hooks/useLanguage';
 import { useTheme } from '../hooks/useTheme';
@@ -40,6 +40,8 @@ const UnifiedProfilePage = () => {
     new_password: '',
     confirm_password: ''
   });
+
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (user) {
@@ -226,24 +228,87 @@ const UnifiedProfilePage = () => {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Camera className="w-5 h-5" />
+                <Camera className="w-5 h-5 text-primary-600 dark:text-primary-400" />
                 {isRTL ? 'الصورة الشخصية' : 'Photo de profil'}
               </CardTitle>
             </CardHeader>
             <CardContent className="text-center">
-              <div className="relative inline-block mb-4">
-                <div className="w-32 h-32 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-                  {hasImage() ? (
-                    <img src={getImageUrl()} alt="Photo de profil" className="w-32 h-32 object-cover" />
-                  ) : (
-                    <User className="w-16 h-16 text-gray-400" />
-                  )}
+              {/* Input file caché */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/jpg"
+                onChange={handleImageUpload}
+                className="hidden"
+              />
+
+              {/* Avatar centré avec bouton icône caméra moderne */}
+              <div className="flex flex-col items-center mb-4">
+                <div className="relative inline-block group">
+                  {/* Cercle Avatar principal */}
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-28 h-28 sm:w-32 sm:h-32 rounded-full overflow-hidden bg-gradient-to-br from-gray-100 via-gray-50 to-gray-200 dark:from-gray-700 dark:via-gray-800 dark:to-gray-900 border-4 border-white dark:border-gray-800 shadow-md ring-2 ring-primary-100 dark:ring-primary-900/40 flex items-center justify-center cursor-pointer transition-all duration-300 group-hover:shadow-xl group-hover:ring-primary-400 dark:group-hover:ring-primary-500 relative"
+                    title={isRTL ? 'انقر لتغيير الصورة' : 'Cliquer pour changer la photo'}
+                  >
+                    {hasImage() ? (
+                      <img
+                        src={getImageUrl()}
+                        alt={isRTL ? 'صورة الملف الشخصي' : 'Photo de profil'}
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center text-gray-400 dark:text-gray-500">
+                        <User className="w-14 h-14" />
+                      </div>
+                    )}
+
+                    {/* Overlay au survol */}
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col items-center justify-center text-white cursor-pointer">
+                      <Camera className="w-6 h-6 sm:w-7 sm:h-7 mb-0.5 drop-shadow" strokeWidth={2.2} />
+                      <span className="text-[10px] font-semibold tracking-wider uppercase drop-shadow">
+                        {isRTL ? 'تغيير' : 'Changer'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Badge Icône Caméra moderne flottant en bas */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      fileInputRef.current?.click();
+                    }}
+                    disabled={loading}
+                    aria-label={isRTL ? 'تغيير الصورة' : 'Modifier la photo'}
+                    title={isRTL ? 'تغيير الصورة' : 'Modifier la photo'}
+                    className={`absolute bottom-0 ${isRTL ? '-left-1' : '-right-1'} z-10 w-9 h-9 sm:w-10 sm:h-10 rounded-full aspect-square flex-shrink-0 bg-gradient-to-tr from-primary-600 via-primary-500 to-indigo-600 hover:from-primary-700 hover:to-indigo-700 text-white flex items-center justify-center shadow-lg ring-3 ring-white dark:ring-gray-800 transition-all duration-200 hover:scale-110 active:scale-95 cursor-pointer disabled:opacity-50`}
+                  >
+                    {loading ? (
+                      <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin text-white" />
+                    ) : (
+                      <Camera className="w-4 h-4 sm:w-5 sm:h-5 text-white drop-shadow-sm" strokeWidth={2.2} />
+                    )}
+                  </button>
                 </div>
 
-                <label className="absolute bottom-0 right-0 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full cursor-pointer transition-colors">
-                  <Upload className="w-4 h-4" />
-                  <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-                </label>
+                {/* Bouton d'action et libellés sous la photo */}
+                <div className="text-center mt-3 space-y-1">
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={loading}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-medium text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/30 hover:bg-primary-100 dark:hover:bg-primary-900/60 border border-primary-200 dark:border-primary-800/80 shadow-xs transition-all duration-150 active:scale-95 cursor-pointer disabled:opacity-50"
+                    >
+                      <Camera className="w-3.5 h-3.5 text-primary-600 dark:text-primary-400" strokeWidth={2.2} />
+                      <span>{isRTL ? 'تغيير الصورة' : 'Changer la photo'}</span>
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                    {isRTL ? 'JPG, PNG أو WEBP حتى 5MB' : 'JPG, PNG ou WEBP jusqu\'à 5MB'}
+                  </p>
+                </div>
               </div>
 
               <h3 className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>

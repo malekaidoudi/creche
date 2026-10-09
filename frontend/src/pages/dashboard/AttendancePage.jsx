@@ -154,7 +154,6 @@ const AttendancePage = () => {
     try {
       setActionLoading(childId);
       await attendanceService.checkIn(childId);
-      dialog.success(isRTL ? 'تم تسجيل الوصول بنجاح' : 'Arrivée enregistrée avec succès');
       await loadTodayData();
     } catch (error) {
       console.error('Erreur check-in:', error);
@@ -169,7 +168,6 @@ const AttendancePage = () => {
     try {
       setActionLoading(childId);
       await attendanceService.checkOut(childId);
-      dialog.success(isRTL ? 'تم تسجيل المغادرة بنجاح' : 'Départ enregistré avec succès');
       await loadTodayData();
     } catch (error) {
       console.error('Erreur check-out:', error);

@@ -24,10 +24,30 @@
  * qui est la bonne couche pour une distinction purement catégorielle.
  */
 export const FEATURES = {
-  ATTENDANCE_TODAY: { permission: 'attendance.manage' },
-  ACTIVITIES_PUBLISH: { permission: 'activities.photos.publish' },
-  MESSAGES_PARENTS: { permission: 'messages.parents' },
+  // 1. Santé & Soins médicaux
   MEDICAL_VIEW: { permission: 'medical.view' },
+  TREATMENTS_MANAGE: { permission: 'medical.treatments.manage' },
+
+  // 2. Suivi & Vie quotidienne de l'enfant
+  ATTENDANCE_TODAY: { permission: 'attendance.manage' },
+  DAILY_REPORTS_MANAGE: { permission: 'daily_reports.manage' },
+  ACTIVITIES_PUBLISH: { permission: 'activities.photos.publish' },
+  CHILDREN_PHOTOS_MANAGE: { permission: 'children.photos.manage' },
+  CHILD_SUPPLIES_MANAGE: { permission: 'daily_reports.manage' }, // Fusionné avec le bilan journalier (même formulaire)
+
+  // 3. Familles & Données confidentielles
+  PARENTS_PHONE_VIEW: { permission: 'parents.phone.view' },
+  PARENTS_EMAIL_VIEW: { permission: 'parents.email.view' },
+  CHILDREN_DOCUMENTS_VIEW: { permission: 'children.documents.view' },
+
+  // 4. Communication
+  MESSAGES_PARENTS: { permission: 'messages.parents' },
+  ANNOUNCEMENTS_VIEW: { permission: 'announcements.view' },
+
+  // 5. Organisation & Planning interne
+  STAFF_PLANNING_VIEW: { permission: 'staff.planning.view' },
+  ABSENCES_MANAGE: { permission: 'absences.manage' },
+  TASKS_MANAGE: { permission: 'tasks.manage' },
 };
 
 export default FEATURES;

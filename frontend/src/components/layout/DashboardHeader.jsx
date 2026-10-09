@@ -83,7 +83,7 @@ const DashboardHeader = ({ onMenuClick }) => {
       security: { male: { fr: 'Agent de sécurité', ar: 'حارس أمن' }, female: { fr: 'Agente de sécurité', ar: 'حارسة أمن' } },
       receptionist: { male: { fr: 'Réceptionniste', ar: 'موظف استقبال' }, female: { fr: 'Réceptionniste', ar: 'موظفة استقبال' } },
       driver: { male: { fr: 'Chauffeur', ar: 'سائق' }, female: { fr: 'Chauffeuse', ar: 'سائقة' } },
-      health: { male: { fr: 'Personnel de santé', ar: 'موظف صحة' }, female: { fr: 'Personnel de santé', ar: 'موظفة صحة' } },
+      health: { male: { fr: 'Médecin conventionné', ar: 'طبيب متعاقد' }, female: { fr: 'Médecin conventionnée', ar: 'طبيبة متعاقدة' } },
       kitchen: { male: { fr: 'Personnel de cuisine', ar: 'موظف مطبخ' }, female: { fr: 'Personnel de cuisine', ar: 'موظفة مطبخ' } },
       other: { male: { fr: 'Autre', ar: 'آخر' }, female: { fr: 'Autre', ar: 'أخرى' } }
     };

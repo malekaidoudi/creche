@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import { useLanguage } from '../../hooks/useLanguage';
+import { useAuth } from '../../hooks/useAuth';
+import { useAccess, FEATURES } from '../../access';
 import api from '../../services/api';
 import { useDialogContext } from '../../contexts/DialogContext';
 import TaskModal from '../../components/modals/TaskModal';
@@ -25,6 +27,8 @@ export default function TasksPage() {
   const { isRTL } = useLanguage();
   const dialog = useDialogContext();
   const { user } = useAuth();
+  const { can } = useAccess();
+  const canManageTasks = user?.role === 'admin' || user?.role === 'developer' || can(FEATURES.TASKS_MANAGE);
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -239,7 +243,7 @@ export default function TasksPage() {
             </p>
           </div>
 
-          {user?.role === 'admin' && (
+          {canManageTasks && (
             <button
               onClick={() => setShowCreateModal(true)}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
@@ -450,7 +454,7 @@ export default function TasksPage() {
                         )}
                       </>
                     )}
-                    {user?.role === 'admin' && (
+                    {canManageTasks && (
                       <>
                         <button
                           onClick={() => setEditingTask(task)}

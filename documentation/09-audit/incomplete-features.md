@@ -10,9 +10,24 @@ Ce document recense les fonctionnalités inachevées, les flux partiellement câ
 - **Constat** : La méthode `markAppointmentFailed` dans `appointmentsController.js` et le bouton du modal frontend `AppointmentActionModal.jsx` étaient prêts, mais la route `POST /api/appointments/:id/failed` n'était pas déclarée dans `routes_postgres/appointments.js`, retournant un HTTP 404 lors des clics.
 - **Action réalisée** : Route `POST /api/appointments/:id/failed` formellement déclarée et sécurisée par rôle (`admin`, `staff`, `developer`). Les deux issues (reprogrammation avec compteur d'échecs `failed_appointments_count` ou abandon avec archivage dans `enrollments_archive` et suppression du compte parent temporaire) sont désormais 100% opérationnelles.
 
-### B. Contrôle d'Accès par Permissions (Staff Permissions)
-- **Constat** : Le service `permissionsService.js` définit un catalogue complet de **19 permissions** granulaires et fournit une API d'attribution pour le personnel.
-- **Problème** : Seules **6 permissions** sont réellement vérifiées au niveau des routes de l'API. Les 13 autres permissions ne sont pas vérifiées par le backend (l'utilisateur peut effectuer l'action s'il envoie directement la requête HTTP).
+### B. Contrôle d'Accès par Permissions (Staff Permissions) — Déploiement en cours (Chantier 1 achevé ✅)
+- **Constat** : Le service `permissionsService.js` définit un catalogue restructuré en **5 pôles métier canoniques (14 permissions)** et fournit une API d'attribution granulaire pour le personnel.
+- **Progression** :
+  - **Santé & Traitements Médicaux ✅** :
+    - `medical.view` : vérification backend sur `GET /api/children/:id/medical` et `PUT /api/children/:id/medical`, et filtrage/masquage systématique des champs médicaux (`medical_info`, `medical_notes`, `allergies`, `medications`, `conditions`, `blood_type`) dans `GET /api/children` et `GET /api/children/:id` pour les membres du personnel sans cette permission.
+    - `medical.treatments.manage` : vérification backend sur `GET /api/treatments/today` et `POST /api/treatments/:id/administer`. Protection de la page `TreatmentsPage.jsx`, du menu latéral `DashboardSidebar.jsx`, et de la barre mobile `MobileNavigation.jsx` via `can('TREATMENTS_MANAGE')`.
+  - **Pôle Vie quotidienne & Familles (Chantier 1 - Option A) ✅** :
+    - `daily_reports.manage` : vérification backend (`GET /children/today`, `POST /`, `PATCH /:id/status`, `DELETE /:id`) et protection UI (`DailyReportsPage.jsx`, menus desktop et mobile).
+    - `children.photos.manage` : protection backend de `POST /api/children/:id/photo` et désactivation UI du sélecteur d'image avec badge cadenas.
+    - `supplies.manage` : protection backend des mutations (`refill`, `use`, `daily-brought`) et protection UI dans les formulaires de saisie desktop et mobile.
+    - `children.documents.view` : vérification backend fine (`requireChildDocumentAccess`, `requireSingleChildDocumentAccess`, masquage du compteur `childrenTotal`) et masquage UI avec cadenas dans `DocumentsPage.jsx`.
+  - **Pôle Organisation & Communications (Chantier 1 - Suite) ✅** :
+    - `announcements.view` : vérification backend (`GET /announcements`, `GET /announcements/my`), protection UI (`AnnouncementsPage.jsx`, widget `UpcomingEventsWidget.jsx`).
+    - `staff.planning.view` : vérification backend (`GET /api/events/views/calendar`, `GET /api/events` globaux), protection UI (`WeeklyPlanningPage.jsx`, `MonthlyPlanningPage.jsx`), menus desktop et mobile.
+    - `absences.manage` : protection backend de `GET /api/absence-requests/all` et `PUT /:id/acknowledge`, protection UI dans `AbsenceManagementPage.jsx` et menu latéral.
+    - `tasks.manage` : protection backend des mutations (`POST /tasks`, `PATCH /:id`, `POST /:id/remind`, `DELETE /:id`) et déblocage UI dans `TasksPage.jsx` pour le staff habilité.
+  - **Prochaines étapes** :
+    - Chantier 2 : Verrouillage strict des rôles (`GET /api/users`, `ProtectedRoute roles=['admin', 'developer']` sur les pages d'administration globale).
 
 ### C. Notifications Push Mobiles (Expo Push) — Purge effectuée ✅
 - **Constat** : Le service `backend/services/pushNotificationService.js` relayait des alertes vers l'API Expo Push pour une application mobile native qui a été reportée.

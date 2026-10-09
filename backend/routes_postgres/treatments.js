@@ -6,7 +6,7 @@
 
 const express = require('express');
 const router = express.Router();
-const { authenticateToken, requireRole } = require('../middleware/auth');
+const { authenticateToken, requireRole, requirePermission } = require('../middleware/auth');
 const treatmentsController = require('../controllers/treatmentsController');
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -30,10 +30,10 @@ router.delete('/:id', authenticateToken, treatmentsController.cancelTreatment);
 // ═══════════════════════════════════════════════════════════════════════════
 
 // Récupérer les traitements à administrer aujourd'hui
-router.get('/today', authenticateToken, requireRole('staff', 'admin', 'developer'), treatmentsController.getTodayTreatments);
+router.get('/today', authenticateToken, requireRole('staff', 'admin', 'developer'), requirePermission('medical.treatments.manage'), treatmentsController.getTodayTreatments);
 
 // Confirmer l'administration d'un traitement
-router.post('/:id/administer', authenticateToken, requireRole('staff', 'admin', 'developer'), treatmentsController.administerTreatment);
+router.post('/:id/administer', authenticateToken, requireRole('staff', 'admin', 'developer'), requirePermission('medical.treatments.manage'), treatmentsController.administerTreatment);
 
 // Récupérer l'historique des administrations
 router.get('/:id/history', authenticateToken, treatmentsController.getTreatmentHistory);

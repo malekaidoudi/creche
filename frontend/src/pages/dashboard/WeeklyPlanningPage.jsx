@@ -16,11 +16,13 @@ import {
     User,
     Megaphone,
     MapPin,
-    Plus
+    Plus,
+    Lock
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useDialogContext } from '../../contexts/DialogContext';
 import { useAuth } from '../../hooks/useAuth';
+import { useAccess, FEATURES } from '../../access';
 import api from '../../services/api';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import EventModal from '../../components/modals/EventModal';
@@ -35,9 +37,12 @@ const WeeklyPlanningPage = () => {
     const { isRTL } = useLanguage();
     const dialog = useDialogContext();
     const { user } = useAuth();
+    const { can, loading: accessLoading } = useAccess();
     const [loading, setLoading] = useState(true);
     const [currentWeek, setCurrentWeek] = useState(new Date());
     const [weekData, setWeekData] = useState({});
+
+    const canViewPlanning = user?.role === 'admin' || user?.role === 'developer' || can(FEATURES.STAFF_PLANNING_VIEW);
     const [selectedDay, setSelectedDay] = useState(null);
     const [selectedDate, setSelectedDate] = useState(null);
     const [showDayModal, setShowDayModal] = useState(false);
@@ -87,8 +92,14 @@ const WeeklyPlanningPage = () => {
 
     // Charger les données de la semaine
     useEffect(() => {
-        loadWeekData();
-    }, [currentWeek]);
+        if (!accessLoading) {
+            if (canViewPlanning) {
+                loadWeekData();
+            } else {
+                setLoading(false);
+            }
+        }
+    }, [currentWeek, accessLoading, canViewPlanning]);
 
     const loadWeekData = async () => {
         try {
@@ -384,6 +395,32 @@ const WeeklyPlanningPage = () => {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
                 <LoadingSpinner />
+            </div>
+        );
+    }
+
+    if (!canViewPlanning) {
+        return (
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 flex items-center justify-center">
+                <div className="bg-white dark:bg-gray-800 rounded-2xl border border-amber-200 dark:border-amber-800/40 p-8 text-center max-w-lg mx-auto shadow-sm">
+                    <div className="w-14 h-14 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto mb-4">
+                        <Lock className="w-7 h-7" />
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                        {isRTL ? 'الاطلاع على جدول الفريق مقيد' : 'Accès au planning d\'équipe restreint'}
+                    </h2>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                        {isRTL
+                            ? 'يتطلب هذا القسم صلاحية الاطلاع على جدول عمل الفريق (staff.planning.view).'
+                            : 'Cette section requiert l\'autorisation de consultation du planning d\'équipe (staff.planning.view).'}
+                    </p>
+                    <a
+                        href="/dashboard"
+                        className="inline-block px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium transition-colors"
+                    >
+                        {isRTL ? 'العودة إلى لوحة التحكم' : 'Retour au tableau de bord'}
+                    </a>
+                </div>
             </div>
         );
     }

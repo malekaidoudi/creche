@@ -20,6 +20,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useTheme } from '../../hooks/useTheme';
 import useIsMobile from '../../hooks/useIsMobile';
+import { useAccess } from '../../access';
 import api from '../../services/api';
 import { Button } from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
@@ -32,6 +33,14 @@ const TreatmentsPage = () => {
     const { isDark } = useTheme();
     const isMobile = useIsMobile();
     const navigate = useNavigate();
+    const { can, loading: accessLoading } = useAccess();
+
+    useEffect(() => {
+        if (!accessLoading && !can('TREATMENTS_MANAGE')) {
+            toast.error(isRTL ? 'ليس لديك صلاحية الوصول إلى العلاجات الطبية' : 'Accès non autorisé aux traitements médicaux');
+            navigate('/dashboard', { replace: true });
+        }
+    }, [accessLoading, can, navigate, isRTL]);
 
     // Couleurs style direction (comme app mobile)
     const dirColors = {

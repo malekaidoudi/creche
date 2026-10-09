@@ -20,6 +20,12 @@ FRONTEND_PORT=5173
 BACKEND_PORT=$(grep -E '^PORT=' "$BACKEND_DIR/.env" 2>/dev/null | head -1 | cut -d= -f2 | tr -d ' \r')
 BACKEND_PORT=${BACKEND_PORT:-3000}
 
+# Détecter l'IP locale (LAN) pour l'accès depuis d'autres appareils
+# macOS : ipconfig getifaddr (en0 = Wi-Fi) | Linux : hostname -I
+LAN_IP=$(ipconfig getifaddr en0 2>/dev/null \
+      || ipconfig getifaddr en1 2>/dev/null \
+      || hostname -I 2>/dev/null | awk '{print $1}')
+
 echo "==========================================="
 echo "  Demarrage du projet Creche"
 echo "==========================================="
@@ -74,6 +80,9 @@ echo "==========================================="
 echo "  Backend  : http://localhost:$BACKEND_PORT"
 echo "  Frontend : http://localhost:$FRONTEND_PORT"
 echo "  Health   : http://localhost:$BACKEND_PORT/api/health"
+if [ -n "$LAN_IP" ]; then
+  echo "  Reseau   : http://$LAN_IP:$FRONTEND_PORT  (autres appareils)"
+fi
 echo "==========================================="
 echo "  Ctrl+C pour arreter les deux services"
 echo ""

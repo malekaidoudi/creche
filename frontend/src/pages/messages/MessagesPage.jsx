@@ -236,31 +236,33 @@ export default function MessagesPage() {
     return user;
   }
 
-  async function loadContacts(user) {
+  async function loadContacts(currentUserParam) {
     try {
       const token = localStorage.getItem('token');
+      const activeUser = currentUserParam || currentUser || user || {};
 
-      // Sans la permission "messages.parents", les parents ne doivent même pas
-      // apparaître dans la liste de contacts : cela évite de tenter de leur
-      // écrire pour se heurter ensuite à un refus serveur. `can()` vient du
-      // module d'accès central (voir access/) ; l'appelant garantit que les
-      // accès sont déjà chargés avant d'invoquer cette fonction.
+      // Sans la permission "messages.parents", les parents ne doivent pas
+      // apparaître dans la liste de contacts pour le staff.
       const canMessageParents = can('MESSAGES_PARENTS');
 
-      const response = await axios.get(`${API_URL}/users?limit=100`, {
+      const response = await axios.get(`${API_URL}/users/contacts`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      if (response.data.success && response.data.users) {
-        const filtered = response.data.users.filter(u => {
-          const isCurrentUser = u.id === user.userId || u.id === user.id || u.email === user.email;
+      const contactList = response.data.contacts || response.data.users || [];
+      if (response.data.success && Array.isArray(contactList)) {
+        const activeUserId = activeUser.userId || activeUser.id;
+        const activeUserEmail = activeUser.email;
+
+        const filtered = contactList.filter(u => {
+          const isCurrentUser = u.id === activeUserId || (activeUserEmail && u.email === activeUserEmail);
           if (isCurrentUser) return false;
 
-          if (user.role === 'parent' && u.role === 'parent') return false;
+          if (activeUser.role === 'parent' && u.role === 'parent') return false;
 
-          if (u.role === 'parent' && !canMessageParents) return false;
+          if (u.role === 'parent' && activeUser.role === 'staff' && !canMessageParents) return false;
 
-          return u.is_active;
+          return u.is_active !== false;
         });
 
         setContacts(filtered);

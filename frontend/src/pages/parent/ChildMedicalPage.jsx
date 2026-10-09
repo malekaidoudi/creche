@@ -20,7 +20,9 @@ import {
 import { useLanguage } from '../../hooks/useLanguage';
 import useIsMobile from '../../hooks/useIsMobile';
 import MobileNavigation from '../../components/mobile/MobileNavigation';
+import AddTreatmentModal from '../../components/modals/AddTreatmentModal';
 import api from '../../services/api';
+import toast from 'react-hot-toast';
 
 const ChildMedicalPage = () => {
     const { id } = useParams();
@@ -30,8 +32,10 @@ const ChildMedicalPage = () => {
     const [child, setChild] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [treatments, setTreatments] = useState([]);
+    const [showTreatmentModal, setShowTreatmentModal] = useState(false);
     const [showAddModal, setShowAddModal] = useState(false);
-    const [modalType, setModalType] = useState(null); // 'allergy', 'medication', 'condition'
+    const [modalType, setModalType] = useState(null); // 'allergy', 'condition'
     const [formData, setFormData] = useState({ name: '', description: '', severity: 'low' });
     const [medicalData, setMedicalData] = useState({
         allergies: [],
@@ -51,9 +55,10 @@ const ChildMedicalPage = () => {
     const loadData = async () => {
         try {
             setLoading(true);
-            const [childRes, medicalRes] = await Promise.all([
+            const [childRes, medicalRes, treatmentsRes] = await Promise.all([
                 api.get(`/api/children/${id}`),
-                api.get(`/api/children/${id}/medical`).catch(() => ({ data: null }))
+                api.get(`/api/children/${id}/medical`).catch(() => ({ data: null })),
+                api.get(`/api/treatments/my-children?child_id=${id}`).catch(() => ({ data: { treatments: [] } }))
             ]);
 
             if (childRes.data) {
@@ -66,6 +71,10 @@ const ChildMedicalPage = () => {
                     ...medicalRes.data
                 }));
             }
+
+            if (treatmentsRes.data?.treatments) {
+                setTreatments(treatmentsRes.data.treatments);
+            }
         } catch (err) {
             console.error('Erreur chargement:', err);
         } finally {
@@ -77,11 +86,36 @@ const ChildMedicalPage = () => {
         try {
             setSaving(true);
             await api.put(`/api/children/${id}/medical`, medicalData);
-            // Toast ou notification de succès
+            toast.success(isRTL ? 'تم حفظ البيانات بنجاح' : 'Données médicales enregistrées');
         } catch (err) {
             console.error('Erreur sauvegarde:', err);
+            toast.error(isRTL ? 'خطأ أثناء الحفظ' : 'Erreur lors de la sauvegarde');
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleCancelTreatment = async (treatmentId) => {
+        if (!window.confirm(isRTL ? 'هل تريد إلغاء هذا العلاج فعلاً؟' : 'Voulez-vous vraiment annuler ce traitement ?')) {
+            return;
+        }
+        try {
+            await api.delete(`/api/treatments/${treatmentId}`);
+            toast.success(isRTL ? 'تم إلغاء العلاج' : 'Traitement annulé');
+            loadData();
+        } catch (error) {
+            console.error('Erreur annulation traitement:', error);
+            toast.error(isRTL ? 'خطأ أثناء الإلغاء' : 'Erreur lors de l\'annulation');
+        }
+    };
+
+    const getTimingLabel = (type, hours) => {
+        switch (type) {
+            case 'before_meal': return isRTL ? 'قبل الوجبات' : 'Avant repas';
+            case 'after_meal': return isRTL ? 'بعد الوجبات' : 'Après repas';
+            case 'interval': return isRTL ? `كل ${hours} ساعات` : `Toutes les ${hours}h`;
+            case 'specific_times': return isRTL ? 'أوقات محددة' : 'Heures fixes';
+            default: return type;
         }
     };
 
@@ -97,8 +131,8 @@ const ChildMedicalPage = () => {
 
         setMedicalData(prev => ({
             ...prev,
-            [modalType === 'allergy' ? 'allergies' : modalType === 'medication' ? 'medications' : 'conditions']: [
-                ...prev[modalType === 'allergy' ? 'allergies' : modalType === 'medication' ? 'medications' : 'conditions'],
+            [modalType === 'allergy' ? 'allergies' : 'conditions']: [
+                ...prev[modalType === 'allergy' ? 'allergies' : 'conditions'],
                 newItem
             ]
         }));
@@ -108,7 +142,7 @@ const ChildMedicalPage = () => {
     };
 
     const handleRemoveItem = (type, itemId) => {
-        const key = type === 'allergy' ? 'allergies' : type === 'medication' ? 'medications' : 'conditions';
+        const key = type === 'allergy' ? 'allergies' : 'conditions';
         setMedicalData(prev => ({
             ...prev,
             [key]: prev[key].filter(item => item.id !== itemId)
@@ -218,7 +252,7 @@ const ChildMedicalPage = () => {
                     )}
                 </motion.div>
 
-                {/* Médicaments */}
+                {/* Médicaments & Traitements */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -228,36 +262,59 @@ const ChildMedicalPage = () => {
                     <div className="flex items-center justify-between mb-4">
                         <h2 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                             <Pill className="w-5 h-5 text-blue-500" />
-                            {isRTL ? 'الأدوية' : 'Médicaments'}
+                            {isRTL ? 'الأدوية والعلاجات' : 'Médicaments & Traitements'}
                         </h2>
                         <button
-                            onClick={() => openAddModal('medication')}
-                            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                            onClick={() => setShowTreatmentModal(true)}
+                            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-primary-600"
+                            title={isRTL ? 'إضافة علاج / دواء' : 'Ajouter un traitement / médicament'}
                         >
-                            <Plus className="w-5 h-5 text-primary-600" />
+                            <Plus className="w-5 h-5" />
                         </button>
                     </div>
 
-                    {medicalData.medications.length === 0 ? (
+                    {treatments.length === 0 ? (
                         <p className="text-gray-500 text-sm text-center py-4">
-                            {isRTL ? 'لا توجد أدوية مسجلة' : 'Aucun médicament enregistré'}
+                            {isRTL ? 'لا توجد أدوية أو علاجات مسجلة' : 'Aucun médicament ou traitement enregistré'}
                         </p>
                     ) : (
-                        <div className="space-y-2">
-                            {medicalData.medications.map(med => (
-                                <div key={med.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                                    <div>
-                                        <p className="font-medium text-gray-900 dark:text-white">{med.name}</p>
-                                        {med.description && (
-                                            <p className="text-sm text-gray-500">{med.description}</p>
-                                        )}
+                        <div className="space-y-3">
+                            {treatments.map(t => (
+                                <div key={t.id} className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg flex flex-col gap-2">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="font-medium text-gray-900 dark:text-white">{t.medication_name}</p>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                {t.dose} • {getTimingLabel(t.timing_type, t.interval_hours)}
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                                t.status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                                t.status === 'completed' ? 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' :
+                                                'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                            }`}>
+                                                {t.status === 'active' ? (isRTL ? 'نشط' : 'Actif') :
+                                                 t.status === 'completed' ? (isRTL ? 'مكتمل' : 'Terminé') :
+                                                 (isRTL ? 'ملغى' : 'Annulé')}
+                                            </span>
+                                            {t.status === 'active' && (
+                                                <button
+                                                    onClick={() => handleCancelTreatment(t.id)}
+                                                    className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                                                    title={isRTL ? 'إلغاء' : 'Annuler'}
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
-                                    <button
-                                        onClick={() => handleRemoveItem('medication', med.id)}
-                                        className="p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
+                                    {t.notes && (
+                                        <p className="text-xs text-gray-500 italic">📝 {t.notes}</p>
+                                    )}
+                                    <div className="text-[11px] text-gray-400 flex items-center gap-1">
+                                        <span>📅 {new Date(t.start_date).toLocaleDateString('fr-FR')} → {new Date(t.end_date).toLocaleDateString('fr-FR')}</span>
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -360,8 +417,7 @@ const ChildMedicalPage = () => {
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="font-bold text-gray-900 dark:text-white">
                                     {modalType === 'allergy' ? (isRTL ? 'إضافة حساسية' : 'Ajouter une allergie') :
-                                        modalType === 'medication' ? (isRTL ? 'إضافة دواء' : 'Ajouter un médicament') :
-                                            (isRTL ? 'إضافة حالة طبية' : 'Ajouter une condition')}
+                                        (isRTL ? 'إضافة حالة طبية' : 'Ajouter une condition')}
                                 </h3>
                                 <button onClick={() => setShowAddModal(false)}>
                                     <X className="w-5 h-5 text-gray-500" />
@@ -378,7 +434,7 @@ const ChildMedicalPage = () => {
                                         value={formData.name}
                                         onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                                         className="w-full p-3 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                        placeholder={modalType === 'allergy' ? 'Ex: Arachides' : modalType === 'medication' ? 'Ex: Ventoline' : 'Ex: Asthme'}
+                                        placeholder={modalType === 'allergy' ? 'Ex: Arachides' : 'Ex: Asthme'}
                                     />
                                 </div>
 
@@ -431,6 +487,15 @@ const ChildMedicalPage = () => {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* Modal Universel Traitement / Médicament */}
+            <AddTreatmentModal
+                isOpen={showTreatmentModal}
+                onClose={() => setShowTreatmentModal(false)}
+                onSuccess={() => loadData()}
+                initialChildId={id ? parseInt(id, 10) : null}
+                childrenList={child ? [child] : []}
+            />
 
             {isMobile && <MobileNavigation />}
         </div>

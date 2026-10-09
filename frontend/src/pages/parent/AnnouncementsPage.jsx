@@ -1,24 +1,34 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Megaphone, Calendar, AlertCircle, Info, CheckCircle, ArrowLeft } from 'lucide-react';
+import { Megaphone, Calendar, AlertCircle, Info, CheckCircle, ArrowLeft, Lock } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../../hooks/useAuth';
 import useIsMobile from '../../hooks/useIsMobile';
 import MobileNavigation from '../../components/mobile/MobileNavigation';
+import { useAccess, FEATURES } from '../../access';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3003/api';
 
 export default function AnnouncementsPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { can, loading: accessLoading } = useAccess();
   const isMobile = useIsMobile();
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // all, info, alert, event
 
+  const canViewAnnouncements = user?.role === 'admin' || user?.role === 'developer' || user?.role === 'parent' || can(FEATURES.ANNOUNCEMENTS_VIEW);
+
   useEffect(() => {
-    loadAnnouncements();
-  }, []);
+    if (!accessLoading) {
+      if (canViewAnnouncements) {
+        loadAnnouncements();
+      } else {
+        setLoading(false);
+      }
+    }
+  }, [accessLoading, canViewAnnouncements]);
 
   const loadAnnouncements = async () => {
     try {
@@ -88,6 +98,31 @@ export default function AnnouncementsPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (!canViewAnnouncements) {
+    return (
+      <div className={`min-h-screen max-w-4xl mx-auto p-6 ${isMobile ? 'pb-24' : ''}`}>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-amber-200 dark:border-amber-800/40 p-8 text-center max-w-lg mx-auto mt-12 shadow-sm">
+          <div className="w-14 h-14 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto mb-4">
+            <Lock className="w-7 h-7" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+            Accès aux annonces restreint
+          </h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+            Votre profil ne dispose pas de l'autorisation requise (<code>announcements.view</code>) pour consulter les annonces officielles de l'établissement.
+          </p>
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium transition-colors"
+          >
+            Retour au tableau de bord
+          </button>
+        </div>
+        {isMobile && <MobileNavigation />}
       </div>
     );
   }

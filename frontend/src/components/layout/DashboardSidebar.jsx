@@ -94,7 +94,7 @@ const DashboardSidebar = ({ isOpen, onClose, onCollapsedChange }) => {
       title: isRTL ? 'البريد' : 'Courrier',
       icon: Mail,
       path: '/dashboard/mailbox',
-      roles: ['admin', 'staff']
+      roles: ['admin']
     },
     {
       key: 'testimonials',
@@ -122,7 +122,8 @@ const DashboardSidebar = ({ isOpen, onClose, onCollapsedChange }) => {
         {
           title: isRTL ? 'إدارة الغيابات' : 'Gestion des absences',
           path: '/dashboard/absence-management',
-          roles: ['admin', 'staff']
+          roles: ['admin', 'staff'],
+          feature: 'ABSENCES_MANAGE'
         }
       ]
     },
@@ -138,6 +139,7 @@ const DashboardSidebar = ({ isOpen, onClose, onCollapsedChange }) => {
       title: isRTL ? 'التخطيط' : 'Planning',
       icon: Calendar,
       roles: ['admin', 'staff'],
+      feature: 'STAFF_PLANNING_VIEW',
       submenu: [
         {
           title: isRTL ? 'شهري' : 'Mensuelle',
@@ -156,14 +158,16 @@ const DashboardSidebar = ({ isOpen, onClose, onCollapsedChange }) => {
       title: isRTL ? 'التقارير اليومية' : 'Rapports Journaliers',
       icon: FileText,
       path: '/dashboard/daily-reports',
-      roles: ['admin', 'staff']
+      roles: ['admin', 'staff'],
+      feature: 'DAILY_REPORTS_MANAGE'
     },
     {
       key: 'treatments',
       title: isRTL ? 'العلاجات الطبية' : 'Traitements médicaux',
       icon: Pill,
       path: '/dashboard/treatments',
-      roles: ['admin', 'staff']
+      roles: ['admin', 'staff'],
+      feature: 'TREATMENTS_MANAGE'
     },
     {
       key: 'attendance',
@@ -495,7 +499,7 @@ const DashboardSidebar = ({ isOpen, onClose, onCollapsedChange }) => {
           {/* Navigation */}
           <nav className="flex-1 min-h-0 px-4 py-6 space-y-2 overflow-y-auto overflow-x-visible">
             {menuItems
-              .filter(item => hasAccess(item.roles))
+              .filter(item => hasAccess(item.roles) && (!item.feature || can(item.feature)))
               .map((item) => (
                 <SidebarLink key={item.key} item={item} />
               ))}

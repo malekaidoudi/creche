@@ -339,7 +339,10 @@ const StaffPage = () => {
             {isRTL ? 'تصدير' : 'Exporter'}
           </Button>
           {isAdmin() && (
-            <Button className="flex items-center bg-primary-500 hover:bg-primary-600">
+            <Button
+              onClick={() => navigate('/dashboard/add-user', { state: { preselectedRole: 'staff' } })}
+              className="flex items-center bg-primary-500 hover:bg-primary-600"
+            >
               <Plus className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
               {isRTL ? 'إضافة موظف' : 'Ajouter Personnel'}
             </Button>

@@ -11,6 +11,24 @@ const fs = require('fs');
 const cloudinaryService = require('../services/cloudinaryService');
 const permissionsService = require('../services/permissionsService');
 
+// Assurer que les colonnes médicales et médecin existent dans children
+const ensureMedicalColumns = async () => {
+  try {
+    await pool.query(`
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS allergies TEXT;
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS medical_notes TEXT;
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS doctor_name VARCHAR(100);
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS doctor_phone VARCHAR(20);
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS medications JSONB DEFAULT '[]'::jsonb;
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS conditions JSONB DEFAULT '[]'::jsonb;
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS blood_type VARCHAR(10);
+    `);
+  } catch (err) {
+    console.warn('⚠️ Note: vérification colonnes médicales children:', err.message);
+  }
+};
+ensureMedicalColumns();
+
 /**
  * Vérifie l'accès à la gestion de la photo d'un enfant (upload/suppression) :
  * - admin/developer : toujours autorisé
@@ -90,20 +108,61 @@ const deleteLocalPhotoFile = (photoUrl) => {
  */
 const filterParentContacts = async (rows, user) => {
   const role = user?.role === 'developer' ? 'admin' : user?.role;
-  if (role !== 'staff') return rows;
+  if (role !== 'staff') {
+    return rows.map((r) => ({
+      ...r,
+      can_view_parent_phone: true,
+      can_view_parent_email: true,
+      can_view_emergency_phone: true
+    }));
+  }
 
   const userId = user.id || user.userId;
   const [canViewPhone, canViewEmail] = await Promise.all([
-    permissionsService.userHasPermission(userId, 'parents.phone.view'),
-    permissionsService.userHasPermission(userId, 'parents.email.view')
+    permissionsService.userHasPermission(userId, 'parents.phone.view', user?.role),
+    permissionsService.userHasPermission(userId, 'parents.email.view', user?.role)
   ]);
 
-  if (canViewPhone && canViewEmail) return rows;
+  let directorPhone = '+216 25 95 35 32';
+  if (!canViewPhone) {
+    try {
+      const adminQuery = await pool.query(`
+        SELECT phone FROM users 
+        WHERE role = 'admin' AND is_active = true AND phone IS NOT NULL AND TRIM(phone) != '' 
+        ORDER BY id ASC LIMIT 1
+      `);
+      if (adminQuery.rows.length > 0 && adminQuery.rows[0].phone) {
+        directorPhone = adminQuery.rows[0].phone;
+      } else {
+        const settingQuery = await pool.query(`
+          SELECT value_fr FROM nursery_settings WHERE setting_key = 'phone' AND is_active = true LIMIT 1
+        `);
+        if (settingQuery.rows.length > 0 && settingQuery.rows[0].value_fr) {
+          directorPhone = settingQuery.rows[0].value_fr;
+        }
+      }
+    } catch (err) {
+      logger.warn('⚠️ Impossible de récupérer le téléphone de la direction:', err.message);
+    }
+  }
 
   return rows.map((row) => {
     const filtered = { ...row };
-    if (!canViewPhone && 'parent_phone' in filtered) filtered.parent_phone = null;
-    if (!canViewEmail && 'parent_email' in filtered) filtered.parent_email = null;
+    filtered.can_view_parent_phone = !!canViewPhone;
+    filtered.can_view_parent_email = !!canViewEmail;
+    filtered.can_view_emergency_phone = !!canViewPhone;
+
+    if (!canViewPhone) {
+      if ('parent_phone' in filtered) filtered.parent_phone = null;
+      if ('emergency_contact_phone' in filtered) filtered.emergency_contact_phone = null;
+      filtered.parent_phone_restricted = true;
+      filtered.emergency_contact_restricted = true;
+      filtered.director_phone = directorPhone;
+    }
+    if (!canViewEmail) {
+      if ('parent_email' in filtered) filtered.parent_email = null;
+      filtered.parent_email_restricted = true;
+    }
     return filtered;
   });
 };
@@ -122,6 +181,38 @@ const filterChildPhotos = (rows, user) => {
       return { ...row, photo_url: null };
     }
     return row;
+  });
+};
+
+/**
+ * Retire les informations médicales sensibles des lignes enfant
+ * si l'utilisateur courant (staff) n'a pas la permission 'medical.view'.
+ * Admin/developer/parent voient toujours ces informations.
+ */
+const filterMedicalInfo = async (rows, user) => {
+  const role = user?.role === 'developer' ? 'admin' : user?.role;
+  if (role !== 'staff') {
+    return rows.map((r) => ({ ...r, can_view_medical: true }));
+  }
+
+  const userId = user.id || user.userId;
+  const canViewMedical = await permissionsService.userHasPermission(userId, 'medical.view', user?.role);
+  if (canViewMedical) {
+    return rows.map((r) => ({ ...r, can_view_medical: true }));
+  }
+
+  return rows.map((row) => {
+    const filtered = { ...row, can_view_medical: false, medical_restricted: true };
+    if ('medical_info' in filtered) filtered.medical_info = null;
+    if ('medical_notes' in filtered) filtered.medical_notes = null;
+    if ('allergies' in filtered) filtered.allergies = [];
+    if ('medications' in filtered) filtered.medications = [];
+    if ('conditions' in filtered) filtered.conditions = [];
+    if ('blood_type' in filtered) filtered.blood_type = null;
+    if ('doctor_name' in filtered) filtered.doctor_name = null;
+    if ('doctor_phone' in filtered) filtered.doctor_phone = null;
+    if ('treatments' in filtered) filtered.treatments = [];
+    return filtered;
   });
 };
 
@@ -604,6 +695,7 @@ router.get('/', auth.authenticateToken, async (req, res) => {
     let sql = `
       SELECT 
         c.id, c.first_name, c.last_name, c.birth_date, c.gender, c.medical_info, 
+        c.allergies, c.medical_notes, c.doctor_name, c.doctor_phone, c.blood_type,
         c.emergency_contact_name, c.emergency_contact_phone, c.photo_url, 
         COALESCE(c.photo_shared_with_staff, true) as photo_shared_with_staff,
         c.is_active, c.created_at, c.updated_at, c.parent_id,
@@ -676,6 +768,7 @@ router.get('/', auth.authenticateToken, async (req, res) => {
 
     // GROUP BY et ORDER BY
     sql += ` GROUP BY c.id, c.first_name, c.last_name, c.birth_date, c.gender, c.medical_info, 
+             c.allergies, c.medical_notes, c.doctor_name, c.doctor_phone, c.blood_type,
              c.emergency_contact_name, c.emergency_contact_phone, c.photo_url, 
              c.is_active, c.created_at, c.updated_at, c.parent_id,
              u.id, u.first_name, u.last_name, u.email, u.phone,
@@ -743,7 +836,10 @@ router.get('/', auth.authenticateToken, async (req, res) => {
 
     const countResult = await pool.query(countSql, countParams);
 
-    const children = filterChildPhotos(await filterParentContacts(result.rows, req.user), req.user);
+    const children = filterChildPhotos(
+      await filterMedicalInfo(await filterParentContacts(result.rows, req.user), req.user),
+      req.user
+    );
 
     res.json({
       success: true,
@@ -774,6 +870,7 @@ router.get('/:id', auth.authenticateToken, auth.requireChildAccess, async (req, 
 
     const result = await pool.query(
       `SELECT c.id, c.first_name, c.last_name, c.birth_date, c.gender, c.medical_info, 
+              c.allergies, c.medical_notes, c.doctor_name, c.doctor_phone, c.blood_type,
               c.emergency_contact_name, c.emergency_contact_phone, c.photo_url, c.photo_shared_with_staff,
               c.is_active, c.created_at, c.updated_at, c.parent_id,
               EXTRACT(YEAR FROM AGE(c.birth_date)) as age,
@@ -792,11 +889,27 @@ router.get('/:id', auth.authenticateToken, auth.requireChildAccess, async (req, 
       });
     }
 
-    // Masquer la photo et les coordonnées parent pour le staff selon les
-    // mêmes règles que la liste (photo_shared_with_staff, permissions
-    // parents.phone.view / parents.email.view).
+    // Récupérer les traitements de cet enfant
+    let treatments = [];
+    try {
+      const treatmentsResult = await pool.query(
+        `SELECT * FROM child_treatments WHERE child_id = $1 ORDER BY start_date DESC`,
+        [id]
+      );
+      treatments = treatmentsResult.rows;
+    } catch (err) {
+      treatments = [];
+    }
+
+    const rowWithTreatments = {
+      ...result.rows[0],
+      treatments
+    };
+
+    // Masquer la photo, les données médicales et les coordonnées parent pour le staff selon les
+    // permissions correspondantes.
     const [child] = filterChildPhotos(
-      await filterParentContacts(result.rows, req.user),
+      await filterMedicalInfo(await filterParentContacts([rowWithTreatments], req.user), req.user),
       req.user
     );
 
@@ -870,6 +983,20 @@ router.post('/', [
       photo_url,
       parent_id
     } = req.body;
+
+    // Protection médicale : vérifier la permission medical.view pour le staff si medical_info est fourni
+    if (req.user?.role === 'staff' && medical_info && medical_info.trim() !== '') {
+      const userId = req.user.id || req.user.userId;
+      const canViewMedical = await permissionsService.userHasPermission(userId, 'medical.view', req.user.role);
+      if (!canViewMedical) {
+        return res.status(403).json({
+          success: false,
+          error: 'Accès non autorisé pour la saisie des informations médicales',
+          required_permission: 'medical.view',
+          code: 'PERMISSION_DENIED'
+        });
+      }
+    }
 
     // Utiliser le service centralisé pour créer l'enfant
     const result = await childLifecycleService.createChild(
@@ -1015,6 +1142,43 @@ router.put('/:id', [
       });
     }
 
+    // Protection médicale : vérifier la permission medical.view si un membre du staff envoie des données médicales
+    if (req.user?.role === 'staff') {
+      const hasMedicalFields =
+        medical_info !== undefined ||
+        allergies !== undefined ||
+        medical_notes !== undefined ||
+        doctor_name !== undefined ||
+        doctor_phone !== undefined;
+
+      if (hasMedicalFields) {
+        const userId = req.user.id || req.user.userId;
+        const canViewMedical = await permissionsService.userHasPermission(userId, 'medical.view', req.user.role);
+        if (!canViewMedical) {
+          return res.status(403).json({
+            success: false,
+            error: 'Accès non autorisé pour la modification des informations médicales',
+            required_permission: 'medical.view',
+            code: 'PERMISSION_DENIED'
+          });
+        }
+      }
+
+      // Protection coordonnées : vérifier la permission parents.phone.view si un membre du staff tente de modifier le téléphone d'urgence
+      if (emergency_contact_phone !== undefined) {
+        const userId = req.user.id || req.user.userId;
+        const canManagePhone = await permissionsService.userHasPermission(userId, 'parents.phone.view', req.user.role);
+        if (!canManagePhone) {
+          return res.status(403).json({
+            success: false,
+            error: 'Accès non autorisé pour la modification des numéros de contact',
+            required_permission: 'parents.phone.view',
+            code: 'PERMISSION_DENIED'
+          });
+        }
+      }
+    }
+
     // Construire la requête de mise à jour dynamiquement
     const updates = [];
     const params = [];
@@ -1048,18 +1212,52 @@ router.put('/:id', [
       paramCount++;
       updates.push(`medical_info = $${paramCount}`);
       params.push(medical_info);
+
+      if (medical_notes === undefined) {
+        paramCount++;
+        updates.push(`medical_notes = $${paramCount}`);
+        params.push(medical_info);
+      }
     }
 
     if (allergies !== undefined) {
       paramCount++;
       updates.push(`allergies = $${paramCount}`);
-      params.push(allergies);
+      let formattedAllergies;
+      if (typeof allergies === 'string') {
+        const trimmed = allergies.trim();
+        if (trimmed === '') {
+          formattedAllergies = JSON.stringify([]);
+        } else {
+          try {
+            JSON.parse(trimmed);
+            formattedAllergies = trimmed;
+          } catch (_) {
+            const items = trimmed.split(',').map(s => s.trim()).filter(Boolean);
+            formattedAllergies = JSON.stringify(items);
+          }
+        }
+      } else if (Array.isArray(allergies)) {
+        formattedAllergies = JSON.stringify(allergies);
+      } else if (allergies === null) {
+        formattedAllergies = JSON.stringify([]);
+      } else {
+        formattedAllergies = JSON.stringify(allergies);
+      }
+      params.push(formattedAllergies);
     }
 
     if (medical_notes !== undefined) {
       paramCount++;
       updates.push(`medical_notes = $${paramCount}`);
       params.push(medical_notes);
+
+      // Si medical_info n'a pas été envoyé, synchroniser la colonne historique
+      if (medical_info === undefined) {
+        paramCount++;
+        updates.push(`medical_info = $${paramCount}`);
+        params.push(medical_notes);
+      }
     }
 
     if (doctor_name !== undefined) {
@@ -1321,7 +1519,7 @@ router.post('/:id/photo', auth.authenticateToken, requireChildPhotoAccess, uploa
   }
 });
 
-// DELETE /api/children/:id/photo - Supprimer la photo d'un enfant
+// DELETE /api/children/:id/photo - Supprimer la photo de profil d'un enfant
 router.delete('/:id/photo', auth.authenticateToken, requireChildPhotoAccess, async (req, res) => {
   try {
     const { id } = req.params;
@@ -1336,24 +1534,21 @@ router.delete('/:id/photo', auth.authenticateToken, requireChildPhotoAccess, asy
 
     const previousPhotoUrl = existingChild.rows[0].photo_url;
 
-    const result = await pool.query(
-      `UPDATE children 
-       SET photo_url = NULL, updated_at = CURRENT_TIMESTAMP 
-       WHERE id = $1 
-       RETURNING id, first_name, last_name, photo_url`,
+    await pool.query(
+      'UPDATE children SET photo_url = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = $1',
       [id]
     );
 
-    deleteLocalPhotoFile(previousPhotoUrl);
+    if (previousPhotoUrl && typeof deleteLocalPhotoFile === 'function') {
+      deleteLocalPhotoFile(previousPhotoUrl);
+    }
 
     logger.info(`🗑️ Photo supprimée pour enfant ${id}`);
 
     res.json({
       success: true,
-      message: 'Photo supprimée avec succès',
-      child: result.rows[0]
+      message: 'Photo supprimée avec succès'
     });
-
   } catch (error) {
     console.error('Erreur suppression photo enfant:', error);
     res.status(500).json({
@@ -1397,23 +1592,21 @@ router.get('/stats/overview', async (req, res) => {
 // ============================================
 
 // GET /api/children/:id/medical - Récupérer les données médicales
-router.get('/:id/medical', auth.authenticateToken, async (req, res) => {
+router.get('/:id/medical', auth.authenticateToken, auth.requireChildAccess, async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Vérifier l'accès (parent de l'enfant ou admin/staff)
-    const childCheck = await pool.query(
-      'SELECT parent_id FROM children WHERE id = $1',
-      [id]
-    );
-
-    if (childCheck.rows.length === 0) {
-      return res.status(404).json({ success: false, error: 'Enfant non trouvé' });
-    }
-
-    const child = childCheck.rows[0];
-    if (req.user.role === 'parent' && child.parent_id !== req.user.userId) {
-      return res.status(403).json({ success: false, error: 'Accès non autorisé' });
+    if (req.user.role === 'staff') {
+      const userId = req.user.id || req.user.userId;
+      const canView = await permissionsService.userHasPermission(userId, 'medical.view', req.user.role);
+      if (!canView) {
+        return res.status(403).json({
+          success: false,
+          error: 'Accès non autorisé pour cette fonctionnalité',
+          required_permission: 'medical.view',
+          code: 'PERMISSION_DENIED'
+        });
+      }
     }
 
     // Récupérer les données médicales
@@ -1446,24 +1639,22 @@ router.get('/:id/medical', auth.authenticateToken, async (req, res) => {
 });
 
 // PUT /api/children/:id/medical - Mettre à jour les données médicales
-router.put('/:id/medical', auth.authenticateToken, async (req, res) => {
+router.put('/:id/medical', auth.authenticateToken, auth.requireChildAccess, async (req, res) => {
   try {
     const { id } = req.params;
     const { allergies, medications, conditions, blood_type, doctor_name, doctor_phone, notes } = req.body;
 
-    // Vérifier l'accès
-    const childCheck = await pool.query(
-      'SELECT parent_id FROM children WHERE id = $1',
-      [id]
-    );
-
-    if (childCheck.rows.length === 0) {
-      return res.status(404).json({ success: false, error: 'Enfant non trouvé' });
-    }
-
-    const child = childCheck.rows[0];
-    if (req.user.role === 'parent' && child.parent_id !== req.user.userId) {
-      return res.status(403).json({ success: false, error: 'Accès non autorisé' });
+    if (req.user.role === 'staff') {
+      const userId = req.user.id || req.user.userId;
+      const canView = await permissionsService.userHasPermission(userId, 'medical.view', req.user.role);
+      if (!canView) {
+        return res.status(403).json({
+          success: false,
+          error: 'Accès non autorisé pour cette fonctionnalité',
+          required_permission: 'medical.view',
+          code: 'PERMISSION_DENIED'
+        });
+      }
     }
 
     // Mettre à jour

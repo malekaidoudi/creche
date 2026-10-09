@@ -266,12 +266,36 @@ const AppRoutes = () => {
                     >
                         <Route index element={<DashboardHome />} />
                         <Route path="children" element={<ChildrenPage />} />
-                        <Route path="add-child" element={<DashboardAddChildPage />} />
-                        <Route path="enrollments" element={<EnrollmentsPage />} />
-                        <Route path="pending-enrollments" element={<PendingEnrollmentsPage />} />
-                        <Route path="enrollments/today" element={<EnrollmentsPage />} />
-                        <Route path="enrollments/history" element={<EnrollmentsPage />} />
-                        <Route path="enrollments/stats" element={<EnrollmentsPage />} />
+                        <Route path="add-child" element={
+                            <ProtectedRoute roles={['admin', 'developer']}>
+                                <DashboardAddChildPage />
+                            </ProtectedRoute>
+                        } />
+                        <Route path="enrollments" element={
+                            <ProtectedRoute roles={['admin', 'developer']}>
+                                <EnrollmentsPage />
+                            </ProtectedRoute>
+                        } />
+                        <Route path="pending-enrollments" element={
+                            <ProtectedRoute roles={['admin', 'developer']}>
+                                <PendingEnrollmentsPage />
+                            </ProtectedRoute>
+                        } />
+                        <Route path="enrollments/today" element={
+                            <ProtectedRoute roles={['admin', 'developer']}>
+                                <EnrollmentsPage />
+                            </ProtectedRoute>
+                        } />
+                        <Route path="enrollments/history" element={
+                            <ProtectedRoute roles={['admin', 'developer']}>
+                                <EnrollmentsPage />
+                            </ProtectedRoute>
+                        } />
+                        <Route path="enrollments/stats" element={
+                            <ProtectedRoute roles={['admin', 'developer']}>
+                                <EnrollmentsPage />
+                            </ProtectedRoute>
+                        } />
                         <Route path="attendance" element={<AttendancePage />} />
                         <Route path="attendance/today" element={<AttendancePage />} />
                         <Route path="attendance/history" element={<AttendancePage />} />
@@ -293,15 +317,37 @@ const AppRoutes = () => {
                         <Route path="planning" element={<WeeklyPlanningPage />} />
                         <Route path="treatments" element={<DashboardTreatmentsPage />} />
 
-                        <Route path="parents" element={<ParentsPage />} />
-                        <Route path="staff" element={<StaffPage />} />
-                        <Route path="add-user" element={<AddUserPage />} />
-                        <Route path="general-stats" element={<GeneralStatsPage />} />
-                        <Route path="attendance-report" element={<AttendanceReportPage />} />
+                        <Route path="parents" element={
+                            <ProtectedRoute roles={['admin', 'developer']}>
+                                <ParentsPage />
+                            </ProtectedRoute>
+                        } />
+                        <Route path="staff" element={
+                            <ProtectedRoute roles={['admin', 'developer']}>
+                                <StaffPage />
+                            </ProtectedRoute>
+                        } />
+                        <Route path="add-user" element={
+                            <ProtectedRoute roles={['admin', 'developer']}>
+                                <AddUserPage />
+                            </ProtectedRoute>
+                        } />
+                        <Route path="general-stats" element={
+                            <ProtectedRoute roles={['admin', 'developer']}>
+                                <GeneralStatsPage />
+                            </ProtectedRoute>
+                        } />
+                        <Route path="attendance-report" element={
+                            <ProtectedRoute roles={['admin', 'developer']}>
+                                <AttendanceReportPage />
+                            </ProtectedRoute>
+                        } />
                         <Route path="settings" element={
-                            <ErrorBoundary>
-                                <DashboardSettingsPage />
-                            </ErrorBoundary>
+                            <ProtectedRoute roles={['admin', 'developer']}>
+                                <ErrorBoundary>
+                                    <DashboardSettingsPage />
+                                </ErrorBoundary>
+                            </ProtectedRoute>
                         } />
                         <Route path="staff-settings" element={
                             <ErrorBoundary>
@@ -313,9 +359,17 @@ const AppRoutes = () => {
                                 <ActivityLogPage />
                             </ProtectedRoute>
                         } />
-                        <Route path="activity-feed" element={<ActivityFeedPage />} />
+                        <Route path="activity-feed" element={
+                            <ProtectedRoute roles={['admin', 'developer']}>
+                                <ActivityFeedPage />
+                            </ProtectedRoute>
+                        } />
                         <Route path="daily-reports" element={<DailyReportsPage />} />
-                        <Route path="mailbox" element={<MailboxPage />} />
+                        <Route path="mailbox" element={
+                            <ProtectedRoute roles={['admin', 'developer']}>
+                                <MailboxPage />
+                            </ProtectedRoute>
+                        } />
                         <Route path="storage" element={
                             <ProtectedRoute roles={['developer']}>
                                 <CloudinaryExplorerPage />

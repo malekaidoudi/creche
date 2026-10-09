@@ -76,15 +76,22 @@ router.get('/contacts', auth.authenticateToken, async (req, res) => {
     const userRole = req.user.role;
 
     let sql = `
-      SELECT id, email, first_name, last_name, role, profile_image
+      SELECT id, email, first_name, last_name, role, profile_image, is_active, last_active
       FROM users 
       WHERE is_active = true AND id != $1 AND role != 'developer'
     `;
     const params = [userId];
 
-    // Parents ne voient que le staff/admin
     if (userRole === 'parent') {
+      // Les parents ne voient que l'administration et le staff
       sql += ` AND role IN ('admin', 'staff')`;
+    } else if (userRole === 'staff') {
+      // Le staff voit toujours ses collègues (staff) et la direction (admin).
+      // Les parents ne sont inclus que s'il dispose de la permission messages.parents
+      const canMessageParents = await permissionsService.userHasPermission(userId, 'messages.parents', userRole);
+      if (!canMessageParents) {
+        sql += ` AND role IN ('admin', 'staff')`;
+      }
     }
 
     sql += ` ORDER BY role ASC, first_name ASC`;
@@ -105,9 +112,52 @@ router.get('/contacts', auth.authenticateToken, async (req, res) => {
   }
 });
 
-// GET /api/users - Récupérer tous les utilisateurs
+// GET /api/users - Récupérer les utilisateurs (Direction ou assignation de tâches)
 router.get('/', auth.authenticateToken, async (req, res) => {
   try {
+    const userId = req.user.userId || req.user.id;
+    const userRole = req.user.role;
+    const isAdminOrDev = ['admin', 'developer'].includes(userRole);
+
+    let isAuthorized = isAdminOrDev;
+    let isStaffTaskAssigner = false;
+
+    if (!isAuthorized && userRole === 'staff') {
+      const hasTasksManage = await permissionsService.userHasPermission(userId, 'tasks.manage', userRole);
+      if (hasTasksManage) {
+        isAuthorized = true;
+        isStaffTaskAssigner = true;
+      }
+    }
+
+    if (!isAuthorized) {
+      return res.status(403).json({
+        success: false,
+        error: 'Accès réservé à la direction'
+      });
+    }
+
+    // Membre du staff avec 'tasks.manage' : ne retourner que les collègues staff/admin actifs sans données privées
+    if (isStaffTaskAssigner) {
+      const result = await db.query(
+        `SELECT id, first_name, last_name, role, profile_image, staff_position, is_active
+         FROM users
+         WHERE role IN ('admin', 'staff') AND is_active = true
+         ORDER BY first_name ASC, last_name ASC`
+      );
+
+      return res.json({
+        success: true,
+        users: result.rows,
+        pagination: {
+          page: 1,
+          limit: result.rows.length,
+          total: result.rows.length,
+          pages: 1
+        }
+      });
+    }
+
     const { role, active, search, page = 1, limit = 50 } = req.query;
 
     // Par défaut, ne retourner que les utilisateurs actifs
@@ -230,6 +280,16 @@ router.get('/online', auth.authenticateToken, async (req, res) => {
 router.get('/:id', auth.authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
+    const currentUserId = req.user.userId || req.user.id;
+    const currentUserRole = req.user.role;
+    const isAdminOrDev = ['admin', 'developer'].includes(currentUserRole);
+
+    if (!isAdminOrDev && parseInt(id) !== currentUserId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Accès non autorisé : consultation réservée à la direction'
+      });
+    }
 
     const result = await db.query(
       `SELECT id, email, first_name, last_name, phone, role, profile_image, 

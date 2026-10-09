@@ -3,17 +3,9 @@ const router = express.Router();
 const db = require('../config/db_postgres');
 const auth = require('../middleware/auth');
 
-// GET /api/absence-requests/all - Toutes les demandes (admin/staff)
-router.get('/all', auth.authenticateToken, async (req, res) => {
+// GET /api/absence-requests/all - Toutes les demandes (admin/staff avec permission)
+router.get('/all', auth.authenticateToken, auth.requirePermission('absences.manage'), async (req, res) => {
   try {
-    // Vérifier que l'utilisateur est admin ou staff
-    if (req.user.role !== 'admin' && req.user.role !== 'staff' && req.user.role !== 'developer') {
-      return res.status(403).json({
-        success: false,
-        error: 'Accès non autorisé'
-      });
-    }
-
     // Récupérer toutes les demandes avec infos enfant et parent
     const result = await db.query(
       `SELECT 
@@ -240,19 +232,11 @@ router.post('/', auth.authenticateToken, async (req, res) => {
   }
 });
 
-// PUT /api/absence-requests/:id/acknowledge - Accuser réception d'une demande
-router.put('/:id/acknowledge', auth.authenticateToken, async (req, res) => {
+// PUT /api/absence-requests/:id/acknowledge - Accuser réception d'une demande (admin/staff avec permission)
+router.put('/:id/acknowledge', auth.authenticateToken, auth.requirePermission('absences.manage'), async (req, res) => {
   try {
     const { id } = req.params;
     const { acknowledged_by } = req.body;
-
-    // Vérifier que l'utilisateur est admin ou staff
-    if (req.user.role !== 'admin' && req.user.role !== 'staff' && req.user.role !== 'developer') {
-      return res.status(403).json({
-        success: false,
-        error: 'Seuls les administrateurs et le personnel peuvent accuser réception'
-      });
-    }
 
     // Mettre à jour le statut (admin_notes peut être ajouté si fourni)
     const { admin_notes } = req.body;

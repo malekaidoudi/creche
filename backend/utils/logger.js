@@ -15,18 +15,19 @@ const LOG_LEVELS = {
   debug: 3
 };
 
-// Niveau courant (défaut: 'info' pour éviter le spam, activable en 'debug' via env)
-const configuredLevel = (process.env.LOG_LEVEL || 'info').toLowerCase();
-const currentLevel = LOG_LEVELS[configuredLevel] !== undefined ? LOG_LEVELS[configuredLevel] : LOG_LEVELS.info;
-
-const isDbDebug = process.env.DEBUG_DB === 'true' || currentLevel >= LOG_LEVELS.debug;
+const getLogLevel = () => {
+  if (process.env.LOG_LEVEL && LOG_LEVELS[process.env.LOG_LEVEL.toLowerCase()] !== undefined) {
+    return LOG_LEVELS[process.env.LOG_LEVEL.toLowerCase()];
+  }
+  return process.env.NODE_ENV === 'production' ? LOG_LEVELS.info : LOG_LEVELS.debug;
+};
 
 const logger = {
   /**
    * Log d'erreur (toujours affiché)
    */
   error: (...args) => {
-    if (currentLevel >= LOG_LEVELS.error) {
+    if (getLogLevel() >= LOG_LEVELS.error) {
       console.error('[ERROR]', ...args);
     }
   },
@@ -35,7 +36,7 @@ const logger = {
    * Log d'avertissement
    */
   warn: (...args) => {
-    if (currentLevel >= LOG_LEVELS.warn) {
+    if (getLogLevel() >= LOG_LEVELS.warn) {
       console.warn('[WARN]', ...args);
     }
   },
@@ -44,7 +45,7 @@ const logger = {
    * Log d'information général
    */
   info: (...args) => {
-    if (currentLevel >= LOG_LEVELS.info) {
+    if (getLogLevel() >= LOG_LEVELS.info) {
       console.log('[INFO]', ...args);
     }
   },
@@ -53,16 +54,17 @@ const logger = {
    * Log de succès
    */
   success: (...args) => {
-    if (currentLevel >= LOG_LEVELS.info) {
+    if (getLogLevel() >= LOG_LEVELS.info) {
       console.log('[SUCCESS]', ...args);
     }
   },
 
   /**
-   * Log de debug (actif uniquement si LOG_LEVEL=debug)
+   * Log de debug
    */
   debug: (...args) => {
-    if (!isProduction && currentLevel >= LOG_LEVELS.debug) {
+    const isProd = process.env.NODE_ENV === 'production';
+    if (!isProd && getLogLevel() >= LOG_LEVELS.debug) {
       console.log('[DEBUG]', ...args);
     }
   },
@@ -71,7 +73,9 @@ const logger = {
    * Log de debug de la base de données (actif si DEBUG_DB=true ou LOG_LEVEL=debug)
    */
   dbDebug: (...args) => {
-    if (!isProduction && isDbDebug) {
+    const isProd = process.env.NODE_ENV === 'production';
+    const isDbDebugActive = process.env.DEBUG_DB === 'true' || process.env.LOG_LEVEL === 'debug';
+    if (!isProd && isDbDebugActive) {
       console.log('[DB-DEBUG]', ...args);
     }
   },
@@ -88,8 +92,9 @@ const logger = {
    * Log sensible (désactivé en production, actif uniquement si DEBUG_AUTH=true ou DEBUG_SENSITIVE=true en dev)
    */
   sensitive: (...args) => {
-    const isSensitiveAllowed = !isProduction && (process.env.DEBUG_AUTH === 'true' || process.env.DEBUG_SENSITIVE === 'true');
-    if (isSensitiveAllowed && currentLevel >= LOG_LEVELS.debug) {
+    const isProd = process.env.NODE_ENV === 'production';
+    const isSensitiveAllowed = !isProd && (process.env.DEBUG_AUTH === 'true' || process.env.DEBUG_SENSITIVE === 'true');
+    if (isSensitiveAllowed) {
       console.log('[SENSITIVE]', ...args);
     }
   },

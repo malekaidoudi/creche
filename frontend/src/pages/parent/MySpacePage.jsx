@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   Baby,
@@ -7,9 +7,15 @@ import {
   Bell,
   Home,
   ChevronLeft,
+  ChevronRight,
   FileText,
   Plus,
-  MessageCircle
+  MessageCircle,
+  Stethoscope,
+  Phone,
+  ClipboardList,
+  Pill,
+  X
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -52,6 +58,9 @@ const MySpacePage = () => {
   const [canAddChild, setCanAddChild] = useState(true);
   const [childrenCountInfo, setChildrenCountInfo] = useState(null);
   const [showTestimonialForm, setShowTestimonialForm] = useState(false);
+  const [selectedChildForModal, setSelectedChildForModal] = useState(null);
+  const [showChildModal, setShowChildModal] = useState(false);
+  const [showEmergencyModal, setShowEmergencyModal] = useState(false);
 
   useEffect(() => {
     loadChildren();
@@ -265,32 +274,83 @@ const MySpacePage = () => {
             </div>
           </motion.div>
 
-          {/* Lien rapide vers les rapports journaliers */}
-          {children.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05 }}
-              className="mb-6"
+          {/* Bouton Témoignage */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="mb-4"
+          >
+            <button
+              onClick={() => setShowTestimonialForm(true)}
+              className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl text-white hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg hover:shadow-xl"
             >
-              <Link
-                to="/mon-espace/daily-reports"
-                className="flex items-center gap-4 p-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl text-white hover:from-green-600 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl"
+              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                <MessageCircle className="w-6 h-6" />
+              </div>
+              <div className="flex-1 text-left">
+                <h3 className="font-semibold text-lg">
+                  {isRTL ? 'شاركنا رأيك' : 'Partagez votre avis'}
+                </h3>
+                <p className="text-purple-100 text-sm">
+                  {isRTL ? 'ساعدنا على التحسين بتقييمك' : 'Aidez-nous à nous améliorer avec votre témoignage'}
+                </p>
+              </div>
+              <ChevronLeft className={`w-6 h-6 ${isRTL ? '' : 'rotate-180'}`} />
+            </button>
+          </motion.div>
+
+          {/* Liens rapides vers les rapports journaliers et traitements médicaux */}
+          {children.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.05 }}
               >
-                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                  <FileText className="w-6 h-6" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-lg">
-                    {isRTL ? 'التقارير اليومية' : 'Rapports Journaliers'}
-                  </h3>
-                  <p className="text-green-100 text-sm">
-                    {isRTL ? 'تابع يوم طفلك في الحضانة' : 'Suivez la journée de votre enfant à la crèche'}
-                  </p>
-                </div>
-                <ChevronLeft className={`w-6 h-6 ${isRTL ? '' : 'rotate-180'}`} />
-              </Link>
-            </motion.div>
+                <Link
+                  to="/mon-espace/daily-reports"
+                  className="flex items-center gap-4 p-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl text-white hover:from-green-600 hover:to-emerald-700 transition-all shadow-lg hover:shadow-xl h-full"
+                >
+                  <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center shrink-0">
+                    <FileText className="w-6 h-6" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-lg">
+                      {isRTL ? 'التقارير اليومية' : 'Rapports Journaliers'}
+                    </h3>
+                    <p className="text-green-100 text-sm">
+                      {isRTL ? 'تابع يوم طفلك في الحضانة' : 'Suivez la journée de votre enfant à la crèche'}
+                    </p>
+                  </div>
+                  <ChevronLeft className={`w-6 h-6 shrink-0 ${isRTL ? '' : 'rotate-180'}`} />
+                </Link>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.08 }}
+              >
+                <Link
+                  to="/mon-espace/treatments"
+                  className="flex items-center gap-4 p-4 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-xl text-white hover:from-purple-600 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl h-full"
+                >
+                  <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center shrink-0">
+                    <Pill className="w-6 h-6" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-lg">
+                      {isRTL ? 'العلاجات الطبية' : 'Traitements Médicaux'}
+                    </h3>
+                    <p className="text-purple-100 text-sm">
+                      {isRTL ? 'إدارة الأدوية والعلاجات الموصوفة' : 'Gestion des médicaments et soins prescrits'}
+                    </p>
+                  </div>
+                  <ChevronLeft className={`w-6 h-6 shrink-0 ${isRTL ? '' : 'rotate-180'}`} />
+                </Link>
+              </motion.div>
+            </div>
           )}
 
           {/* Grille principale: Enfants + Rendez-vous */}
@@ -319,14 +379,19 @@ const MySpacePage = () => {
                     {children.map((child) => (
                       <div
                         key={child.id}
-                        className="p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50"
+                        onClick={() => {
+                          setSelectedChildForModal(child);
+                          setShowChildModal(true);
+                        }}
+                        className="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/50 hover:bg-blue-50/70 dark:hover:bg-gray-700 hover:border-primary-300 dark:hover:border-primary-600 border border-transparent transition-all cursor-pointer group flex items-center justify-between"
+                        title={isRTL ? 'اضغط لعرض الخيارات' : 'Cliquer pour gérer la fiche et la santé'}
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
-                            <Baby className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className="w-11 h-11 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                            <Baby className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-gray-900 dark:text-white truncate">
+                            <p className="font-semibold text-gray-900 dark:text-white truncate group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
                               {child.first_name} {child.last_name}
                             </p>
                             <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -339,6 +404,10 @@ const MySpacePage = () => {
                               )}
                             </p>
                           </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs font-medium text-primary-600 dark:text-primary-400 group-hover:translate-x-1 rtl:group-hover:-translate-x-1 transition-transform">
+                          <span className="hidden sm:inline">{isRTL ? 'خيارات' : 'Gérer'}</span>
+                          <ChevronLeft className={`w-4 h-4 ${isRTL ? '' : 'rotate-180'}`} />
                         </div>
                       </div>
                     ))}
@@ -407,32 +476,6 @@ const MySpacePage = () => {
             </motion.div>
           </div>
 
-          {/* Bouton Témoignage */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="mb-8"
-          >
-            <button
-              onClick={() => setShowTestimonialForm(true)}
-              className="w-full flex items-center gap-4 p-4 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl text-white hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg hover:shadow-xl"
-            >
-              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                <MessageCircle className="w-6 h-6" />
-              </div>
-              <div className="flex-1 text-left">
-                <h3 className="font-semibold text-lg">
-                  {isRTL ? 'شاركنا رأيك' : 'Partagez votre avis'}
-                </h3>
-                <p className="text-purple-100 text-sm">
-                  {isRTL ? 'ساعدنا على التحسين بتقييمك' : 'Aidez-nous à nous améliorer avec votre témoignage'}
-                </p>
-              </div>
-              <ChevronLeft className={`w-6 h-6 ${isRTL ? '' : 'rotate-180'}`} />
-            </button>
-          </motion.div>
-
         </div>
 
         {/* Centre de notifications */}
@@ -476,6 +519,295 @@ const MySpacePage = () => {
           }}
           userName={`${user?.first_name || ''} ${user?.last_name || ''}`}
         />
+
+        {/* Modal Actions Enfant (Desktop) */}
+        <AnimatePresence>
+          {showChildModal && selectedChildForModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+              onClick={() => setShowChildModal(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+                onClick={e => e.stopPropagation()}
+              >
+                {/* Header */}
+                <div className="p-5 border-b border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
+                        <Baby className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-gray-900 dark:text-white text-lg">
+                          {selectedChildForModal.first_name} {selectedChildForModal.last_name}
+                        </h3>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                          {selectedChildForModal.age_display || (isRTL ? 'طفل مسجل' : 'Enfant inscrit')}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setShowChildModal(false)}
+                      className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="p-4 space-y-2">
+                  {/* Fiche enfant */}
+                  <button
+                    onClick={() => {
+                      setShowChildModal(false);
+                      navigate(`/mon-espace/child/${selectedChildForModal.id}/details`);
+                    }}
+                    className="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-blue-50 dark:hover:bg-gray-700/50 transition-colors text-left rtl:text-right group"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                      <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900 dark:text-white">
+                        {isRTL ? 'بطاقة الطفل' : 'Fiche enfant'}
+                      </p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        {isRTL ? 'معلومات الطفل الكاملة' : 'Informations complètes de l\'enfant'}
+                      </p>
+                    </div>
+                    <ChevronRight className={`w-5 h-5 text-gray-400 ${isRTL ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {/* Données médicales */}
+                  <button
+                    onClick={() => {
+                      setShowChildModal(false);
+                      navigate(`/mon-espace/child/${selectedChildForModal.id}/medical`);
+                    }}
+                    className="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-red-50 dark:hover:bg-gray-700/50 transition-colors text-left rtl:text-right group"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                      <Stethoscope className="w-5 h-5 text-red-600 dark:text-red-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900 dark:text-white">
+                        {isRTL ? 'البيانات الطبية' : 'Données médicales'}
+                      </p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        {isRTL ? 'الحساسية، الأدوية، والملف الصحي' : 'Allergies, médicaments et historique de santé'}
+                      </p>
+                    </div>
+                    <ChevronRight className={`w-5 h-5 text-gray-400 ${isRTL ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {/* Contacts d'urgence */}
+                  <button
+                    onClick={() => {
+                      setShowChildModal(false);
+                      setShowEmergencyModal(true);
+                    }}
+                    className="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-orange-50 dark:hover:bg-gray-700/50 transition-colors text-left rtl:text-right group"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                      <Phone className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900 dark:text-white">
+                        {isRTL ? 'جهات الاتصال في حالات الطوارئ' : 'Contacts d\'urgence'}
+                      </p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        {isRTL ? 'عرض جهات الاتصال والأطباء' : 'Voir les contacts et médecins'}
+                      </p>
+                    </div>
+                    <ChevronRight className={`w-5 h-5 text-gray-400 ${isRTL ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {/* Rapports journaliers */}
+                  <button
+                    onClick={() => {
+                      setShowChildModal(false);
+                      navigate(`/mon-espace/daily-reports?child=${selectedChildForModal.id}`);
+                    }}
+                    className="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-teal-50 dark:hover:bg-gray-700/50 transition-colors text-left rtl:text-right group"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                      <ClipboardList className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900 dark:text-white">
+                        {isRTL ? 'التقارير اليومية' : 'Rapports journaliers'}
+                      </p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        {isRTL ? 'الوجبات، النوم، الحفاضات والملاحظات' : 'Repas, sommeil, activités et observations'}
+                      </p>
+                    </div>
+                    <ChevronRight className={`w-5 h-5 text-gray-400 ${isRTL ? 'rotate-180' : ''}`} />
+                  </button>
+                </div>
+
+                {/* Footer */}
+                <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+                  <button
+                    onClick={() => setShowChildModal(false)}
+                    className="w-full py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-xl font-medium transition-colors"
+                  >
+                    {isRTL ? 'إغلاق' : 'Fermer'}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Modal Contacts d'urgence (Desktop) */}
+        <AnimatePresence>
+          {showEmergencyModal && selectedChildForModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+              onClick={() => setShowEmergencyModal(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden max-h-[85vh] overflow-y-auto"
+                onClick={e => e.stopPropagation()}
+              >
+                {/* Header */}
+                <div className="p-5 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-lg text-gray-900 dark:text-white">
+                      {isRTL ? 'جهات الاتصال في حالات الطوارئ' : 'Contacts d\'urgence'}
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {selectedChildForModal.first_name} {selectedChildForModal.last_name}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowEmergencyModal(false)}
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Contenu */}
+                <div className="p-5 space-y-4">
+                  {/* Contact d'urgence principal */}
+                  {(selectedChildForModal.emergency_contact_name || selectedChildForModal.emergency_contact_phone) ? (
+                    <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-xl p-4">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/40 flex items-center justify-center">
+                          <Phone className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900 dark:text-white">
+                            {isRTL ? 'جهة الاتصال الرئيسية' : 'Contact principal'}
+                          </p>
+                        </div>
+                      </div>
+                      {selectedChildForModal.emergency_contact_name && (
+                        <p className="text-gray-700 dark:text-gray-300 text-sm mb-1">
+                          <span className="font-medium">{isRTL ? 'الاسم:' : 'Nom:'}</span> {selectedChildForModal.emergency_contact_name}
+                        </p>
+                      )}
+                      {selectedChildForModal.emergency_contact_phone && (
+                        <a
+                          href={`tel:${selectedChildForModal.emergency_contact_phone}`}
+                          className="inline-flex items-center gap-2 text-orange-600 dark:text-orange-400 font-semibold text-sm hover:underline mt-1"
+                        >
+                          <Phone className="w-4 h-4" />
+                          {selectedChildForModal.emergency_contact_phone}
+                        </a>
+                      )}
+                    </div>
+                  ) : null}
+
+                  {/* Médecin traitant */}
+                  {(selectedChildForModal.doctor_name || selectedChildForModal.doctor_phone) ? (
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
+                          <Stethoscope className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900 dark:text-white">
+                            {isRTL ? 'الطبيب المعالج' : 'Médecin traitant'}
+                          </p>
+                        </div>
+                      </div>
+                      {selectedChildForModal.doctor_name && (
+                        <p className="text-gray-700 dark:text-gray-300 text-sm mb-1">
+                          <span className="font-medium">{isRTL ? 'الاسم:' : 'Nom:'}</span> {selectedChildForModal.doctor_name}
+                        </p>
+                      )}
+                      {selectedChildForModal.doctor_phone && (
+                        <a
+                          href={`tel:${selectedChildForModal.doctor_phone}`}
+                          className="inline-flex items-center gap-2 text-blue-600 dark:text-blue-400 font-semibold text-sm hover:underline mt-1"
+                        >
+                          <Phone className="w-4 h-4" />
+                          {selectedChildForModal.doctor_phone}
+                        </a>
+                      )}
+                    </div>
+                  ) : null}
+
+                  {/* Aucun contact si les deux sont vides */}
+                  {!selectedChildForModal.emergency_contact_name && !selectedChildForModal.emergency_contact_phone && !selectedChildForModal.doctor_name && !selectedChildForModal.doctor_phone && (
+                    <div className="text-center py-6 bg-gray-50 dark:bg-gray-700/30 rounded-xl p-4">
+                      <Phone className="w-10 h-10 text-gray-300 dark:text-gray-500 mx-auto mb-2" />
+                      <p className="text-gray-500 dark:text-gray-400 text-sm mb-3">
+                        {isRTL ? 'لم يتم تسجيل جهات اتصال للطوارئ بعد.' : 'Aucun contact d\'urgence renseigné pour cet enfant.'}
+                      </p>
+                      <button
+                        onClick={() => {
+                          setShowEmergencyModal(false);
+                          navigate(`/mon-espace/child/${selectedChildForModal.id}/emergency-contacts`);
+                        }}
+                        className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-medium text-sm transition-colors"
+                      >
+                        {isRTL ? 'إضافة جهة اتصال' : 'Ajouter un contact'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer */}
+                <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex gap-2">
+                  {(selectedChildForModal.emergency_contact_name || selectedChildForModal.emergency_contact_phone || selectedChildForModal.doctor_name || selectedChildForModal.doctor_phone) && (
+                    <button
+                      onClick={() => {
+                        setShowEmergencyModal(false);
+                        navigate(`/mon-espace/child/${selectedChildForModal.id}/emergency-contacts`);
+                      }}
+                      className="flex-1 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-medium transition-colors text-sm"
+                    >
+                      {isRTL ? 'إدارة جهات الاتصال' : 'Gérer les contacts'}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setShowEmergencyModal(false)}
+                    className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-xl font-medium transition-colors text-sm"
+                  >
+                    {isRTL ? 'إغلاق' : 'Fermer'}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Menu latéral sur grand écran, bouton flottant sur petit écran */}
         <div className="hidden lg:block">

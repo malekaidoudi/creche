@@ -19,13 +19,13 @@ import {
     Edit,
     Save,
     X,
-    Loader2,
-    Trash2
+    Loader2
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useTheme } from '../../hooks/useTheme';
 import useIsMobile from '../../hooks/useIsMobile';
 import MobileNavigation from '../../components/mobile/MobileNavigation';
+import ToggleSwitch from '../../components/ui/ToggleSwitch';
 import api from '../../services/api';
 import API_CONFIG from '../../config/api';
 import toast from 'react-hot-toast';
@@ -53,7 +53,6 @@ const ChildDetailsPage = () => {
     const [editing, setEditing] = useState(false);
     const [saving, setSaving] = useState(false);
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
-    const [deletingPhoto, setDeletingPhoto] = useState(false);
     const [photoShared, setPhotoShared] = useState(false);
 
     const [medicalForm, setMedicalForm] = useState({
@@ -68,6 +67,23 @@ const ChildDetailsPage = () => {
         loadChildDetails();
     }, [id]);
 
+    const parseAllergiesToString = (val) => {
+        if (!val) return '';
+        if (typeof val === 'string') {
+            try {
+                const parsed = JSON.parse(val);
+                if (Array.isArray(parsed)) {
+                    return parsed.map(item => (typeof item === 'string' ? item : item?.name || item?.label || '')).filter(Boolean).join(', ');
+                }
+            } catch (_) {}
+            return val;
+        }
+        if (Array.isArray(val)) {
+            return val.map(item => (typeof item === 'string' ? item : item?.name || item?.label || '')).filter(Boolean).join(', ');
+        }
+        return '';
+    };
+
     const loadChildDetails = async () => {
         try {
             setLoading(true);
@@ -77,8 +93,8 @@ const ChildDetailsPage = () => {
                 setChild(childData);
                 setPhotoShared(childData.photo_shared_with_staff || false);
                 setMedicalForm({
-                    allergies: childData.allergies || '',
-                    medical_notes: childData.medical_notes || '',
+                    allergies: parseAllergiesToString(childData.allergies),
+                    medical_notes: childData.medical_notes || childData.medical_info || '',
                     doctor_name: childData.doctor_name || '',
                     doctor_phone: childData.doctor_phone || ''
                 });
@@ -172,24 +188,6 @@ const ChildDetailsPage = () => {
         }
     };
 
-    const handleDeletePhoto = async () => {
-        if (!window.confirm(isRTL ? 'هل تريد حذف صورة الطفل؟' : 'Voulez-vous supprimer la photo de l\'enfant ?')) {
-            return;
-        }
-
-        setDeletingPhoto(true);
-        try {
-            await api.delete(`/api/children/${id}/photo`);
-            setChild({ ...child, photo_url: null });
-            toast.success(isRTL ? 'تم حذف الصورة' : 'Photo supprimée');
-        } catch (err) {
-            console.error('Erreur suppression photo:', err);
-            toast.error(isRTL ? 'خطأ في حذف الصورة' : 'Erreur lors de la suppression');
-        } finally {
-            setDeletingPhoto(false);
-        }
-    };
-
     const togglePhotoSharing = async () => {
         try {
             const newStatus = !photoShared;
@@ -207,8 +205,12 @@ const ChildDetailsPage = () => {
     const handleSaveMedical = async () => {
         setSaving(true);
         try {
-            await api.put(`/api/children/${id}`, medicalForm);
-            setChild({ ...child, ...medicalForm });
+            const payload = {
+                ...medicalForm,
+                medical_info: medicalForm.medical_notes
+            };
+            await api.put(`/api/children/${id}`, payload);
+            setChild(prev => ({ ...prev, ...payload }));
             setEditing(false);
             toast.success(isRTL ? 'تم حفظ المعلومات الطبية' : 'Informations médicales sauvegardées');
         } catch (err) {
@@ -237,7 +239,7 @@ const ChildDetailsPage = () => {
                     </h2>
                     <button
                         onClick={() => navigate('/mon-espace')}
-                        className="mt-4 px-6 py-2 bg-primary-600 text-white rounded-lg"
+                        className="mt-4 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
                     >
                         {isRTL ? 'العودة' : 'Retour'}
                     </button>
@@ -253,108 +255,130 @@ const ChildDetailsPage = () => {
     const enrollmentDuration = getEnrollmentDuration();
 
     return (
-        <div className={`min-h-screen bg-gray-900 ${isMobile ? 'pb-24' : ''}`}>
+        <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors ${isMobile ? 'pb-24' : ''}`}>
             {/* Header */}
-            <div className="sticky top-0 z-10 bg-gray-900 border-b border-gray-800">
-                <div className="flex items-center justify-between px-4 py-4">
+            <div className="sticky top-0 z-10 bg-white/95 dark:bg-gray-900/95 backdrop-blur border-b border-gray-200 dark:border-gray-800 shadow-sm transition-colors">
+                <div className="flex items-center justify-between px-4 py-3.5 max-w-2xl mx-auto">
                     <button
                         onClick={() => navigate('/mon-espace')}
-                        className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors text-gray-700 dark:text-gray-200"
+                        title={isRTL ? 'رجوع' : 'Retour'}
                     >
-                        <ArrowLeft className="w-6 h-6 text-white" />
+                        <ArrowLeft className={`w-5 h-5 ${isRTL ? 'rotate-180' : ''}`} />
                     </button>
-                    <h1 className="text-lg font-semibold text-white">
+                    <h1 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
                         {isRTL ? 'بطاقة الطفل' : 'Fiche enfant'}
                     </h1>
-                    <div className="w-10" />
+                    <div className="w-9" />
                 </div>
             </div>
 
-            <div className="max-w-2xl mx-auto">
+            <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
                 {/* Section Profil avec Photo */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-gray-800 rounded-b-3xl px-6 py-8 text-center"
+                    className="bg-white dark:bg-gray-800 rounded-3xl p-6 sm:p-8 text-center shadow-sm border border-gray-200/80 dark:border-gray-700/60 transition-colors"
                 >
-                    {/* Photo avec bouton caméra */}
-                    <div className="relative inline-block mb-4">
+                    {/* Photo avec bouton caméra moderne */}
+                    <div className="flex flex-col items-center mb-4">
                         <input
                             type="file"
                             ref={fileInputRef}
                             onChange={handlePhotoUpload}
-                            accept="image/*"
+                            accept="image/png,image/jpeg,image/webp,image/jpg"
                             className="hidden"
                         />
-                        <button
-                            onClick={() => fileInputRef.current?.click()}
-                            disabled={uploadingPhoto}
-                            className="relative"
-                        >
-                            {photoUrl ? (
-                                <img
-                                    src={photoUrl}
-                                    alt={child.first_name}
-                                    className="w-28 h-28 rounded-full object-cover border-4 border-gray-700"
-                                />
-                            ) : (
-                                <div className="w-28 h-28 rounded-full bg-primary-600 flex items-center justify-center border-4 border-gray-700">
-                                    <span className="text-3xl font-bold text-white">{initials}</span>
-                                </div>
-                            )}
-                            <div className="absolute bottom-0 right-0 w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center border-2 border-gray-800">
-                                {uploadingPhoto ? (
-                                    <Loader2 className="w-4 h-4 text-white animate-spin" />
-                                ) : (
-                                    <Camera className="w-4 h-4 text-white" />
-                                )}
-                            </div>
-                        </button>
-                        {photoUrl && (
-                            <button
-                                onClick={handleDeletePhoto}
-                                disabled={deletingPhoto}
-                                title={isRTL ? 'حذف الصورة' : 'Supprimer la photo'}
-                                className="absolute bottom-0 left-0 w-8 h-8 bg-red-600 hover:bg-red-700 rounded-full flex items-center justify-center border-2 border-gray-800 transition-colors"
+                        <div className="relative inline-block group">
+                            {/* Cercle Avatar principal */}
+                            <div
+                                onClick={() => fileInputRef.current?.click()}
+                                className="w-28 h-28 sm:w-32 sm:h-32 rounded-full overflow-hidden bg-gradient-to-br from-gray-100 via-gray-50 to-gray-200 dark:from-gray-700 dark:via-gray-800 dark:to-gray-900 border-4 border-white dark:border-gray-800 shadow-md ring-2 ring-primary-100 dark:ring-primary-900/40 flex items-center justify-center cursor-pointer transition-all duration-300 group-hover:shadow-xl group-hover:ring-primary-400 dark:group-hover:ring-primary-500 relative"
+                                title={isRTL ? 'انقر لتغيير الصورة' : 'Cliquer pour changer la photo'}
                             >
-                                {deletingPhoto ? (
-                                    <Loader2 className="w-4 h-4 text-white animate-spin" />
+                                {photoUrl ? (
+                                    <img
+                                        src={photoUrl}
+                                        alt={child.first_name}
+                                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                    />
                                 ) : (
-                                    <Trash2 className="w-4 h-4 text-white" />
+                                    <div className="w-full h-full bg-gradient-to-tr from-primary-600 to-indigo-600 flex items-center justify-center">
+                                        <span className="text-3xl font-bold text-white">{initials}</span>
+                                    </div>
+                                )}
+
+                                {/* Overlay au survol */}
+                                <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col items-center justify-center text-white cursor-pointer">
+                                    <Camera className="w-6 h-6 sm:w-7 sm:h-7 mb-0.5 drop-shadow" strokeWidth={2.2} />
+                                    <span className="text-[10px] font-semibold tracking-wider uppercase drop-shadow">
+                                        {isRTL ? 'تغيير' : 'Changer'}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Badge Icône Caméra moderne flottant en bas */}
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    fileInputRef.current?.click();
+                                }}
+                                disabled={uploadingPhoto}
+                                aria-label={isRTL ? 'تغيير الصورة' : 'Modifier la photo'}
+                                title={isRTL ? 'تغيير الصورة' : 'Modifier la photo'}
+                                className={`absolute bottom-0 ${isRTL ? '-left-1' : '-right-1'} z-10 w-9 h-9 sm:w-10 sm:h-10 rounded-full aspect-square flex-shrink-0 bg-gradient-to-tr from-primary-600 via-primary-500 to-indigo-600 hover:from-primary-700 hover:to-indigo-700 text-white flex items-center justify-center shadow-lg ring-3 ring-white dark:ring-gray-800 transition-all duration-200 hover:scale-110 active:scale-95 cursor-pointer disabled:opacity-50`}
+                            >
+                                {uploadingPhoto ? (
+                                    <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin text-white" />
+                                ) : (
+                                    <Camera className="w-4 h-4 sm:w-5 sm:h-5 text-white drop-shadow-sm" strokeWidth={2.2} />
                                 )}
                             </button>
-                        )}
+                        </div>
+
+                        {/* Bouton d'action et libellés sous la photo */}
+                        <div className="text-center mt-3 space-y-1">
+                            <div>
+                                <button
+                                    type="button"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    disabled={uploadingPhoto}
+                                    className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-medium text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/30 hover:bg-primary-100 dark:hover:bg-primary-900/60 border border-primary-200 dark:border-primary-800/80 shadow-xs transition-all duration-150 active:scale-95 cursor-pointer disabled:opacity-50"
+                                >
+                                    <Camera className="w-3.5 h-3.5 text-primary-600 dark:text-primary-400" strokeWidth={2.2} />
+                                    <span>{isRTL ? 'تغيير الصورة' : 'Changer la photo'}</span>
+                                </button>
+                            </div>
+                            <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                                {isRTL ? 'JPG, PNG أو WEBP حتى 5MB' : 'JPG, PNG ou WEBP jusqu\'à 5MB'}
+                            </p>
+                        </div>
                     </div>
 
-                    <p className="text-gray-400 text-sm mb-3">
-                        {isRTL ? 'اضغط لتغيير الصورة' : 'Appuyez pour modifier la photo'}
-                    </p>
-
                     {/* Toggle Partager la photo */}
-                    <div className="flex items-center justify-center gap-3 mb-4">
-                        <span className="text-gray-300 text-sm">
-                            {isRTL ? 'مشاركة الصورة' : 'Partager la photo'}
+                    <div className="inline-flex items-center gap-3 mb-4 px-4 py-2 bg-gray-50 dark:bg-gray-700/50 rounded-full border border-gray-200/60 dark:border-gray-600/60">
+                        <span className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-medium">
+                            {isRTL ? 'مشاركة الصورة مع الفريق' : 'Partager la photo avec l\'équipe'}
                         </span>
-                        <button
-                            onClick={togglePhotoSharing}
-                            className={`relative w-12 h-6 rounded-full transition-colors ${photoShared ? 'bg-primary-600' : 'bg-gray-600'
-                                }`}
-                        >
-                            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${photoShared ? 'left-7' : 'left-1'
-                                }`} />
-                        </button>
+                        <ToggleSwitch
+                            checked={photoShared}
+                            onChange={togglePhotoSharing}
+                            size="md"
+                            ariaLabel={isRTL ? 'مشاركة الصورة مع الفريق' : 'Partager la photo avec l\'équipe'}
+                        />
                     </div>
 
                     {/* Nom */}
-                    <h2 className="text-2xl font-bold text-white mb-2">
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                         {child.first_name} {child.last_name}
                     </h2>
 
                     {/* Badge âge */}
                     {age && (
-                        <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600/20 rounded-full">
-                            <Calendar className="w-4 h-4 text-primary-400" />
-                            <span className="text-primary-300 font-medium">{age}</span>
+                        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-full text-sm font-medium">
+                            <Calendar className="w-4 h-4" />
+                            <span>{age}</span>
                         </div>
                     )}
                 </motion.div>
@@ -364,51 +388,50 @@ const ChildDetailsPage = () => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
-                    className="px-4 mt-6"
                 >
-                    <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-                        {isRTL ? 'المعلومات' : 'INFORMATIONS'}
+                    <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2.5 px-1">
+                        {isRTL ? 'المعلومات العامة' : 'Informations Générales'}
                     </h3>
-                    <div className="bg-gray-800 rounded-2xl overflow-hidden">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/80 dark:border-gray-700/60 shadow-sm overflow-hidden transition-colors">
                         {/* Date de naissance */}
                         <div className="flex items-center gap-4 p-4">
-                            <div className="w-10 h-10 rounded-xl bg-primary-600/20 flex items-center justify-center">
-                                <Calendar className="w-5 h-5 text-primary-400" />
+                            <div className="w-10 h-10 rounded-xl bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 flex items-center justify-center shrink-0">
+                                <Calendar className="w-5 h-5" />
                             </div>
-                            <div className="flex-1">
-                                <p className="text-gray-400 text-sm">{isRTL ? 'تاريخ الميلاد' : 'Date de naissance'}</p>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm">{isRTL ? 'تاريخ الميلاد' : 'Date de naissance'}</p>
+                                <p className="text-gray-900 dark:text-white font-semibold mt-0.5">
+                                    {formatDate(child.birth_date || child.date_of_birth)}
+                                </p>
                             </div>
-                            <p className="text-white font-medium">
-                                {formatDate(child.birth_date || child.date_of_birth)}
-                            </p>
                         </div>
 
-                        <div className="h-px bg-gray-700 mx-4" />
+                        <div className="h-px bg-gray-100 dark:bg-gray-700/60 mx-4" />
 
                         {/* Genre */}
                         <div className="flex items-center gap-4 p-4">
-                            <div className="w-10 h-10 rounded-xl bg-pink-600/20 flex items-center justify-center">
-                                <User className="w-5 h-5 text-pink-400" />
+                            <div className="w-10 h-10 rounded-xl bg-pink-50 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400 flex items-center justify-center shrink-0">
+                                <User className="w-5 h-5" />
                             </div>
-                            <div className="flex-1">
-                                <p className="text-gray-400 text-sm">{isRTL ? 'الجنس' : 'Genre'}</p>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm">{isRTL ? 'الجنس' : 'Genre'}</p>
+                                <p className="text-gray-900 dark:text-white font-semibold mt-0.5">{getGender()}</p>
                             </div>
-                            <p className="text-white font-medium">{getGender()}</p>
                         </div>
 
-                        <div className="h-px bg-gray-700 mx-4" />
+                        <div className="h-px bg-gray-100 dark:bg-gray-700/60 mx-4" />
 
                         {/* Inscrit depuis */}
                         <div className="flex items-center gap-4 p-4">
-                            <div className="w-10 h-10 rounded-xl bg-green-600/20 flex items-center justify-center">
-                                <Clock className="w-5 h-5 text-green-400" />
+                            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                                <Clock className="w-5 h-5" />
                             </div>
-                            <div className="flex-1">
-                                <p className="text-gray-400 text-sm">{isRTL ? 'مسجل منذ' : 'Inscrit depuis'}</p>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm">{isRTL ? 'مسجل منذ' : 'Inscrit depuis'}</p>
+                                <p className="text-gray-900 dark:text-white font-semibold mt-0.5">
+                                    {enrollmentDuration || (isRTL ? 'غير محدد' : 'Non renseigné')}
+                                </p>
                             </div>
-                            <p className="text-white font-medium">
-                                {enrollmentDuration || (isRTL ? 'غير محدد' : 'Non renseigné')}
-                            </p>
                         </div>
                     </div>
                 </motion.div>
@@ -418,16 +441,15 @@ const ChildDetailsPage = () => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
-                    className="px-4 mt-6 pb-8"
                 >
-                    <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                            {isRTL ? 'المعلومات الطبية' : 'INFORMATIONS MÉDICALES'}
+                    <div className="flex items-center justify-between mb-2.5 px-1">
+                        <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            {isRTL ? 'المعلومات الطبية' : 'Informations Médicales'}
                         </h3>
                         <button
                             onClick={() => editing ? handleSaveMedical() : setEditing(true)}
                             disabled={saving}
-                            className="flex items-center gap-1 text-primary-400 hover:text-primary-300 text-sm font-medium"
+                            className="flex items-center gap-1.5 text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 text-xs sm:text-sm font-semibold px-3 py-1.5 rounded-lg bg-primary-50 dark:bg-primary-900/30 transition-colors"
                         >
                             {saving ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -445,12 +467,12 @@ const ChildDetailsPage = () => {
                         </button>
                     </div>
 
-                    <div className="bg-gray-800 rounded-2xl overflow-hidden">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/80 dark:border-gray-700/60 shadow-sm overflow-hidden transition-colors">
                         {editing ? (
-                            <div className="p-4 space-y-4">
+                            <div className="p-4 sm:p-5 space-y-4">
                                 {/* Allergies */}
                                 <div>
-                                    <label className="block text-gray-400 text-sm mb-2">
+                                    <label className="block text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-medium mb-1.5">
                                         {isRTL ? 'الحساسية' : 'Allergies'}
                                     </label>
                                     <input
@@ -458,13 +480,13 @@ const ChildDetailsPage = () => {
                                         value={medicalForm.allergies}
                                         onChange={(e) => setMedicalForm({ ...medicalForm, allergies: e.target.value })}
                                         placeholder={isRTL ? 'لا توجد حساسية معروفة' : 'Aucune allergie connue'}
-                                        className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-primary-500"
+                                        className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700/60 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white dark:focus:bg-gray-700 transition-colors text-sm"
                                     />
                                 </div>
 
                                 {/* Notes médicales */}
                                 <div>
-                                    <label className="block text-gray-400 text-sm mb-2">
+                                    <label className="block text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-medium mb-1.5">
                                         {isRTL ? 'ملاحظات طبية' : 'Notes médicales'}
                                     </label>
                                     <textarea
@@ -472,13 +494,13 @@ const ChildDetailsPage = () => {
                                         onChange={(e) => setMedicalForm({ ...medicalForm, medical_notes: e.target.value })}
                                         placeholder={isRTL ? 'معلومات طبية أخرى...' : 'Autres informations médicales...'}
                                         rows={3}
-                                        className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-primary-500 resize-none"
+                                        className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700/60 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white dark:focus:bg-gray-700 transition-colors text-sm resize-none"
                                     />
                                 </div>
 
                                 {/* Médecin */}
                                 <div>
-                                    <label className="block text-gray-400 text-sm mb-2">
+                                    <label className="block text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-medium mb-1.5">
                                         {isRTL ? 'اسم الطبيب' : 'Nom du médecin'}
                                     </label>
                                     <input
@@ -486,13 +508,13 @@ const ChildDetailsPage = () => {
                                         value={medicalForm.doctor_name}
                                         onChange={(e) => setMedicalForm({ ...medicalForm, doctor_name: e.target.value })}
                                         placeholder="Dr. Martin"
-                                        className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-primary-500"
+                                        className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700/60 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white dark:focus:bg-gray-700 transition-colors text-sm"
                                     />
                                 </div>
 
                                 {/* Téléphone médecin */}
                                 <div>
-                                    <label className="block text-gray-400 text-sm mb-2">
+                                    <label className="block text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-medium mb-1.5">
                                         {isRTL ? 'هاتف الطبيب' : 'Téléphone du médecin'}
                                     </label>
                                     <input
@@ -500,7 +522,7 @@ const ChildDetailsPage = () => {
                                         value={medicalForm.doctor_phone}
                                         onChange={(e) => setMedicalForm({ ...medicalForm, doctor_phone: e.target.value })}
                                         placeholder="+216 XX XXX XXX"
-                                        className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-primary-500"
+                                        className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700/60 border border-gray-300 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white dark:focus:bg-gray-700 transition-colors text-sm"
                                     />
                                 </div>
 
@@ -510,12 +532,12 @@ const ChildDetailsPage = () => {
                                         setEditing(false);
                                         setMedicalForm({
                                             allergies: child.allergies || '',
-                                            medical_notes: child.medical_notes || '',
+                                            medical_notes: child.medical_notes || child.medical_info || '',
                                             doctor_name: child.doctor_name || '',
                                             doctor_phone: child.doctor_phone || ''
                                         });
                                     }}
-                                    className="w-full py-3 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-xl font-medium transition-colors"
+                                    className="w-full py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-xl font-medium transition-colors text-sm"
                                 >
                                     {isRTL ? 'إلغاء' : 'Annuler'}
                                 </button>
@@ -523,52 +545,52 @@ const ChildDetailsPage = () => {
                         ) : (
                             <>
                                 {/* Allergies */}
-                                <div className="flex items-start gap-4 p-4">
-                                    <div className="w-10 h-10 rounded-xl bg-red-600/20 flex items-center justify-center flex-shrink-0">
-                                        <AlertTriangle className="w-5 h-5 text-red-400" />
+                                <div className="flex items-start gap-4 p-4 sm:p-5">
+                                    <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
+                                        <AlertTriangle className="w-5 h-5" />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-white font-medium">{isRTL ? 'الحساسية' : 'Allergies'}</p>
-                                        <p className="text-gray-400 text-sm mt-1">
-                                            {child.allergies || (isRTL ? 'لا توجد حساسية معروفة' : 'Aucune allergie connue')}
+                                        <p className="text-gray-900 dark:text-white font-semibold text-sm">{isRTL ? 'الحساسية' : 'Allergies'}</p>
+                                        <p className="text-gray-600 dark:text-gray-300 text-sm mt-1">
+                                            {parseAllergiesToString(child.allergies) || (isRTL ? 'لا توجد حساسية معروفة' : 'Aucune allergie connue')}
                                         </p>
                                     </div>
                                 </div>
 
-                                <div className="h-px bg-gray-700 mx-4" />
+                                <div className="h-px bg-gray-100 dark:bg-gray-700/60 mx-4" />
 
                                 {/* Notes médicales */}
-                                <div className="flex items-start gap-4 p-4">
-                                    <div className="w-10 h-10 rounded-xl bg-yellow-600/20 flex items-center justify-center flex-shrink-0">
-                                        <FileText className="w-5 h-5 text-yellow-400" />
+                                <div className="flex items-start gap-4 p-4 sm:p-5">
+                                    <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                                        <FileText className="w-5 h-5" />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-white font-medium">{isRTL ? 'ملاحظات طبية' : 'Notes médicales'}</p>
-                                        <p className="text-gray-400 text-sm mt-1">
-                                            {child.medical_notes || (isRTL ? 'لا توجد ملاحظات' : 'Aucune note')}
+                                        <p className="text-gray-900 dark:text-white font-semibold text-sm">{isRTL ? 'ملاحظات طبية' : 'Notes médicales'}</p>
+                                        <p className="text-gray-600 dark:text-gray-300 text-sm mt-1 whitespace-pre-line">
+                                            {child.medical_notes || child.medical_info || (isRTL ? 'لا توجد ملاحظات' : 'Aucune note')}
                                         </p>
                                     </div>
                                 </div>
 
-                                <div className="h-px bg-gray-700 mx-4" />
+                                <div className="h-px bg-gray-100 dark:bg-gray-700/60 mx-4" />
 
                                 {/* Médecin traitant */}
-                                <div className="flex items-start gap-4 p-4">
-                                    <div className="w-10 h-10 rounded-xl bg-blue-600/20 flex items-center justify-center flex-shrink-0">
-                                        <Stethoscope className="w-5 h-5 text-blue-400" />
+                                <div className="flex items-start gap-4 p-4 sm:p-5">
+                                    <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                                        <Stethoscope className="w-5 h-5" />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-white font-medium">{isRTL ? 'الطبيب المعالج' : 'Médecin traitant'}</p>
-                                        <p className="text-gray-400 text-sm mt-1">
+                                        <p className="text-gray-900 dark:text-white font-semibold text-sm">{isRTL ? 'الطبيب المعالج' : 'Médecin traitant'}</p>
+                                        <p className="text-gray-600 dark:text-gray-300 text-sm mt-1">
                                             {child.doctor_name || (isRTL ? 'غير محدد' : 'Non renseigné')}
                                         </p>
                                         {child.doctor_phone && (
                                             <a
                                                 href={`tel:${child.doctor_phone}`}
-                                                className="flex items-center gap-1 text-primary-400 text-sm mt-1"
+                                                className="inline-flex items-center gap-1.5 text-primary-600 dark:text-primary-400 font-semibold text-sm mt-1.5 hover:underline"
                                             >
-                                                <Phone className="w-3 h-3" />
-                                                {child.doctor_phone}
+                                                <Phone className="w-3.5 h-3.5" />
+                                                <span>{child.doctor_phone}</span>
                                             </a>
                                         )}
                                     </div>

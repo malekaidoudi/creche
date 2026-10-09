@@ -29,7 +29,8 @@ import {
     Bell,
     Clock,
     CalendarX,
-    Image
+    Image,
+    Pill
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useAuth } from '../../contexts/AuthContext';
@@ -137,7 +138,8 @@ const MobileNavigation = () => {
             icon: Calendar,
             label: isRTL ? 'التخطيط' : 'Planning',
             path: '/dashboard/planning',
-            roles: ['admin', 'staff']
+            roles: ['admin', 'staff'],
+            feature: 'STAFF_PLANNING_VIEW'
         },
         {
             icon: FileText,
@@ -155,7 +157,15 @@ const MobileNavigation = () => {
             icon: Clock,
             label: isRTL ? 'التقارير اليومية' : 'Rapports journaliers',
             path: '/dashboard/daily-reports',
-            roles: ['admin', 'staff']
+            roles: ['admin', 'staff'],
+            feature: 'DAILY_REPORTS_MANAGE'
+        },
+        {
+            icon: Pill,
+            label: isRTL ? 'العلاجات الطبية' : 'Traitements',
+            path: '/dashboard/treatments',
+            roles: ['admin', 'staff'],
+            feature: 'TREATMENTS_MANAGE'
         },
         {
             icon: BarChart3,

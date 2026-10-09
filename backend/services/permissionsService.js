@@ -17,53 +17,141 @@ const db = require('../config/db_postgres');
 // `isCommon: true`  => accordée automatiquement à tout le staff par défaut
 // `isCommon: false` => désactivée par défaut, à activer manuellement par l'admin
 const PERMISSIONS_CATALOG = [
-  // Santé des enfants
-  { code: 'medical.view', module: 'medical', isCommon: true,
-    label: { fr: 'Voir les informations médicales (allergies, maladies)', ar: 'رؤية المعلومات الطبية (الحساسية، الأمراض)' } },
-  { code: 'medical.treatments.manage', module: 'medical', isCommon: true,
-    label: { fr: 'Voir et administrer les traitements prescrits', ar: 'رؤية وإعطاء الأدوية الموصوفة' } },
-  { code: 'children.documents.view', module: 'medical', isCommon: false,
-    label: { fr: 'Voir les documents administratifs de l\'enfant', ar: 'رؤية الوثائق الإدارية للطفل' } },
+  // 1. Santé & Soins médicaux (module: 'medical')
+  {
+    code: 'medical.view',
+    module: 'medical',
+    isCommon: true,
+    label: {
+      fr: 'Consulter le dossier médical (allergies, médecin, groupe sanguin)',
+      ar: 'الاطلاع على الملف الطبي (الحساسية، الطبيب، فصيلة الدم)'
+    }
+  },
+  {
+    code: 'medical.treatments.manage',
+    module: 'medical',
+    isCommon: false,
+    label: {
+      fr: 'Administrer les médicaments & traitements prescrits',
+      ar: 'إعطاء الأدوية والعلاجات الموصوفة'
+    }
+  },
 
-  // Communication
-  { code: 'messages.parents', module: 'messaging', isCommon: false,
-    label: { fr: 'Envoyer/recevoir des messages avec les parents', ar: 'إرسال واستقبال الرسائل مع الوالدين' } },
-  { code: 'messages.direction', module: 'messaging', isCommon: true,
-    label: { fr: 'Envoyer/recevoir des messages avec la direction', ar: 'إرسال واستقبال الرسائل مع الإدارة' } },
-  { code: 'announcements.view', module: 'messaging', isCommon: true,
-    label: { fr: 'Voir les annonces officielles', ar: 'رؤية الإعلانات الرسمية' } },
+  // 2. Suivi & Vie quotidienne de l'enfant (module: 'daily')
+  {
+    code: 'attendance.manage',
+    module: 'daily',
+    isCommon: true,
+    label: {
+      fr: 'Enregistrer les arrivées & départs (pointage des présences)',
+      ar: 'تسجيل الحضور والغياب (الوصول/المغادرة)'
+    }
+  },
+  {
+    code: 'daily_reports.manage',
+    module: 'daily',
+    isCommon: true,
+    label: {
+      fr: 'Rédiger les bilans journaliers & gérer les affaires/fournitures de l\'enfant (repas, siestes, couches, changes)',
+      ar: 'تعبئة التقرير اليومي ومتابعة لوازم الطفل (الوجبات، القيلولة، الحفاظات، الملابس)'
+    }
+  },
+  {
+    code: 'activities.photos.publish',
+    module: 'daily',
+    isCommon: true,
+    label: {
+      fr: 'Publier les activités & photos pédagogiques',
+      ar: 'نشر الأنشطة والصور التربوية'
+    }
+  },
+  {
+    code: 'children.photos.manage',
+    module: 'daily',
+    isCommon: false,
+    label: {
+      fr: 'Mettre à jour la photo de profil de l\'enfant',
+      ar: 'تحديث صورة الملف الشخصي للطفل'
+    }
+  },
 
-  // Suivi quotidien
-  { code: 'attendance.manage', module: 'daily', isCommon: true,
-    label: { fr: 'Enregistrer les présences (arrivée/départ)', ar: 'تسجيل الحضور (الوصول/المغادرة)' } },
-  { code: 'daily_reports.manage', module: 'daily', isCommon: true,
-    label: { fr: 'Remplir le rapport journalier', ar: 'تعبئة التقرير اليومي' } },
-  { code: 'children.photos.view', module: 'daily', isCommon: true,
-    label: { fr: 'Voir les photos des enfants', ar: 'رؤية صور الأطفال' } },
-  { code: 'children.photos.manage', module: 'daily', isCommon: false,
-    label: { fr: 'Ajouter/supprimer la photo de profil d\'un enfant', ar: 'إضافة/حذف صورة الملف الشخصي للطفل' } },
-  { code: 'activities.photos.publish', module: 'daily', isCommon: true,
-    label: { fr: 'Publier des photos / activités', ar: 'نشر الصور / الأنشطة' } },
+  // 3. Familles & Données confidentielles (module: 'families')
+  {
+    code: 'parents.phone.view',
+    module: 'families',
+    isCommon: false,
+    label: {
+      fr: 'Voir les numéros de téléphone (parents & contact d\'urgence)',
+      ar: 'رؤية أرقام هواتف الأولياء وجهات اتصال الطوارئ'
+    }
+  },
+  {
+    code: 'parents.email.view',
+    module: 'families',
+    isCommon: false,
+    label: {
+      fr: 'Voir les adresses email des parents',
+      ar: 'رؤية البريد الإلكتروني للأولياء'
+    }
+  },
+  {
+    code: 'children.documents.view',
+    module: 'families',
+    isCommon: false,
+    label: {
+      fr: 'Consulter les documents administratifs de l\'enfant (actes, justificatifs)',
+      ar: 'الاطلاع على الوثائق الإدارية للطفل'
+    }
+  },
 
-  // Organisation du travail
-  { code: 'absences.manage', module: 'organisation', isCommon: false,
-    label: { fr: 'Voir et traiter les demandes d\'absence', ar: 'رؤية ومعالجة طلبات الغياب' } },
-  { code: 'appointments.manage', module: 'organisation', isCommon: false,
-    label: { fr: 'Voir et gérer les rendez-vous', ar: 'رؤية وتنظيم المواعيد' } },
-  { code: 'staff.planning.view', module: 'organisation', isCommon: true,
-    label: { fr: 'Voir le planning / la répartition de l\'équipe', ar: 'رؤية الجدول الزمني / توزيع الفريق' } },
-  { code: 'supplies.manage', module: 'organisation', isCommon: true,
-    label: { fr: 'Gérer le stock de fournitures', ar: 'إدارة مخزون اللوازم' } },
-  { code: 'tasks.manage', module: 'organisation', isCommon: false,
-    label: { fr: 'Voir et gérer les tâches internes de l\'équipe', ar: 'رؤية وإدارة المهام الداخلية للفريق' } },
+  // 4. Communication (module: 'messaging')
+  {
+    code: 'messages.parents',
+    module: 'messaging',
+    isCommon: false,
+    label: {
+      fr: 'Échanger des messages avec les parents',
+      ar: 'تبادل الرسائل والتواصل مع الأولياء'
+    }
+  },
+  {
+    code: 'announcements.view',
+    module: 'messaging',
+    isCommon: true,
+    label: {
+      fr: 'Consulter les annonces internes de la crèche',
+      ar: 'الاطلاع على الإعلانات الرسمية للحضانة'
+    }
+  },
 
-  // Informations sur les familles (les plus sensibles)
-  { code: 'parents.phone.view', module: 'families', isCommon: false,
-    label: { fr: 'Voir le numéro de téléphone des parents', ar: 'رؤية رقم هاتف الوالدين' } },
-  { code: 'parents.email.view', module: 'families', isCommon: false,
-    label: { fr: 'Voir l\'adresse email des parents', ar: 'رؤية البريد الإلكتروني للوالدين' } },
-  { code: 'payments.alerts.view', module: 'families', isCommon: false,
-    label: { fr: 'Voir si une famille n\'a pas payé', ar: 'معرفة ما إذا كانت الأسرة لم تدفع' } }
+  // 5. Organisation & Planning interne (module: 'organisation')
+  {
+    code: 'staff.planning.view',
+    module: 'organisation',
+    isCommon: true,
+    label: {
+      fr: 'Consulter le planning et la répartition de l\'équipe',
+      ar: 'الاطلاع على جدول عمل الفريق'
+    }
+  },
+  {
+    code: 'absences.manage',
+    module: 'organisation',
+    isCommon: false,
+    label: {
+      fr: 'Traiter les signalements d\'absence des enfants',
+      ar: 'معالجة إشعارات وطلبات الغياب للأطفال'
+    }
+  },
+  {
+    code: 'tasks.manage',
+    module: 'organisation',
+    isCommon: false,
+    label: {
+      fr: 'Gérer les tâches internes de l\'équipe',
+      ar: 'متابعة وإدارة مهام الفريق الداخلية'
+    }
+  }
 ];
 
 let schemaReady = false;
@@ -116,6 +204,23 @@ const ensureSchema = async () => {
       [perm.code, perm.module, perm.label.fr, perm.label.ar, perm.isCommon]
     );
   }
+
+  // Migration / Fusion idempotente : transférer tout droit existant de 'supplies.manage' vers 'daily_reports.manage'
+  await db.query(`
+    INSERT INTO user_permissions (user_id, permission_id)
+    SELECT up.user_id, p_target.id
+    FROM user_permissions up
+    JOIN permissions p_source ON p_source.id = up.permission_id AND p_source.code = 'supplies.manage'
+    JOIN permissions p_target ON p_target.code = 'daily_reports.manage'
+    ON CONFLICT (user_id, permission_id) DO NOTHING
+  `);
+
+  // Purger les anciennes permissions retirées du catalogue
+  const validCodes = PERMISSIONS_CATALOG.map((p) => p.code);
+  await db.query(
+    `DELETE FROM permissions WHERE code NOT IN (${validCodes.map((_, i) => '$' + (i + 1)).join(', ')})`,
+    validCodes
+  );
 
   // Backfill : accorder les permissions communes à tout le staff qui ne les a pas encore
   await db.query(`
@@ -211,6 +316,10 @@ const getUserPermissionCodes = async (userId, role = null) => {
  */
 const userHasPermission = async (userId, code, role = null) => {
   const codes = await getUserPermissionCodes(userId, role);
+  // Alias de rétrocompatibilité : supplies.manage est désormais unifié avec daily_reports.manage
+  if (code === 'supplies.manage') {
+    return codes.has('daily_reports.manage') || codes.has('supplies.manage');
+  }
   return codes.has(code);
 };
 
@@ -244,11 +353,15 @@ const setUserPermissions = async (userId, codes, grantedBy) => {
 
     await client.query('DELETE FROM user_permissions WHERE user_id = $1', [userId]);
 
-    if (Array.isArray(codes) && codes.length > 0) {
+    const normalizedCodes = Array.isArray(codes)
+      ? Array.from(new Set(codes.map((c) => (c === 'supplies.manage' ? 'daily_reports.manage' : c))))
+      : [];
+
+    if (normalizedCodes.length > 0) {
       await client.query(`
         INSERT INTO user_permissions (user_id, permission_id, granted_by)
         SELECT $1, p.id, $3 FROM permissions p WHERE p.code = ANY($2::text[])
-      `, [userId, codes, grantedBy || null]);
+      `, [userId, normalizedCodes, grantedBy || null]);
     }
 
     await client.query('COMMIT');

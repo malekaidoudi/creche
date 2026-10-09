@@ -363,12 +363,72 @@ async function getUserById(userId) {
   }
 }
 
+/**
+ * Mettre à jour une tâche (admin/staff avec permission)
+ */
+async function updateTask(taskId, updates) {
+  try {
+    const { title, description, assigned_to, due_date, priority } = updates;
+
+    const fields = [];
+    const values = [];
+    let idx = 1;
+
+    if (title !== undefined) {
+      fields.push(`title = $${idx++}`);
+      values.push(title);
+    }
+    if (description !== undefined) {
+      fields.push(`description = $${idx++}`);
+      values.push(description);
+    }
+    if (assigned_to !== undefined) {
+      fields.push(`assigned_to = $${idx++}`);
+      values.push(assigned_to);
+    }
+    if (due_date !== undefined) {
+      fields.push(`due_date = $${idx++}`);
+      values.push(due_date);
+    }
+    if (priority !== undefined) {
+      fields.push(`priority = $${idx++}`);
+      values.push(priority);
+    }
+
+    if (fields.length === 0) {
+      return { success: false, error: 'Aucun champ à mettre à jour' };
+    }
+
+    fields.push(`updated_at = NOW()`);
+    values.push(taskId);
+
+    const query = `
+      UPDATE tasks
+      SET ${fields.join(', ')}
+      WHERE id = $${idx}
+      RETURNING *
+    `;
+
+    const result = await pool.query(query, values);
+
+    if (result.rows.length === 0) {
+      return { success: false, error: 'Tâche non trouvée' };
+    }
+
+    return { success: true, task: result.rows[0] };
+  } catch (error) {
+    console.error('❌ Erreur updateTask:', error);
+    throw error;
+  }
+}
+
 module.exports = {
   createTask,
   getUserTasks,
   getTodayTasks,
   getOverdueTasks,
   updateTaskStatus,
+  updateTask,
   sendTaskReminder,
   deleteTask
 };

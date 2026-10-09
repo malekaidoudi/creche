@@ -9,10 +9,11 @@ import {
     ChevronLeft, Search, RefreshCw, Baby, CheckCircle, Clock,
     Utensils, Droplets, Heart, Moon, Activity, MessageSquare,
     Save, Send, X, Plus, Loader2, ChevronRight, Thermometer, Check,
-    AlertTriangle
+    AlertTriangle, Lock
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useAuth } from '../../hooks/useAuth';
+import { useAccess } from '../../access';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 
@@ -36,6 +37,8 @@ const MobileDailyReportsPage = () => {
     const { isRTL } = useLanguage();
     const { user } = useAuth();
     const navigate = useNavigate();
+    const { can } = useAccess();
+    const isAdmin = () => user?.role === 'admin' || user?.role === 'developer';
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -342,6 +345,10 @@ const MobileDailyReportsPage = () => {
 
     const saveSupplies = async () => {
         if (!selectedChild) return;
+        if (!isAdmin() && !can('DAILY_REPORTS_MANAGE') && !can('CHILD_SUPPLIES_MANAGE')) {
+            toast.error(isRTL ? 'ليس لديك صلاحية تسجيل المستلزمات' : 'Permission requise pour gérer les fournitures');
+            return;
+        }
         if (formData.supplies_diapers === 0 && foodBadges.length === 0 && !foodInputText.trim()) {
             toast.error(isRTL ? 'لا توجد مستلزمات للحفظ' : 'Aucune fourniture à enregistrer');
             return;
@@ -702,35 +709,53 @@ const MobileDailyReportsPage = () => {
                                     )}
                                 </div>
                             </div>
-                            <button
-                                onClick={saveSupplies}
-                                disabled={savingSupplies}
-                                style={{
-                                    width: '100%',
-                                    backgroundColor: dirColors.success,
-                                    color: 'white',
-                                    padding: '12px',
-                                    borderRadius: 8,
-                                    border: 'none',
-                                    marginTop: 12,
-                                    fontWeight: 600,
+                            {(isAdmin() || can('DAILY_REPORTS_MANAGE') || can('CHILD_SUPPLIES_MANAGE')) ? (
+                                <button
+                                    onClick={saveSupplies}
+                                    disabled={savingSupplies}
+                                    style={{
+                                        width: '100%',
+                                        backgroundColor: dirColors.success,
+                                        color: 'white',
+                                        padding: '12px',
+                                        borderRadius: 8,
+                                        border: 'none',
+                                        marginTop: 12,
+                                        fontWeight: 600,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: 8,
+                                        cursor: 'pointer',
+                                        opacity: savingSupplies ? 0.7 : 1,
+                                    }}
+                                >
+                                    {savingSupplies ? (
+                                        <Loader2 size={20} className="animate-spin" />
+                                    ) : (
+                                        <>
+                                            <Check size={20} />
+                                            {labels.validateSupplies}
+                                        </>
+                                    )}
+                                </button>
+                            ) : (
+                                <div style={{
                                     display: 'flex',
                                     alignItems: 'center',
-                                    justifyContent: 'center',
                                     gap: 8,
-                                    cursor: 'pointer',
-                                    opacity: savingSupplies ? 0.7 : 1,
-                                }}
-                            >
-                                {savingSupplies ? (
-                                    <Loader2 size={20} className="animate-spin" />
-                                ) : (
-                                    <>
-                                        <Check size={20} />
-                                        {labels.validateSupplies}
-                                    </>
-                                )}
-                            </button>
+                                    padding: '10px 14px',
+                                    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                                    border: '1px solid rgba(245, 158, 11, 0.3)',
+                                    borderRadius: 8,
+                                    marginTop: 12,
+                                    color: dirColors.warning,
+                                    fontSize: 12
+                                }}>
+                                    <Lock size={16} />
+                                    <span>{isRTL ? 'إدارة المستلزمات مخصصة للمخولين فقط' : 'Gestion des fournitures réservée au personnel habilité'}</span>
+                                </div>
+                            )}
                         </div>
 
                         {/* Section Repas */}

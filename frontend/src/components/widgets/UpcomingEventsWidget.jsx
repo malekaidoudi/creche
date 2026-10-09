@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, Plus, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../../hooks/useLanguage';
+import { useAuth } from '../../hooks/useAuth';
+import { useAccess, FEATURES } from '../../access';
 import axios from 'axios';
 import WidgetCard, { WidgetEmptyState } from '../ui/WidgetCard';
 
@@ -29,12 +31,23 @@ const TYPE_COLORS = {
 
 const UpcomingEventsWidget = ({ onOpenEventModal }) => {
   const { isRTL } = useLanguage();
+  const { user } = useAuth();
+  const { can, loading: accessLoading } = useAccess();
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const canView = user?.role === 'admin' || user?.role === 'developer' || user?.role === 'parent' || can(FEATURES.ANNOUNCEMENTS_VIEW);
+
   useEffect(() => {
-    loadAnnouncements();
-  }, []);
+    if (!accessLoading) {
+      if (canView) {
+        loadAnnouncements();
+      } else {
+        setLoading(false);
+        setAnnouncements([]);
+      }
+    }
+  }, [accessLoading, canView]);
 
   const loadAnnouncements = async () => {
     try {

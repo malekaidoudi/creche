@@ -10,9 +10,12 @@ import {
   FileText,
   Filter,
   ChevronDown,
-  BarChart3
+  BarChart3,
+  Lock
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
+import { useAuth } from '../../hooks/useAuth';
+import { useAccess, FEATURES } from '../../access';
 import api from '../../services/api';
 import { useDialogContext } from '../../contexts/DialogContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card';
@@ -21,6 +24,8 @@ import LoadingSpinner from '../../components/ui/LoadingSpinner';
 
 const AbsenceManagementPage = () => {
   const { isRTL } = useLanguage();
+  const { user } = useAuth();
+  const { can, loading: accessLoading } = useAccess();
   const dialog = useDialogContext();
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
@@ -29,6 +34,8 @@ const AbsenceManagementPage = () => {
   const [highlightedId, setHighlightedId] = useState(null);
   const highlightedRef = useRef(null);
   const [statsExpanded, setStatsExpanded] = useState(false);
+
+  const canManageAbsences = user?.role === 'admin' || user?.role === 'developer' || can(FEATURES.ABSENCES_MANAGE);
 
   const absenceReasons = {
     'sick': isRTL ? 'مريض' : 'Maladie',
@@ -39,8 +46,14 @@ const AbsenceManagementPage = () => {
   };
 
   useEffect(() => {
-    loadAbsenceRequests();
-  }, []);
+    if (!accessLoading) {
+      if (canManageAbsences) {
+        loadAbsenceRequests();
+      } else {
+        setLoading(false);
+      }
+    }
+  }, [accessLoading, canManageAbsences]);
 
   // Gérer le highlight de la demande depuis la notification
   useEffect(() => {
@@ -134,11 +147,34 @@ const AbsenceManagementPage = () => {
     }
   };
 
-  console.log('🎨 Rendu - Loading:', loading, 'Requests:', absenceRequests.length);
-
-  const filteredRequests = getFilteredRequests();
-  const pendingCount = absenceRequests.filter(r => r.status === 'pending').length;
-  const acknowledgedCount = absenceRequests.filter(r => r.status === 'acknowledged').length;
+  if (!canManageAbsences) {
+    return (
+      <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 p-4 flex items-center justify-center ${isRTL ? 'rtl' : 'ltr'}`}>
+        <Card className="max-w-md w-full border-amber-200 dark:border-amber-800/40 text-center p-6 shadow-sm">
+          <CardContent className="pt-4">
+            <div className="w-14 h-14 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto mb-4">
+              <Lock className="w-7 h-7" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+              {isRTL ? 'إدارة الغيابات مقيدة' : 'Gestion des absences restreinte'}
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+              {isRTL
+                ? 'يتطلب هذا القسم صلاحية معالجة طلبات الغياب للأطفال (absences.manage).'
+                : 'Cette section requiert l\'autorisation de gestion des signalements d\'absence des enfants (absences.manage).'}
+            </p>
+            <Button
+              onClick={() => window.location.href = '/dashboard'}
+              variant="outline"
+              className="w-full"
+            >
+              {isRTL ? 'العودة إلى لوحة التحكم' : 'Retour au tableau de bord'}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 p-4 ${isRTL ? 'rtl' : 'ltr'}`}>

@@ -22,10 +22,12 @@ import {
     ExternalLink,
     AlertCircle,
     ChevronDown,
-    ChevronUp
+    ChevronUp,
+    Lock
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
+import { useAccess, FEATURES } from '../../access';
 import api from '../../services/api';
 import { useDialogContext } from '../../contexts/DialogContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card';
@@ -34,8 +36,10 @@ import LoadingSpinner from '../../components/ui/LoadingSpinner';
 
 const DocumentsPage = () => {
     const { user } = useAuth();
-    const isAdmin = () => user?.role === 'admin';
+    const { can, loading: accessLoading } = useAccess();
+    const isAdmin = () => user?.role === 'admin' || user?.role === 'developer';
     const isStaff = () => user?.role === 'staff';
+    const canViewChildDocs = isAdmin() || can(FEATURES.CHILDREN_DOCUMENTS_VIEW);
     const { isRTL } = useLanguage();
     const dialog = useDialogContext();
 
@@ -90,6 +94,19 @@ const DocumentsPage = () => {
     const loadDocuments = async () => {
         try {
             setLoading(true);
+
+            if (filterCategory === 'children' && !canViewChildDocs) {
+                setDocuments([]);
+                setChildrenWithMissingDocs([]);
+                try {
+                    const statsResponse = await api.get('/api/documents/stats');
+                    if (statsResponse.data?.success) {
+                        setStats(statsResponse.data.stats);
+                    }
+                } catch (e) {}
+                setLoading(false);
+                return;
+            }
 
             const [docsResponse, statsResponse] = await Promise.all([
                 api.get('/api/documents', { params: { type: filterCategory } }),
@@ -384,15 +401,33 @@ const DocumentsPage = () => {
                     </CardContent>
                 </Card>
 
-                <Card className={`cursor-pointer hover:shadow-md transition-shadow ${filterCategory === 'children' ? 'ring-2 ring-green-500' : ''}`} onClick={() => setFilterCategory('children')}>
-                    <CardContent className="p-4 flex items-center gap-3">
-                        <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
-                            <Baby className="w-5 h-5 text-green-600 dark:text-green-400" />
+                <Card 
+                    className={`cursor-pointer hover:shadow-md transition-shadow ${!canViewChildDocs ? 'opacity-70' : ''} ${filterCategory === 'children' ? 'ring-2 ring-green-500' : ''}`} 
+                    onClick={() => {
+                        if (!canViewChildDocs) {
+                            dialog.error(isRTL ? 'ليس لديك صلاحية الاطلاع على وثائق الأطفال' : 'Permission requise pour consulter les documents d\'enfants (children.documents.view)');
+                            return;
+                        }
+                        setFilterCategory('children');
+                    }}
+                >
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+                                <Baby className="w-5 h-5 text-green-600 dark:text-green-400" />
+                            </div>
+                            <div>
+                                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                                    {canViewChildDocs ? stats.children : '••••'}
+                                </p>
+                                <p className="text-sm text-gray-500">{isRTL ? 'وثائق الأطفال' : 'Documents enfants'}</p>
+                            </div>
                         </div>
-                        <div>
-                            <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.children}</p>
-                            <p className="text-sm text-gray-500">{isRTL ? 'وثائق الأطفال' : 'Documents enfants'}</p>
-                        </div>
+                        {!canViewChildDocs && (
+                            <div className="p-1.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400">
+                                <Lock className="w-4 h-4" />
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 
@@ -527,6 +562,23 @@ const DocumentsPage = () => {
                     })}
                 </div>
             ) : filterCategory === 'children' ? (
+                !canViewChildDocs ? (
+                    <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
+                        <CardContent className="p-8 text-center">
+                            <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto mb-3">
+                                <Lock className="w-6 h-6" />
+                            </div>
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                                {isRTL ? 'الاطلاع على وثائق الأطفال مقيد' : 'Consultation des documents d\'enfants restreinte'}
+                            </h3>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 max-w-md mx-auto">
+                                {isRTL 
+                                    ? 'يتطلب هذا القسم صلاحية الاطلاع على الوثائق الإدارية للأطفال (children.documents.view).' 
+                                    : 'Cette section requiert la permission de consultation des documents administratifs des enfants (children.documents.view).'}
+                            </p>
+                        </CardContent>
+                    </Card>
+                ) : (
                 /* Affichage groupé par enfant */
                 <div className="space-y-6">
                     {Object.entries(groupedChildrenDocs).map(([childName, childData], groupIndex) => {
@@ -651,7 +703,7 @@ const DocumentsPage = () => {
                         );
                     })}
                 </div>
-            ) : (
+            )) : (
                 /* Affichage en grille pour admin et archives */
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredDocuments.map((doc, index) => {
@@ -754,7 +806,7 @@ const DocumentsPage = () => {
             )}
 
             {/* Message si aucun document */}
-            {(filterCategory === 'children'
+            {(canViewChildDocs || filterCategory !== 'children') && (filterCategory === 'children'
                 ? Object.keys(groupedChildrenDocs).length === 0
                 : filterCategory === 'archives'
                     ? Object.keys(groupedArchivesDocs).length === 0

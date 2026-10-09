@@ -106,6 +106,19 @@ utilisateurs).
 | `attendance.manage` | `POST /api/attendance/check-in`, `POST /api/attendance/check-out` |
 | `activities.photos.publish` | `POST /api/activities` |
 | `messages.parents` | `POST /api/staff-messages` (si le destinataire est un parent) |
+| `medical.view` | `GET /api/children/:id/medical`, `PUT /api/children/:id/medical` (pour staff), masquage auto dans `GET /api/children` et `GET /api/children/:id` |
+| `medical.treatments.manage` | `GET /api/treatments/today`, `POST /api/treatments/:id/administer` |
+| `parents.phone.view` | Masquage auto de `parent_phone` et `emergency_contact_phone` dans `GET /api/children` et `GET /api/children/:id` ; blocage écriture dans `PUT /api/children/:id` ; si non accordée au staff, affichage du bouton d'appel direct vers l'administration/direction (`director_phone`) dans la carte contact d'urgence |
+| `parents.email.view` | Masquage auto de `parent_email` dans `GET /api/children` et `GET /api/children/:id` ; blocage écriture dans `PUT /api/children/:id` |
+| `daily_reports.manage` | `GET /api/daily-reports/children/today`, `POST /api/daily-reports`, `PATCH /api/daily-reports/:id/status`, `DELETE /api/daily-reports/:id`, `POST /api/supplies/child/:childId/refill`, `POST /api/supplies/child/:childId/use`, `POST /api/supplies/daily-brought` (gestion conjointe des bilans et des fournitures personnelles de l'enfant dans le même formulaire) |
+| `children.photos.manage` | `POST /api/children/:id/photo`, `DELETE /api/children/:id/photo` (upload et suppression photo profil enfant) |
+| `children.documents.view` | `GET /api/documents/children`, `GET /api/documents/children/:childId`, filtrage `type=children` dans `GET /api/documents`, masquage compteur `childrenTotal` dans `GET /api/documents/stats` |
+| `announcements.view` | `GET /api/announcements`, `GET /api/announcements/my` (pour le personnel) |
+| `staff.planning.view` | `GET /api/events/views/calendar`, `GET /api/events` (événements globaux du calendrier pour le personnel) |
+| `absences.manage` | `GET /api/absence-requests/all`, `PUT /api/absence-requests/:id/acknowledge` |
+| `tasks.manage` | `POST /api/tasks`, `PATCH /api/tasks/:id`, `POST /api/tasks/:id/remind`, `DELETE /api/tasks/:id` |
+| Direction / `tasks.manage` | `GET /api/users` (accès complet admin/dev ; liste filtrée staff/admin sans données privées si `tasks.manage` ; 403 sinon) |
+| Direction / Soi-même | `GET /api/users/:id` (accès complet admin/dev ; profil personnel uniquement pour tiers ; 403 sinon) |
 
 **Tenir cette table à jour** à chaque nouvelle restriction : c'est le seul
 endroit qui liste "quelle permission protège quelle route" pour l'audit.
@@ -213,6 +226,24 @@ vraie permission (§2.1) et migrer vers `FEATURES`/`useAccess`.
 | `components/dashboard/MobileDashboardComplete.jsx` | Bouton rapide "Présences" |
 | `components/ui/FloatingActionButton.jsx` | Action rapide "Enregistrer présence" |
 | `components/mobile/MobileAttendance.jsx` | Boutons check-in/check-out (prop `canManage`, calculée par la page parente) |
+| `pages/dashboard/TreatmentsPage.jsx` | Accès page et administration traitements (`TREATMENTS_MANAGE`) |
+| `components/layout/DashboardSidebar.jsx` | Menu "Traitements médicaux" (`TREATMENTS_MANAGE`) |
+| `components/mobile/MobileNavigation.jsx` | Menu "Traitements" dans Plus (`TREATMENTS_MANAGE`) |
+| `pages/dashboard/ChildrenPage.jsx` | Confidentialité santé (`MEDICAL_VIEW`), coordonnées parent & contact d'urgence (`PARENTS_PHONE_VIEW`, `PARENTS_EMAIL_VIEW`), boutons d'appel/sms, photo profil (`CHILDREN_PHOTOS_MANAGE`) |
+| `pages/dashboard/DailyReportsPage.jsx` | Accès page et gestion complète des bilans & fournitures de l'enfant (`DAILY_REPORTS_MANAGE`) |
+| `components/layout/DashboardSidebar.jsx` | Entrée "Bilans journaliers" (`DAILY_REPORTS_MANAGE`) |
+| `components/mobile/MobileNavigation.jsx` | Entrée "Bilans journaliers" (`DAILY_REPORTS_MANAGE`) |
+| `components/mobile/MobileDailyReportsPage.jsx` | Sauvegarde fournitures consommées & apportées (`DAILY_REPORTS_MANAGE`) |
+| `pages/dashboard/DocumentsPage.jsx` | Documents enfants & stats masquées avec cadenas (`CHILDREN_DOCUMENTS_VIEW`) |
+| `pages/parent/AnnouncementsPage.jsx` | Consultation annonces avec cadenas d'accès restreint (`ANNOUNCEMENTS_VIEW`) |
+| `components/widgets/UpcomingEventsWidget.jsx` | Chargement et affichage des annonces sur le dashboard (`ANNOUNCEMENTS_VIEW`) |
+| `pages/dashboard/WeeklyPlanningPage.jsx` | Accès au planning hebdomadaire d'équipe (`STAFF_PLANNING_VIEW`) |
+| `pages/dashboard/MonthlyPlanningPage.jsx` | Accès au planning mensuel du calendrier (`STAFF_PLANNING_VIEW`) |
+| `components/layout/DashboardSidebar.jsx` | Menus "Planning" (`STAFF_PLANNING_VIEW`) et "Gestion des absences" (`ABSENCES_MANAGE`) |
+| `components/mobile/MobileNavigation.jsx` | Menu "Planning" dans Plus (`STAFF_PLANNING_VIEW`) |
+| `pages/staff/AbsenceManagementPage.jsx` | Consultation et validation des signalements d'absence (`ABSENCES_MANAGE`) |
+| `pages/tasks/TasksPage.jsx` | Création, modification et suppression des tâches d'équipe (`TASKS_MANAGE`) |
+| `routes/AppRoutes.jsx` | Verrouillage strict multi-couches avec `<ProtectedRoute roles={['admin', 'developer']}>` sur `/dashboard/parents`, `/dashboard/staff`, `/dashboard/add-user`, `/dashboard/general-stats`, `/dashboard/attendance-report`, `/dashboard/settings`, `/dashboard/activity-feed`, `/dashboard/add-child`, `/dashboard/pending-enrollments`, `/dashboard/enrollments` (bloquant toute visite directe par URL avec `ForbiddenPage`) |
 
 ---
 

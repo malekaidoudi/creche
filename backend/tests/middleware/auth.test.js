@@ -9,6 +9,11 @@ jest.mock('../../config/db_postgres', () => ({
   query: jest.fn()
 }));
 
+jest.mock('../../services/tokenBlacklistService', () => ({
+  isTokenRevoked: jest.fn().mockResolvedValue(false),
+  init: jest.fn().mockResolvedValue()
+}));
+
 jest.mock('../../utils/logger', () => ({
   sensitive: jest.fn(),
   security: jest.fn(),
@@ -43,8 +48,8 @@ describe('Auth Middleware', () => {
   });
   
   describe('authenticateToken', () => {
-    test('devrait rejeter si aucun token fourni', () => {
-      auth.authenticateToken(mockReq, mockRes, mockNext);
+    test('devrait rejeter si aucun token fourni', async () => {
+      await auth.authenticateToken(mockReq, mockRes, mockNext);
       
       expect(mockRes.status).toHaveBeenCalledWith(401);
       expect(mockRes.json).toHaveBeenCalledWith(expect.objectContaining({
@@ -54,10 +59,10 @@ describe('Auth Middleware', () => {
       expect(mockNext).not.toHaveBeenCalled();
     });
     
-    test('devrait rejeter un token invalide', () => {
+    test('devrait rejeter un token invalide', async () => {
       mockReq.headers.authorization = 'Bearer invalid-token';
       
-      auth.authenticateToken(mockReq, mockRes, mockNext);
+      await auth.authenticateToken(mockReq, mockRes, mockNext);
       
       expect(mockRes.status).toHaveBeenCalledWith(403);
       expect(mockRes.json).toHaveBeenCalledWith(expect.objectContaining({
@@ -66,14 +71,14 @@ describe('Auth Middleware', () => {
       }));
     });
     
-    test('devrait accepter un token valide', () => {
+    test('devrait accepter un token valide', async () => {
       const token = jwt.sign(
         { id: 1, email: 'test@test.com', role: 'admin' },
         process.env.JWT_SECRET
       );
       mockReq.headers.authorization = `Bearer ${token}`;
       
-      auth.authenticateToken(mockReq, mockRes, mockNext);
+      await auth.authenticateToken(mockReq, mockRes, mockNext);
       
       expect(mockNext).toHaveBeenCalled();
       expect(mockReq.user).toBeDefined();
@@ -81,38 +86,38 @@ describe('Auth Middleware', () => {
       expect(mockReq.user.role).toBe('admin');
     });
     
-    test('devrait normaliser userId vers id', () => {
+    test('devrait normaliser userId vers id', async () => {
       const token = jwt.sign(
         { userId: 5, email: 'test@test.com', role: 'parent' },
         process.env.JWT_SECRET
       );
       mockReq.headers.authorization = `Bearer ${token}`;
       
-      auth.authenticateToken(mockReq, mockRes, mockNext);
+      await auth.authenticateToken(mockReq, mockRes, mockNext);
       
       expect(mockReq.user.id).toBe(5);
     });
 
-    test('ne devrait PAS logger le payload du token par défaut (sans DEBUG_AUTH)', () => {
+    test('ne devrait PAS logger le payload du token par défaut (sans DEBUG_AUTH)', async () => {
       delete process.env.DEBUG_AUTH;
       const token = jwt.sign({ id: 1, email: 'test@test.com', role: 'admin' }, process.env.JWT_SECRET);
       mockReq.headers.authorization = `Bearer ${token}`;
       const loggerMock = require('../../utils/logger');
       loggerMock.sensitive.mockClear();
 
-      auth.authenticateToken(mockReq, mockRes, mockNext);
+      await auth.authenticateToken(mockReq, mockRes, mockNext);
 
       expect(loggerMock.sensitive).not.toHaveBeenCalled();
     });
 
-    test('devrait logger le payload du token uniquement si DEBUG_AUTH=true', () => {
+    test('devrait logger le payload du token uniquement si DEBUG_AUTH=true', async () => {
       process.env.DEBUG_AUTH = 'true';
       const token = jwt.sign({ id: 1, email: 'test@test.com', role: 'admin' }, process.env.JWT_SECRET);
       mockReq.headers.authorization = `Bearer ${token}`;
       const loggerMock = require('../../utils/logger');
       loggerMock.sensitive.mockClear();
 
-      auth.authenticateToken(mockReq, mockRes, mockNext);
+      await auth.authenticateToken(mockReq, mockRes, mockNext);
 
       expect(loggerMock.sensitive).toHaveBeenCalledWith(
         expect.stringContaining('Token décodé'),

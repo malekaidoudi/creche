@@ -48,15 +48,32 @@ export const useAccess = () => {
   }, [user]);
 
   /**
-   * @param {keyof typeof FEATURES} featureKey - clé déclarée dans FEATURES
+   * @param {keyof typeof FEATURES | typeof FEATURES[keyof typeof FEATURES] | string} featureInput - clé (ex: 'CHILDREN_PHOTOS_MANAGE'), objet (ex: FEATURES.CHILDREN_PHOTOS_MANAGE) ou code direct ('children.photos.manage')
    */
-  const can = useCallback((featureKey) => {
-    const feature = FEATURES[featureKey];
-    if (!feature) {
-      console.warn(`useAccess.can(): fonctionnalité inconnue "${featureKey}" (voir access/FEATURES.js)`);
+  const can = useCallback((featureInput) => {
+    if (!featureInput) return false;
+
+    let permissionCode = null;
+
+    // Cas 1 : objet FEATURES (ex: FEATURES.CHILDREN_PHOTOS_MANAGE -> { permission: 'children.photos.manage' })
+    if (typeof featureInput === 'object' && featureInput.permission) {
+      permissionCode = featureInput.permission;
+    }
+    // Cas 2 : clé FEATURES sous forme de chaîne (ex: 'CHILDREN_PHOTOS_MANAGE')
+    else if (typeof featureInput === 'string' && FEATURES[featureInput]?.permission) {
+      permissionCode = FEATURES[featureInput].permission;
+    }
+    // Cas 3 : code de permission direct (ex: 'children.photos.manage')
+    else if (typeof featureInput === 'string') {
+      permissionCode = featureInput;
+    }
+
+    if (!permissionCode) {
+      console.warn(`useAccess.can(): fonctionnalité inconnue`, featureInput);
       return false;
     }
-    return codes.has(feature.permission);
+
+    return codes.has(permissionCode);
   }, [codes]);
 
   return { can, loading };

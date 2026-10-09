@@ -128,7 +128,7 @@ const AddUserPage = () => {
     const staffPositions = [
         { value: 'director', label: isRTL ? 'مدير/مديرة' : 'Directeur/Directrice' },
         { value: 'educator', label: isRTL ? 'مربي/مربية' : 'Éducateur/Éducatrice' },
-        { value: 'health', label: isRTL ? 'موظف صحة' : 'Personnel de santé' },
+        { value: 'health', label: isRTL ? 'طبيب متعاقد' : 'Médecin conventionné' },
         { value: 'cleaning', label: isRTL ? 'موظف نظافة' : 'Personnel d\'entretien' },
         { value: 'security', label: isRTL ? 'حارس أمن' : 'Agent de sécurité' },
         { value: 'kitchen', label: isRTL ? 'موظف مطبخ' : 'Personnel de cuisine' },

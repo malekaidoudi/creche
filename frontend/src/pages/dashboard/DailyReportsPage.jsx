@@ -9,7 +9,7 @@ import {
     FileText, Baby, User, Calendar, Clock, Thermometer, Pill,
     Utensils, Droplets, Heart, Moon, Activity, MessageSquare,
     Check, X, ChevronRight, Search, Filter, Save, Send,
-    AlertCircle, CheckCircle, Loader2, RefreshCw
+    AlertCircle, CheckCircle, Loader2, RefreshCw, Lock
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -22,6 +22,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
+import { useAccess } from '../../access';
 
 const DailyReportsPage = () => {
     const { isRTL } = useLanguage();
@@ -29,6 +30,15 @@ const DailyReportsPage = () => {
     const { user } = useAuth();
     const isMobile = useIsMobile();
     const navigate = useNavigate();
+    const { can, loading: accessLoading } = useAccess();
+    const isAdmin = () => user?.role === 'admin' || user?.role === 'developer';
+
+    useEffect(() => {
+        if (!accessLoading && !isAdmin() && !can('DAILY_REPORTS_MANAGE')) {
+            toast.error(isRTL ? 'ليس لديك صلاحية الوصول إلى التقارير اليومية' : 'Accès non autorisé aux rapports journaliers');
+            navigate('/dashboard', { replace: true });
+        }
+    }, [accessLoading, can, navigate, isRTL]);
 
     // Couleurs style direction (comme app mobile)
     const dirColors = {
@@ -193,20 +203,22 @@ const DailyReportsPage = () => {
             const res = await api.post('/api/daily-reports', payload);
 
             if (res.data.success) {
-                // Enregistrer les fournitures apportées si renseignées
-                if (formData.supplies_diapers > 0) {
-                    await api.post(`/api/supplies/child/${selectedChild.id}/refill`, {
-                        supply_type: 'diapers',
-                        quantity: formData.supplies_diapers,
-                        notes: `Apporté le ${reportDate}`
-                    });
-                }
-                if (formData.supplies_food && formData.supplies_food.trim()) {
-                    await api.post(`/api/supplies/child/${selectedChild.id}/refill`, {
-                        supply_type: 'food',
-                        quantity: 1,
-                        notes: formData.supplies_food
-                    });
+                // Enregistrer les fournitures apportées si renseignées et autorisé (fusionné avec daily_reports.manage)
+                if (isAdmin() || can('DAILY_REPORTS_MANAGE') || can('CHILD_SUPPLIES_MANAGE')) {
+                    if (formData.supplies_diapers > 0) {
+                        await api.post(`/api/supplies/child/${selectedChild.id}/refill`, {
+                            supply_type: 'diapers',
+                            quantity: formData.supplies_diapers,
+                            notes: `Apporté le ${reportDate}`
+                        });
+                    }
+                    if (formData.supplies_food && formData.supplies_food.trim()) {
+                        await api.post(`/api/supplies/child/${selectedChild.id}/refill`, {
+                            supply_type: 'food',
+                            quantity: 1,
+                            notes: formData.supplies_food
+                        });
+                    }
                 }
 
                 toast.success(
@@ -295,6 +307,10 @@ const DailyReportsPage = () => {
     // Ajouter une fourniture apportée
     const addSupplyBrought = async (supplyType, quantity, description) => {
         if (!selectedChild) return;
+        if (!isAdmin() && !can('DAILY_REPORTS_MANAGE') && !can('CHILD_SUPPLIES_MANAGE')) {
+            toast.error(isRTL ? 'ليس لديك صلاحية تسجيل المستلزمات' : 'Permission requise pour gérer les fournitures');
+            return;
+        }
         try {
             const res = await api.post('/api/supplies/daily-brought', {
                 child_id: selectedChild.id,
@@ -897,72 +913,79 @@ const DailyReportsPage = () => {
                                                 </div>
                                             )}
 
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div className="p-3 bg-white dark:bg-gray-700 rounded-lg border border-green-200 dark:border-green-700">
-                                                    <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                                                        🧷 {isRTL ? 'حفاظات' : 'Couches'}
-                                                    </label>
-                                                    <div className="flex gap-2">
-                                                        <input
-                                                            type="number"
-                                                            min="0"
-                                                            placeholder="0"
-                                                            value={formData.supplies_diapers || ''}
-                                                            onChange={(e) => setFormData(prev => ({ ...prev, supplies_diapers: parseInt(e.target.value) || 0 }))}
-                                                            className={`w-20 px-3 py-2 rounded border text-center ${isDark ? 'bg-gray-600 border-gray-500 text-white' : 'bg-white border-gray-300'}`}
-                                                        />
-                                                        <span className={`flex items-center ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                                                            {isRTL ? 'قطعة' : 'pièces'}
-                                                        </span>
+                                            {(isAdmin() || can('DAILY_REPORTS_MANAGE') || can('CHILD_SUPPLIES_MANAGE')) ? (
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div className="p-3 bg-white dark:bg-gray-700 rounded-lg border border-green-200 dark:border-green-700">
+                                                        <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                                                            🧷 {isRTL ? 'حفاظات' : 'Couches'}
+                                                        </label>
+                                                        <div className="flex gap-2">
+                                                            <input
+                                                                type="number"
+                                                                min="0"
+                                                                placeholder="0"
+                                                                value={formData.supplies_diapers || ''}
+                                                                onChange={(e) => setFormData(prev => ({ ...prev, supplies_diapers: parseInt(e.target.value) || 0 }))}
+                                                                className={`w-20 px-3 py-2 rounded border text-center ${isDark ? 'bg-gray-600 border-gray-500 text-white' : 'bg-white border-gray-300'}`}
+                                                            />
+                                                            <span className={`flex items-center ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                                                                {isRTL ? 'قطعة' : 'pièces'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="p-3 bg-white dark:bg-gray-700 rounded-lg border border-green-200 dark:border-green-700">
+                                                        <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                                                            🍼 {isRTL ? 'طعام/حليب' : 'Nourriture/Lait'}
+                                                        </label>
+                                                        <div className="flex gap-2">
+                                                            <input
+                                                                type="text"
+                                                                placeholder={isRTL ? 'مثال: حليب، كومبوت...' : 'Ex: Lait, Compote...'}
+                                                                value={formData.supplies_food || ''}
+                                                                onChange={(e) => setFormData(prev => ({ ...prev, supplies_food: e.target.value }))}
+                                                                className={`flex-1 px-3 py-2 rounded border ${isDark ? 'bg-gray-600 border-gray-500 text-white' : 'bg-white border-gray-300'}`}
+                                                                onKeyDown={async (e) => {
+                                                                    if (e.key === 'Enter' && formData.supplies_food.trim()) {
+                                                                        e.preventDefault();
+                                                                        await addSupplyBrought('food', 1, formData.supplies_food.trim());
+                                                                        setFormData(prev => ({ ...prev, supplies_food: '' }));
+                                                                        // Recharger les options de nourriture
+                                                                        const foodRes = await api.get(`/api/supplies/child/${selectedChild.id}/food-options?date=${reportDate}`);
+                                                                        if (foodRes.data.success) {
+                                                                            setFoodOptions(foodRes.data.food_options || []);
+                                                                        }
+                                                                    }
+                                                                }}
+                                                            />
+                                                            <Button
+                                                                size="sm"
+                                                                onClick={async () => {
+                                                                    if (formData.supplies_food.trim()) {
+                                                                        await addSupplyBrought('food', 1, formData.supplies_food.trim());
+                                                                        setFormData(prev => ({ ...prev, supplies_food: '' }));
+                                                                        // Recharger les options de nourriture
+                                                                        const foodRes = await api.get(`/api/supplies/child/${selectedChild.id}/food-options?date=${reportDate}`);
+                                                                        if (foodRes.data.success) {
+                                                                            setFoodOptions(foodRes.data.food_options || []);
+                                                                        }
+                                                                    }
+                                                                }}
+                                                                className="bg-green-500 hover:bg-green-600"
+                                                            >
+                                                                +
+                                                            </Button>
+                                                        </div>
+                                                        <p className={`text-xs mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                                                            {isRTL ? 'اضغط Enter أو + للإضافة' : 'Appuyez sur Entrée ou + pour ajouter'}
+                                                        </p>
                                                     </div>
                                                 </div>
-                                                <div className="p-3 bg-white dark:bg-gray-700 rounded-lg border border-green-200 dark:border-green-700">
-                                                    <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                                                        🍼 {isRTL ? 'طعام/حليب' : 'Nourriture/Lait'}
-                                                    </label>
-                                                    <div className="flex gap-2">
-                                                        <input
-                                                            type="text"
-                                                            placeholder={isRTL ? 'مثال: حليب، كومبوت...' : 'Ex: Lait, Compote...'}
-                                                            value={formData.supplies_food || ''}
-                                                            onChange={(e) => setFormData(prev => ({ ...prev, supplies_food: e.target.value }))}
-                                                            className={`flex-1 px-3 py-2 rounded border ${isDark ? 'bg-gray-600 border-gray-500 text-white' : 'bg-white border-gray-300'}`}
-                                                            onKeyDown={async (e) => {
-                                                                if (e.key === 'Enter' && formData.supplies_food.trim()) {
-                                                                    e.preventDefault();
-                                                                    await addSupplyBrought('food', 1, formData.supplies_food.trim());
-                                                                    setFormData(prev => ({ ...prev, supplies_food: '' }));
-                                                                    // Recharger les options de nourriture
-                                                                    const foodRes = await api.get(`/api/supplies/child/${selectedChild.id}/food-options?date=${reportDate}`);
-                                                                    if (foodRes.data.success) {
-                                                                        setFoodOptions(foodRes.data.food_options || []);
-                                                                    }
-                                                                }
-                                                            }}
-                                                        />
-                                                        <Button
-                                                            size="sm"
-                                                            onClick={async () => {
-                                                                if (formData.supplies_food.trim()) {
-                                                                    await addSupplyBrought('food', 1, formData.supplies_food.trim());
-                                                                    setFormData(prev => ({ ...prev, supplies_food: '' }));
-                                                                    // Recharger les options de nourriture
-                                                                    const foodRes = await api.get(`/api/supplies/child/${selectedChild.id}/food-options?date=${reportDate}`);
-                                                                    if (foodRes.data.success) {
-                                                                        setFoodOptions(foodRes.data.food_options || []);
-                                                                    }
-                                                                }
-                                                            }}
-                                                            className="bg-green-500 hover:bg-green-600"
-                                                        >
-                                                            +
-                                                        </Button>
-                                                    </div>
-                                                    <p className={`text-xs mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                                                        {isRTL ? 'اضغط Enter أو + للإضافة' : 'Appuyez sur Entrée ou + pour ajouter'}
-                                                    </p>
+                                            ) : (
+                                                <div className="flex items-center gap-2.5 p-3.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg text-xs text-amber-800 dark:text-amber-300">
+                                                    <Lock className="w-4 h-4 flex-shrink-0 text-amber-600 dark:text-amber-400" />
+                                                    <span>{isRTL ? 'إدارة المستلزمات اليومية مخصصة للمخولين فقط (daily_reports.manage)' : 'La saisie et mise à jour des fournitures est réservée au personnel habilité (daily_reports.manage)'}</span>
                                                 </div>
-                                            </div>
+                                            )}
                                         </div>
 
                                         {/* État de la peau */}

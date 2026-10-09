@@ -13,9 +13,9 @@ const auth = require('../middleware/auth');
 // ============================================================================
 
 /**
- * POST /api/tasks - Créer une tâche (admin uniquement)
+ * POST /api/tasks - Créer une tâche (admin ou staff avec permission tasks.manage)
  */
-router.post('/', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
+router.post('/', auth.authenticateToken, auth.requirePermission('tasks.manage'), async (req, res) => {
   try {
     const result = await taskService.createTask(req.body, req.user.userId);
 
@@ -117,9 +117,34 @@ router.patch('/:id/status', auth.authenticateToken, async (req, res) => {
 });
 
 /**
- * POST /api/tasks/:id/remind - Envoyer un rappel (admin uniquement)
+ * PATCH /api/tasks/:id - Mettre à jour une tâche (admin ou staff avec permission tasks.manage)
  */
-router.post('/:id/remind', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
+router.patch('/:id', auth.authenticateToken, auth.requirePermission('tasks.manage'), async (req, res) => {
+  try {
+    const result = await taskService.updateTask(
+      parseInt(req.params.id),
+      req.body
+    );
+
+    if (result.success) {
+      res.json(result);
+    } else {
+      res.status(404).json(result);
+    }
+
+  } catch (error) {
+    console.error('❌ Erreur PATCH /api/tasks/:id:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la mise à jour de la tâche'
+    });
+  }
+});
+
+/**
+ * POST /api/tasks/:id/remind - Envoyer un rappel (admin ou staff avec permission tasks.manage)
+ */
+router.post('/:id/remind', auth.authenticateToken, auth.requirePermission('tasks.manage'), async (req, res) => {
   try {
     const result = await taskService.sendTaskReminder(
       parseInt(req.params.id),
@@ -142,9 +167,9 @@ router.post('/:id/remind', auth.authenticateToken, auth.requireRole('admin'), as
 });
 
 /**
- * DELETE /api/tasks/:id - Supprimer une tâche (admin uniquement)
+ * DELETE /api/tasks/:id - Supprimer une tâche (admin ou staff avec permission tasks.manage)
  */
-router.delete('/:id', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
+router.delete('/:id', auth.authenticateToken, auth.requirePermission('tasks.manage'), async (req, res) => {
   try {
     const result = await taskService.deleteTask(parseInt(req.params.id));
 

@@ -11,6 +11,102 @@ const fs = require('fs');
 const db = require('../config/db_postgres');
 const auth = require('../middleware/auth');
 const cloudinaryService = require('../services/cloudinaryService');
+const permissionsService = require('../services/permissionsService');
+
+/**
+ * Middleware pour restreindre l'accès à la liste globale des documents d'enfants
+ * - Admin / Developer : autorisé
+ * - Staff : permission 'children.documents.view' obligatoire
+ * - Parent : refusé
+ */
+const requireChildDocumentAccess = async (req, res, next) => {
+    try {
+        const userId = req.user.id || req.user.userId;
+        const userRole = req.user.role;
+
+        if (userRole === 'admin' || userRole === 'developer') {
+            return next();
+        }
+
+        if (userRole === 'staff') {
+            const hasPerm = await permissionsService.userHasPermission(userId, 'children.documents.view', userRole);
+            if (!hasPerm) {
+                return res.status(403).json({
+                    success: false,
+                    error: 'Accès interdit : permission requise pour consulter les documents d\'enfants',
+                    required_permission: 'children.documents.view',
+                    code: 'PERMISSION_DENIED'
+                });
+            }
+            return next();
+        }
+
+        return res.status(403).json({
+            success: false,
+            error: 'Accès non autorisé',
+            code: 'FORBIDDEN'
+        });
+    } catch (err) {
+        console.error('❌ Erreur requireChildDocumentAccess:', err);
+        return res.status(500).json({ success: false, error: 'Erreur serveur' });
+    }
+};
+
+/**
+ * Middleware pour restreindre l'accès aux documents d'un enfant spécifique
+ * - Admin / Developer : autorisé
+ * - Staff : permission 'children.documents.view' obligatoire
+ * - Parent : autorisé uniquement si l'enfant lui est rattaché
+ */
+const requireSingleChildDocumentAccess = async (req, res, next) => {
+    try {
+        const userId = req.user.id || req.user.userId;
+        const userRole = req.user.role;
+        const { childId } = req.params;
+
+        if (userRole === 'admin' || userRole === 'developer') {
+            return next();
+        }
+
+        if (userRole === 'staff') {
+            const hasPerm = await permissionsService.userHasPermission(userId, 'children.documents.view', userRole);
+            if (!hasPerm) {
+                return res.status(403).json({
+                    success: false,
+                    error: 'Accès interdit : permission requise pour consulter les documents d\'enfants',
+                    required_permission: 'children.documents.view',
+                    code: 'PERMISSION_DENIED'
+                });
+            }
+            return next();
+        }
+
+        if (userRole === 'parent') {
+            const childCheck = await db.query(`
+                SELECT 1 FROM children c
+                WHERE c.id = $1 AND (
+                    c.parent_id = $2
+                    OR EXISTS (SELECT 1 FROM parent_children pc WHERE pc.child_id = c.id AND pc.parent_id = $2)
+                    OR EXISTS (SELECT 1 FROM enrollments e WHERE e.child_id = c.id AND e.parent_id = $2 AND e.status = 'approved')
+                )
+            `, [childId, userId]);
+
+            if (childCheck.rows.length === 0) {
+                return res.status(403).json({
+                    success: false,
+                    error: 'Accès refusé - Cet enfant ne vous est pas associé',
+                    code: 'CHILD_ACCESS_DENIED'
+                });
+            }
+            return next();
+        }
+
+        return res.status(403).json({ success: false, error: 'Accès non autorisé', code: 'FORBIDDEN' });
+    } catch (err) {
+        console.error('❌ Erreur requireSingleChildDocumentAccess:', err);
+        return res.status(500).json({ success: false, error: 'Erreur serveur' });
+    }
+};
 
 // Configuration multer pour upload temporaire
 const storage = multer.diskStorage({
@@ -267,9 +363,9 @@ router.get('/public/reglement', async (req, res) => {
 
 /**
  * GET /api/documents/children
- * Liste des documents de tous les enfants actifs
+ * Liste des documents de tous les enfants actifs (staff autorisé, admin/dev)
  */
-router.get('/children', auth.authenticateToken, async (req, res) => {
+router.get('/children', auth.authenticateToken, requireChildDocumentAccess, async (req, res) => {
     try {
         const result = await db.query(`
       SELECT 
@@ -299,9 +395,9 @@ router.get('/children', auth.authenticateToken, async (req, res) => {
 
 /**
  * GET /api/documents/children/:childId
- * Documents d'un enfant spécifique
+ * Documents d'un enfant spécifique (staff avec permission, admin/dev, ou parent concerné)
  */
-router.get('/children/:childId', auth.authenticateToken, async (req, res) => {
+router.get('/children/:childId', auth.authenticateToken, requireSingleChildDocumentAccess, async (req, res) => {
     try {
         const { childId } = req.params;
 
@@ -477,36 +573,50 @@ router.get('/', auth.authenticateToken, async (req, res) => {
         }
 
         if (type === 'all' || type === 'children') {
-            // Documents des enfants actifs (children_documents seulement)
-            const childrenDocs = await db.query(`
-        SELECT 
-          cd.id, 
-          c.first_name || ' ' || c.last_name || ' - ' || cd.document_type as title,
-          cd.notes as description,
-          cd.document_type,
-          cd.original_filename,
-          cd.cloudinary_url,
-          cd.file_size,
-          cd.mime_type,
-          true as is_public,
-          false as is_required,
-          cd.uploaded_at as created_at,
-          'children' as category,
-          c.first_name as child_first_name,
-          c.last_name as child_last_name,
-          cd.child_id
-        FROM children_documents cd
-        JOIN children c ON cd.child_id = c.id
-        WHERE c.is_active = true
-        ORDER BY c.first_name, c.last_name, cd.uploaded_at DESC
-      `);
-            documents = [...documents, ...childrenDocs.rows];
+            const userId = req.user.id || req.user.userId;
+            const canViewChildrenDocs = req.user.role === 'admin'
+                || req.user.role === 'developer'
+                || (req.user.role === 'staff' && await permissionsService.userHasPermission(userId, 'children.documents.view', req.user.role));
+
+            if (canViewChildrenDocs) {
+                // Documents des enfants actifs (children_documents seulement)
+                const childrenDocs = await db.query(`
+            SELECT 
+              cd.id, 
+              c.first_name || ' ' || c.last_name || ' - ' || cd.document_type as title,
+              cd.notes as description,
+              cd.document_type,
+              cd.original_filename,
+              cd.cloudinary_url,
+              cd.file_size,
+              cd.mime_type,
+              true as is_public,
+              false as is_required,
+              cd.uploaded_at as created_at,
+              'children' as category,
+              c.first_name as child_first_name,
+              c.last_name as child_last_name,
+              cd.child_id
+            FROM children_documents cd
+            JOIN children c ON cd.child_id = c.id
+            WHERE c.is_active = true
+            ORDER BY c.first_name, c.last_name, cd.uploaded_at DESC
+          `);
+                documents = [...documents, ...childrenDocs.rows];
+            } else if (type === 'children') {
+                return res.status(403).json({
+                    success: false,
+                    error: 'Accès interdit : permission requise pour consulter les documents d\'enfants',
+                    required_permission: 'children.documents.view',
+                    code: 'PERMISSION_DENIED'
+                });
+            }
         }
 
         if (type === 'all' || type === 'archives') {
             const archiveDocs = await db.query(`
         SELECT 
-          ad.id,
+          ad.id, 
           ad.child_first_name || ' ' || ad.child_last_name || ' - ' || ad.document_type as title,
           'Document archivé' as description,
           ad.document_type,
@@ -544,13 +654,18 @@ router.get('/', auth.authenticateToken, async (req, res) => {
  */
 router.get('/stats', auth.authenticateToken, async (req, res) => {
     try {
+        const userId = req.user.id || req.user.userId;
+        const canViewChildrenDocs = req.user.role === 'admin'
+            || req.user.role === 'developer'
+            || (req.user.role === 'staff' && await permissionsService.userHasPermission(userId, 'children.documents.view', req.user.role));
+
         const [adminCount, childrenDocsCount, archivesCount] = await Promise.all([
             db.query('SELECT COUNT(*) as count FROM admin_documents'),
-            db.query(`
-        SELECT COUNT(*) as count FROM children_documents cd
-        JOIN children c ON cd.child_id = c.id
-        WHERE c.is_active = true
-      `),
+            canViewChildrenDocs ? db.query(`
+                SELECT COUNT(*) as count FROM children_documents cd
+                JOIN children c ON cd.child_id = c.id
+                WHERE c.is_active = true
+            `) : Promise.resolve({ rows: [{ count: 0 }] }),
             db.query('SELECT COUNT(*) as count FROM archived_documents')
         ]);
 
@@ -564,7 +679,8 @@ router.get('/stats', auth.authenticateToken, async (req, res) => {
                 admin: adminTotal,
                 children: childrenTotal,
                 archives: archivesTotal,
-                total: adminTotal + childrenTotal + archivesTotal
+                total: adminTotal + childrenTotal + archivesTotal,
+                can_view_children_docs: canViewChildrenDocs
             }
         });
     } catch (error) {

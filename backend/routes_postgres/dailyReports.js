@@ -5,7 +5,7 @@
 
 const express = require('express');
 const router = express.Router();
-const { authenticateToken, requireRole } = require('../middleware/auth');
+const { authenticateToken, requireRole, requirePermission } = require('../middleware/auth');
 const dailyReportsController = require('../controllers/dailyReportsController');
 
 // ============================================
@@ -15,28 +15,28 @@ const dailyReportsController = require('../controllers/dailyReportsController');
 // Liste des enfants à remplir aujourd'hui
 router.get('/children/today',
     authenticateToken,
-    requireRole('admin', 'staff'),
+    requirePermission('daily_reports.manage'),
     dailyReportsController.getChildrenForToday
 );
 
 // Créer ou mettre à jour un rapport
 router.post('/',
     authenticateToken,
-    requireRole('admin', 'staff'),
+    requirePermission('daily_reports.manage'),
     dailyReportsController.createOrUpdateReport
 );
 
 // Changer le statut d'un rapport
 router.patch('/:id/status',
     authenticateToken,
-    requireRole('admin', 'staff'),
+    requirePermission('daily_reports.manage'),
     dailyReportsController.updateReportStatus
 );
 
 // Supprimer un rapport
 router.delete('/:id',
     authenticateToken,
-    requireRole('admin', 'staff'),
+    requirePermission('daily_reports.manage'),
     dailyReportsController.deleteReport
 );
 

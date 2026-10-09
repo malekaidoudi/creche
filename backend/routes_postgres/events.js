@@ -6,6 +6,31 @@ const express = require('express');
 const router = express.Router();
 const eventService = require('../services/eventService');
 const { authenticateToken } = require('../middleware/auth');
+const permissionsService = require('../services/permissionsService');
+
+/**
+ * Middleware d'accès au planning d'équipe :
+ * - admin / developer : accès total
+ * - staff : permission 'staff.planning.view' requise
+ */
+async function requirePlanningAccess(req, res, next) {
+  if (!req.user) {
+    return res.status(401).json({ success: false, error: 'Non authentifié' });
+  }
+  const role = req.user.role === 'developer' ? 'admin' : req.user.role;
+  if (role === 'admin') return next();
+  if (role === 'staff') {
+    const userId = req.user.id || req.user.userId;
+    const hasAccess = await permissionsService.userHasPermission(userId, 'staff.planning.view');
+    if (hasAccess) return next();
+    return res.status(403).json({
+      success: false,
+      code: 'PERMISSION_DENIED',
+      error: 'Accès non autorisé au planning (permission requise: staff.planning.view)'
+    });
+  }
+  return res.status(403).json({ success: false, error: 'Accès non autorisé' });
+}
 
 // =====================================================
 // Routes CRUD de base
@@ -17,6 +42,19 @@ const { authenticateToken } = require('../middleware/auth');
  */
 router.get('/', authenticateToken, async (req, res) => {
   try {
+    // Si c'est un membre du staff qui consulte les événements globaux (pas seulement ses mémos)
+    if (req.user.role === 'staff' && req.query.type !== 'memo') {
+      const userId = req.user.id || req.user.userId;
+      const hasAccess = await permissionsService.userHasPermission(userId, 'staff.planning.view');
+      if (!hasAccess) {
+        return res.status(403).json({
+          success: false,
+          code: 'PERMISSION_DENIED',
+          error: 'Accès non autorisé au planning (permission requise: staff.planning.view)'
+        });
+      }
+    }
+
     const filters = {
       type: req.query.type,
       status: req.query.status,
@@ -206,7 +244,7 @@ router.get('/views/overdue', authenticateToken, async (req, res) => {
  * GET /api/events/calendar
  * Récupérer les événements pour le calendrier
  */
-router.get('/views/calendar', authenticateToken, async (req, res) => {
+router.get('/views/calendar', authenticateToken, requirePlanningAccess, async (req, res) => {
   try {
     const { start, end, type } = req.query;
 
