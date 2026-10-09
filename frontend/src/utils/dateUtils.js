@@ -143,21 +143,13 @@ export const isValidDateTime = (dateTimeString) => {
 export const formatDateInput = (rawValue) => {
   if (!rawValue) return '';
 
-  // Garder uniquement les chiffres
-  const digits = rawValue.replace(/\D/g, '');
+  // Garder uniquement les chiffres, plafonner strictement à 8 chiffres (JJMMAAAA)
+  const digits = rawValue.replace(/\D/g, '').slice(0, 8);
 
-  let formatted = digits;
-  if (digits.length >= 2) {
-    formatted = digits.slice(0, 2) + '/' + digits.slice(2);
-  }
-  if (digits.length >= 4) {
-    formatted = digits.slice(0, 2) + '/' + digits.slice(2, 4) + '/' + digits.slice(4);
-  }
-  if (formatted.length > 10) {
-    formatted = formatted.slice(0, 10);
-  }
-
-  return formatted;
+  if (digits.length === 0) return '';
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
 };
 
 /**
@@ -166,12 +158,15 @@ export const formatDateInput = (rawValue) => {
  * @returns {boolean} true si valide
  */
 export const isValidDateFormat = (ddmmyyyy) => {
-  if (!ddmmyyyy || ddmmyyyy.length !== 10) return false;
+  if (!ddmmyyyy || typeof ddmmyyyy !== 'string') return false;
+
+  const cleaned = ddmmyyyy.trim().replace(/-/g, '/');
+  if (cleaned.length !== 10) return false;
 
   const regex = /^(0[1-9]|[12]\d|3[01])\/(0[1-9]|1[0-2])\/(19|20)\d{2}$/;
-  if (!regex.test(ddmmyyyy)) return false;
+  if (!regex.test(cleaned)) return false;
 
-  const [day, month, year] = ddmmyyyy.split('/').map(Number);
+  const [day, month, year] = cleaned.split('/').map(Number);
   const date = new Date(year, month - 1, day);
   return date.getDate() === day && date.getMonth() === month - 1 && date.getFullYear() === year;
 };
@@ -182,18 +177,27 @@ export const isValidDateFormat = (ddmmyyyy) => {
  * @returns {string} Date au format yyyy-mm-dd ou chaîne vide si invalide
  */
 export const convertToISO = (ddmmyyyy) => {
-  if (!ddmmyyyy) return '';
+  if (!ddmmyyyy || typeof ddmmyyyy !== 'string') return '';
 
   try {
-    // Si déjà au format ISO (yyyy-mm-dd), retourner tel quel
-    if (/^\d{4}-\d{2}-\d{2}$/.test(ddmmyyyy)) {
-      return ddmmyyyy;
+    const trimmed = ddmmyyyy.trim();
+    // Si déjà au format ISO (yyyy-mm-dd), vérifier et retourner
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      return trimmed;
     }
 
     // Convertir dd/mm/yyyy → yyyy-mm-dd
-    const parts = ddmmyyyy.split('/');
+    const parts = trimmed.split(/[/.-]/);
     if (parts.length === 3) {
-      const [day, month, year] = parts;
+      let [day, month, year] = parts;
+      if (year.length === 2) {
+        year = `20${year}`;
+      }
+      if (year.length !== 4) return '';
+
+      const numYear = parseInt(year, 10);
+      if (numYear < 1900 || numYear > 2100) return '';
+
       return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
     }
 
@@ -210,22 +214,25 @@ export const convertToISO = (ddmmyyyy) => {
  * @returns {string} Date au format dd/mm/yyyy ou chaîne vide si invalide
  */
 export const convertFromISO = (yyyymmdd) => {
-  if (!yyyymmdd) return '';
+  if (!yyyymmdd || typeof yyyymmdd !== 'string') return '';
 
   try {
+    const trimmed = yyyymmdd.trim();
     // Si déjà au format dd/mm/yyyy, retourner tel quel
-    if (/^\d{2}\/\d{2}\/\d{4}$/.test(yyyymmdd)) {
-      return yyyymmdd;
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) {
+      return trimmed;
     }
 
+    // Si timestamp ISO complet (ex: 2026-02-11T12:00:00Z)
+    const cleanDate = trimmed.split('T')[0];
+
     // Convertir yyyy-mm-dd → dd/mm/yyyy
-    const parts = yyyymmdd.split('-');
-    if (parts.length === 3) {
-      const [year, month, day] = parts;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(cleanDate)) {
+      const [year, month, day] = cleanDate.split('-');
       return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
     }
 
-    return '';
+    return trimmed;
   } catch (error) {
     console.error('Erreur convertFromISO:', error, 'pour:', yyyymmdd);
     return '';

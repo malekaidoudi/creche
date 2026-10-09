@@ -1330,6 +1330,7 @@ const EnrollmentPage = () => {
                     value={watch('enrollment_date')}
                     onChange={(value) => setValue('enrollment_date', value)}
                     error={errors.enrollment_date?.message}
+                    readOnlyInput={true}
                   />
 
                   {/* Assistance au déjeuner */}

@@ -43,6 +43,8 @@
 | **39** | 09/10/2026 | `frontend/src/pages/dashboard/ChildrenPage.jsx` | Permissions Staff (Édition Enfant & Photo) | Révocation des blocages `required`, masquage lecture seule des urgences/médical et titre dynamique | ✅ Validé & Appliqué |
 | **40** | 09/10/2026 | `frontend/src/components/ui/CompactImageUpload.jsx` | UI/UX & Modernisation Photo Enfant | Bouton badge caméra moderne circulaire (gradient, hover overlay, aspect-square, ring protecteur) | ✅ Validé & Appliqué |
 | **41** | 09/10/2026 | `frontend/src/pages/UnifiedProfilePage.jsx`, `frontend/src/pages/parent/ChildDetailsPage.jsx` | UI/UX & Harmonisation Globale Photos (Comptes & Espace Parent) | Unification du bouton caméra moderne sur profil utilisateur (parent/admin/staff) et fiche enfant | ✅ Validé & Appliqué |
+| **42** | 09/10/2026 | `AddChildPage.jsx`, `AddUserPage.jsx`, `ParentsPage.jsx`, `backend/routes_postgres/userWorkflow.js` | Inscription Enfant & Gestion Parent Sans Email | Préremplissage automatique du nom de famille de l'enfant, association pré-sélectionnée et support des parents sans email initial (avec mise à jour ultérieure) | ✅ Validé & Appliqué |
+| **43** | 09/10/2026 | `DatePicker.jsx`, `dateUtils.js`, `AddChildPage.jsx`, `AddUserPage.jsx`, `backend/routes_postgres/children.js` | UX/UI Saisie Date & Bouton Création Utilisateur | Correction intégrale du bug datepicker (saisie fluide JJ/MM/AAAA sans saut de curseur ni corruption d'année type 0262, synchronisation calendrier sécurisée) et libellé "Créer" si sans email | ✅ Validé & Appliqué |
 
 ---
 
@@ -889,8 +891,74 @@
      - Déclenchement de l'input caché sécurisé sans conflit d'événements.
 - **Résultat** : Une charte graphique 100% unifiée, cohérente et élégante sur l'ensemble de l'application (espace parent, dashboard d'administration et profils utilisateurs).
 
+---
 
+### Correction n°42 : Préremplissage automatique nom de famille & Création de parents sans email obligatoire
+- **Fichiers modifiés** :
+  - [`frontend/src/pages/dashboard/AddChildPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/AddChildPage.jsx)
+  - [`frontend/src/pages/dashboard/AddUserPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/AddUserPage.jsx)
+  - [`frontend/src/pages/dashboard/ParentsPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/ParentsPage.jsx)
+  - [`backend/routes_postgres/userWorkflow.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/userWorkflow.js)
+  - [`IDEES.md`](file:///Volumes/Data/Works/Windsurf/creche/IDEES.md)
+- **Problème identifié** :
+  1. Lorsqu'un enfant était inscrit avec succès, la modale proposait *"Créer un compte parent"*, mais l'administrateur devait ressaisir manuellement le nom de famille de l'enfant dans le formulaire de l'utilisateur et rechercher à nouveau l'enfant dans la liste des orphelins.
+  2. Les parents n'ayant pas d'adresse email au moment de l'inscription ne pouvaient pas être enregistrés dans le système car l'email était obligatoire à la création d'utilisateur, bloquant le rattachement de l'enfant à son responsable légal.
+- **Actions appliquées** :
+  1. **Transmission contextuelle et préremplissage automatique (`AddChildPage.jsx` & `AddUserPage.jsx`)** :
+     - Au clic sur *"Créer un compte parent"*, navigation vers `/dashboard/users/add` avec `location.state` contenant : `preselectedChild`, `preselectedRole: 'parent'`, et `prefilledLastName: createdChild.last_name`.
+     - `AddUserPage.jsx` récupère cet état, préremplit le champ Nom de famille (`formData.last_name`), sélectionne le rôle Parent, et injecte automatiquement l'enfant dans `selectedChildren` et `orphanChildren`.
+  2. **Email rendu optionnel pour les parents (`AddUserPage.jsx`)** :
+     - Validation assouplie : pour le rôle `parent`, l'adresse email n'est plus bloquante (reste obligatoire pour le personnel/staff).
+     - Ajout d'une case à cocher explicite : *"Le parent n'a pas d'adresse email actuellement"* (ou *"الولي ليس لديه بريد إلكتروني حالياً"*).
+     - Si cochée, le champ email est désactivé et un encart d'avertissement ambré informe que le parent sera enregistré et lié à l'enfant, mais n'aura pas d'accès de connexion tant qu'un email ne sera pas renseigné.
+  3. **Backend robuste et compatible contraintes SQL (`backend/routes_postgres/userWorkflow.js`)** :
+     - Assouplissement de la validation dans `POST /api/user-workflow/create-parent` via `.optional({ checkFalsy: true }).isEmail()`.
+     - Si aucun email n'est fourni, génération d'un identifiant technique unique `parent.noemail.<cleanPhone>.<suffix>@creche.local` pour respecter la contrainte PostgreSQL `NOT NULL UNIQUE`.
+     - L'utilisateur est créé avec `email_verified: false`, lié à l'enfant dans `children.parent_id` et aux inscriptions (`enrollments`). Aucun email d'invitation ni token n'est émis.
+     - Sécurisation de la route `POST /api/user-workflow/resend-password-link` : rejet avec message explicite si l'email cible est une adresse technique `@creche.local`.
+  4. **Gestion, affichage et mise à jour de l'email ultérieure (`ParentsPage.jsx`)** :
+     - Détection des comptes sans email (`isNoEmail`).
+     - Dans le tableau des parents : affichage d'un badge ambré *"Sans compte (pas d'email)"* au lieu de l'adresse technique interne.
+     - Dans la modale de détails parent :
+       - Ajout d'un bloc d'édition directe de l'email avec appel API `PUT /api/users/:id` et notification de succès.
+       - Remplacement du bouton d'envoi de mot de passe par un message d'assistance invitant à ajouter un email pour activer le compte.
+- **Résultat** : Fluidité maximale lors de l'enchaînement inscription enfant → parent, et flexibilité totale permettant d'enregistrer des parents sans email initial tout en leur garantissant une mise à niveau ultérieure simple.
 
+---
 
-
-
+### Correction n°43 : Fiabilisation du composant DatePicker (Bug de saisie & Corruption d'année) et Label dynamique de création
+- **Fichiers modifiés** :
+  - [`frontend/src/components/ui/DatePicker.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/ui/DatePicker.jsx)
+  - [`frontend/src/utils/dateUtils.js`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/utils/dateUtils.js)
+  - [`frontend/src/pages/dashboard/AddChildPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/AddChildPage.jsx)
+  - [`frontend/src/pages/dashboard/AddUserPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/AddUserPage.jsx)
+  - [`backend/routes_postgres/children.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/children.js)
+  - [`IDEES.md`](file:///Volumes/Data/Works/Windsurf/creche/IDEES.md)
+- **Problème identifié** :
+  1. **Bouton d'invitation parent sans email** : Dans le formulaire d'ajout d'utilisateur, lorsque l'option *"Le parent n'a pas d'adresse email actuellement"* était cochée, le bouton affichait toujours *"Créer et envoyer l'invitation"*, ce qui était contradictoire puisqu'aucune invitation n'est envoyée.
+  2. **Bug de saisie manuelle dans DatePicker (`11/02/0262`)** :
+     - Quand une date par défaut (ex: date du jour `11/02/2026`) était préremplie, modifier un chiffre au clavier déplaçait violemment le curseur tout à la fin du champ.
+     - `formatDateInput` tronquait et mélangeait les chiffres de l'année préexistante avec les nouveaux chiffres saisis (transformant `2026` en `0262`).
+     - Appuyer sur `Backspace` après un slash `/` bloquait l'utilisateur car le slash était immédiatement ré-injecté par le formateur.
+  3. **Conflit avec Flowbite Datepicker** :
+     - L'appel `setDate()` lors de l'ouverture du calendrier déclenchait l'événement `changeDate`, qui appelait immédiatement `hide()` et fermait le calendrier instantanément.
+     - L'absence de vérification sur l'année de l'objet date permettait à des années incomplètes ou corrompues d'être écrites dans le formulaire.
+- **Actions appliquées** :
+  1. **Bouton dynamique dans `AddUserPage.jsx`** :
+     - Si `formData.no_email` est activé : le bouton affiche simplement **"Créer"** (`إنشاء`) avec l'icône `UserPlus`.
+     - Si une adresse email est présente : le bouton conserve **"Créer et envoyer l'invitation"** (`إنشاء وإرسال الدعوة`) avec l'icône `Send`.
+  2. **Algorithme de préservation du curseur (`DatePicker.jsx`)** :
+     - Comptage précis des chiffres avant le curseur (`digitsBefore`) avant formatage.
+     - Plafond strict à 8 chiffres (JJMMAAAA) éliminant tout risque de débordement d'année.
+     - Repositionnement automatique du curseur après le formatage sans saut vers la fin.
+     - Gestion intelligente de la touche `Backspace` au niveau des slashes (suppression du chiffre précédent sans re-blocage par le slash).
+     - Auto-complétion des années à 2 chiffres au `onBlur` (ex: `26` $\rightarrow$ `2026`).
+  3. **Synchronisation Flowbite Datepicker sécurisée** :
+     - Utilisation d'un drapeau programmatique (`isProgrammaticRef`) pour empêcher `setDate()` de fermer prématurément le popup.
+     - Validation stricte de l'année sélectionnée (`year >= 1900 && year <= 2100`) avant d'émettre tout changement vers `onChange`.
+  4. **Mode `readOnlyInput` avec ouverture directe du calendrier au clic** :
+     - Pour garantir une ergonomie irréprochable et éliminer toute friction de saisie clavier sur le champ de date d'inscription ([AddChildPage.jsx](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/AddChildPage.jsx) et [EnrollmentPage.jsx](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/public/EnrollmentPage.jsx)), la prop `readOnlyInput={true}` a été ajoutée.
+     - L'édition manuelle est désactivée (`readOnly`, `inputMode="none"`, `cursor-pointer`, `select-none`), et **un simple clic sur le champ ou sur l'icône calendrier ouvre instantanément le calendrier** pour une sélection visuelle directe sans risque d'erreur.
+  5. **Persistance complète de `enrollment_date` dans le backend (`children.js`)** :
+     - Enregistrement de la date d'inscription saisie dans `enrollments` et `enrollments_archive` au lieu de forcer `NOW()`.
+- **Résultat** : La modification de la date d'inscription se fait désormais d'un simple clic direct sur le calendrier, sans clavier virtuel ni conflit de frappe, garantissant une ergonomie 100% intuitive et sans erreur.

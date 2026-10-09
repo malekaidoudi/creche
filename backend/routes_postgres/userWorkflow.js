@@ -35,7 +35,7 @@ const permissionsService = require('../services/permissionsService');
 router.post('/create-parent', auth.authenticateToken, auth.requireRole('admin'), [
     body('first_name').notEmpty().withMessage('Prénom requis'),
     body('last_name').notEmpty().withMessage('Nom requis'),
-    body('email').isEmail().withMessage('Email invalide'),
+    body('email').optional({ checkFalsy: true }).isEmail().withMessage('Email invalide'),
     body('phone').notEmpty().withMessage('Téléphone requis'),
     body('child_ids').isArray({ min: 1 }).withMessage('Au moins un enfant requis')
 ], async (req, res) => {
@@ -59,20 +59,32 @@ router.post('/create-parent', auth.authenticateToken, auth.requireRole('admin'),
             child_ids // Tableau d'IDs d'enfants
         } = req.body;
 
+        const hasRealEmail = Boolean(email && typeof email === 'string' && email.trim() !== '');
+
         await client.query('BEGIN');
 
-        // 1. Vérifier que l'email n'existe pas déjà
-        const emailCheck = await client.query(
-            'SELECT id FROM users WHERE email = $1',
-            [email]
-        );
+        let finalEmail;
 
-        if (emailCheck.rows.length > 0) {
-            await client.query('ROLLBACK');
-            return res.status(409).json({
-                success: false,
-                error: 'Cet email est déjà utilisé'
-            });
+        if (hasRealEmail) {
+            finalEmail = email.trim().toLowerCase();
+            // 1. Vérifier que l'email n'existe pas déjà
+            const emailCheck = await client.query(
+                'SELECT id FROM users WHERE email = $1',
+                [finalEmail]
+            );
+
+            if (emailCheck.rows.length > 0) {
+                await client.query('ROLLBACK');
+                return res.status(409).json({
+                    success: false,
+                    error: 'Cet email est déjà utilisé'
+                });
+            }
+        } else {
+            // Générer un identifiant technique unique pour le parent sans email
+            const cleanPhone = (phone || '').replace(/\D/g, '') || Date.now();
+            const randomSuffix = crypto.randomBytes(4).toString('hex');
+            finalEmail = `parent.noemail.${cleanPhone}.${randomSuffix}@creche.local`;
         }
 
         // 2. Vérifier que tous les enfants existent et sont orphelins
@@ -108,7 +120,7 @@ router.post('/create-parent', auth.authenticateToken, auth.requireRole('admin'),
             INSERT INTO users (email, password, first_name, last_name, phone, role, is_active, created_at)
             VALUES ($1, $2, $3, $4, $5, 'parent', true, NOW())
             RETURNING id, email, first_name, last_name, phone, role
-        `, [email, tempPassword, first_name, last_name, phone]);
+        `, [finalEmail, tempPassword, first_name, last_name, phone]);
 
         const newUser = userResult.rows[0];
 
@@ -143,40 +155,57 @@ router.post('/create-parent', auth.authenticateToken, auth.requireRole('admin'),
         );
         const children = childrenResult.rows;
 
-        // 8. Générer un token pour la création de mot de passe
-        const passwordToken = crypto.randomBytes(32).toString('hex');
-        const tokenExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 jours
+        let createPasswordUrl = null;
 
-        // Sauvegarder le token dans la base
-        await pool.query(`
-            UPDATE users 
-            SET password_token = $1, password_token_expires = $2, password_set = false
-            WHERE id = $3
-        `, [passwordToken, tokenExpires, newUser.id]);
+        if (hasRealEmail) {
+            // 8. Générer un token pour la création de mot de passe si email réel
+            const passwordToken = crypto.randomBytes(32).toString('hex');
+            const tokenExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 jours
 
-        // 9. Envoyer l'email avec le lien de création de mot de passe
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-        const createPasswordUrl = `${frontendUrl}/create-password?token=${passwordToken}&email=${encodeURIComponent(email)}`;
-        const childName = children.map(c => `${c.first_name} ${c.last_name}`).join(', ');
+            // Sauvegarder le token dans la base
+            await pool.query(`
+                UPDATE users 
+                SET password_token = $1, password_token_expires = $2, password_set = false
+                WHERE id = $3
+            `, [passwordToken, tokenExpires, newUser.id]);
 
-        try {
-            await emailService.sendEmail('PARENT_WELCOME', email, {
-                parentName: `${first_name} ${last_name}`,
-                childName: childName,
-                createPasswordUrl: createPasswordUrl,
-                expiresIn: '7 jours'
-            });
-            console.log(`✅ Email envoyé à ${email}`);
-        } catch (emailError) {
-            console.error('⚠️ Erreur envoi email:', emailError);
+            // 9. Envoyer l'email avec le lien de création de mot de passe
+            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+            createPasswordUrl = `${frontendUrl}/create-password?token=${passwordToken}&email=${encodeURIComponent(finalEmail)}`;
+            const childName = children.map(c => `${c.first_name} ${c.last_name}`).join(', ');
+
+            try {
+                await emailService.sendEmail('PARENT_WELCOME', finalEmail, {
+                    parentName: `${first_name} ${last_name}`,
+                    childName: childName,
+                    createPasswordUrl: createPasswordUrl,
+                    expiresIn: '7 jours'
+                });
+                console.log(`✅ Email envoyé à ${finalEmail}`);
+            } catch (emailError) {
+                console.error('⚠️ Erreur envoi email:', emailError);
+            }
+        } else {
+            // Marquer explicitement que le mot de passe n'est pas encore défini
+            await pool.query(`
+                UPDATE users 
+                SET password_set = false
+                WHERE id = $1
+            `, [newUser.id]);
         }
 
         res.status(201).json({
             success: true,
-            message: 'Compte parent créé avec succès. Un email avec le lien de création de mot de passe a été envoyé.',
-            user: newUser,
+            has_email: hasRealEmail,
+            message: hasRealEmail
+                ? 'Compte parent créé avec succès. Un email avec le lien de création de mot de passe a été envoyé.'
+                : 'Parent enregistré avec succès sans email. Ses enfants ont été associés. Vous pourrez lui ajouter une adresse email ultérieurement.',
+            user: {
+                ...newUser,
+                email: hasRealEmail ? newUser.email : null // Masquer l'email technique au frontend
+            },
             children: children,
-            passwordLink: createPasswordUrl // Pour affichage admin si besoin
+            passwordLink: createPasswordUrl
         });
 
     } catch (error) {
@@ -561,6 +590,13 @@ router.post('/resend-password-link', auth.authenticateToken, auth.requireRole('a
             return res.status(400).json({
                 success: false,
                 error: 'L\'utilisateur a déjà défini son mot de passe'
+            });
+        }
+
+        if (user.email && user.email.endsWith('@creche.local')) {
+            return res.status(400).json({
+                success: false,
+                error: 'Ce parent n\'a pas d\'adresse email enregistrée. Veuillez d\'abord lui attribuer une adresse email valide.'
             });
         }
 

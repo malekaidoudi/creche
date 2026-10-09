@@ -51,6 +51,11 @@ const ParentsPage = () => {
   const [resendingLink, setResendingLink] = useState(false);
   const [generatedLink, setGeneratedLink] = useState(null);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [editingEmail, setEditingEmail] = useState(false);
+  const [emailInput, setEmailInput] = useState('');
+  const [savingEmail, setSavingEmail] = useState(false);
+
+  const isNoEmail = (email) => Boolean(email && email.endsWith('@creche.local'));
 
   // Charger les parents depuis l'API
   useEffect(() => {
@@ -120,10 +125,12 @@ const ParentsPage = () => {
   }, [isRTL, filterStatus]);
 
   const filteredParents = parents.filter(parent => {
+    const parentEmailDisplay = isNoEmail(parent.email) ? '' : parent.email;
     const matchesSearch =
       parent.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       parent.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      parent.email.toLowerCase().includes(searchTerm.toLowerCase());
+      parentEmailDisplay.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (parent.phone && parent.phone.includes(searchTerm));
 
     const matchesFilter = filterStatus === 'all' || parent.status === filterStatus;
 
@@ -135,6 +142,33 @@ const ParentsPage = () => {
     setShowDetails(true);
     setGeneratedLink(null);
     setLinkCopied(false);
+    setEditingEmail(false);
+    setEmailInput(isNoEmail(parent.email) ? '' : (parent.email || ''));
+  };
+
+  const handleSaveEmail = async () => {
+    if (!emailInput.trim() || !/\S+@\S+\.\S+/.test(emailInput.trim())) {
+      dialog.error(isRTL ? 'الرجاء إدخال بريد إلكتروني صحيح' : 'Veuillez saisir une adresse email valide');
+      return;
+    }
+    setSavingEmail(true);
+    try {
+      const newEmailVal = emailInput.trim().toLowerCase();
+      const response = await api.put(`/api/users/${selectedParent.id}`, {
+        email: newEmailVal
+      });
+      if (response.data.success) {
+        dialog.success(isRTL ? 'تم حفظ البريد الإلكتروني بنجاح' : 'Email enregistré avec succès ! Le parent peut maintenant recevoir son lien de mot de passe.');
+        setSelectedParent(prev => ({ ...prev, email: newEmailVal }));
+        setParents(prev => prev.map(p => p.id === selectedParent.id ? { ...p, email: newEmailVal } : p));
+        setEditingEmail(false);
+      }
+    } catch (err) {
+      console.error('Erreur mise à jour email:', err);
+      dialog.error(err.response?.data?.error || (isRTL ? 'خطأ في تحديث البريد الإلكتروني' : 'Erreur lors de la mise à jour de l\'email'));
+    } finally {
+      setSavingEmail(false);
+    }
   };
 
   const handleStatusToggle = (parentId) => {
@@ -600,8 +634,14 @@ const ParentsPage = () => {
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center text-gray-600 dark:text-gray-300">
-                          <Mail className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
-                          {parent.email}
+                          <Mail className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2 flex-shrink-0" />
+                          {isNoEmail(parent.email) ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+                              {isRTL ? 'بدون بريد (لا يملك حساب)' : 'Sans compte (pas d\'email)'}
+                            </span>
+                          ) : (
+                            <span className="truncate max-w-[200px]">{parent.email}</span>
+                          )}
                         </div>
                       </td>
                       <td className="py-3 px-4">
@@ -804,11 +844,73 @@ const ParentsPage = () => {
                   {selectedParent.first_name} {selectedParent.last_name}
                 </p>
               </div>
-              <div>
-                <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                  {isRTL ? 'البريد الإلكتروني' : 'Email'}
-                </label>
-                <p className="text-gray-900 dark:text-white">{selectedParent.email}</p>
+              <div className="p-3 bg-gray-50 dark:bg-gray-700/40 rounded-xl border border-gray-200 dark:border-gray-600">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    {isRTL ? 'البريد الإلكتروني' : 'Adresse Email'}
+                  </label>
+                  {!editingEmail && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingEmail(true)}
+                      className="text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400 font-medium hover:underline inline-flex items-center gap-1 cursor-pointer"
+                    >
+                      <Edit className="w-3 h-3" />
+                      <span>{isNoEmail(selectedParent.email) ? (isRTL ? 'إضافة بريد إلكتروني' : 'Ajouter un email') : (isRTL ? 'تعديل' : 'Modifier')}</span>
+                    </button>
+                  )}
+                </div>
+
+                {editingEmail ? (
+                  <div className="space-y-2 mt-2">
+                    <input
+                      type="email"
+                      value={emailInput}
+                      onChange={(e) => setEmailInput(e.target.value)}
+                      placeholder={isRTL ? 'مثال: parent@example.com' : 'ex: parent@exemple.com'}
+                      className="w-full px-3 py-1.5 text-sm border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-primary-500"
+                    />
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        type="button"
+                        onClick={() => {
+                          setEditingEmail(false);
+                          setEmailInput(isNoEmail(selectedParent.email) ? '' : (selectedParent.email || ''));
+                        }}
+                      >
+                        {isRTL ? 'إلغاء' : 'Annuler'}
+                      </Button>
+                      <Button
+                        size="sm"
+                        type="button"
+                        disabled={savingEmail}
+                        onClick={handleSaveEmail}
+                        className="bg-primary-600 hover:bg-primary-700 text-white"
+                      >
+                        {savingEmail ? (isRTL ? 'جاري الحفظ...' : 'Enregistrement...') : (isRTL ? 'حفظ' : 'Enregistrer')}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    {isNoEmail(selectedParent.email) ? (
+                      <div className="space-y-1">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+                          {isRTL ? 'بدون بريد (لا يملك حساب)' : 'Sans compte (pas d\'email enregistré)'}
+                        </span>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {isRTL 
+                            ? 'أضف بريداً إلكترونياً لتمكين هذا الولي من إنشاء حساب وكلمة مرور واستخدام التطبيق.'
+                            : 'Ajoutez une adresse email pour permettre à ce parent d\'activer son compte et d\'accéder à l\'application.'}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-gray-900 dark:text-white font-medium">{selectedParent.email}</p>
+                    )}
+                  </div>
+                )}
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
@@ -848,39 +950,64 @@ const ParentsPage = () => {
 
                 {isAdmin() && (
                   <>
-                    {/* Bouton Renvoyer le lien - visible si mot de passe non défini */}
-                    {!selectedParent.password_set && (
+                    {/* Cas parent sans email : message invitant à ajouter un email pour activer le compte */}
+                    {isNoEmail(selectedParent.email) ? (
                       <div className="mb-3 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
-                        <div className="flex items-center gap-2 mb-2">
-                          <KeyRound className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                        <div className="flex items-center gap-2 mb-1">
+                          <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
                           <span className="text-sm font-medium text-amber-800 dark:text-amber-300">
-                            {isRTL ? 'كلمة المرور غير محددة' : 'Mot de passe non défini'}
+                            {isRTL ? 'لا يمكن تفعيل الحساب بدون بريد' : 'Compte inactif (sans email)'}
                           </span>
                         </div>
-                        <p className="text-xs text-amber-700 dark:text-amber-400 mb-3">
+                        <p className="text-xs text-amber-700 dark:text-amber-400 mb-2">
                           {isRTL
-                            ? 'هذا الولي لم يحدد كلمة المرور بعد. يمكنك إعادة إرسال رابط الإنشاء.'
-                            : 'Ce parent n\'a pas encore défini son mot de passe. Vous pouvez renvoyer le lien de création.'}
+                            ? 'هذا الولي مسجل بدون بريد إلكتروني. اضغط على "إضافة بريد إلكتروني" أعلاه لربطه بحساب على التطبيق.'
+                            : 'Ce parent est enregistré sans adresse email. Cliquez sur "Ajouter un email" ci-dessus pour lui créer son compte d\'accès.'}
                         </p>
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => handleResendPasswordLink(selectedParent.id)}
-                          disabled={resendingLink}
-                          className="w-full justify-center bg-amber-100 hover:bg-amber-200 dark:bg-amber-800 dark:hover:bg-amber-700 border-amber-300 dark:border-amber-600"
+                          onClick={() => setEditingEmail(true)}
+                          className="w-full justify-center bg-amber-100 hover:bg-amber-200 dark:bg-amber-800 dark:hover:bg-amber-700 border-amber-300 dark:border-amber-600 text-xs"
                         >
-                          {resendingLink ? (
-                            <>
-                              <RefreshCw className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2 animate-spin" />
-                              {isRTL ? 'جاري الإرسال...' : 'Envoi en cours...'}
-                            </>
-                          ) : (
-                            <>
-                              <Mail className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
-                              {isRTL ? 'إعادة إرسال رابط كلمة المرور' : 'Renvoyer le lien de mot de passe'}
-                            </>
-                          )}
+                          <Mail className="w-3.5 h-3.5 mr-1.5 rtl:mr-0 rtl:ml-1.5" />
+                          {isRTL ? 'إضافة بريد إلكتروني الآن' : 'Ajouter une adresse email maintenant'}
                         </Button>
+                      </div>
+                    ) : (
+                      /* Bouton Renvoyer le lien - visible si mot de passe non défini et email réel présent */
+                      !selectedParent.password_set && (
+                        <div className="mb-3 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                          <div className="flex items-center gap-2 mb-2">
+                            <KeyRound className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                            <span className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                              {isRTL ? 'كلمة المرور غير محددة' : 'Mot de passe non défini'}
+                            </span>
+                          </div>
+                          <p className="text-xs text-amber-700 dark:text-amber-400 mb-3">
+                            {isRTL
+                              ? 'هذا الولي لم يحدد كلمة المرور بعد. يمكنك إعادة إرسال رابط الإنشاء.'
+                              : 'Ce parent n\'a pas encore défini son mot de passe. Vous pouvez renvoyer le lien de création.'}
+                          </p>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleResendPasswordLink(selectedParent.id)}
+                            disabled={resendingLink}
+                            className="w-full justify-center bg-amber-100 hover:bg-amber-200 dark:bg-amber-800 dark:hover:bg-amber-700 border-amber-300 dark:border-amber-600"
+                          >
+                            {resendingLink ? (
+                              <>
+                                <RefreshCw className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2 animate-spin" />
+                                {isRTL ? 'جاري الإرسال...' : 'Envoi en cours...'}
+                              </>
+                            ) : (
+                              <>
+                                <Mail className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                                {isRTL ? 'إعادة إرسال رابط كلمة المرور' : 'Renvoyer le lien de mot de passe'}
+                              </>
+                            )}
+                          </Button>
 
                         {/* Afficher le lien généré avec option de copie */}
                         {generatedLink && (
@@ -911,7 +1038,7 @@ const ParentsPage = () => {
                           </div>
                         )}
                       </div>
-                    )}
+                    ))}
 
                     <Button
                       size="sm"

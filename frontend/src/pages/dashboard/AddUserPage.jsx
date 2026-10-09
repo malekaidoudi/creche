@@ -52,6 +52,7 @@ const AddUserPage = () => {
     const [selectedChildren, setSelectedChildren] = useState([]);
     const [showSuccess, setShowSuccess] = useState(false);
     const [createdUser, setCreatedUser] = useState(null);
+    const [noEmail, setNoEmail] = useState(false);
 
     const [formData, setFormData] = useState({
         first_name: '',
@@ -69,7 +70,19 @@ const AddUserPage = () => {
     // Pré-sélectionner un enfant et/ou rôle si passé via navigation
     useEffect(() => {
         if (location.state?.preselectedChild) {
-            setSelectedChildren([location.state.preselectedChild]);
+            const child = location.state.preselectedChild;
+            setSelectedChildren([child]);
+            if (child.last_name) {
+                setFormData(prev => ({
+                    ...prev,
+                    last_name: prev.last_name || child.last_name
+                }));
+            }
+        } else if (location.state?.prefilledLastName) {
+            setFormData(prev => ({
+                ...prev,
+                last_name: prev.last_name || location.state.prefilledLastName
+            }));
         }
         if (location.state?.preselectedRole) {
             setSelectedRole(location.state.preselectedRole);
@@ -85,18 +98,25 @@ const AddUserPage = () => {
             try {
                 const response = await userWorkflowService.getOrphanChildren();
                 if (response.success) {
-                    setOrphanChildren(response.children || []);
+                    let children = response.children || [];
+                    if (location.state?.preselectedChild) {
+                        const preChild = location.state.preselectedChild;
+                        if (!children.some(c => c.id === preChild.id)) {
+                            children = [preChild, ...children];
+                        }
+                    }
+                    setOrphanChildren(children);
                 }
             } catch (error) {
                 console.error('Erreur chargement enfants orphelins:', error);
-                setOrphanChildren([]);
+                setOrphanChildren(location.state?.preselectedChild ? [location.state.preselectedChild] : []);
             } finally {
                 setLoadingChildren(false);
             }
         };
 
         fetchOrphanChildren();
-    }, [selectedRole]);
+    }, [selectedRole, location.state]);
 
     // Options de rôle
     const roleOptions = [
@@ -163,10 +183,17 @@ const AddUserPage = () => {
             newErrors.last_name = isRTL ? 'اسم العائلة مطلوب' : 'Le nom est requis';
         }
 
-        if (!formData.email.trim()) {
-            newErrors.email = isRTL ? 'البريد الإلكتروني مطلوب' : 'L\'email est requis';
-        } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-            newErrors.email = isRTL ? 'البريد الإلكتروني غير صحيح' : 'Format d\'email invalide';
+        // Email : obligatoire pour le personnel, optionnel pour le parent
+        if (selectedRole === 'parent') {
+            if (formData.email.trim() && !/\S+@\S+\.\S+/.test(formData.email.trim())) {
+                newErrors.email = isRTL ? 'البريد الإلكتروني غير صحيح' : 'Format d\'email invalide';
+            }
+        } else {
+            if (!formData.email.trim()) {
+                newErrors.email = isRTL ? 'البريد الإلكتروني مطلوب' : 'L\'email est requis';
+            } else if (!/\S+@\S+\.\S+/.test(formData.email.trim())) {
+                newErrors.email = isRTL ? 'البريد الإلكتروني غير صحيح' : 'Format d\'email invalide';
+            }
         }
 
         if (!formData.phone.trim()) {
@@ -468,7 +495,9 @@ const AddUserPage = () => {
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                            {isRTL ? 'البريد الإلكتروني' : 'Email'} *
+                                            {isRTL ? 'البريد الإلكتروني' : 'Email'} {selectedRole === 'parent' ? (
+                                                <span className="text-gray-400 font-normal text-xs">({isRTL ? 'اختياري' : 'optionnel'})</span>
+                                            ) : '*'}
                                         </label>
                                         <div className="relative">
                                             <Mail className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -476,10 +505,14 @@ const AddUserPage = () => {
                                                 type="email"
                                                 name="email"
                                                 value={formData.email}
+                                                disabled={noEmail}
                                                 onChange={handleInputChange}
-                                                className={`w-full pl-10 rtl:pl-3 rtl:pr-10 pr-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${errors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                                                className={`w-full pl-10 rtl:pl-3 rtl:pr-10 pr-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-100 disabled:dark:bg-gray-800 disabled:text-gray-400 ${errors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                                                     }`}
-                                                placeholder={isRTL ? 'أدخل البريد الإلكتروني' : 'Entrez l\'email'}
+                                                placeholder={noEmail
+                                                    ? (isRTL ? 'بدون بريد إلكتروني' : 'Sans adresse email')
+                                                    : (isRTL ? 'أدخل البريد الإلكتروني' : 'Entrez l\'email')
+                                                }
                                             />
                                         </div>
                                         {errors.email && (
@@ -487,6 +520,29 @@ const AddUserPage = () => {
                                                 <AlertCircle className="w-4 h-4 mr-1" />
                                                 {errors.email}
                                             </p>
+                                        )}
+
+                                        {/* Option parent sans email */}
+                                        {selectedRole === 'parent' && (
+                                            <div className="mt-2">
+                                                <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 cursor-pointer select-none">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={noEmail}
+                                                        onChange={(e) => {
+                                                            setNoEmail(e.target.checked);
+                                                            if (e.target.checked) {
+                                                                setFormData(prev => ({ ...prev, email: '' }));
+                                                                if (errors.email) setErrors(prev => ({ ...prev, email: '' }));
+                                                            }
+                                                        }}
+                                                        className="w-4 h-4 rounded text-primary-600 border-gray-300 focus:ring-primary-500"
+                                                    />
+                                                    <span>{isRTL ? 'ولي الأمر ليس لديه بريد إلكتروني حالياً' : 'Le parent n\'a pas d\'adresse email actuellement'}</span>
+                                                </label>
+
+                                                
+                                            </div>
                                         )}
                                     </div>
 
@@ -728,8 +784,17 @@ const AddUserPage = () => {
                                             </span>
                                         ) : (
                                             <span className="flex items-center">
-                                                <Send className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
-                                                {isRTL ? 'إنشاء وإرسال الدعوة' : 'Créer et envoyer l\'invitation'}
+                                                {noEmail ? (
+                                                    <>
+                                                        <UserPlus className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                                                        {isRTL ? 'إنشاء' : 'Créer'}
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Send className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                                                        {isRTL ? 'إنشاء وإرسال الدعوة' : 'Créer et envoyer l\'invitation'}
+                                                    </>
+                                                )}
                                             </span>
                                         )}
                                     </Button>

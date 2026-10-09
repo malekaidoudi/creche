@@ -8,7 +8,7 @@ Format suggéré : `- [ ] Description de l'idée` (laisser `[ ]`, passer à `[x]
 
 ## � Urgent — Bugs en production
 
-- [ ] **Upload document administratif impossible en production** — la page `dashboard/documents` ne permet pas d'ajouter un document sur le site en prod (fonctionne en local ?). Vérifier : config Cloudinary prod, `CORS` des origines Render, limite taille multer, variables `CLOUDINARY_*` sur Render
+- [x] **Upload document administratif impossible en production** — la page `dashboard/documents` ne permet pas d'ajouter un document sur le site en prod (fonctionne en local ?). Vérifier : config Cloudinary prod, `CORS` des origines Render, limite taille multer, variables `CLOUDINARY_*` sur Render
 
 ## �👤 Rôles & Permissions
 
@@ -33,6 +33,26 @@ Format suggéré : `- [ ] Description de l'idée` (laisser `[ ]`, passer à `[x]
 - [ ] **Numérisation pédagogique** — dématérialiser les documents pédagogiques papier :
   - **Préparation quotidienne de l'éducatrice** — saisie/consultation digitale de la préparation du jour (activités, objectifs, matériel), remplace le cahier papier ; suivi possible par la direction
   - **Programme annuel du directeur** — planification annuelle des activités/thèmes pédagogiques visible par les éducatrices et parents
+- [x] **Flux d'inscription enfant → Création parent avec préremplissage automatique** :
+  - Dès qu'un enfant est inscrit avec succès et que le message s'affiche (*"Enfant inscrit avec succès !"*), en cliquant sur le bouton *"Créer un compte parent"*, préremplir automatiquement le **nom de famille** (ex: `Othmani`) dans le formulaire du nouveau parent.
+  - Optionnellement : pré-associer l'enfant au compte parent en cours de création.
+- [x] **Création de compte parent sans email obligatoire** :
+  - Pouvoir ajouter un compte parent même si celui-ci ne possède pas d'adresse email au moment de l'inscription.
+  - Possibilité de renseigner ou compléter l'adresse email ultérieurement (authentification alternative via téléphone ou identifiant temporaire). Le parent sans email ne dispose pas de compte actif jusqu'à ajout d'un email réel.
+- [x] **Correction du champ date d'inscription (bug de saisie datepicker)** :
+  - Par défaut la date d'inscription est celle d'aujourd'hui, mais la modification manuelle ou via le picker bloque ou corrompt l'année (ex: affichage erroné `11/02/0262`).
+  - Corriger le composant datepicker / input date pour garantir un formatage `JJ/MM/AAAA` (ou `AAAA-MM-JJ`) fiable, souple et sans corruption d'année.
+- [ ] **Modélisation complète des contacts de l'enfant (Parents, Urgence & Personnes de confiance)** :
+  - **Filiation parents** :
+    - Saisie distincte : Nom, prénom et téléphone du **Père** + Nom, prénom et téléphone de la **Mère**.
+    - Le titulaire du compte parent sur la plateforme doit être l'un des parents (père ou mère).
+  - **Contact d'urgence** :
+    - Personne à contacter en priorité absolue en cas d'urgence médicale ou imprévu grave.
+  - **Contacts de confiance (Autorisation de sortie / Récupération de l'enfant)** :
+    - Liste des personnes autorisées à récupérer l'enfant à la fin de la journée.
+    - **Contrôle strict du personnel** : L'éducatrice ou la directrice doit obligatoirement vérifier cette liste avant de confier l'enfant.
+    - **Composition par défaut** : Cette liste contient **par défaut les deux parents et le contact d'urgence**.
+    - **Flexibilité de saisie** : D'autres contacts de confiance (grands-parents, oncle/tante, nounou...) peuvent être saisis lors de l'inscription ou ajoutés/modifiés ultérieurement par le parent directement depuis son espace (`/mon-espace`).
 - [ ] *(ajouter ici)*
 
 ## 🚀 Performance & Technique

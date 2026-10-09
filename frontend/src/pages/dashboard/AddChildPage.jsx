@@ -88,6 +88,7 @@ const AddChildPage = () => {
         gender: data.gender,
         medical_info: can(FEATURES.MEDICAL_VIEW) ? (data.medical_info || '') : '',
         parent_id: data.parent_id || null,
+        enrollment_date: convertToISO(data.enrollment_date) || new Date().toISOString().split('T')[0],
       };
 
       const response = await childrenService.createChild(childData);
@@ -179,7 +180,13 @@ const AddChildPage = () => {
               <div className="space-y-3">
                 {!createdChild.parent_id && (
                   <Button
-                    onClick={() => navigate('/dashboard/add-user', { state: { preselectedChild: createdChild, preselectedRole: 'parent' } })}
+                    onClick={() => navigate('/dashboard/add-user', { 
+                      state: { 
+                        preselectedChild: createdChild, 
+                        preselectedRole: 'parent',
+                        prefilledLastName: createdChild.last_name 
+                      } 
+                    })}
                     className="w-full bg-primary-600 hover:bg-primary-700"
                   >
                     <UserPlus className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
@@ -463,6 +470,7 @@ const AddChildPage = () => {
                 title={isRTL ? 'تاريخ التسجيل' : 'Date d\'inscription'}
                 value={watch('enrollment_date')}
                 onChange={(value) => setValue('enrollment_date', value)}
+                readOnlyInput={true}
               />
             </div>
 

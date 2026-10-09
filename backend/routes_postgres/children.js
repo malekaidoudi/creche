@@ -981,7 +981,8 @@ router.post('/', [
       emergency_contact_name,
       emergency_contact_phone,
       photo_url,
-      parent_id
+      parent_id,
+      enrollment_date
     } = req.body;
 
     // Protection médicale : vérifier la permission medical.view pour le staff si medical_info est fourni
@@ -1028,6 +1029,19 @@ router.post('/', [
       });
     }
 
+    // Créer ou mettre à jour l'entrée dans enrollments si date d'inscription fournie
+    try {
+      await pool.query(
+        `INSERT INTO enrollments (child_id, parent_id, status, enrollment_date, created_at)
+         VALUES ($1, $2, 'approved', COALESCE($3::DATE, CURRENT_DATE), NOW())
+         ON CONFLICT (child_id) 
+         DO UPDATE SET enrollment_date = COALESCE($3::DATE, enrollments.enrollment_date), updated_at = NOW()`,
+        [result.childId, parent_id || null, enrollment_date || null]
+      );
+    } catch (enrollmentErr) {
+      console.warn('⚠️ Erreur création enregistrement enrollment:', enrollmentErr.message);
+    }
+
     // Créer une entrée dans enrollments_archive pour traçabilité
     try {
       let parentInfo = { first_name: 'Inscription directe', last_name: 'via Dashboard', email: null };
@@ -1044,7 +1058,7 @@ router.post('/', [
           child_id, parent_id, enrollment_date, status, new_status,
           applicant_first_name, applicant_last_name, applicant_email,
           admin_notes, created_at, updated_at, approved_by, approved_at
-        ) VALUES ($1, $2, NOW(), 'approved', 'approved', $3, $4, $5, $6, NOW(), NOW(), $7, NOW())`,
+        ) VALUES ($1, $2, COALESCE($8::DATE, NOW()), 'approved', 'approved', $3, $4, $5, $6, NOW(), NOW(), $7, NOW())`,
         [
           result.childId,
           parent_id || null,
@@ -1052,7 +1066,8 @@ router.post('/', [
           parentInfo.last_name,
           parentInfo.email,
           'Inscription directe à la crèche - Enfant ajouté via le dashboard admin',
-          req.user?.id || 1
+          req.user?.id || 1,
+          enrollment_date || null
         ]
       );
     } catch (archiveError) {
