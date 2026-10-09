@@ -999,3 +999,48 @@
        - La carte « Parent responsable » intègre désormais ses propres boutons d'action rapide **Appeler** et **SMS** si son téléphone est renseigné.
        - Nettoyage automatique au démarrage du backend des contacts d'urgence hérités qui avaient été dupliqués sur le nom du parent.
 - **Résultat** : Plus aucun email technique interne n'est visible nulle part dans l'application, et les rôles de parent responsable et de contact d'urgence sont désormais distincts, clairs et sans ambiguïté.
+
+---
+
+### 45. Gestion du statut « Suspendu » (En Pause) avec exclusion de la liste d'appel quotidienne
+
+- **Fichiers modifiés** :
+  - [`backend/routes_postgres/children.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/children.js)
+  - [`frontend/src/services/childrenService.js`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/services/childrenService.js)
+  - [`frontend/src/pages/dashboard/ChildrenPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/ChildrenPage.jsx)
+  - [`frontend/src/components/mobile/MobileChildrenList.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/mobile/MobileChildrenList.jsx)
+- **Besoin identifié** :
+  - Cas d'un enfant déjà inscrit mais temporairement empêché de fréquenter la crèche (ex : retard de paiement, voyage familial, maladie prolongée, pause convenue avec les parents).
+  - L'enfant ne doit **pas** apparaître dans la liste d'appel journalière de présence (`AttendancePage`).
+  - L'enfant doit rester visible dans la liste globale des enfants (`ChildrenPage`) avec une mention claire **« Suspendu (en pause) »**, le motif de suspension et la date éventuelle de retour, avec possibilité pour la direction de le réactiver en 1 clic.
+- **Actions appliquées** :
+  1. **Base de données & Migration non-bloquante** :
+     - Ajout des colonnes `status VARCHAR(20) DEFAULT 'active'`, `suspension_reason TEXT`, `suspended_at TIMESTAMP`, `expected_return_date DATE` dans la table `children` (`ALTER TABLE ... ADD COLUMN IF NOT EXISTS`).
+     - Initialisation sécurisée rétrocompatible : les enfants existants avec `is_active = false` sont passés à `'archived'`, ceux avec `is_active = true` à `'active'`.
+  2. **API Backend (`children.js`)** :
+     - Nouveaux endpoints d'administration :
+       - `PUT /api/children/:id/suspend` : bascule le statut à `'suspended'`, enregistre le motif (`reason`) et la date de retour prévisionnelle (`expected_return_date`).
+       - `PUT /api/children/:id/reactivate` : remet `status = 'active'`, `is_active = true`, et nettoie les motifs de suspension.
+     - Prise en charge des filtres de statut dans `GET /api/children` et `countSql` :
+       - `status = 'active'` ou `'approved'` : exclut automatiquement les enfants suspendus (`COALESCE(c.status, 'active') = 'active'`). La page des présences (`AttendancePage`) étant déjà branchée sur ce filtre, l'exclusion de l'appel quotidien est garantie et instantanée.
+       - `status = 'suspended'` : filtre uniquement les enfants suspendus.
+       - `status = 'all_enrolled'` : renvoie tous les enfants inscrits (actifs ET suspendus).
+       - `status = 'archived'` : renvoie les enfants désactivés/archivés.
+  3. **Frontend Service (`childrenService.js`)** :
+     - Ajout des méthodes `suspendChild(childId, { reason, expected_return_date })` et `reactivateChild(childId)`.
+  4. **Interface d'administration (`ChildrenPage.jsx`)** :
+     - **Sélecteur de filtre** : ajout du choix par statut (*Tous les inscrits (actifs & suspendus)*, *Actifs uniquement*, *Suspendus (en pause)*, *Archivés*).
+     - **Carte enfant** :
+       - Badge distinctif ambré `⏸ Suspendu (en pause)` en haut à droite avec infobulle du motif.
+       - Remplacement de l'encart d'appel par un bloc ambré dédié *"Présence suspendue temporairement - Exclu de l'appel"* affichant le motif et la date prévisionnelle de reprise.
+       - Bouton d'action directe ambré `⏸ Suspendre` pour les enfants actifs, et bouton vert `▶ Réactiver` pour les enfants en pause.
+     - **Modale de suspension (`SuspendModal`)** :
+       - Sélection du motif principal (Retard de paiement, Voyage / Absence familiale, Raison médicale prolongée, Pause demandée par les parents, Autre motif).
+       - Champ de précisions/notes internes.
+       - Date de retour prévisionnelle optionnelle.
+     - **Modale de détails de l'enfant** :
+       - Bannière d'alerte en tête de fiche avec rappel de l'exclusion des présences, rappel du motif/date de retour et bouton de réactivation direct.
+       - Badge de statut mis à jour en haut de la fiche d'identité.
+     - **Composant Mobile (`MobileChildrenList.jsx`)** :
+       - Badge orange *"Suspendu (en pause)"* sur les fiches mobiles.
+- **Résultat** : Gestion complète, ergonomique et sans impact régressif des interruptions temporaires d'enfants avec traçabilité et exclusion automatique de l'appel.

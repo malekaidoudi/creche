@@ -114,6 +114,31 @@ const childrenService = {
       console.error('Erreur lors de l\'association enfant-parent:', error)
       throw error
     }
+  },
+
+  // Mettre un enfant en pause / suspendu
+  suspendChild: async (childId, { reason, expected_return_date }) => {
+    try {
+      const response = await api.put(`/api/children/${childId}/suspend`, {
+        reason,
+        expected_return_date
+      })
+      return response.data
+    } catch (error) {
+      console.error('Erreur lors de la suspension de l\'enfant:', error)
+      throw error
+    }
+  },
+
+  // Réactiver un enfant suspendu
+  reactivateChild: async (childId) => {
+    try {
+      const response = await api.put(`/api/children/${childId}/reactivate`)
+      return response.data
+    } catch (error) {
+      console.error('Erreur lors de la réactivation de l\'enfant:', error)
+      throw error
+    }
   }
 }
 

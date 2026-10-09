@@ -69,6 +69,9 @@ const MobileChildrenList = ({
         if (!child.is_active) {
             return { text: isRTL ? 'غير نشط' : 'Inactif', color: 'gray' };
         }
+        if (child.status === 'suspended') {
+            return { text: isRTL ? 'معلق (استراحة)' : 'Suspendu', color: 'orange' };
+        }
         if (child.enrollment_status === 'enrolled' || child.enrollment_status === 'approved') {
             return { text: isRTL ? 'مسجل' : 'Inscrit', color: 'green' };
         }

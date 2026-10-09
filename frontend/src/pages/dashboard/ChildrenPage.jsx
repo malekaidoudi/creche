@@ -29,7 +29,9 @@ import {
   ShieldCheck,
   AlertTriangle,
   Pill,
-  HeartPulse
+  HeartPulse,
+  PauseCircle,
+  Play
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -97,7 +99,13 @@ const ChildrenPage = () => {
   const [children, setChildren] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const searchDebounceTimer = useRef(null);
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all_enrolled');
+  const [showSuspendModal, setShowSuspendModal] = useState(false);
+  const [suspendingChild, setSuspendingChild] = useState(null);
+  const [suspendReasonCategory, setSuspendReasonCategory] = useState('Retard de paiement');
+  const [suspendReasonDetails, setSuspendReasonDetails] = useState('');
+  const [suspendExpectedReturnDate, setSuspendExpectedReturnDate] = useState('');
+  const [suspendLoading, setSuspendLoading] = useState(false);
   const [filterAge, setFilterAge] = useState('all');
   const [editFormData, setEditFormData] = useState({});
   const [selectedPhotoFile, setSelectedPhotoFile] = useState(null);
@@ -153,7 +161,7 @@ const ChildrenPage = () => {
         page: currentPage,
         limit: pageLimit,
         search: actualSearchTerm,
-        status: 'active', // Enfants actifs (is_active = true)
+        status: filterStatus,
         age: filterAge
       };
 
@@ -202,12 +210,12 @@ const ChildrenPage = () => {
 
   // Changements de filtre/page (après le chargement initial)
   useEffect(() => {
-    console.log('🔄 useEffect déclenché - filterAge:', filterAge, 'page:', currentPage);
+    console.log('🔄 useEffect déclenché - filterStatus:', filterStatus, 'filterAge:', filterAge, 'page:', currentPage);
     // Ne rien faire au premier render (déjà géré par le useEffect ci-dessus)
     if (children.length > 0 || !loading) {
       loadChildren(true);
     }
-  }, [filterAge, currentPage]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [filterStatus, filterAge, currentPage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Gestion du debounce de recherche
   const handleSearchChange = (e) => {
@@ -447,6 +455,98 @@ const ChildrenPage = () => {
     } catch (error) {
       console.error('Erreur lors de l\'archivage:', error);
       dialog.error(error.response?.data?.error || (isRTL ? 'خطأ في أرشفة الطفل' : 'Erreur lors de l\'archivage de l\'enfant'));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Fonctions de gestion de la suspension (mise en pause)
+  const handleOpenSuspend = (child) => {
+    setSuspendingChild(child);
+    setSuspendReasonCategory('Retard de paiement');
+    setSuspendReasonDetails('');
+    setSuspendExpectedReturnDate('');
+    setShowSuspendModal(true);
+  };
+
+  const handleConfirmSuspend = async () => {
+    if (!suspendingChild) return;
+    try {
+      setSuspendLoading(true);
+      const fullReason = suspendReasonDetails.trim()
+        ? `${suspendReasonCategory} - ${suspendReasonDetails.trim()}`
+        : suspendReasonCategory;
+
+      const res = await childrenService.suspendChild(suspendingChild.id, {
+        reason: fullReason,
+        expected_return_date: suspendExpectedReturnDate || null
+      });
+
+      if (res?.success) {
+        dialog.success(
+          isRTL
+            ? `تم تعليق حضور ${suspendingChild.first_name} مؤقتاً`
+            : `${suspendingChild.first_name} mis en pause temporaire avec succès`
+        );
+        setShowSuspendModal(false);
+        setSuspendingChild(null);
+        if (selectedChild?.id === suspendingChild.id) {
+          setSelectedChild(prev => ({
+            ...prev,
+            status: 'suspended',
+            suspension_reason: fullReason,
+            expected_return_date: suspendExpectedReturnDate || null,
+            suspended_at: new Date().toISOString()
+          }));
+        }
+        loadChildren();
+      } else {
+        throw new Error(res?.error || 'Erreur lors de la suspension');
+      }
+    } catch (err) {
+      console.error('Erreur suspension:', err);
+      dialog.error(err.response?.data?.error || err.message || (isRTL ? 'خطأ أثناء التعليق' : 'Erreur lors de la mise en pause'));
+    } finally {
+      setSuspendLoading(false);
+    }
+  };
+
+  const handleReactivateChild = async (child) => {
+    const confirmed = await dialog.confirm(
+      isRTL
+        ? `هل تريد استئناف حضور ${child.first_name} ${child.last_name || ''} وإعادته إلى قائمة الحضور اليومي؟`
+        : `Voulez-vous réactiver ${child.first_name} ${child.last_name || ''} et le réintégrer dans la liste de présence quotidienne ?`,
+      isRTL ? 'تأكيد استئناف الحضور' : 'Confirmer la réactivation',
+      { type: 'info', confirmText: isRTL ? 'استئناف' : 'Réactiver', cancelText: isRTL ? 'إلغاء' : 'Annuler' }
+    );
+    if (!confirmed) return;
+
+    try {
+      setActionLoading(child.id);
+      const res = await childrenService.reactivateChild(child.id);
+      if (res?.success) {
+        dialog.success(
+          isRTL
+            ? `تم استئناف حضور ${child.first_name} بنجاح`
+            : `${child.first_name} a été réactivé avec succès`
+        );
+        if (selectedChild?.id === child.id) {
+          setSelectedChild(prev => ({
+            ...prev,
+            status: 'active',
+            is_active: true,
+            suspension_reason: null,
+            expected_return_date: null,
+            suspended_at: null
+          }));
+        }
+        loadChildren();
+      } else {
+        throw new Error(res?.error || 'Erreur lors de la réactivation');
+      }
+    } catch (err) {
+      console.error('Erreur réactivation:', err);
+      dialog.error(err.response?.data?.error || err.message || (isRTL ? 'خطأ أثناء التفعيل' : 'Erreur lors de la réactivation'));
     } finally {
       setActionLoading(null);
     }
@@ -898,6 +998,21 @@ const ChildrenPage = () => {
             </div>
 
 
+            {/* Filtre par statut */}
+            <select
+              value={filterStatus}
+              onChange={(e) => {
+                setFilterStatus(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent font-medium"
+            >
+              <option value="all_enrolled">{isRTL ? 'جميع المسجلين (نشطين ومعلقين)' : 'Tous les inscrits (actifs & suspendus)'}</option>
+              <option value="active">{isRTL ? 'نشطين فقط' : 'Actifs uniquement'}</option>
+              <option value="suspended">{isRTL ? 'معلقين (في استراحة)' : 'Suspendus (en pause)'}</option>
+              <option value="archived">{isRTL ? 'مؤرشفين' : 'Archivés'}</option>
+            </select>
+
             {/* Filtre par âge */}
             <select
               value={filterAge}
@@ -915,8 +1030,9 @@ const ChildrenPage = () => {
               variant="outline"
               onClick={() => {
                 setSearchTerm('');
-                setFilterStatus('all');
+                setFilterStatus('all_enrolled');
                 setFilterAge('all');
+                setCurrentPage(1);
               }}
             >
               <Filter className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
@@ -970,17 +1086,27 @@ const ChildrenPage = () => {
                     </div>
 
                     <div className="flex items-center space-x-2 rtl:space-x-reverse flex-shrink-0 relative">
-                      <span
-                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${enrollmentStatus.color} ${enrollmentStatus.bgColor} ${!isDossierComplete ? 'cursor-pointer' : ''}`}
-                        title={!isDossierComplete ? (isRTL ? 'دوسيه غير مكتمل - انقر للتفاصيل' : 'Dossier incomplet - cliquez pour voir le détail') : undefined}
-                        onClick={!isDossierComplete ? (e) => {
-                          e.stopPropagation();
-                          setMissingInfoOpenId(prev => prev === child.id ? null : child.id);
-                        } : undefined}
-                      >
-                        {isDossierComplete ? getStatusIcon('approved') : getStatusIcon('pending')}
-                        <span className="ml-1 rtl:ml-0 rtl:mr-1">{enrollmentStatus.text}</span>
-                      </span>
+                      {child.status === 'suspended' ? (
+                        <span
+                          className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-300 dark:border-amber-700 shadow-sm"
+                          title={child.suspension_reason ? `${isRTL ? 'السبب:' : 'Motif :'} ${child.suspension_reason}` : undefined}
+                        >
+                          <PauseCircle className="w-3.5 h-3.5 mr-1 rtl:mr-0 rtl:ml-1 text-amber-600 dark:text-amber-400" />
+                          <span>{isRTL ? 'معلق (استراحة)' : 'Suspendu (en pause)'}</span>
+                        </span>
+                      ) : (
+                        <span
+                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${enrollmentStatus.color} ${enrollmentStatus.bgColor} ${!isDossierComplete ? 'cursor-pointer' : ''}`}
+                          title={!isDossierComplete ? (isRTL ? 'دوسيه غير مكتمل - انقر للتفاصيل' : 'Dossier incomplet - cliquez pour voir le détail') : undefined}
+                          onClick={!isDossierComplete ? (e) => {
+                            e.stopPropagation();
+                            setMissingInfoOpenId(prev => prev === child.id ? null : child.id);
+                          } : undefined}
+                        >
+                          {isDossierComplete ? getStatusIcon('approved') : getStatusIcon('pending')}
+                          <span className="ml-1 rtl:ml-0 rtl:mr-1">{enrollmentStatus.text}</span>
+                        </span>
+                      )}
 
                       {!isDossierComplete && missingInfoOpenId === child.id && (
                         <div
@@ -1007,31 +1133,55 @@ const ChildrenPage = () => {
 
                 <CardContent className="p-3 sm:p-6">
                   <div className="space-y-3 sm:space-y-4">
-                    {/* Présence aujourd'hui */}
-                    <div className={`p-2 xs:p-3 rounded-lg ${attendanceStatus.bgColor}`}>
-                      <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between gap-1 xs:gap-0">
-                        <span className="text-xs xs:text-sm font-medium text-gray-900 dark:text-white">
-                          {isRTL ? 'الحضور اليوم:' : 'Présence aujourd\'hui:'}
-                        </span>
-                        <span className={`text-xs xs:text-sm font-medium ${attendanceStatus.color}`}>
-                          {attendanceStatus.text}
-                        </span>
-                      </div>
-                      {attendanceToday.check_in && (
-                        <div className="flex flex-col xs:flex-row xs:items-center xs:space-x-4 rtl:xs:space-x-reverse gap-1 xs:gap-0 mt-2 text-xs xs:text-sm text-gray-600 dark:text-gray-400">
-                          <div className="flex items-center space-x-1 rtl:space-x-reverse">
-                            <Clock className="w-3 h-3" />
-                            <span>{isRTL ? 'الوصول:' : 'Arrivée:'} {attendanceToday.check_in}</span>
+                    {/* Présence aujourd'hui ou statut suspendu */}
+                    {child.status === 'suspended' ? (
+                      <div className="p-2.5 xs:p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60">
+                        <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between gap-1 xs:gap-0">
+                          <span className="text-xs xs:text-sm font-semibold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                            <PauseCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                            {isRTL ? 'حضور معلق مؤقتاً' : 'Présence suspendue temporairement'}
+                          </span>
+                          <span className="text-[11px] font-medium text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/50 px-2 py-0.5 rounded-full self-start xs:self-auto">
+                            {isRTL ? 'خارج قائمة النداء' : 'Exclu de l\'appel'}
+                          </span>
+                        </div>
+                        {child.suspension_reason && (
+                          <div className="mt-1.5 text-xs text-amber-800 dark:text-amber-300">
+                            <span className="font-medium">{isRTL ? 'السبب:' : 'Motif :'}</span> {child.suspension_reason}
                           </div>
-                          {attendanceToday.check_out && (
+                        )}
+                        {child.expected_return_date && (
+                          <div className="mt-0.5 text-xs text-amber-700 dark:text-amber-400">
+                            <span className="font-medium">{isRTL ? 'العودة المتوقعة:' : 'Retour prévu :'}</span> {new Date(child.expected_return_date).toLocaleDateString('fr-FR')}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className={`p-2 xs:p-3 rounded-lg ${attendanceStatus.bgColor}`}>
+                        <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between gap-1 xs:gap-0">
+                          <span className="text-xs xs:text-sm font-medium text-gray-900 dark:text-white">
+                            {isRTL ? 'الحضور اليوم:' : 'Présence aujourd\'hui:'}
+                          </span>
+                          <span className={`text-xs xs:text-sm font-medium ${attendanceStatus.color}`}>
+                            {attendanceStatus.text}
+                          </span>
+                        </div>
+                        {attendanceToday.check_in && (
+                          <div className="flex flex-col xs:flex-row xs:items-center xs:space-x-4 rtl:xs:space-x-reverse gap-1 xs:gap-0 mt-2 text-xs xs:text-sm text-gray-600 dark:text-gray-400">
                             <div className="flex items-center space-x-1 rtl:space-x-reverse">
                               <Clock className="w-3 h-3" />
-                              <span>{isRTL ? 'المغادرة:' : 'Départ:'} {attendanceToday.check_out}</span>
+                              <span>{isRTL ? 'الوصول:' : 'Arrivée:'} {attendanceToday.check_in}</span>
                             </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
+                            {attendanceToday.check_out && (
+                              <div className="flex items-center space-x-1 rtl:space-x-reverse">
+                                <Clock className="w-3 h-3" />
+                                <span>{isRTL ? 'المغادرة:' : 'Départ:'} {attendanceToday.check_out}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* Informations parent */}
                     <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-2 xs:p-3">
@@ -1113,6 +1263,37 @@ const ChildrenPage = () => {
                             <span className="hidden xs:inline">{isRTL ? 'تعديل' : 'Modifier'}</span>
                             <span className="xs:hidden">{isRTL ? 'تعديل' : 'Mod.'}</span>
                           </Button>
+
+                          {isAdmin() && child.status === 'suspended' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleReactivateChild(child)}
+                              disabled={actionLoading === child.id}
+                              className="text-emerald-700 border-emerald-300 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-700 flex-shrink-0"
+                              title={isRTL ? 'استئناف الحضور' : 'Réactiver l\'enfant'}
+                            >
+                              <Play className="w-3.5 h-3.5 mr-1 rtl:mr-0 rtl:ml-1 fill-emerald-600 text-emerald-600" />
+                              <span className="hidden xs:inline">{isRTL ? 'استئناف' : 'Réactiver'}</span>
+                              <span className="xs:hidden">{isRTL ? 'استئناف' : 'Réact.'}</span>
+                            </Button>
+                          )}
+
+                          {isAdmin() && child.status !== 'suspended' && child.is_active !== false && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleOpenSuspend(child)}
+                              disabled={actionLoading === child.id}
+                              className="text-amber-700 border-amber-300 bg-amber-50/50 hover:bg-amber-100 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-700 flex-shrink-0"
+                              title={isRTL ? 'تعليق الحضور مؤقتاً' : 'Mettre en pause temporaire'}
+                            >
+                              <PauseCircle className="w-3.5 h-3.5 mr-1 rtl:mr-0 rtl:ml-1 text-amber-600" />
+                              <span className="hidden xs:inline">{isRTL ? 'تعليق' : 'Suspendre'}</span>
+                              <span className="xs:hidden">{isRTL ? 'تعليق' : 'Susp.'}</span>
+                            </Button>
+                          )}
+
                           {isAdmin() && (
                             <Button
                               size="sm"
@@ -1271,6 +1452,50 @@ const ChildrenPage = () => {
                 </Button>
               </div>
 
+              {/* Bannière de suspension */}
+              {selectedChild.status === 'suspended' && (
+                <div className="mb-5 p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <PauseCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                      <div>
+                        <span className="font-semibold text-sm">
+                          {isRTL ? 'هذا الطفل معلق حالياً (في استراحة)' : 'Cet enfant est actuellement suspendu (en pause)'}
+                        </span>
+                        <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
+                          {isRTL ? 'مستبعد تلقائياً من قائمة الحضور اليومي.' : 'Il est exclu automatiquement de la liste d\'appel des présences.'}
+                        </p>
+                      </div>
+                    </div>
+                    {isAdmin() && (
+                      <Button
+                        size="sm"
+                        onClick={() => handleReactivateChild(selectedChild)}
+                        disabled={actionLoading === selectedChild.id}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                      >
+                        <Play className="w-3.5 h-3.5 mr-1.5 rtl:mr-0 rtl:ml-1.5 fill-white" />
+                        {isRTL ? 'استئناف الحضور' : 'Réactiver l\'enfant'}
+                      </Button>
+                    )}
+                  </div>
+                  {(selectedChild.suspension_reason || selectedChild.expected_return_date) && (
+                    <div className="mt-3 pt-2.5 border-t border-amber-200/80 dark:border-amber-800 text-xs grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {selectedChild.suspension_reason && (
+                        <div>
+                          <span className="font-semibold">{isRTL ? 'السبب:' : 'Motif :'}</span> {selectedChild.suspension_reason}
+                        </div>
+                      )}
+                      {selectedChild.expected_return_date && (
+                        <div>
+                          <span className="font-semibold">{isRTL ? 'العودة المتوقعة:' : 'Date de retour prévue :'}</span> {new Date(selectedChild.expected_return_date).toLocaleDateString('fr-FR')}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="space-y-5">
                 {/* 1. IDENTITÉ DE L'ENFANT */}
                 <div className="bg-slate-50 dark:bg-gray-800/80 rounded-2xl p-5 border border-slate-200/80 dark:border-gray-700 shadow-sm">
@@ -1283,13 +1508,19 @@ const ChildrenPage = () => {
                         {isRTL ? 'هوية الطفل' : "Identité de l'enfant"}
                       </h4>
                     </div>
-                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      selectedChild.is_active !== false 
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' 
-                        : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-                    }`}>
-                      {selectedChild.is_active !== false ? (isRTL ? 'نشط' : 'Actif') : (isRTL ? 'غير نشط' : 'Inactif')}
-                    </span>
+                    {selectedChild.status === 'suspended' ? (
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
+                        {isRTL ? 'معلق (استراحة)' : 'Suspendu (en pause)'}
+                      </span>
+                    ) : (
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        selectedChild.is_active !== false 
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' 
+                          : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                      }`}>
+                        {selectedChild.is_active !== false ? (isRTL ? 'نشط' : 'Actif') : (isRTL ? 'غير نشط' : 'Inactif')}
+                      </span>
+                    )}
                   </div>
 
                   {/* Photo & Grille identité */}
@@ -1993,6 +2224,106 @@ const ChildrenPage = () => {
                   </Button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de suspension d'un enfant */}
+      {showSuspendModal && suspendingChild && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[70]">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="p-6">
+              <div className="flex items-center gap-3 pb-3 mb-4 border-b border-gray-100 dark:border-gray-700">
+                <div className="p-2.5 bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 rounded-xl">
+                  <PauseCircle className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                    {isRTL ? 'تعليق حضور طفل' : 'Mettre l\'enfant en pause'}
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {suspendingChild.first_name} {suspendingChild.last_name}
+                  </p>
+                </div>
+              </div>
+
+              <div className="text-xs text-gray-600 dark:text-gray-300 mb-4 bg-amber-50 dark:bg-amber-950/30 p-3 rounded-xl border border-amber-200/60 dark:border-amber-800/40 leading-relaxed">
+                ℹ️ {isRTL 
+                  ? 'سيتم استبعاد الطفل من لائحة الحضور والغياب اليومية مع الحفاظ الكامل على ملفه. يمكنك استئناف حضوره بنقرة واحدة في أي وقت.'
+                  : 'L\'enfant sera exclu de la liste d\'appel quotidienne tout en conservant son dossier intact. Vous pourrez le réactiver en un clic dès son retour.'}
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                    {isRTL ? 'سبب التعليق' : 'Motif principal *'}
+                  </label>
+                  <select
+                    value={suspendReasonCategory}
+                    onChange={(e) => setSuspendReasonCategory(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  >
+                    <option value="Retard de paiement">{isRTL ? 'تأخر في الدفع' : 'Retard de paiement'}</option>
+                    <option value="Voyage / Absence familiale">{isRTL ? 'سفر / غياب عائلي' : 'Voyage / Absence familiale'}</option>
+                    <option value="Raison médicale prolongée">{isRTL ? 'سبب صحي مطول' : 'Raison médicale prolongée'}</option>
+                    <option value="Pause demandée par les parents">{isRTL ? 'طلب من الوالدين' : 'Pause demandée par les parents'}</option>
+                    <option value="Autre motif">{isRTL ? 'سبب آخر' : 'Autre motif'}</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                    {isRTL ? 'تفاصيل إضافية (اختياري)' : 'Précisions / Notes internes (optionnel)'}
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={suspendReasonDetails}
+                    onChange={(e) => setSuspendReasonDetails(e.target.value)}
+                    placeholder={isRTL ? 'ملاحظة خاصة بالإدارة...' : 'Ex: Accord verbal pour reprise le mois prochain...'}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                    {isRTL ? 'تاريخ العودة المتوقع (اختياري)' : 'Date de retour prévue (optionnel)'}
+                  </label>
+                  <input
+                    type="date"
+                    value={suspendExpectedReturnDate}
+                    onChange={(e) => setSuspendExpectedReturnDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-gray-100 dark:border-gray-700">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowSuspendModal(false);
+                    setSuspendingChild(null);
+                  }}
+                  disabled={suspendLoading}
+                >
+                  {isRTL ? 'إلغاء' : 'Annuler'}
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleConfirmSuspend}
+                  disabled={suspendLoading}
+                  className="bg-amber-600 hover:bg-amber-700 text-white"
+                >
+                  {suspendLoading ? (
+                    <RefreshCw className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <PauseCircle className="w-4 h-4 mr-2" />
+                  )}
+                  {isRTL ? 'تأكيد التعليق' : 'Suspendre l\'enfant'}
+                </Button>
+              </div>
             </div>
           </div>
         </div>

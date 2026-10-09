@@ -26,6 +26,8 @@ const ensureMedicalColumns = async () => {
   } catch (err) {
     console.warn('⚠️ Note: vérification colonnes médicales children:', err.message);
   }
+};
+
 // Nettoyer les contacts d'urgence dupliqués du parent créés par l'ancienne logique
 const cleanupLegacyEmergencyContacts = async () => {
   try {
@@ -41,7 +43,27 @@ const cleanupLegacyEmergencyContacts = async () => {
     // Log silencieux si table indisponible
   }
 };
-ensureMedicalColumns().then(() => cleanupLegacyEmergencyContacts());
+
+// Assurer les colonnes pour la gestion des statuts d'enfant (actif, suspendu, archivé)
+const ensureChildStatusColumns = async () => {
+  try {
+    await pool.query(`
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active';
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS suspension_reason TEXT;
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS suspended_at TIMESTAMP;
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS expected_return_date DATE;
+
+      UPDATE children SET status = 'archived' WHERE is_active = false AND (status IS NULL OR status = 'active');
+      UPDATE children SET status = 'active' WHERE is_active = true AND status IS NULL;
+    `);
+  } catch (err) {
+    console.warn('⚠️ Note: vérification colonnes status children:', err.message);
+  }
+};
+
+ensureMedicalColumns()
+  .then(() => cleanupLegacyEmergencyContacts())
+  .then(() => ensureChildStatusColumns());
 
 /**
  * Vérifie l'accès à la gestion de la photo d'un enfant (upload/suppression) :
@@ -705,6 +727,76 @@ router.put('/:id/deactivate-parent', auth.authenticateToken, auth.requireRole('a
   }
 });
 
+// PUT /api/children/:id/suspend - Mettre un enfant en pause (suspendu)
+router.put('/:id/suspend', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason, expected_return_date } = req.body;
+
+    const childCheck = await pool.query('SELECT id, first_name, last_name FROM children WHERE id = $1', [id]);
+    if (childCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Enfant non trouvé' });
+    }
+
+    const result = await pool.query(`
+      UPDATE children
+      SET status = 'suspended',
+          suspension_reason = $1,
+          expected_return_date = $2,
+          suspended_at = NOW(),
+          updated_at = NOW()
+      WHERE id = $3
+      RETURNING id, first_name, last_name, status, suspension_reason, suspended_at, expected_return_date
+    `, [reason || 'Non précisé', expected_return_date || null, id]);
+
+    logger.info(`⏸ Enfant #${id} (${childCheck.rows[0].first_name} ${childCheck.rows[0].last_name}) suspendu par #${req.user.id || req.user.userId}`);
+
+    res.json({
+      success: true,
+      message: 'Enfant mis en pause avec succès',
+      child: result.rows[0]
+    });
+  } catch (error) {
+    logger.error('❌ Erreur suspension enfant:', error.message);
+    res.status(500).json({ success: false, error: 'Erreur lors de la suspension de l\'enfant' });
+  }
+});
+
+// PUT /api/children/:id/reactivate - Réactiver un enfant suspendu
+router.put('/:id/reactivate', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const childCheck = await pool.query('SELECT id, first_name, last_name FROM children WHERE id = $1', [id]);
+    if (childCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Enfant non trouvé' });
+    }
+
+    const result = await pool.query(`
+      UPDATE children
+      SET status = 'active',
+          is_active = true,
+          suspension_reason = NULL,
+          expected_return_date = NULL,
+          suspended_at = NULL,
+          updated_at = NOW()
+      WHERE id = $1
+      RETURNING id, first_name, last_name, status, is_active
+    `, [id]);
+
+    logger.info(`▶ Enfant #${id} (${childCheck.rows[0].first_name} ${childCheck.rows[0].last_name}) réactivé par #${req.user.id || req.user.userId}`);
+
+    res.json({
+      success: true,
+      message: 'Enfant réactivé avec succès',
+      child: result.rows[0]
+    });
+  } catch (error) {
+    logger.error('❌ Erreur réactivation enfant:', error.message);
+    res.status(500).json({ success: false, error: 'Erreur lors de la réactivation de l\'enfant' });
+  }
+});
+
 // GET /api/children/unassociated - Enfants non associés (route spécifique avant la route générale)
 router.get('/unassociated', async (req, res) => {
   try {
@@ -735,6 +827,8 @@ router.get('/', auth.authenticateToken, async (req, res) => {
         c.emergency_contact_name, c.emergency_contact_phone, c.photo_url, 
         COALESCE(c.photo_shared_with_staff, true) as photo_shared_with_staff,
         c.is_active, c.created_at, c.updated_at, c.parent_id,
+        COALESCE(c.status, 'active') as status,
+        c.suspension_reason, c.suspended_at, c.expected_return_date,
         EXTRACT(YEAR FROM AGE(c.birth_date)) as age,
         u.id as parent_user_id,
         u.first_name as parent_first_name,
@@ -753,15 +847,17 @@ router.get('/', auth.authenticateToken, async (req, res) => {
     const params = [];
     let paramCount = 0;
 
-    // Filtres
+    // Filtres de statut
     if (status === 'active' || status === 'approved') {
-      paramCount++;
-      sql += ` AND c.is_active = $${paramCount}`;
-      params.push(true);
+      sql += ` AND c.is_active = true AND COALESCE(c.status, 'active') = 'active'`;
+    } else if (status === 'suspended') {
+      sql += ` AND c.is_active = true AND c.status = 'suspended'`;
+    } else if (status === 'all_enrolled' || status === 'all_active') {
+      sql += ` AND c.is_active = true AND COALESCE(c.status, 'active') IN ('active', 'suspended')`;
     } else if (status === 'archived' || status === 'inactive') {
-      paramCount++;
-      sql += ` AND c.is_active = $${paramCount}`;
-      params.push(false);
+      sql += ` AND (c.is_active = false OR c.status = 'archived')`;
+    } else if (status === 'all') {
+      // Aucun filtre sur le statut
     }
 
     if (search) {
@@ -826,13 +922,13 @@ router.get('/', auth.authenticateToken, async (req, res) => {
     let countParamCount = 0;
 
     if (status === 'active' || status === 'approved') {
-      countParamCount++;
-      countSql += ` AND c.is_active = $${countParamCount}`;
-      countParams.push(true);
+      countSql += ` AND c.is_active = true AND COALESCE(c.status, 'active') = 'active'`;
+    } else if (status === 'suspended') {
+      countSql += ` AND c.is_active = true AND c.status = 'suspended'`;
+    } else if (status === 'all_enrolled' || status === 'all_active') {
+      countSql += ` AND c.is_active = true AND COALESCE(c.status, 'active') IN ('active', 'suspended')`;
     } else if (status === 'archived' || status === 'inactive') {
-      countParamCount++;
-      countSql += ` AND c.is_active = $${countParamCount}`;
-      countParams.push(false);
+      countSql += ` AND (c.is_active = false OR c.status = 'archived')`;
     }
 
     if (search) {
@@ -909,6 +1005,8 @@ router.get('/:id', auth.authenticateToken, auth.requireChildAccess, async (req, 
               c.allergies, c.medical_notes, c.doctor_name, c.doctor_phone, c.blood_type,
               c.emergency_contact_name, c.emergency_contact_phone, c.photo_url, c.photo_shared_with_staff,
               c.is_active, c.created_at, c.updated_at, c.parent_id,
+              COALESCE(c.status, 'active') as status,
+              c.suspension_reason, c.suspended_at, c.expected_return_date,
               EXTRACT(YEAR FROM AGE(c.birth_date)) as age,
               u.first_name as parent_first_name, u.last_name as parent_last_name,
               u.email as parent_email, u.phone as parent_phone

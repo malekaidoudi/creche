@@ -53,6 +53,11 @@ Format suggéré : `- [ ] Description de l'idée` (laisser `[ ]`, passer à `[x]
     - **Contrôle strict du personnel** : L'éducatrice ou la directrice doit obligatoirement vérifier cette liste avant de confier l'enfant.
     - **Composition par défaut** : Cette liste contient **par défaut les deux parents et le contact d'urgence**.
     - **Flexibilité de saisie** : D'autres contacts de confiance (grands-parents, oncle/tante, nounou...) peuvent être saisis lors de l'inscription ou ajoutés/modifiés ultérieurement par le parent directement depuis son espace (`/mon-espace`).
+- [ ] **Photos multiples dans une publication du fil d'activité** — permettre à l'utilisateur d'ajouter plusieurs photos dans une seule publication sur la page Activité :
+  - État actuel : `ActivityForm.jsx` n'accepte qu'un seul média (`files?.[0]`, état `media` unique).
+  - Sélection multiple (`input multiple`), aperçu en grille, suppression individuelle avant envoi.
+  - Upload groupé vers Cloudinary + stockage d'une liste d'URLs par post (adapter schéma `activity_posts` : `media_urls` JSON ou table `activity_post_media`).
+  - Affichage en galerie/grille dans `ActivityCard.jsx` (et `FullscreenFeed.jsx`).
 - [ ] *(ajouter ici)*
 
 ## 🚀 Performance & Technique
