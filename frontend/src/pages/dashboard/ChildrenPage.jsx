@@ -44,7 +44,6 @@ import { documentService } from '../../services/documentService';
 import approvalService from '../../services/approvalService';
 import { Card, CardContent, CardDescription, CardTitle } from '../../components/ui/Card';
 import API_CONFIG from '../../config/api';
-import QuickParentsModal from '../../components/modals/QuickParentsModal';
 
 // Construit l'URL complète d'une photo enfant (le backend ne renvoie qu'un chemin relatif)
 const getChildPhotoUrl = (photoUrl) => {
@@ -102,7 +101,6 @@ const ChildrenPage = () => {
   const [suspendExpectedReturnDate, setSuspendExpectedReturnDate] = useState('');
   const [suspendLoading, setSuspendLoading] = useState(false);
   const [filterAge, setFilterAge] = useState('all');
-  const [showQuickParentsModal, setShowQuickParentsModal] = useState(false);
   const [editFormData, setEditFormData] = useState({});
   const [selectedPhotoFile, setSelectedPhotoFile] = useState(null);
   const [photoActionLoading, setPhotoActionLoading] = useState(false);
@@ -119,13 +117,6 @@ const ChildrenPage = () => {
   const menuTriggerRefs = useRef({});
   const menuWrapperRefs = useRef({});
   const [directorPhone, setDirectorPhone] = useState('+216 25 95 35 32');
-
-  // Nombre d'enfants avec filiation ou contact d'urgence incomplet
-  const incompleteParentsCount = children.filter(c =>
-    !c.father_name?.trim() || !c.father_phone?.trim() ||
-    !c.mother_name?.trim() || !c.mother_phone?.trim() ||
-    !c.emergency_contact_phone?.trim()
-  ).length;
 
   // Récupérer le numéro de téléphone de contact de la direction / admin pour les urgences
   useEffect(() => {
@@ -1029,21 +1020,6 @@ const ChildrenPage = () => {
           </div>
 
           <div className="flex flex-wrap gap-2 mt-4 sm:mt-0">
-            {isAdmin() && (
-              <Button
-                variant="outline"
-                onClick={() => setShowQuickParentsModal(true)}
-                className="border-indigo-300 bg-indigo-50/70 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 dark:hover:bg-indigo-900/60 font-semibold shadow-sm"
-              >
-                <Users className="w-4 h-4 mr-1.5 rtl:mr-0 rtl:ml-1.5 text-indigo-600 dark:text-indigo-400" />
-                <span>{isRTL ? 'تحديث سريع للأولياء' : '⚡ Saisie rapide Parents'}</span>
-                {incompleteParentsCount > 0 && (
-                  <span className="ml-1.5 rtl:ml-0 rtl:mr-1.5 px-1.5 py-0.5 rounded-full text-[10px] bg-amber-500 text-white font-bold">
-                    {incompleteParentsCount}
-                  </span>
-                )}
-              </Button>
-            )}
             {(isAdmin() || isStaff()) && (
               <div className="flex gap-2">
                 <Button asChild>
@@ -2786,21 +2762,6 @@ const ChildrenPage = () => {
         </div>
       )}
 
-      {/* Modale de saisie rapide des parents et contacts d'urgence */}
-      {showQuickParentsModal && (
-        <QuickParentsModal
-          isOpen={showQuickParentsModal}
-          onClose={() => {
-            setShowQuickParentsModal(false);
-            loadChildren();
-          }}
-          childrenList={children}
-          onChildUpdated={(childId, updatedData) => {
-            setChildren(prev => prev.map(c => c.id === childId ? { ...c, ...updatedData } : c));
-          }}
-          isRTL={isRTL}
-        />
-      )}
     </>
   );
 };

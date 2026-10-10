@@ -1141,5 +1141,5 @@
      - Les requêtes SQL de sélection et de mise à jour utilisent désormais strictement `father_name, father_phone, mother_name, mother_phone, account_holder`.
      - Les écrans de consultation et de formulaire (Espace Parent, Dashboard Direction, Modale Saisie Rapide) lisent et écrivent directement sur ces colonnes.
      - Élimination totale de toute confusion ou doublon entre le 1er parent, le 2ème parent et le titulaire.
-- **Résultat** : La table `children` ne comporte plus aucune colonne ambiguë. Seuls figurent le père, la mère, le titulaire du compte et les contacts d'urgence / personnes de confiance.
+- **Résultat** : La table `children` ne comporte plus aucune colonne ambiguë. Seuls figurent le père, la mère, le titulaire du compte et les contacts d'urgence / personnes de confiance. L'outil provisoire de saisie rapide (`QuickParentsModal` et bouton `⚡ Saisie rapide Parents`) a été retiré de l'interface une fois la base de données assainie et validée.
 
