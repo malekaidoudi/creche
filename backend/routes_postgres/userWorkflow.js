@@ -157,20 +157,22 @@ router.post('/create-parent', auth.authenticateToken, auth.requireRole('admin'),
             const spouseName = (spouse_name || '').trim() || null;
             const spousePhone = (spouse_phone || '').trim() || null;
             // Le conjoint renseigne le rôle opposé (père si le compte est la mère, et inversement)
+            // NB: $7 séparé de $1 — un même param utilisé en assignation ET comparaison
+            //     provoque "inconsistent types deduced" sous Postgres.
             await client.query(`
                 UPDATE children SET
                     account_holder = $1,
-                    father_name = CASE WHEN $1 = 'father' THEN COALESCE(NULLIF(father_name, ''), $2)
+                    father_name = CASE WHEN $7 = 'father' THEN COALESCE(NULLIF(father_name, ''), $2)
                                        ELSE COALESCE(NULLIF(father_name, ''), $5) END,
-                    father_phone = CASE WHEN $1 = 'father' THEN COALESCE(NULLIF(father_phone, ''), $3)
+                    father_phone = CASE WHEN $7 = 'father' THEN COALESCE(NULLIF(father_phone, ''), $3)
                                         ELSE COALESCE(NULLIF(father_phone, ''), $6) END,
-                    mother_name = CASE WHEN $1 = 'mother' THEN COALESCE(NULLIF(mother_name, ''), $2)
+                    mother_name = CASE WHEN $7 = 'mother' THEN COALESCE(NULLIF(mother_name, ''), $2)
                                        ELSE COALESCE(NULLIF(mother_name, ''), $5) END,
-                    mother_phone = CASE WHEN $1 = 'mother' THEN COALESCE(NULLIF(mother_phone, ''), $3)
+                    mother_phone = CASE WHEN $7 = 'mother' THEN COALESCE(NULLIF(mother_phone, ''), $3)
                                         ELSE COALESCE(NULLIF(mother_phone, ''), $6) END,
                     updated_at = NOW()
                 WHERE id = ANY($4)
-            `, [holderRole, holderName, phone || null, child_ids, spouseName, spousePhone]);
+            `, [holderRole, holderName, phone || null, child_ids, spouseName, spousePhone, holderRole]);
         }
 
         // 6. Contact d'urgence — modèle unifié : 'father' | 'mother' | 'custom'
