@@ -1720,23 +1720,53 @@ const ChildrenPage = () => {
                         : []);
 
                   // Détection contact d'urgence : choix explicite (father/mother)
-                  // OU contact "custom" dont le nom/téléphone correspond au père ou à la mère
-                  const normPhone = (p) => (p || '').replace(/\D/g, '');
-                  const normName = (n) => (n || '').trim().toLowerCase();
-                  const ecName = normName(selectedChild.emergency_contact_name);
-                  const ecPhone = normPhone(selectedChild.emergency_contact_phone);
+                  // OU contact "custom" dont le nom/téléphone correspond au père ou à la mère.
+                  // Comparaison tolérante : téléphone sur les 8 derniers chiffres (gère +216,
+                  // espaces, tirets), nom normalisé (accents, casse, ordre des mots, sous-ensemble).
+                  const normName = (n) => (n || '')
+                    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+                    .toLowerCase().replace(/\s+/g, ' ').trim();
+                  const nameTokens = (n) => new Set(normName(n).split(' ').filter(Boolean));
+                  const namesMatch = (a, b) => {
+                    const ta = nameTokens(a);
+                    const tb = nameTokens(b);
+                    if (!ta.size || !tb.size) return false;
+                    if (normName(a) === normName(b)) return true;
+                    const minSet = ta.size <= tb.size ? ta : tb;
+                    const maxSet = ta.size <= tb.size ? tb : ta;
+                    return [...minSet].every((t) => maxSet.has(t));
+                  };
+                  const lastDigits = (p) => (p || '').replace(/\D/g, '').slice(-8);
+                  const phonesMatch = (a, b) => {
+                    const da = lastDigits(a);
+                    const db = lastDigits(b);
+                    return da.length >= 6 && da === db;
+                  };
 
-                  const matchesFather = Boolean(
-                    (ecPhone && ecPhone === normPhone(fatherDisplayPhone)) ||
-                    (ecName && fatherDisplayName && ecName === normName(fatherDisplayName))
-                  );
-                  const matchesMother = Boolean(
-                    (ecPhone && ecPhone === normPhone(motherDisplayPhone)) ||
-                    (ecName && motherDisplayName && ecName === normName(motherDisplayName))
-                  );
+                  const holderFullName = `${selectedChild.parent_first_name || ''} ${selectedChild.parent_last_name || ''}`.trim();
+                  const ecName = selectedChild.emergency_contact_name;
+                  const ecPhone = selectedChild.emergency_contact_phone;
+                  const parentCandidates = [
+                    {
+                      who: 'father',
+                      names: [selectedChild.father_name, parentIsFather ? holderFullName : null],
+                      phones: [selectedChild.father_phone, parentIsFather ? selectedChild.parent_phone : null]
+                    },
+                    {
+                      who: 'mother',
+                      names: [selectedChild.mother_name, !parentIsFather ? holderFullName : null],
+                      phones: [selectedChild.mother_phone, !parentIsFather ? selectedChild.parent_phone : null]
+                    }
+                  ];
+                  const matchedParent = (ecName || ecPhone)
+                    ? (parentCandidates.find((c) =>
+                        c.phones.some((p) => phonesMatch(ecPhone, p)) ||
+                        c.names.some((n) => namesMatch(ecName, n))
+                      )?.who || null)
+                    : null;
 
-                  const isEmergencyFather = selectedChild.emergency_contact_choice === 'father' || matchesFather;
-                  const isEmergencyMother = !isEmergencyFather && (selectedChild.emergency_contact_choice === 'mother' || matchesMother);
+                  const isEmergencyFather = selectedChild.emergency_contact_choice === 'father' || matchedParent === 'father';
+                  const isEmergencyMother = !isEmergencyFather && (selectedChild.emergency_contact_choice === 'mother' || matchedParent === 'mother');
 
                   let emergencyDisplayName = selectedChild.emergency_contact_name;
                   let emergencyDisplayPhone = selectedChild.emergency_contact_phone;
