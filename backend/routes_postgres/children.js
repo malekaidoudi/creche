@@ -4,6 +4,7 @@ const router = express.Router();
 const { pool } = require('../config/db_postgres');
 const auth = require('../middleware/auth');
 const logger = require('../utils/logger');
+const cloudinaryService = require('../services/cloudinaryService');
 const apiResponse = require('../utils/apiResponse');
 const upload = require('../middleware/upload');
 const path = require('path');
@@ -1802,9 +1803,27 @@ router.post('/:id/photo', auth.authenticateToken, requireChildPhotoAccess, uploa
       });
     }
 
-    // Construire l'URL de la photo
-    const photoUrl = `/uploads/profiles/${req.file.filename}`;
     const previousPhotoUrl = existingChild.rows[0].photo_url;
+
+    // Upload vers Cloudinary (persistant — le disque Render est éphémère).
+    // public_id fixe par enfant → la nouvelle photo écrase l'ancienne.
+    // Repli sur le stockage local si Cloudinary n'est pas configuré.
+    let photoUrl;
+    const cloudinaryResult = await cloudinaryService.uploadFileWithOverwrite(
+      req.file.path,
+      'children',
+      `child_${id}`
+    );
+
+    if (cloudinaryResult.success) {
+      photoUrl = cloudinaryResult.url;
+      // Supprimer le fichier temporaire local
+      if (fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+    } else {
+      photoUrl = `/uploads/profiles/${req.file.filename}`;
+    }
 
     // Mettre à jour la photo dans la base de données
     const result = await pool.query(
@@ -1815,8 +1834,8 @@ router.post('/:id/photo', auth.authenticateToken, requireChildPhotoAccess, uploa
       [photoUrl, id]
     );
 
-    // Nettoyer l'ancien fichier du disque (best-effort, n'affecte pas la réponse)
-    if (previousPhotoUrl && previousPhotoUrl !== photoUrl) {
+    // Nettoyer l'ancien fichier local éventuel (best-effort, n'affecte pas la réponse)
+    if (previousPhotoUrl && previousPhotoUrl !== photoUrl && previousPhotoUrl.startsWith('/uploads/')) {
       deleteLocalPhotoFile(previousPhotoUrl);
     }
 
@@ -1858,8 +1877,13 @@ router.delete('/:id/photo', auth.authenticateToken, requireChildPhotoAccess, asy
       [id]
     );
 
-    if (previousPhotoUrl && typeof deleteLocalPhotoFile === 'function') {
-      deleteLocalPhotoFile(previousPhotoUrl);
+    if (previousPhotoUrl) {
+      if (previousPhotoUrl.startsWith('/uploads/')) {
+        deleteLocalPhotoFile(previousPhotoUrl);
+      } else if (previousPhotoUrl.includes('res.cloudinary.com')) {
+        // public_id déterministe : folder/child_<id>
+        await cloudinaryService.deleteFile(`children/child_${id}`);
+      }
     }
 
     logger.info(`🗑️ Photo supprimée pour enfant ${id}`);
