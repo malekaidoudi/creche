@@ -88,8 +88,6 @@ const ChildParentRow = ({ child, onSaveSuccess, isRTL }) => {
         account_holder: formData.account_holder,
         emergency_contact_name: formData.emergency_contact_name.trim(),
         emergency_contact_phone: formData.emergency_contact_phone.trim(),
-        second_parent_name: formData.account_holder === 'father' ? formData.mother_name.trim() : formData.father_name.trim(),
-        second_parent_phone: formData.account_holder === 'father' ? formData.mother_phone.trim() : formData.father_phone.trim(),
         parent_phone: formData.account_holder === 'mother' ? formData.mother_phone.trim() : formData.father_phone.trim()
       };
 

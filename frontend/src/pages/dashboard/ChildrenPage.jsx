@@ -666,11 +666,9 @@ const ChildrenPage = () => {
         if (editFormData.emergency_contact_phone !== undefined) {
           payload.emergency_contact_phone = editFormData.emergency_contact_phone.trim();
         }
-        // Synchronisation de compatibilité pour anciennes fonctions
+        // Synchronisation du téléphone du parent titulaire
         const curHolder = editFormData.account_holder || 'father';
         payload.parent_phone = curHolder === 'mother' ? editFormData.mother_phone?.trim() : editFormData.father_phone?.trim();
-        payload.second_parent_name = curHolder === 'mother' ? editFormData.father_name?.trim() : editFormData.mother_name?.trim();
-        payload.second_parent_phone = curHolder === 'mother' ? editFormData.father_phone?.trim() : editFormData.mother_phone?.trim();
       }
 
       if (Object.keys(payload).length > 0) {
@@ -935,13 +933,12 @@ const ChildrenPage = () => {
   // avec repli sur les noms du père / de la mère du dossier enfant)
   const getParentDisplayNames = (child) => {
     const names = [];
-    const primaryParent = `${child.parent_first_name || ''} ${child.parent_last_name || ''}`.trim();
-    if (primaryParent) names.push(primaryParent);
-    if (child.second_parent_name) names.push(child.second_parent_name);
+    if (child.father_name) names.push(child.father_name);
+    if (child.mother_name && !names.includes(child.mother_name)) names.push(child.mother_name);
 
     if (names.length === 0) {
-      if (child.father_name) names.push(child.father_name);
-      if (child.mother_name) names.push(child.mother_name);
+      const primaryParent = `${child.parent_first_name || ''} ${child.parent_last_name || ''}`.trim();
+      if (primaryParent) names.push(primaryParent);
     }
     return names;
   };
@@ -1726,17 +1723,17 @@ const ChildrenPage = () => {
                       : null
                   );
                   const fatherDisplayPhone = selectedChild.father_phone || (
-                    parentIsFather ? selectedChild.parent_phone : selectedChild.second_parent_phone
+                    parentIsFather ? selectedChild.parent_phone : null
                   );
 
                   // Données Mère
                   const motherDisplayName = selectedChild.mother_name || (
                     !parentIsFather && selectedChild.parent_first_name 
                       ? `${selectedChild.parent_first_name} ${selectedChild.parent_last_name}` 
-                      : selectedChild.second_parent_name
+                      : null
                   );
                   const motherDisplayPhone = selectedChild.mother_phone || (
-                    !parentIsFather ? selectedChild.parent_phone : selectedChild.second_parent_phone
+                    !parentIsFather ? selectedChild.parent_phone : null
                   );
 
                   // Contacts de confiance (max 2)
@@ -1772,7 +1769,7 @@ const ChildrenPage = () => {
                         </h4>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className={`grid grid-cols-1 ${isEmergencyFather || isEmergencyMother ? 'md:grid-cols-2' : 'md:grid-cols-3'} gap-4`}>
                         {/* CARTE PÈRE */}
                         <div className="bg-white dark:bg-gray-800/90 rounded-xl p-4 border border-blue-100 dark:border-blue-900/30 flex flex-col justify-between">
                           <div>
@@ -1781,6 +1778,15 @@ const ChildrenPage = () => {
                                 <span>👨</span>
                                 <span>{isRTL ? 'الأب' : 'Père'} {parentIsFather && (isRTL ? '(صاحب الحساب)' : '(Titulaire)')}</span>
                               </span>
+                              {isEmergencyFather && (
+                                <span
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 border border-orange-200 dark:border-orange-800 flex-shrink-0"
+                                  title={isRTL ? 'جهة اتصال الطوارئ المعينة' : "Contact d'urgence désigné"}
+                                >
+                                  <AlertTriangle className="w-3 h-3" />
+                                  {isRTL ? 'طوارئ' : 'Urgence'}
+                                </span>
+                              )}
                             </div>
                             <div className="space-y-2 text-sm">
                               <p className="font-semibold text-gray-900 dark:text-white text-base my-1">
@@ -1859,6 +1865,15 @@ const ChildrenPage = () => {
                                 <span>👩</span>
                                 <span>{isRTL ? 'الأم' : 'Mère'} {!parentIsFather && (isRTL ? '(صاحبة الحساب)' : '(Titulaire)')}</span>
                               </span>
+                              {isEmergencyMother && (
+                                <span
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 border border-orange-200 dark:border-orange-800 flex-shrink-0"
+                                  title={isRTL ? 'جهة اتصال الطوارئ المعينة' : "Contact d'urgence désigné"}
+                                >
+                                  <AlertTriangle className="w-3 h-3" />
+                                  {isRTL ? 'طوارئ' : 'Urgence'}
+                                </span>
+                              )}
                             </div>
                             <div className="space-y-2 text-sm">
                               <p className="font-semibold text-gray-900 dark:text-white text-base my-1">
@@ -1929,7 +1944,9 @@ const ChildrenPage = () => {
                           )}
                         </div>
 
-                        {/* Contact d'urgence */}
+                        {/* Contact d'urgence — affiché uniquement s'il s'agit d'un tiers
+                            (quand c'est le père ou la mère, un badge "Urgence" est posé sur sa carte) */}
+                        {!(isEmergencyFather || isEmergencyMother) && (
                         <div className="bg-white dark:bg-gray-800/90 rounded-xl p-4 border border-orange-100 dark:border-orange-900/30 flex flex-col justify-between">
                           <div>
                             <div className="flex items-center justify-between mb-2">
@@ -2016,9 +2033,11 @@ const ChildrenPage = () => {
                             </div>
                           )}
                         </div>
+                        )}
                       </div>
 
-                      {/* Personnes de confiance (max 2) - Visible pour toute l'équipe */}
+                      {/* Personnes de confiance (max 2) - masqué si aucune personne enregistrée */}
+                      {trustedList.length > 0 && (
                       <div className="mt-4 pt-4 border-t border-blue-200/60 dark:border-blue-900/40">
                         <div className="flex items-center justify-between mb-2.5">
                           <span className="text-xs font-semibold text-blue-900 dark:text-blue-200 flex items-center gap-1.5 uppercase tracking-wider">
@@ -2029,37 +2048,32 @@ const ChildrenPage = () => {
                             {trustedList.length} / 2
                           </span>
                         </div>
-                        {trustedList.length > 0 ? (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                            {trustedList.slice(0, 2).map((tc, idx) => {
-                              const tcName = typeof tc === 'string' ? tc : (tc.name || '');
-                              const tcPhone = typeof tc === 'object' ? tc.phone : null;
-                              return (
-                                <div key={idx} className="bg-white dark:bg-gray-800/90 rounded-xl p-3 border border-emerald-200/80 dark:border-emerald-900/40 flex items-center justify-between">
-                                  <div className="min-w-0">
-                                    <p className="font-semibold text-gray-900 dark:text-white text-sm truncate">
-                                      {tcName}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          {trustedList.slice(0, 2).map((tc, idx) => {
+                            const tcName = typeof tc === 'string' ? tc : (tc.name || '');
+                            const tcPhone = typeof tc === 'object' ? tc.phone : null;
+                            return (
+                              <div key={idx} className="bg-white dark:bg-gray-800/90 rounded-xl p-3 border border-emerald-200/80 dark:border-emerald-900/40 flex items-center justify-between">
+                                <div className="min-w-0">
+                                  <p className="font-semibold text-gray-900 dark:text-white text-sm truncate">
+                                    {tcName}
+                                  </p>
+                                  <span className="inline-flex items-center gap-1 text-[11px] text-emerald-700 dark:text-emerald-300 font-medium mt-0.5">
+                                    <ShieldCheck className="w-3 h-3 text-emerald-500" />
+                                    {isRTL ? 'مصرح له بالاستلام' : 'Autorisé(e) à récupérer l\'enfant'}
+                                  </span>
+                                  {tcPhone && (
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5" dir="ltr">
+                                      {tcPhone}
                                     </p>
-                                    <span className="inline-flex items-center gap-1 text-[11px] text-emerald-700 dark:text-emerald-300 font-medium mt-0.5">
-                                      <ShieldCheck className="w-3 h-3 text-emerald-500" />
-                                      {isRTL ? 'مصرح له بالاستلام' : 'Autorisé(e) à récupérer l\'enfant'}
-                                    </span>
-                                    {tcPhone && (
-                                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5" dir="ltr">
-                                        {tcPhone}
-                                      </p>
-                                    )}
-                                  </div>
+                                  )}
                                 </div>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <p className="text-xs text-gray-400 italic text-center py-2 bg-white/60 dark:bg-gray-800/60 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
-                            {isRTL ? 'لا توجد أشخاص ثقة مسجلة (الاستلام مقتصر على الأولياء فقط)' : 'Aucune personne de confiance enregistrée (seuls les parents sont habilités)'}
-                          </p>
-                        )}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
+                      )}
                     </div>
                   );
                 })()}

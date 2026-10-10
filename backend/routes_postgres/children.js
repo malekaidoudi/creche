@@ -70,8 +70,6 @@ const ensureFamilyAndContactColumns = async () => {
       ALTER TABLE children ADD COLUMN IF NOT EXISTS mother_name VARCHAR(100);
       ALTER TABLE children ADD COLUMN IF NOT EXISTS mother_phone VARCHAR(20);
       ALTER TABLE children ADD COLUMN IF NOT EXISTS account_holder VARCHAR(20) DEFAULT 'father';
-      ALTER TABLE children ADD COLUMN IF NOT EXISTS second_parent_name VARCHAR(100);
-      ALTER TABLE children ADD COLUMN IF NOT EXISTS second_parent_phone VARCHAR(20);
       ALTER TABLE children ADD COLUMN IF NOT EXISTS emergency_contact_choice VARCHAR(20) DEFAULT 'custom';
       ALTER TABLE children ADD COLUMN IF NOT EXISTS trusted_contacts JSONB DEFAULT '[]'::jsonb;
     `);
@@ -851,7 +849,8 @@ router.get('/', auth.authenticateToken, async (req, res) => {
         c.suspension_reason, c.suspended_at, c.expected_return_date,
         c.father_name, c.father_phone, c.mother_name, c.mother_phone,
         COALESCE(c.account_holder, 'father') as account_holder,
-        c.second_parent_name, c.second_parent_phone,
+        (CASE WHEN COALESCE(c.account_holder, 'father') = 'father' THEN c.mother_name ELSE c.father_name END) as second_parent_name,
+        (CASE WHEN COALESCE(c.account_holder, 'father') = 'father' THEN c.mother_phone ELSE c.father_phone END) as second_parent_phone,
         COALESCE(c.emergency_contact_choice, 'custom') as emergency_contact_choice,
         COALESCE(c.trusted_contacts, '[]'::jsonb) as trusted_contacts,
         EXTRACT(YEAR FROM AGE(c.birth_date)) as age,
@@ -931,7 +930,6 @@ router.get('/', auth.authenticateToken, async (req, res) => {
              c.photo_shared_with_staff, c.is_active, c.created_at, c.updated_at, c.parent_id,
              c.status, c.suspension_reason, c.suspended_at, c.expected_return_date,
              c.father_name, c.father_phone, c.mother_name, c.mother_phone, c.account_holder,
-             c.second_parent_name, c.second_parent_phone,
              c.emergency_contact_choice, c.trusted_contacts,
              u.id, u.first_name, u.last_name, u.email, u.phone, u.gender,
              e.enrollment_date, e.status`;
@@ -1039,7 +1037,8 @@ router.get('/:id', auth.authenticateToken, auth.requireChildAccess, async (req, 
               c.suspension_reason, c.suspended_at, c.expected_return_date,
               c.father_name, c.father_phone, c.mother_name, c.mother_phone,
               COALESCE(c.account_holder, 'father') as account_holder,
-              c.second_parent_name, c.second_parent_phone,
+              (CASE WHEN COALESCE(c.account_holder, 'father') = 'father' THEN c.mother_name ELSE c.father_name END) as second_parent_name,
+              (CASE WHEN COALESCE(c.account_holder, 'father') = 'father' THEN c.mother_phone ELSE c.father_phone END) as second_parent_phone,
               COALESCE(c.emergency_contact_choice, 'custom') as emergency_contact_choice,
               COALESCE(c.trusted_contacts, '[]'::jsonb) as trusted_contacts,
               EXTRACT(YEAR FROM AGE(c.birth_date)) as age,
@@ -1579,25 +1578,26 @@ router.put('/:id', [
       params.push(account_holder);
     }
 
-    // Maintenir second_parent synchronisé pour rétrocompatibilité
+    // Fallback pour anciens clients ayant envoyé second_parent_name / second_parent_phone
     const curHolder = account_holder || existingChild.rows[0].account_holder || 'father';
-    const compSecName = second_parent_name !== undefined 
-      ? (second_parent_name ? second_parent_name.trim() : null)
-      : (curHolder === 'father' ? (mother_name ? mother_name.trim() : null) : (father_name ? father_name.trim() : null));
-    const compSecPhone = second_parent_phone !== undefined 
-      ? (second_parent_phone ? second_parent_phone.trim() : null)
-      : (curHolder === 'father' ? (mother_phone ? mother_phone.trim() : null) : (father_phone ? father_phone.trim() : null));
-
-    if (compSecName !== undefined) {
+    if (second_parent_name && !mother_name && curHolder === 'father') {
       paramCount++;
-      updates.push(`second_parent_name = $${paramCount}`);
-      params.push(compSecName);
+      updates.push(`mother_name = $${paramCount}`);
+      params.push(second_parent_name.trim());
+    } else if (second_parent_name && !father_name && curHolder === 'mother') {
+      paramCount++;
+      updates.push(`father_name = $${paramCount}`);
+      params.push(second_parent_name.trim());
     }
 
-    if (compSecPhone !== undefined) {
+    if (second_parent_phone && !mother_phone && curHolder === 'father') {
       paramCount++;
-      updates.push(`second_parent_phone = $${paramCount}`);
-      params.push(compSecPhone);
+      updates.push(`mother_phone = $${paramCount}`);
+      params.push(second_parent_phone.trim());
+    } else if (second_parent_phone && !father_phone && curHolder === 'mother') {
+      paramCount++;
+      updates.push(`father_phone = $${paramCount}`);
+      params.push(second_parent_phone.trim());
     }
 
     if (emergency_contact_choice !== undefined) {
@@ -2043,7 +2043,6 @@ router.get('/:id/emergency-contacts', auth.authenticateToken, async (req, res) =
              COALESCE(c.trusted_contacts, '[]'::jsonb) as trusted_contacts,
              c.father_name, c.father_phone, c.mother_name, c.mother_phone,
              COALESCE(c.account_holder, 'father') as account_holder,
-             c.second_parent_name, c.second_parent_phone,
              u.first_name as parent_first_name, u.last_name as parent_last_name,
              u.phone as parent_phone, u.gender as parent_gender
       FROM children c
@@ -2060,6 +2059,7 @@ router.get('/:id/emergency-contacts', auth.authenticateToken, async (req, res) =
       return res.status(403).json({ success: false, error: 'Accès non autorisé' });
     }
 
+    const holder = child.account_holder || 'father';
     res.json({
       success: true,
       contacts: child.emergency_contacts || [],
@@ -2071,9 +2071,9 @@ router.get('/:id/emergency-contacts', auth.authenticateToken, async (req, res) =
       father_phone: child.father_phone,
       mother_name: child.mother_name,
       mother_phone: child.mother_phone,
-      account_holder: child.account_holder || 'father',
-      second_parent_name: child.second_parent_name,
-      second_parent_phone: child.second_parent_phone,
+      account_holder: holder,
+      second_parent_name: holder === 'father' ? child.mother_name : child.father_name,
+      second_parent_phone: holder === 'father' ? child.mother_phone : child.father_phone,
       parent_name: `${child.parent_first_name || ''} ${child.parent_last_name || ''}`.trim(),
       parent_phone: child.parent_phone,
       parent_gender: child.parent_gender
@@ -2195,16 +2195,25 @@ router.put('/:id/emergency-contacts', auth.authenticateToken, async (req, res) =
       params.push(account_holder);
     }
 
-    if (second_parent_name !== undefined) {
+    const curHolderEc = account_holder || child.account_holder || 'father';
+    if (second_parent_name && !mother_name && curHolderEc === 'father') {
       pCount++;
-      updates.push(`second_parent_name = $${pCount}`);
-      params.push(second_parent_name ? second_parent_name.trim() : null);
+      updates.push(`mother_name = $${pCount}`);
+      params.push(second_parent_name.trim());
+    } else if (second_parent_name && !father_name && curHolderEc === 'mother') {
+      pCount++;
+      updates.push(`father_name = $${pCount}`);
+      params.push(second_parent_name.trim());
     }
 
-    if (second_parent_phone !== undefined) {
+    if (second_parent_phone && !mother_phone && curHolderEc === 'father') {
       pCount++;
-      updates.push(`second_parent_phone = $${pCount}`);
-      params.push(second_parent_phone ? second_parent_phone.trim() : null);
+      updates.push(`mother_phone = $${pCount}`);
+      params.push(second_parent_phone.trim());
+    } else if (second_parent_phone && !father_phone && curHolderEc === 'mother') {
+      pCount++;
+      updates.push(`father_phone = $${pCount}`);
+      params.push(second_parent_phone.trim());
     }
 
     pCount++;

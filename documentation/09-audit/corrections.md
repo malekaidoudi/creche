@@ -1122,3 +1122,24 @@
      - Rétrocompatibilité transparente avec les requêtes de consultation (`GET /api/children`, `GET /api/children/:id`, `emergency-contacts`).
 - **Résultat** : Une base de données parfaitement propre et normalisée, un moyen fluide et rapide pour l'administration de renseigner les familles et les contacts d'urgence de tous les enfants inscrits en quelques clics.
 
+---
+
+### Fiche 48 - Suppression définitive des colonnes obsolètes `second_parent_*` (Migration 004)
+
+- **Date** : 10 Octobre 2026
+- **Fichiers modifiés / créés** :
+  - [`backend/migrations/versions/004_drop_legacy_second_parent_columns.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/migrations/versions/004_drop_legacy_second_parent_columns.js) *(créé et appliqué)*
+  - [`backend/routes_postgres/children.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/children.js)
+  - [`frontend/src/pages/parent/ChildEmergencyContactsPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/ChildEmergencyContactsPage.jsx)
+  - [`frontend/src/pages/dashboard/ChildrenPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/ChildrenPage.jsx)
+  - [`frontend/src/components/modals/QuickParentsModal.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/modals/QuickParentsModal.jsx)
+- **Objectifs & Actions** :
+  1. **Suppression définitive des colonnes en base SQL** :
+     - Exécution de `ALTER TABLE children DROP COLUMN IF EXISTS second_parent_name, DROP COLUMN IF EXISTS second_parent_phone;` (Migration 004).
+     - Rapatriement préalable de toute valeur résiduelle dans `mother_*` ou `father_*` selon `account_holder`.
+  2. **Nettoyage du code API et Frontend** :
+     - Les requêtes SQL de sélection et de mise à jour utilisent désormais strictement `father_name, father_phone, mother_name, mother_phone, account_holder`.
+     - Les écrans de consultation et de formulaire (Espace Parent, Dashboard Direction, Modale Saisie Rapide) lisent et écrivent directement sur ces colonnes.
+     - Élimination totale de toute confusion ou doublon entre le 1er parent, le 2ème parent et le titulaire.
+- **Résultat** : La table `children` ne comporte plus aucune colonne ambiguë. Seuls figurent le père, la mère, le titulaire du compte et les contacts d'urgence / personnes de confiance.
+

@@ -76,18 +76,29 @@ const ChildEmergencyContactsPage = () => {
             }
 
             const cData = contactsRes.data || {};
-            setParentPhone(cData.parent_phone || childRes.data?.parent_phone || '');
-            setParentGender(cData.parent_gender || childRes.data?.parent_gender || 'male');
-            setSecondParentName(cData.second_parent_name || childRes.data?.second_parent_name || '');
-            setSecondParentPhone(cData.second_parent_phone || childRes.data?.second_parent_phone || '');
+            const childObj = childRes.data?.child || childRes.data || {};
+            const holder = cData.account_holder || childObj.account_holder || 'father';
+            const isFather = (holder === 'father') || (cData.parent_gender === 'male');
 
-            setEmergencyChoice(cData.emergency_contact_choice || childRes.data?.emergency_contact_choice || 'custom');
-            setEmergencyName(cData.emergency_contact_name || childRes.data?.emergency_contact_name || '');
-            setEmergencyPhone(cData.emergency_contact_phone || childRes.data?.emergency_contact_phone || '');
+            setParentGender(isFather ? 'male' : 'female');
+
+            if (isFather) {
+                setParentPhone(cData.father_phone || childObj.father_phone || cData.parent_phone || '');
+                setSecondParentName(cData.mother_name || childObj.mother_name || '');
+                setSecondParentPhone(cData.mother_phone || childObj.mother_phone || '');
+            } else {
+                setParentPhone(cData.mother_phone || childObj.mother_phone || cData.parent_phone || '');
+                setSecondParentName(cData.father_name || childObj.father_name || '');
+                setSecondParentPhone(cData.father_phone || childObj.father_phone || '');
+            }
+
+            setEmergencyChoice(cData.emergency_contact_choice || childObj.emergency_contact_choice || 'custom');
+            setEmergencyName(cData.emergency_contact_name || childObj.emergency_contact_name || '');
+            setEmergencyPhone(cData.emergency_contact_phone || childObj.emergency_contact_phone || '');
 
             const trusted = Array.isArray(cData.trusted_contacts) 
                 ? cData.trusted_contacts 
-                : (Array.isArray(childRes.data?.trusted_contacts) ? childRes.data.trusted_contacts : []);
+                : (Array.isArray(childObj.trusted_contacts) ? childObj.trusted_contacts : []);
             setTrustedContacts(trusted);
         } catch (err) {
             console.error('Erreur chargement:', err);
@@ -99,10 +110,13 @@ const ChildEmergencyContactsPage = () => {
     const handleSaveAll = async () => {
         try {
             setSaving(true);
+            const isFather = parentGender === 'male';
             const payload = {
                 parent_phone: parentPhone.trim(),
-                second_parent_name: secondParentName.trim(),
-                second_parent_phone: secondParentPhone.trim(),
+                father_name: isFather ? (child?.father_name || '') : secondParentName.trim(),
+                father_phone: isFather ? parentPhone.trim() : secondParentPhone.trim(),
+                mother_name: !isFather ? (child?.mother_name || '') : secondParentName.trim(),
+                mother_phone: !isFather ? parentPhone.trim() : secondParentPhone.trim(),
                 emergency_contact_choice: emergencyChoice,
                 emergency_contact_name: emergencyChoice === 'custom' ? emergencyName.trim() : '',
                 emergency_contact_phone: emergencyChoice === 'custom' ? emergencyPhone.trim() : '',
