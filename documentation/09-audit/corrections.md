@@ -1143,3 +1143,120 @@
      - Élimination totale de toute confusion ou doublon entre le 1er parent, le 2ème parent et le titulaire.
 - **Résultat** : La table `children` ne comporte plus aucune colonne ambiguë. Seuls figurent le père, la mère, le titulaire du compte et les contacts d'urgence / personnes de confiance. L'outil provisoire de saisie rapide (`QuickParentsModal` et bouton `⚡ Saisie rapide Parents`) a été retiré de l'interface une fois la base de données assainie et validée.
 
+---
+
+### Fiche 49 - Photos multiples dans les publications du fil d'activité (Migration 007)
+
+- **Date** : 10 Octobre 2026
+- **Fichiers modifiés / créés** :
+  - [`backend/migrations/versions/007_activity_media_urls.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/migrations/versions/007_activity_media_urls.js) *(créé et appliqué)*
+  - [`backend/routes_postgres/activities.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/activities.js)
+  - [`backend/services/activityService.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/services/activityService.js)
+  - [`frontend/src/components/activities/ActivityForm.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/activities/ActivityForm.jsx)
+  - [`frontend/src/components/activities/ActivityCard.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/activities/ActivityCard.jsx)
+  - [`frontend/src/components/activities/FullscreenFeed.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/activities/FullscreenFeed.jsx)
+  - [`frontend/src/pages/activities/ActivitiesPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/activities/ActivitiesPage.jsx)
+  - [`IDEES.md`](file:///Volumes/Data/Works/Windsurf/creche/IDEES.md)
+- **Objectifs & Réalisations** :
+  1. **Schéma de base de données PostgreSQL Neon (Migration 007)** :
+     - Ajout de la colonne `media_urls JSONB DEFAULT '[]'::jsonb` à la table `activities`.
+     - Rétrocompatibilité : backfill automatique des publications existantes pour transformer leur `media_url` en entrée `media_urls`.
+  2. **API Backend (`POST /api/activities`, `DELETE /api/activities/:id`)** :
+     - Passage de `upload.single('media')` à `upload.array('media', 10)` pour accepter jusqu'à 10 photos simultanées.
+     - Upload groupé vers Cloudinary avec génération de vignettes adaptées et nettoyage des fichiers temporaires.
+     - Prise en charge de `mediaUrls` dans `createActivity`, restitution structurée dans `formatActivity` et suppression Cloudinary de tous les médias associés lors de la suppression d'une activité.
+  3. **Composant de publication (`ActivityForm.jsx`)** :
+     - Sélection multiple (`input multiple`) jusqu'à 10 photos.
+     - Grille d'aperçu moderne avec suppression unitaire de chaque photo (bouton ✕), badge numéroté, taille du fichier et bouton d'ajout de photos supplémentaires.
+  4. **Affichage dans le flux (`ActivityCard.jsx`)** :
+     - Affichage en mosaïque responsive moderne (style réseaux sociaux) selon le nombre de photos :
+       - 1 photo : affichage plein cadre classique.
+       - 2 photos : grille 2 colonnes équilibrées.
+       - 3 photos : 1 photo mise en valeur à gauche + 2 photos empilées à droite.
+       - 4 photos : grille 2x2 harmonieuse.
+       - 5+ photos : grille avec overlay `+X` sur la 4ème vignette indiquant le nombre de photos restantes.
+     - Badge discret indiquant le total de photos (ex: `📷 4 photos`).
+  5. **Visionneuse plein écran (`FullscreenFeed.jsx`)** :
+     - Ouverture directe sur la photo sélectionnée au clic.
+     - Carrousel intégré avec boutons de navigation gauche/droite, compteur dynamique (`📷 2 / 5`), puces de pagination en bas et support des flèches directionnelles du clavier.
+     - Maintien du balayage vertical / flèches haut-bas pour naviguer entre les différentes publications.
+- **Résultat** : Une expérience fluide et moderne pour le personnel et les parents, permettant de partager des albums complets d'activités en une seule publication.
+
+---
+
+### Fiche 50 - Suivi de croissance de l'enfant : poids, taille et historique des mesures (Migration 006)
+
+- **Date** : 10 Octobre 2026
+- **Fichiers modifiés / créés** :
+  - [`backend/migrations/versions/006_growth_metrics.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/migrations/versions/006_growth_metrics.js) *(créé et appliqué sur Neon dev)*
+  - [`backend/routes_postgres/children.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/children.js)
+  - [`frontend/src/pages/dashboard/ChildrenPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/ChildrenPage.jsx)
+  - [`frontend/src/pages/parent/ChildMedicalPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/ChildMedicalPage.jsx)
+  - [`IDEES.md`](file:///Volumes/Data/Works/Windsurf/creche/IDEES.md)
+- **Objectifs & Réalisations** :
+  1. **Schéma de base de données (Migration 006)** — modèle à 2 niveaux :
+     - *État courant* sur `children` : `weight_kg NUMERIC(5,2)` (précision ~10 g), `height_cm NUMERIC(5,1)` (précision mm), `growth_measured_at TIMESTAMP` — lecture rapide pour listes et fiches sans JOIN.
+     - *Historique append-only* : nouvelle table `child_growth_records` (`child_id` → `children.id` ON DELETE CASCADE, `weight_kg`, `height_cm`, `measured_at`, `recorded_by` → `users.id`, `created_at`). Chaque sauvegarde contenant une mesure insère une ligne horodatée — aucun UPDATE/DELETE, la courbe complète est conservée pour l'analyse future et le médecin conventionné.
+  2. **API Backend (`children.js`)** :
+     - `GET /api/children` et `GET /api/children/:id` renvoient `weight_kg`, `height_cm`, `growth_measured_at`.
+     - `PUT /api/children/:id` accepte `blood_type`, `weight_kg`, `height_cm` — protégés par la permission `medical.view` pour le staff.
+     - `GET/PUT /api/children/:id/medical` (accès parent via `requireChildAccess`) accepte les mêmes champs avec `COALESCE($x, colonne)` : une édition des allergies seule n'écrase jamais les mesures.
+     - Insertion automatique d'un relevé dans `child_growth_records` à chaque sauvegarde contenant un poids ou une taille (mesure partielle tolérée : l'autre valeur reste `NULL` dans le relevé).
+  3. **Dashboard (`ChildrenPage.jsx`)** :
+     - Le groupe sanguin est retiré de la section « Identité de l'enfant » et déplacé dans une nouvelle carte **« Groupe sanguin & Croissance »** (icône `TrendingUp`) de la section « Santé & Suivi Médical » : badge groupe sanguin, poids en kg, taille en cm, date de dernière mesure, respect du cloisonnement `medical.view`.
+     - Nouveaux champs éditables (groupe sanguin, poids, taille) dans la modal d'édition pour l'admin et le staff habilité `medical.view`.
+     - Fallback d'affichage `father_name`/`mother_name` dans la fiche identité : si le champ est vide, résolution sur le nom du titulaire du compte (`account_holder`) — corrige l'affichage vide du « Nom complet père ».
+  4. **Espace Parent (`ChildMedicalPage.jsx`)** :
+     - Nouvelle section **« Groupe sanguin & Croissance »** éditable par le parent : sélecteur de groupe sanguin, saisie du poids (kg) et de la taille (cm), affichage de la date de dernière mesure.
+  5. **Préparation du futur rôle `doctor`** : le médecin conventionné réutilisera `PUT /api/children/:id/medical` (déjà protégé par `requireChildAccess`) et son identité sera tracée via `recorded_by` sur chaque relevé.
+- **Résultat** : Le poids et la taille ne sont plus des champs figés mais un suivi longitudinal : dernier état affiché instantanément, historique complet conservé en base pour les futures courbes de croissance et l'analyse médicale.
+
+---
+
+### Fiche 51 - Résolution du contact d'urgence parent (Père/Mère) et accès à la gestion depuis l'espace parent
+
+- **Date** : 10 Octobre 2026
+- **Fichiers modifiés / créés** :
+  - [`frontend/src/utils/emergencyContacts.js`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/utils/emergencyContacts.js) *(créé — helper partagé `getEmergencyContactDisplay`)*
+  - [`backend/routes_postgres/userChildren.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/userChildren.js)
+  - [`frontend/src/components/mobile/MobileParentSpace.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/mobile/MobileParentSpace.jsx)
+  - [`frontend/src/pages/parent/MySpacePage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/MySpacePage.jsx)
+- **Problème identifié** :
+  - Un enfant avec `emergency_contact_choice = 'mother'` (choisi au formulaire d'inscription) affichait dans la modale « Contact principal » uniquement le libellé *« La Mère »* sans aucun nom ni numéro : le formulaire ne collecte que le choix, les coordonnées réelles vivant dans `mother_name`/`mother_phone` (modèle de la Fiche 47).
+  - `GET /api/user/children-summary` ne renvoyait pas les colonnes `father_*`/`mother_*` : impossible de résoudre le choix en vraies coordonnées.
+  - Le bouton « Gérer les contacts » (desktop) n'apparaissait que si `emergency_contact_name/phone` ou `doctor_*` étaient remplis : le seul choix `'mother'` bloquait tout accès à la page de gestion. Sur mobile, aucun bouton « Gérer » n'existait — état bloqué.
+- **Actions appliquées** :
+  1. **Helper partagé `getEmergencyContactDisplay(child)`** : résout `emergency_contact_choice` vers les bonnes coordonnées — `father` → `father_name`/`father_phone`, `mother` → `mother_name`/`mother_phone`, `custom` → `emergency_contact_name`/`emergency_contact_phone` — et indique si les coordonnées sont manquantes.
+  2. **Backend (`userChildren.js`)** : ajout de `father_name, father_phone, mother_name, mother_phone` au `SELECT` de `GET /api/user/children-summary`.
+  3. **Modales desktop (`MySpacePage.jsx`) et mobile (`MobileParentSpace.jsx`)** : affichage du nom et du téléphone résolus, mention d'aide *« Numéro non renseigné — complétez-le depuis « Gérer les contacts » »* si vide, et bouton **« Gérer les contacts »** désormais toujours visible dans le pied de modale (ajouté sur mobile), menant vers `/mon-espace/child/:id/emergency-contacts`.
+- **Résultat** : Un nouveau compte parent voit correctement son choix de contact d'urgence (ex: « La Mère »), comprend que les coordonnées sont à compléter, et accède en un clic à la page de gestion — sur desktop comme sur mobile.
+
+---
+
+### Fiche 52 - Bouton « ⚡ Accepter (dev) » pour les tests & Audit de code mort (fix SQL `second_parent_*`, purge modale d'approbation)
+
+- **Date** : 10 Octobre 2026
+- **Fichiers modifiés / créés** :
+  - [`frontend/src/pages/dashboard/EnrollmentsPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/EnrollmentsPage.jsx)
+  - [`frontend/src/services/enrollmentsService.js`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/services/enrollmentsService.js)
+  - [`backend/routes_postgres/children.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/children.js)
+  - [`frontend/src/pages/parent/ChildMedicalPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/ChildMedicalPage.jsx)
+  - [`IDEES.md`](file:///Volumes/Data/Works/Windsurf/creche/IDEES.md)
+- **Objectifs & Actions** :
+  1. **Raccourci de finalisation en développement** :
+     - Nouvelle méthode `devFinalizeEnrollment(enrollment)` dans `enrollmentsService.js` qui enchaîne automatiquement le workflow complet : `POST /approve` (si statut `pending` — crée le compte parent + RDV) → récupération de `active_appointment_id` (fallback sur `GET /api/appointments/by-enrollment/:id`) → `PATCH /api/appointments/:id/complete` (création de l'enfant, transfert des documents, notification, archivage du dossier).
+     - Bouton violet pointillé **« ⚡ Accepter (dev) »** sur chaque carte de dossier `pending`/`in_progress` de `EnrollmentsPage.jsx`, avec spinner et refresh automatique.
+     - **Conditionné par `import.meta.env.DEV`** : supprimé au build Vite, donc jamais présent en production.
+     - *Contexte* : `PATCH /api/appointments/:id/complete` ne vérifie ni la date ni le statut du RDV — l'attente de la date du rendez-vous est une contrainte métier côté UI, pas technique. Le bouton permet donc de tester la finalisation sans attendre.
+  2. **Correction d'un bug SQL critique sur `PUT /api/children/:id`** :
+     - La clause `RETURNING` référençait encore `second_parent_name, second_parent_phone`, colonnes **définitivement supprimées par la Migration 004** → chaque mise à jour d'enfant via ce endpoint échouait avec `column does not exist` (incluant la sauvegarde des nouveaux champs de croissance depuis le modal d'édition).
+     - Colonnes retirées du `RETURNING` et requête validée en live contre la base dev.
+  3. **Purge de code mort (`EnrollmentsPage.jsx`)** :
+     - Suppression de la modale d'approbation **inatteignable** (~75 lignes JSX) : `setShowApprovalForm(true)` n'était jamais appelé — le vrai flux d'approbation vit dans `PendingEnrollmentsPage.jsx`.
+     - Suppression des éléments devenus orphelins : `submitApproval`, états `showApprovalForm`/`approvalData`/`actionLoading`, `useNavigate`/`navigate` (navigation réelle via `window.location.href`), imports `DatePicker` et icône `Check`.
+     - Note résiduelle : le payload interne envoyait `appointment_date: null` alors que le backend l'exige — la modale était donc doublement inopérante.
+  4. **Nettoyage d'import inutilisé** : retrait de `Edit` (lucide-react) dans `ChildMedicalPage.jsx`.
+  5. **Audit complet des fichiers touchés** : vérification automatisée des imports/requires sur les 10 fichiers modifiés de la session, syntaxe validée via `esbuild` (frontend) et `node --check` (backend).
+- **Résultat** : Fluidification drastique des tests d'inscription en dev (un clic remplace tout le cycle d'attente du RDV), correction d'un bug latent qui cassait toute mise à jour d'enfant depuis la migration 004, et suppression de ~110 lignes de code mort frontend.
+
+

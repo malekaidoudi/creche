@@ -39,6 +39,7 @@ import MobileCard from './MobileCard';
 import MobileStatCard from './MobileStatCard';
 import api from '../../services/api';
 import API_CONFIG from '../../config/api';
+import { getEmergencyContactDisplay } from '../../utils/emergencyContacts';
 
 // Fonction pour construire l'URL complète de la photo
 const getChildPhotoUrl = (photoUrl) => {
@@ -238,6 +239,9 @@ const MobileParentSpace = ({
         hidden: { opacity: 0, y: 20 },
         visible: { opacity: 1, y: 0 }
     };
+
+    // Coordonnées résolues du contact d'urgence (father/mother → father_*/mother_*)
+    const emergencyContactInfo = getEmergencyContactDisplay(selectedChild);
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20">
@@ -999,19 +1003,23 @@ const MobileParentSpace = ({
                                                     : (isRTL ? 'الأم' : 'La Mère')}
                                             </p>
                                         )}
-                                        {selectedChild.emergency_contact_name && (
+                                        {emergencyContactInfo.name && (
                                             <p className="text-gray-700 dark:text-gray-300 mb-1">
-                                                <span className="font-medium">{isRTL ? 'الاسم:' : 'Nom:'}</span> {selectedChild.emergency_contact_name}
+                                                <span className="font-medium">{isRTL ? 'الاسم:' : 'Nom:'}</span> {emergencyContactInfo.name}
                                             </p>
                                         )}
-                                        {selectedChild.emergency_contact_phone && (
+                                        {emergencyContactInfo.phone ? (
                                             <a
-                                                href={`tel:${selectedChild.emergency_contact_phone}`}
+                                                href={`tel:${emergencyContactInfo.phone}`}
                                                 className="flex items-center gap-2 text-orange-600 dark:text-orange-400 font-medium"
                                             >
                                                 <Phone className="w-4 h-4" />
-                                                {selectedChild.emergency_contact_phone}
+                                                {emergencyContactInfo.phone}
                                             </a>
+                                        ) : (
+                                            <p className="text-xs text-orange-500 dark:text-orange-400 italic mt-1">
+                                                {isRTL ? 'لم يتم إدخال رقم الهاتف بعد' : 'Numéro non renseigné — complétez-le depuis « Gérer les contacts »'}
+                                            </p>
                                         )}
                                     </div>
                                 )}
@@ -1066,11 +1074,20 @@ const MobileParentSpace = ({
                                 )}
                             </div>
 
-                            {/* Bouton fermer */}
-                            <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+                            {/* Boutons gérer / fermer */}
+                            <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex gap-2">
+                                <button
+                                    onClick={() => {
+                                        setShowEmergencyModal(false);
+                                        navigate(`/mon-espace/child/${selectedChild.id}/emergency-contacts`);
+                                    }}
+                                    className="flex-1 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-medium transition-colors"
+                                >
+                                    {isRTL ? 'إدارة جهات الاتصال' : 'Gérer les contacts'}
+                                </button>
                                 <button
                                     onClick={() => setShowEmergencyModal(false)}
-                                    className="w-full py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-xl font-medium transition-colors"
+                                    className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-xl font-medium transition-colors"
                                 >
                                     {isRTL ? 'إغلاق' : 'Fermer'}
                                 </button>

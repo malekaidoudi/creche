@@ -37,6 +37,7 @@ import { useDialogContext } from '../../contexts/DialogContext';
 import NewsWidget from '../../components/NewsWidget';
 import HolidaysList from '../../components/HolidaysList';
 import TestimonialForm from '../../components/testimonials/TestimonialForm';
+import { getEmergencyContactDisplay } from '../../utils/emergencyContacts';
 
 const MySpacePage = () => {
   const { user } = useAuth();
@@ -120,6 +121,9 @@ const MySpacePage = () => {
       console.error('Erreur chargement compteur notifications:', error);
     }
   };
+
+  // Coordonnées résolues du contact d'urgence (father/mother → father_*/mother_*)
+  const emergencyContactInfo = getEmergencyContactDisplay(selectedChildForModal);
 
 
   // Version Mobile
@@ -723,19 +727,23 @@ const MySpacePage = () => {
                             : (isRTL ? 'الأم' : 'La Mère')}
                         </p>
                       )}
-                      {selectedChildForModal.emergency_contact_name && (
+                      {emergencyContactInfo.name && (
                         <p className="text-gray-700 dark:text-gray-300 text-sm mb-1">
-                          <span className="font-medium">{isRTL ? 'الاسم:' : 'Nom:'}</span> {selectedChildForModal.emergency_contact_name}
+                          <span className="font-medium">{isRTL ? 'الاسم:' : 'Nom:'}</span> {emergencyContactInfo.name}
                         </p>
                       )}
-                      {selectedChildForModal.emergency_contact_phone && (
+                      {emergencyContactInfo.phone ? (
                         <a
-                          href={`tel:${selectedChildForModal.emergency_contact_phone}`}
+                          href={`tel:${emergencyContactInfo.phone}`}
                           className="inline-flex items-center gap-2 text-orange-600 dark:text-orange-400 font-semibold text-sm hover:underline mt-1"
                         >
                           <Phone className="w-4 h-4" />
-                          {selectedChildForModal.emergency_contact_phone}
+                          {emergencyContactInfo.phone}
                         </a>
+                      ) : (
+                        <p className="text-xs text-orange-500 dark:text-orange-400 italic mt-1">
+                          {isRTL ? 'لم يتم إدخال رقم الهاتف بعد' : 'Numéro non renseigné — complétez-le depuis « Gérer les contacts »'}
+                        </p>
                       )}
                     </div>
                   ) : null}
@@ -792,17 +800,15 @@ const MySpacePage = () => {
 
                 {/* Footer */}
                 <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex gap-2">
-                  {(selectedChildForModal.emergency_contact_name || selectedChildForModal.emergency_contact_phone || selectedChildForModal.doctor_name || selectedChildForModal.doctor_phone) && (
-                    <button
-                      onClick={() => {
-                        setShowEmergencyModal(false);
-                        navigate(`/mon-espace/child/${selectedChildForModal.id}/emergency-contacts`);
-                      }}
-                      className="flex-1 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-medium transition-colors text-sm"
-                    >
-                      {isRTL ? 'إدارة جهات الاتصال' : 'Gérer les contacts'}
-                    </button>
-                  )}
+                  <button
+                    onClick={() => {
+                      setShowEmergencyModal(false);
+                      navigate(`/mon-espace/child/${selectedChildForModal.id}/emergency-contacts`);
+                    }}
+                    className="flex-1 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-medium transition-colors text-sm"
+                  >
+                    {isRTL ? 'إدارة جهات الاتصال' : 'Gérer les contacts'}
+                  </button>
                   <button
                     onClick={() => setShowEmergencyModal(false)}
                     className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-xl font-medium transition-colors text-sm"

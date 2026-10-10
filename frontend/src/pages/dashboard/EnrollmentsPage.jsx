@@ -1,22 +1,20 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
 import {
   FileText,
   Clock,
   CheckCircle,
   XCircle,
   Eye,
-  Check,
   X,
   Calendar,
   User,
   Phone,
-  Mail
+  Mail,
+  Zap
 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import useIsMobile from '../../hooks/useIsMobile';
-import DatePicker from '../../components/ui/DatePicker';
 import { useDialogContext } from '../../contexts/DialogContext';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -29,43 +27,38 @@ import MobileHeader from '../../components/mobile/MobileHeader';
 const EnrollmentsPage = () => {
   const dialog = useDialogContext();
   const isMobile = useIsMobile();
-  const navigate = useNavigate();
   const { isRTL } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [enrollments, setEnrollments] = useState([]);
   const [activeTab, setActiveTab] = useState('all');
   const [selectedEnrollment, setSelectedEnrollment] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  const [actionLoading, setActionLoading] = useState(false);
-  const [showApprovalForm, setShowApprovalForm] = useState(false);
-  const [approvalData, setApprovalData] = useState({
-    appointment_date: '',
-    admin_comment: ''
-  });
   const [usingDemoData, setUsingDemoData] = useState(false);
   const [allEnrollmentsForCounts, setAllEnrollmentsForCounts] = useState([]);
+  const [devLoadingId, setDevLoadingId] = useState(null);
 
   useEffect(() => {
     fetchEnrollments();
   }, [activeTab]);
 
   // Charger toutes les inscriptions pour les compteurs
-  useEffect(() => {
-    const fetchAllForCounts = async () => {
-      try {
-        const response = await enrollmentsService.getAllEnrollments({
-          status: 'all',
-          limit: 1000
-        });
-        if (response.enrollments) {
-          setAllEnrollmentsForCounts(response.enrollments);
-        }
-      } catch (error) {
-        console.warn('Erreur chargement compteurs:', error);
-        // Utiliser les données actuelles comme fallback
-        setAllEnrollmentsForCounts(enrollments);
+  const fetchAllForCounts = async () => {
+    try {
+      const response = await enrollmentsService.getAllEnrollments({
+        status: 'all',
+        limit: 1000
+      });
+      if (response.enrollments) {
+        setAllEnrollmentsForCounts(response.enrollments);
       }
-    };
+    } catch (error) {
+      console.warn('Erreur chargement compteurs:', error);
+      // Utiliser les données actuelles comme fallback
+      setAllEnrollmentsForCounts(enrollments);
+    }
+  };
+
+  useEffect(() => {
     fetchAllForCounts();
   }, []);
 
@@ -109,28 +102,22 @@ const EnrollmentsPage = () => {
     setShowModal(true);
   };
 
-  const submitApproval = async () => {
-    if (!selectedEnrollment) return;
-
-    setActionLoading(true);
+  // [DEV ONLY] Accepte un dossier en un clic sans attendre le RDV
+  const handleDevFinalize = async (enrollment) => {
+    setDevLoadingId(enrollment.id);
     try {
-      await enrollmentsService.approveEnrollment(selectedEnrollment.id, {
-        appointment_date: approvalData.appointment_date || null,
-        admin_comment: approvalData.admin_comment || ''
-      });
-
-      // Rafraîchir la liste
+      const result = await enrollmentsService.devFinalizeEnrollment(enrollment);
       await fetchEnrollments();
-
-      // Fermer les modals et réinitialiser
-      setShowModal(false);
-      setShowApprovalForm(false);
-      setSelectedEnrollment(null);
-      setApprovalData({ appointment_date: '', admin_comment: '' });
+      await fetchAllForCounts();
+      dialog.success(
+        result.childId
+          ? `Enfant créé (ID: ${result.childId}) — dossier finalisé sans attendre le RDV`
+          : 'Dossier finalisé avec succès'
+      );
     } catch (error) {
-      console.error('Erreur lors de l\'approbation:', error);
+      dialog.error(error.response?.data?.error || error.message || 'Erreur lors de la finalisation dev');
     } finally {
-      setActionLoading(false);
+      setDevLoadingId(null);
     }
   };
 
@@ -509,15 +496,35 @@ const EnrollmentsPage = () => {
                       </div>
                     </div>
 
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleViewEnrollment(enrollment)}
-                      className="w-full md:w-auto text-xs sm:text-sm px-3 py-2"
-                    >
-                      <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 rtl:mr-0 rtl:ml-1" />
-                      {isRTL ? 'عرض التفاصيل' : 'Voir détails'}
-                    </Button>
+                    <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                      {/* Bouton dev : accepte le dossier sans attendre le RDV (visible uniquement en dev) */}
+                      {import.meta.env.DEV && ['pending', 'in_progress'].includes(enrollment.status) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDevFinalize(enrollment)}
+                          disabled={devLoadingId === enrollment.id}
+                          title={isRTL ? 'قبول الملف مباشرة دون انتظار الموعد (بيئة التطوير)' : 'Accepte le dossier directement sans attendre le RDV (environnement dev)'}
+                          className="w-full md:w-auto text-xs sm:text-sm px-3 py-2 border-dashed border-2 border-purple-400 text-purple-600 hover:bg-purple-50 dark:border-purple-500 dark:text-purple-400 dark:hover:bg-purple-900/20"
+                        >
+                          {devLoadingId === enrollment.id ? (
+                            <LoadingSpinner size="sm" />
+                          ) : (
+                            <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 rtl:mr-0 rtl:ml-1" />
+                          )}
+                          {isRTL ? 'قبول (dev)' : 'Accepter (dev)'}
+                        </Button>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleViewEnrollment(enrollment)}
+                        className="w-full md:w-auto text-xs sm:text-sm px-3 py-2"
+                      >
+                        <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 rtl:mr-0 rtl:ml-1" />
+                        {isRTL ? 'عرض التفاصيل' : 'Voir détails'}
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -685,7 +692,6 @@ const EnrollmentsPage = () => {
                         setShowModal(false);
                         window.location.href = `/dashboard/pending-enrollments?highlight=${selectedEnrollment.id}`;
                       }}
-                      disabled={actionLoading}
                       className="bg-blue-600 hover:bg-blue-700"
                     >
                       <FileText className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />
@@ -699,79 +705,6 @@ const EnrollmentsPage = () => {
         </div>
       )}
 
-      {/* Modal de formulaire d'approbation */}
-      {showApprovalForm && selectedEnrollment && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full"
-          >
-            <div className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                {isRTL ? 'قبول طلب التسجيل' : 'Approuver la demande d\'inscription'}
-              </h3>
-
-              <div className="space-y-4">
-                {/* Informations de l'enfant */}
-                <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-lg">
-                  <p className="font-medium text-gray-900 dark:text-white">
-                    {selectedEnrollment.child_first_name} {selectedEnrollment.child_last_name}
-                  </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {isRTL ? 'الوالد:' : 'Parent:'} {selectedEnrollment.parent_first_name} {selectedEnrollment.parent_last_name}
-                  </p>
-                </div>
-
-                {/* Date de rendez-vous */}
-                <DatePicker
-                  label={isRTL ? 'تاريخ الموعد (اختياري)' : 'Date de rendez-vous (optionnel)'}
-                  title={isRTL ? 'تاريخ الموعد' : 'Date de rendez-vous'}
-                  value={approvalData.appointment_date}
-                  onChange={(value) => setApprovalData(prev => ({ ...prev, appointment_date: value }))}
-                />
-
-                {/* Commentaire admin */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    {isRTL ? 'ملاحظات إضافية (اختياري)' : 'Commentaires additionnels (optionnel)'}
-                  </label>
-                  <textarea
-                    value={approvalData.admin_comment}
-                    onChange={(e) => setApprovalData(prev => ({ ...prev, admin_comment: e.target.value }))}
-                    placeholder={isRTL ? 'أضف ملاحظات للوالد...' : 'Ajoutez des notes pour le parent...'}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none"
-                    rows="3"
-                  />
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex justify-end space-x-3 rtl:space-x-reverse mt-6">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowApprovalForm(false);
-                    setApprovalData({ appointment_date: '', admin_comment: '' });
-                  }}
-                  disabled={actionLoading}
-                >
-                  {isRTL ? 'إلغاء' : 'Annuler'}
-                </Button>
-                <Button
-                  onClick={submitApproval}
-                  disabled={actionLoading}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  {actionLoading ? <LoadingSpinner size="sm" /> : <Check className="w-4 h-4 mr-1 rtl:mr-0 rtl:ml-1" />}
-                  {isRTL ? 'تأكيد القبول' : 'Confirmer l\'approbation'}
-                </Button>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      )}
     </div>
   );
 };

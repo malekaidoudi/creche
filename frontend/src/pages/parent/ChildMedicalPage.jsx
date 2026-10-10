@@ -15,7 +15,7 @@ import {
     X,
     Save,
     Trash2,
-    Edit
+    TrendingUp
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import useIsMobile from '../../hooks/useIsMobile';
@@ -42,6 +42,8 @@ const ChildMedicalPage = () => {
         medications: [],
         conditions: [],
         blood_type: '',
+        weight_kg: '',
+        height_cm: '',
         doctor_name: '',
         doctor_phone: '',
         notes: ''
@@ -201,6 +203,70 @@ const ChildMedicalPage = () => {
                         )}
                     </div>
                 </div>
+
+                {/* Croissance & Groupe sanguin */}
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5 mb-4"
+                >
+                    <h2 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2 mb-4">
+                        <TrendingUp className="w-5 h-5 text-emerald-500" />
+                        {isRTL ? 'فصيلة الدم ومؤشرات النمو' : 'Groupe sanguin & Croissance'}
+                    </h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                {isRTL ? 'فصيلة الدم' : 'Groupe sanguin'}
+                            </label>
+                            <select
+                                value={medicalData.blood_type || ''}
+                                onChange={(e) => setMedicalData(prev => ({ ...prev, blood_type: e.target.value }))}
+                                className="w-full p-2.5 text-sm border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                            >
+                                <option value="">{isRTL ? 'غير محدد' : 'Non renseigné'}</option>
+                                {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(bt => (
+                                    <option key={bt} value={bt}>{bt}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                {isRTL ? 'الوزن (كغ)' : 'Poids (kg)'}
+                            </label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={medicalData.weight_kg ?? ''}
+                                onChange={(e) => setMedicalData(prev => ({ ...prev, weight_kg: e.target.value }))}
+                                placeholder="Ex: 9.5"
+                                className="w-full p-2.5 text-sm border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                dir="ltr"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                {isRTL ? 'الطول (سم)' : 'Taille (cm)'}
+                            </label>
+                            <input
+                                type="number"
+                                step="0.1"
+                                min="0"
+                                value={medicalData.height_cm ?? ''}
+                                onChange={(e) => setMedicalData(prev => ({ ...prev, height_cm: e.target.value }))}
+                                placeholder="Ex: 75"
+                                className="w-full p-2.5 text-sm border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                dir="ltr"
+                            />
+                        </div>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
+                        {isRTL
+                            ? 'تساعد هذه القياسات فريق الحضانة والطبيب المعتمد على متابعة منحنى نمو طفلكم.'
+                            : 'Ces mesures permettent à la crèche et au médecin conventionné de suivre la courbe de croissance de votre enfant.'}
+                    </p>
+                </motion.div>
 
                 {/* Allergies */}
                 <motion.div

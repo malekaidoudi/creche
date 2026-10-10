@@ -4,7 +4,7 @@
 
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiMoreVertical, FiTrash2, FiEdit2, FiMessageCircle, FiEye, FiUser, FiPlay, FiMaximize2, FiShare2 } from 'react-icons/fi';
+import { FiMoreVertical, FiTrash2, FiEdit2, FiMessageCircle, FiEye, FiUser, FiPlay, FiMaximize2, FiShare2, FiImage } from 'react-icons/fi';
 import { FaFacebook, FaInstagram, FaTiktok } from 'react-icons/fa';
 import { BsPin, BsPinFill } from 'react-icons/bs';
 import ReactionBar from './ReactionBar';
@@ -176,42 +176,33 @@ const ActivityCard = ({ activity, onReact, onDelete, onEdit, isRTL = false, onOp
         )}
       </div>
 
-      {/* Média - cliquable pour plein écran */}
-      {activity.mediaType !== 'none' && activity.mediaUrl && (
-        <div className="relative group cursor-pointer" onClick={() => onOpenFullscreen?.()}>
-          {activity.mediaType === 'image' ? (
-            <>
-              <img
-                src={activity.mediaUrl}
-                alt={activity.title}
-                className="w-full max-h-[500px] object-cover"
-                loading="lazy"
-              />
-              {/* Overlay pour agrandir */}
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                <div className="p-3 bg-white/90 rounded-full shadow-lg">
-                  <FiMaximize2 size={24} className="text-gray-900" />
-                </div>
-              </div>
-            </>
-          ) : activity.mediaType === 'video' && (
-            <div className="relative">
+      {/* Média - Image unique, Mosaïque photos multiples ou Vidéo */}
+      {(() => {
+        const mediaItems = Array.isArray(activity.mediaUrls) && activity.mediaUrls.length > 0
+          ? activity.mediaUrls
+          : (activity.mediaUrl ? [{ url: activity.mediaUrl, thumbnailUrl: activity.mediaThumbnailUrl, type: activity.mediaType }] : []);
+
+        const isVideo = activity.mediaType === 'video' || (mediaItems.length === 1 && mediaItems[0].type === 'video');
+
+        if (mediaItems.length === 0) return null;
+
+        // CAS VIDÉO
+        if (isVideo) {
+          return (
+            <div className="relative group cursor-pointer">
               {!showVideo ? (
                 <div className="relative" onClick={(e) => { e.stopPropagation(); setShowVideo(true); }}>
-                  {/* Thumbnail vidéo avec transformation Cloudinary correcte */}
                   {getVideoThumbnail() ? (
                     <img
                       src={getVideoThumbnail()}
                       alt={activity.title}
                       className="w-full max-h-[400px] object-cover bg-gray-200 dark:bg-gray-700"
                       onError={(e) => {
-                        // Fallback si la thumbnail échoue - utiliser une frame de la vidéo
                         e.target.style.display = 'none';
                         e.target.nextSibling?.classList.remove('hidden');
                       }}
                     />
                   ) : null}
-                  {/* Fallback: lecteur vidéo en pause pour générer une preview */}
                   <video
                     src={activity.mediaUrl}
                     className={`w-full max-h-[400px] object-cover bg-gray-900 ${getVideoThumbnail() ? 'hidden' : ''}`}
@@ -224,9 +215,8 @@ const ActivityCard = ({ activity, onReact, onDelete, onEdit, isRTL = false, onOp
                       <FiPlay className="text-gray-900 ml-1" size={28} />
                     </div>
                   </div>
-                  {/* Bouton plein écran */}
                   <button
-                    onClick={(e) => { e.stopPropagation(); onOpenFullscreen?.(); }}
+                    onClick={(e) => { e.stopPropagation(); onOpenFullscreen?.(0); }}
                     className="absolute top-3 right-3 p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors"
                   >
                     <FiMaximize2 size={18} />
@@ -243,9 +233,8 @@ const ActivityCard = ({ activity, onReact, onDelete, onEdit, isRTL = false, onOp
                     muted={isMuted}
                     className="w-full max-h-[500px] bg-black"
                   />
-                  {/* Bouton plein écran */}
                   <button
-                    onClick={(e) => { e.stopPropagation(); onOpenFullscreen?.(); }}
+                    onClick={(e) => { e.stopPropagation(); onOpenFullscreen?.(0); }}
                     className="absolute top-3 right-3 p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors"
                   >
                     <FiMaximize2 size={18} />
@@ -253,9 +242,165 @@ const ActivityCard = ({ activity, onReact, onDelete, onEdit, isRTL = false, onOp
                 </div>
               )}
             </div>
-          )}
-        </div>
-      )}
+          );
+        }
+
+        // CAS PHOTO UNIQUE
+        if (mediaItems.length === 1) {
+          const item = mediaItems[0];
+          return (
+            <div className="relative group cursor-pointer overflow-hidden" onClick={() => onOpenFullscreen?.(0)}>
+              <img
+                src={item.url}
+                alt={activity.title}
+                className="w-full max-h-[500px] object-cover"
+                loading="lazy"
+              />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                <div className="p-3 bg-white/90 rounded-full shadow-lg">
+                  <FiMaximize2 size={24} className="text-gray-900" />
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        // CAS 2 PHOTOS
+        if (mediaItems.length === 2) {
+          return (
+            <div className="relative group grid grid-cols-2 gap-1 overflow-hidden max-h-[420px] bg-gray-100 dark:bg-gray-900">
+              {mediaItems.map((item, idx) => (
+                <div
+                  key={idx}
+                  className="relative aspect-square sm:aspect-[4/3] bg-gray-900 overflow-hidden cursor-pointer group/img"
+                  onClick={() => onOpenFullscreen?.(idx)}
+                >
+                  <img
+                    src={item.thumbnailUrl || item.url}
+                    alt={`${activity.title} - ${idx + 1}`}
+                    className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-200"
+                    loading="lazy"
+                  />
+                </div>
+              ))}
+              <div className="absolute top-2.5 left-2.5 rtl:left-auto rtl:right-2.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-sm text-white text-xs font-medium flex items-center gap-1.5 pointer-events-none shadow-sm">
+                <FiImage size={12} />
+                <span>2 {isRTL ? 'صور' : 'photos'}</span>
+              </div>
+            </div>
+          );
+        }
+
+        // CAS 3 PHOTOS
+        if (mediaItems.length === 3) {
+          return (
+            <div className="relative group grid grid-cols-2 gap-1 overflow-hidden max-h-[440px] bg-gray-100 dark:bg-gray-900">
+              <div
+                className="relative row-span-2 h-full bg-gray-900 overflow-hidden cursor-pointer group/img"
+                onClick={() => onOpenFullscreen?.(0)}
+              >
+                <img
+                  src={mediaItems[0].thumbnailUrl || mediaItems[0].url}
+                  alt={`${activity.title} - 1`}
+                  className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-200 min-h-[220px]"
+                  loading="lazy"
+                />
+              </div>
+              <div
+                className="relative aspect-square bg-gray-900 overflow-hidden cursor-pointer group/img"
+                onClick={() => onOpenFullscreen?.(1)}
+              >
+                <img
+                  src={mediaItems[1].thumbnailUrl || mediaItems[1].url}
+                  alt={`${activity.title} - 2`}
+                  className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-200"
+                  loading="lazy"
+                />
+              </div>
+              <div
+                className="relative aspect-square bg-gray-900 overflow-hidden cursor-pointer group/img"
+                onClick={() => onOpenFullscreen?.(2)}
+              >
+                <img
+                  src={mediaItems[2].thumbnailUrl || mediaItems[2].url}
+                  alt={`${activity.title} - 3`}
+                  className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-200"
+                  loading="lazy"
+                />
+              </div>
+              <div className="absolute top-2.5 left-2.5 rtl:left-auto rtl:right-2.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-sm text-white text-xs font-medium flex items-center gap-1.5 pointer-events-none shadow-sm">
+                <FiImage size={12} />
+                <span>3 {isRTL ? 'صور' : 'photos'}</span>
+              </div>
+            </div>
+          );
+        }
+
+        // CAS 4 PHOTOS
+        if (mediaItems.length === 4) {
+          return (
+            <div className="relative group grid grid-cols-2 gap-1 overflow-hidden max-h-[440px] bg-gray-100 dark:bg-gray-900">
+              {mediaItems.map((item, idx) => (
+                <div
+                  key={idx}
+                  className="relative aspect-square bg-gray-900 overflow-hidden cursor-pointer group/img"
+                  onClick={() => onOpenFullscreen?.(idx)}
+                >
+                  <img
+                    src={item.thumbnailUrl || item.url}
+                    alt={`${activity.title} - ${idx + 1}`}
+                    className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-200"
+                    loading="lazy"
+                  />
+                </div>
+              ))}
+              <div className="absolute top-2.5 left-2.5 rtl:left-auto rtl:right-2.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-sm text-white text-xs font-medium flex items-center gap-1.5 pointer-events-none shadow-sm">
+                <FiImage size={12} />
+                <span>4 {isRTL ? 'صور' : 'photos'}</span>
+              </div>
+            </div>
+          );
+        }
+
+        // CAS 5+ PHOTOS (Affichage de 3 vignettes + 1 vignette de dépassement avec overlay +X)
+        return (
+          <div className="relative group grid grid-cols-2 gap-1 overflow-hidden max-h-[440px] bg-gray-100 dark:bg-gray-900">
+            {mediaItems.slice(0, 3).map((item, idx) => (
+              <div
+                key={idx}
+                className="relative aspect-square bg-gray-900 overflow-hidden cursor-pointer group/img"
+                onClick={() => onOpenFullscreen?.(idx)}
+              >
+                <img
+                  src={item.thumbnailUrl || item.url}
+                  alt={`${activity.title} - ${idx + 1}`}
+                  className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-200"
+                  loading="lazy"
+                />
+              </div>
+            ))}
+            <div
+              className="relative aspect-square bg-gray-900 overflow-hidden cursor-pointer group/img"
+              onClick={() => onOpenFullscreen?.(3)}
+            >
+              <img
+                src={mediaItems[3]?.thumbnailUrl || mediaItems[3]?.url}
+                alt={`${activity.title} - 4`}
+                className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-200"
+                loading="lazy"
+              />
+              <div className="absolute inset-0 bg-black/65 hover:bg-black/75 backdrop-blur-[2px] transition-colors flex flex-col items-center justify-center text-white font-bold text-2xl select-none">
+                <span>+{mediaItems.length - 3}</span>
+                <span className="text-xs font-normal text-white/80">{isRTL ? 'صور أخرى' : 'photos'}</span>
+              </div>
+            </div>
+            <div className="absolute top-2.5 left-2.5 rtl:left-auto rtl:right-2.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-sm text-white text-xs font-medium flex items-center gap-1.5 pointer-events-none shadow-sm">
+              <FiImage size={12} />
+              <span>{mediaItems.length} {isRTL ? 'صور' : 'photos'}</span>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Stats */}
       <div className="px-4 py-2 flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-gray-700">

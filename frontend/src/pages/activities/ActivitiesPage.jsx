@@ -19,6 +19,7 @@ const ActivitiesPage = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [fullscreenIndex, setFullscreenIndex] = useState(null); // Index de la publication en plein écran
+  const [fullscreenPhotoIndex, setFullscreenPhotoIndex] = useState(0); // Index de la photo dans la publication
   const observerRef = useRef(null);
   const loadMoreRef = useRef(null);
 
@@ -232,7 +233,10 @@ const ActivitiesPage = () => {
                 onReact={toggleReaction}
                 onDelete={handleDelete}
                 isRTL={isRTL}
-                onOpenFullscreen={() => setFullscreenIndex(index)}
+                onOpenFullscreen={(photoIdx = 0) => {
+                  setFullscreenIndex(index);
+                  setFullscreenPhotoIndex(photoIdx);
+                }}
               />
             ))}
 
@@ -254,6 +258,7 @@ const ActivitiesPage = () => {
           <FullscreenFeed
             activities={activities}
             initialIndex={fullscreenIndex}
+            initialPhotoIndex={fullscreenPhotoIndex}
             onClose={() => setFullscreenIndex(null)}
             onReact={toggleReaction}
             isRTL={isRTL}

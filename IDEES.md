@@ -53,15 +53,25 @@ Format suggéré : `- [ ] Description de l'idée` (laisser `[ ]`, passer à `[x]
     - **Contrôle strict du personnel** : L'éducatrice ou la directrice doit obligatoirement vérifier cette liste avant de confier l'enfant.
     - **Composition par défaut** : Cette liste contient **par défaut les deux parents et le contact d'urgence**.
     - **Flexibilité de saisie** : D'autres contacts de confiance (grands-parents, oncle/tante, nounou...) peuvent être saisis lors de l'inscription ou ajoutés/modifiés ultérieurement par le parent directement depuis son espace (`/mon-espace`).
-- [ ] **Photos multiples dans une publication du fil d'activité** — permettre à l'utilisateur d'ajouter plusieurs photos dans une seule publication sur la page Activité :
-  - État actuel : `ActivityForm.jsx` n'accepte qu'un seul média (`files?.[0]`, état `media` unique).
-  - Sélection multiple (`input multiple`), aperçu en grille, suppression individuelle avant envoi.
-  - Upload groupé vers Cloudinary + stockage d'une liste d'URLs par post (adapter schéma `activity_posts` : `media_urls` JSON ou table `activity_post_media`).
-  - Affichage en galerie/grille dans `ActivityCard.jsx` (et `FullscreenFeed.jsx`).
+- [x] **Photos multiples dans une publication du fil d'activité** — permettre à l'utilisateur d'ajouter plusieurs photos dans une seule publication sur la page Activité :
+  - Sélection multiple (`input multiple`), jusqu'à 10 photos par publication, aperçu en grille réactive, suppression unitaire avant envoi.
+  - Upload groupé vers Cloudinary + stockage d'une liste d'URLs par post (colonne `media_urls JSONB` dans `activities` via migration 007).
+  - Affichage en mosaïque/galerie élégante dans `ActivityCard.jsx` (2, 3, 4 et 5+ photos avec overlay `+X`).
+  - Carrousel interactif en mode plein écran dans `FullscreenFeed.jsx` avec navigation fléchée (gauche/droite) et touches clavier.
+- [x] **Suivi de croissance de l'enfant (poids & taille)** — saisie des mesures corporelles pour analyser la croissance :
+  - Schéma (migration 006) : `children.weight_kg NUMERIC(5,2)`, `height_cm NUMERIC(5,1)`, `growth_measured_at` + table `child_growth_records` (historique append-only avec `recorded_by`).
+  - Modèle à 2 niveaux : dernier état sur `children` (lecture rapide) + historique complet par relevé pour les futures courbes.
+  - Saisie par le parent (`/mon-espace/child/:id/medical`, section "Groupe sanguin & Croissance") et par le staff/admin habilité `medical.view` (modal d'édition enfant).
+  - Groupe sanguin déplacé de l'identité vers la carte "Santé & Suivi Médical" ; anti-écrasement via `COALESCE` (une édition sans mesure n'efface rien).
+  - Prêt pour le futur rôle `doctor` : `PUT /:id/medical` déjà protégé par `requireChildAccess`, `recorded_by` trace l'auteur de chaque mesure.
+- [ ] **Courbes de croissance & percentiles OMS** — exploiter `child_growth_records` :
+  - Endpoint `GET /api/children/:id/growth` (relevés triés par `measured_at`) + graphique (Recharts/Chart.js) dans la fiche médicale.
+  - Comparaison aux courbes de référence OMS par âge et sexe ; saisie optionnelle de la date de mesure (`measured_at` manuel pour backfill par le médecin).
 - [ ] *(ajouter ici)*
 
 ## 🚀 Performance & Technique
 
+- [x] Bouton **"⚡ Accepter (dev)"** sur `EnrollmentsPage` — finalise un dossier `pending`/`in_progress` en un clic (approve → completion RDV → création enfant) sans attendre la date du rendez-vous ; rendu uniquement si `import.meta.env.DEV` (invisible en build prod)
 - [x] Cache négatif sur `revoked_tokens` (évite le check DB ~300ms à chaque requête authentifiée)
 - [x] Pool PostgreSQL : `min: 1` + `idleTimeoutMillis` plus long (évite de recréer une connexion TLS Neon par requête)
 - [x] `cors({ maxAge: 86400 })` pour cacher les preflight OPTIONS

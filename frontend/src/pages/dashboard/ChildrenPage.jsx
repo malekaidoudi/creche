@@ -25,7 +25,8 @@ import {
   PauseCircle,
   Play,
   Users,
-  UserCheck
+  UserCheck,
+  TrendingUp
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -319,6 +320,9 @@ const ChildrenPage = () => {
       emergency_contact_choice: child.emergency_contact_choice || 'custom',
       emergency_contact_name: child.emergency_contact_name || '',
       emergency_contact_phone: child.emergency_contact_phone || '',
+      blood_type: child.blood_type || '',
+      weight_kg: child.weight_kg ?? '',
+      height_cm: child.height_cm ?? '',
       status: child.status || 'pending'
     });
     setSelectedPhotoFile(null);
@@ -564,8 +568,8 @@ const ChildrenPage = () => {
 
     if (!selectedChild) return;
 
-    // Si l'utilisateur n'a le droit de modifier que la photo (pas de droits contacts)
-    if (canEditOnlyPhoto || (!canManageEmergencyPhone && !userIsAdmin)) {
+    // Si l'utilisateur n'a le droit de modifier que la photo (pas de droits contacts ni médicaux)
+    if (canEditOnlyPhoto || (!canManageEmergencyPhone && !userIsAdmin && !canManageMedical)) {
       dialog.success(isRTL ? 'تم حفظ التعديلات بنجاح' : 'Modifications enregistrées avec succès');
       setShowEditModal(false);
       setSelectedChild(null);
@@ -609,6 +613,19 @@ const ChildrenPage = () => {
         // Synchronisation du téléphone du parent titulaire
         const curHolder = editFormData.account_holder || 'father';
         payload.parent_phone = curHolder === 'mother' ? editFormData.mother_phone?.trim() : editFormData.father_phone?.trim();
+      }
+
+      // Champs médicaux (groupe sanguin + croissance) — réservés à la permission medical.view
+      if (canManageMedical) {
+        if (editFormData.blood_type !== undefined) {
+          payload.blood_type = editFormData.blood_type || null;
+        }
+        if (editFormData.weight_kg !== undefined) {
+          payload.weight_kg = editFormData.weight_kg === '' || editFormData.weight_kg === null ? null : parseFloat(editFormData.weight_kg);
+        }
+        if (editFormData.height_cm !== undefined) {
+          payload.height_cm = editFormData.height_cm === '' || editFormData.height_cm === null ? null : parseFloat(editFormData.height_cm);
+        }
       }
 
       if (Object.keys(payload).length > 0) {
@@ -1515,34 +1532,37 @@ const ChildrenPage = () => {
                           {selectedChild.birth_date ? calculateAge(selectedChild.birth_date) : (isRTL ? 'غير محدد (RS)' : 'Non renseigné (R.S)')}
                         </p>
                       </div>
-                      <div className="bg-white dark:bg-gray-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-gray-700/50">
-                        <p className="text-xs text-gray-500 dark:text-gray-400">{isRTL ? 'فصيلة الدم' : 'Groupe sanguin'}</p>
-                        <p className="font-semibold text-gray-900 dark:text-white text-sm mt-0.5">
-                          {selectedChild.blood_type ? (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">
-                              {selectedChild.blood_type}
-                            </span>
-                          ) : (
-                            <span className="text-gray-400 italic text-xs">{isRTL ? 'غير محدد (RS)' : 'Non renseigné (R.S)'}</span>
-                          )}
-                        </p>
-                      </div>
-                      <div className="bg-white dark:bg-gray-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-gray-700/50">
-                        <p className="text-xs text-gray-500 dark:text-gray-400">{isRTL ? 'الاسم الكامل للأب' : 'Nom complet père'}</p>
-                        <p className="font-semibold text-gray-900 dark:text-white text-sm mt-0.5">
-                          {selectedChild.father_name || (
-                            <span className="text-gray-400 italic text-xs">{isRTL ? 'غير محدد (RS)' : 'Non renseigné (R.S)'}</span>
-                          )}
-                        </p>
-                      </div>
-                      <div className="bg-white dark:bg-gray-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-gray-700/50">
-                        <p className="text-xs text-gray-500 dark:text-gray-400">{isRTL ? 'الاسم الكامل للأم' : 'Nom complet mère'}</p>
-                        <p className="font-semibold text-gray-900 dark:text-white text-sm mt-0.5">
-                          {selectedChild.mother_name || (
-                            <span className="text-gray-400 italic text-xs">{isRTL ? 'غير محدد (RS)' : 'Non renseigné (R.S)'}</span>
-                          )}
-                        </p>
-                      </div>
+                      {(() => {
+                        // Même résolution que la section Parents : repli sur le titulaire du compte
+                        const holderIsFather = selectedChild.account_holder
+                          ? selectedChild.account_holder === 'father'
+                          : selectedChild.parent_gender === 'male';
+                        const holderName = selectedChild.parent_first_name
+                          ? `${selectedChild.parent_first_name} ${selectedChild.parent_last_name || ''}`.trim()
+                          : null;
+                        const fatherDisplayName = selectedChild.father_name || (holderIsFather ? holderName : null);
+                        const motherDisplayName = selectedChild.mother_name || (!holderIsFather ? holderName : null);
+                        return (
+                          <>
+                            <div className="bg-white dark:bg-gray-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-gray-700/50">
+                              <p className="text-xs text-gray-500 dark:text-gray-400">{isRTL ? 'الاسم الكامل للأب' : 'Nom complet père'}</p>
+                              <p className="font-semibold text-gray-900 dark:text-white text-sm mt-0.5">
+                                {fatherDisplayName || (
+                                  <span className="text-gray-400 italic text-xs">{isRTL ? 'غير محدد (RS)' : 'Non renseigné (R.S)'}</span>
+                                )}
+                              </p>
+                            </div>
+                            <div className="bg-white dark:bg-gray-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-gray-700/50">
+                              <p className="text-xs text-gray-500 dark:text-gray-400">{isRTL ? 'الاسم الكامل للأم' : 'Nom complet mère'}</p>
+                              <p className="font-semibold text-gray-900 dark:text-white text-sm mt-0.5">
+                                {motherDisplayName || (
+                                  <span className="text-gray-400 italic text-xs">{isRTL ? 'غير محدد (RS)' : 'Non renseigné (R.S)'}</span>
+                                )}
+                              </p>
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -2087,6 +2107,43 @@ const ChildrenPage = () => {
                             </div>
                           </div>
 
+                          {/* Groupe sanguin & Croissance (poids / taille) */}
+                          <div className="bg-white dark:bg-gray-800/90 rounded-xl p-3.5 border border-emerald-100 dark:border-emerald-900/30">
+                            <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                              <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
+                              {isRTL ? 'فصيلة الدم ومؤشرات النمو' : 'Groupe sanguin & Croissance'}
+                            </p>
+                            <div className="grid grid-cols-3 gap-2 text-center">
+                              <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-2">
+                                <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase">{isRTL ? 'فصيلة الدم' : 'Groupe sanguin'}</p>
+                                {selectedChild.blood_type ? (
+                                  <span className="inline-flex items-center px-2 py-0.5 mt-1 rounded text-xs font-bold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">
+                                    {selectedChild.blood_type}
+                                  </span>
+                                ) : (
+                                  <p className="text-xs text-gray-400 italic mt-1">{isRTL ? 'غير محدد' : 'Non renseigné'}</p>
+                                )}
+                              </div>
+                              <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-2">
+                                <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase">{isRTL ? 'الوزن' : 'Poids'}</p>
+                                <p className="text-sm font-semibold text-gray-900 dark:text-white mt-1">
+                                  {selectedChild.weight_kg != null ? `${selectedChild.weight_kg} kg` : <span className="text-xs text-gray-400 italic font-normal">{isRTL ? 'غير محدد' : 'Non renseigné'}</span>}
+                                </p>
+                              </div>
+                              <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-2">
+                                <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase">{isRTL ? 'الطول' : 'Taille'}</p>
+                                <p className="text-sm font-semibold text-gray-900 dark:text-white mt-1">
+                                  {selectedChild.height_cm != null ? `${selectedChild.height_cm} cm` : <span className="text-xs text-gray-400 italic font-normal">{isRTL ? 'غير محدد' : 'Non renseigné'}</span>}
+                                </p>
+                              </div>
+                            </div>
+                            <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1.5">
+                              {selectedChild.growth_measured_at
+                                ? `${isRTL ? 'آخر قياس:' : 'Dernière mesure :'} ${new Date(selectedChild.growth_measured_at).toLocaleDateString('fr-FR')}`
+                                : (isRTL ? 'يمكن تحديث القياسات من ولي الأمر أو الإدارة أو الطبيب المعتمد' : 'Mesures saisissables par le parent, l\'administration ou le médecin conventionné')}
+                            </p>
+                          </div>
+
                           {/* Allergies & Régimes */}
                           <div className="bg-white dark:bg-gray-800/90 rounded-xl p-3.5 border border-emerald-100 dark:border-emerald-900/30">
                             <p className="text-xs font-semibold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
@@ -2530,6 +2587,68 @@ const ChildrenPage = () => {
                       {isRTL
                         ? 'تعديل وسائل الاتصال متاح فقط للمدير والإدارة المخولة.'
                         : 'La modification des moyens de contact est réservée à la direction.'}
+                    </p>
+                  </div>
+                )}
+
+                {/* Section Santé & Croissance — permission médicale requise */}
+                {canManageMedical && (
+                  <div className="bg-emerald-50/50 dark:bg-emerald-950/20 rounded-xl p-4 border border-emerald-200/70 dark:border-emerald-900/40 space-y-3">
+                    <h4 className="font-semibold text-gray-900 dark:text-white text-sm flex items-center gap-1.5 border-b border-emerald-200/60 dark:border-emerald-900/40 pb-2">
+                      <TrendingUp className="w-4 h-4 text-emerald-600" />
+                      {isRTL ? 'فصيلة الدم ومؤشرات النمو' : 'Groupe sanguin & Croissance'}
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          {isRTL ? 'فصيلة الدم' : 'Groupe sanguin'}
+                        </label>
+                        <select
+                          value={editFormData.blood_type || ''}
+                          onChange={(e) => handleFormChange('blood_type', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                        >
+                          <option value="">{isRTL ? 'غير محدد' : 'Non renseigné'}</option>
+                          {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(bt => (
+                            <option key={bt} value={bt}>{bt}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          {isRTL ? 'الوزن (كغ)' : 'Poids (kg)'}
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={editFormData.weight_kg ?? ''}
+                          onChange={(e) => handleFormChange('weight_kg', e.target.value)}
+                          placeholder="Ex: 9.5"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                          dir="ltr"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          {isRTL ? 'الطول (سم)' : 'Taille (cm)'}
+                        </label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          value={editFormData.height_cm ?? ''}
+                          onChange={(e) => handleFormChange('height_cm', e.target.value)}
+                          placeholder="Ex: 75"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                          dir="ltr"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                      {isRTL
+                        ? 'كل تحديث يسجل قياساً جديداً في سجل النمو (تحليل منحنى النمو لاحقاً مع دور الطبيب المعتمد).'
+                        : 'Chaque mise à jour enregistre une mesure dans l\'historique de croissance (analyse des courbes à venir avec le rôle médecin).'}
                     </p>
                   </div>
                 )}

@@ -97,6 +97,47 @@ const enrollmentsService = {
       console.error('Erreur lors de la récupération des documents:', error)
       throw error
     }
+  },
+
+  /**
+   * [DEV ONLY] Finalise une inscription en un clic, sans attendre le RDV.
+   * Enchaîne : approbation (si pending) → validation du RDV → création de l'enfant.
+   * @param {Object} enrollment - L'inscription (avec id, status, applicant_email, active_appointment_id)
+   */
+  devFinalizeEnrollment: async (enrollment) => {
+    try {
+      let appointmentId = enrollment.active_appointment_id
+
+      // Dossier "pending" : approuver d'abord (crée le compte parent + le RDV)
+      if (!appointmentId && enrollment.status === 'pending') {
+        const approval = await api.post(`/api/enrollments/${enrollment.id}/approve`, {
+          appointment_date: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+          admin_comment: 'Approbation automatique (dev)'
+        })
+        appointmentId = approval.data?.enrollment?.active_appointment_id
+      }
+
+      // Fallback : récupérer le RDV lié via la route publique si l'ID n'est pas exposé
+      if (!appointmentId && enrollment.applicant_email) {
+        const lookup = await api.get(`/api/appointments/by-enrollment/${enrollment.id}`, {
+          params: { email: enrollment.applicant_email }
+        })
+        appointmentId = lookup.data?.appointment?.id
+      }
+
+      if (!appointmentId) {
+        throw new Error('Aucun rendez-vous lié à ce dossier')
+      }
+
+      // Valider le RDV → crée l'enfant et archive le dossier
+      const response = await api.patch(`/api/appointments/${appointmentId}/complete`, {
+        notes: 'Validé via bouton dev'
+      })
+      return response.data
+    } catch (error) {
+      console.error('Erreur finalisation dev:', error)
+      throw error
+    }
   }
 }
 

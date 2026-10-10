@@ -5,7 +5,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence, useDragControls } from 'framer-motion';
-import { FiX, FiMessageCircle, FiShare2, FiUser, FiChevronUp, FiChevronDown } from 'react-icons/fi';
+import { FiX, FiMessageCircle, FiShare2, FiUser, FiChevronUp, FiChevronDown, FiChevronLeft, FiChevronRight, FiImage } from 'react-icons/fi';
 import { FaFacebook, FaInstagram, FaTiktok } from 'react-icons/fa';
 import CommentSection from './CommentSection';
 import activityService from '../../services/activityService';
@@ -16,6 +16,7 @@ import { getStaffPositionLabel } from '../../utils/staffPosition';
 const FullscreenFeed = ({
     activities,
     initialIndex = 0,
+    initialPhotoIndex = 0,
     onClose,
     onReact,
     isRTL = false,
@@ -25,6 +26,7 @@ const FullscreenFeed = ({
     const { user } = useAuth();
     const dialog = useDialogContext();
     const [currentIndex, setCurrentIndex] = useState(initialIndex);
+    const [currentPhotoIndex, setCurrentPhotoIndex] = useState(initialPhotoIndex || 0);
     const [showComments, setShowComments] = useState(false);
     const [showShareMenu, setShowShareMenu] = useState(false);
     const [showReactionPicker, setShowReactionPicker] = useState(false);
@@ -37,6 +39,18 @@ const FullscreenFeed = ({
     const commentInputRef = useRef(null);
 
     const currentActivity = activities[currentIndex];
+
+    // Médias de la publication courante
+    const currentMediaItems = Array.isArray(currentActivity?.mediaUrls) && currentActivity?.mediaUrls.length > 0
+        ? currentActivity.mediaUrls
+        : (currentActivity?.mediaUrl ? [{ url: currentActivity.mediaUrl, thumbnailUrl: currentActivity.mediaThumbnailUrl, type: currentActivity.mediaType }] : []);
+
+    const isCurrentVideo = currentActivity?.mediaType === 'video' || (currentMediaItems.length === 1 && currentMediaItems[0].type === 'video');
+
+    // Réinitialiser la photo courante lors du passage à une autre publication
+    useEffect(() => {
+        setCurrentPhotoIndex(0);
+    }, [currentIndex]);
 
     // Charger plus de publications si on approche de la fin
     useEffect(() => {
@@ -91,7 +105,46 @@ const FullscreenFeed = ({
         }
     };
 
-    // Gestion du swipe
+    // Navigation photos dans la même publication
+    const goToNextPhoto = (e) => {
+        e?.stopPropagation?.();
+        if (currentPhotoIndex < currentMediaItems.length - 1) {
+            setCurrentPhotoIndex(prev => prev + 1);
+        }
+    };
+
+    const goToPrevPhoto = (e) => {
+        e?.stopPropagation?.();
+        if (currentPhotoIndex > 0) {
+            setCurrentPhotoIndex(prev => prev - 1);
+        }
+    };
+
+    // Navigation clavier (Flèches haut/bas pour posts, gauche/droite pour photos, Escape pour fermer)
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') {
+                onClose?.();
+            } else if (e.key === 'ArrowUp') {
+                goToPrevious();
+            } else if (e.key === 'ArrowDown') {
+                goToNext();
+            } else if (e.key === 'ArrowLeft') {
+                if (currentMediaItems.length > 1) {
+                    isRTL ? goToNextPhoto() : goToPrevPhoto();
+                }
+            } else if (e.key === 'ArrowRight') {
+                if (currentMediaItems.length > 1) {
+                    isRTL ? goToPrevPhoto() : goToNextPhoto();
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [currentIndex, currentPhotoIndex, currentMediaItems.length, activities.length, isAnimating, isRTL]);
+
+    // Gestion du swipe vertical
     const handleDragEnd = (e, info) => {
         const threshold = 50;
         const velocity = 500;
@@ -211,20 +264,14 @@ const FullscreenFeed = ({
                 {/* Média */}
                 <AnimatePresence mode="wait">
                     <motion.div
-                        key={currentActivity.id}
-                        initial={{ opacity: 0, y: 50 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -50 }}
+                        key={`${currentActivity.id}-${currentPhotoIndex}`}
+                        initial={{ opacity: 0, scale: 0.98 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.98 }}
                         transition={{ duration: 0.2 }}
                         className="absolute inset-0 flex items-center justify-center"
                     >
-                        {currentActivity.mediaType === 'image' ? (
-                            <img
-                                src={currentActivity.mediaUrl}
-                                alt={currentActivity.title}
-                                className="w-full h-full object-contain"
-                            />
-                        ) : (
+                        {isCurrentVideo ? (
                             <video
                                 ref={el => videoRefs.current[currentIndex] = el}
                                 src={currentActivity.mediaUrl}
@@ -234,6 +281,69 @@ const FullscreenFeed = ({
                                 muted={false}
                                 controls
                             />
+                        ) : (
+                            <div className="relative w-full h-full flex items-center justify-center">
+                                <img
+                                    src={currentMediaItems[currentPhotoIndex]?.url || currentActivity.mediaUrl}
+                                    alt={currentActivity.title}
+                                    className="w-full h-full object-contain select-none"
+                                />
+
+                                {/* Contrôles carrousel pour photos multiples */}
+                                {currentMediaItems.length > 1 && (
+                                    <>
+                                        {/* Bouton photo précédente */}
+                                        {currentPhotoIndex > 0 && (
+                                            <button
+                                                type="button"
+                                                onClick={goToPrevPhoto}
+                                                className="absolute left-4 top-1/2 -translate-y-1/2 z-30 p-2.5 rounded-full bg-black/50 hover:bg-black/75 text-white transition-all backdrop-blur-sm pointer-events-auto shadow-lg"
+                                                title={isRTL ? 'الصورة السابقة' : 'Photo précédente'}
+                                            >
+                                                <FiChevronLeft size={26} />
+                                            </button>
+                                        )}
+
+                                        {/* Bouton photo suivante */}
+                                        {currentPhotoIndex < currentMediaItems.length - 1 && (
+                                            <button
+                                                type="button"
+                                                onClick={goToNextPhoto}
+                                                className="absolute right-4 top-1/2 -translate-y-1/2 z-30 p-2.5 rounded-full bg-black/50 hover:bg-black/75 text-white transition-all backdrop-blur-sm pointer-events-auto shadow-lg"
+                                                title={isRTL ? 'الصورة التالية' : 'Photo suivante'}
+                                            >
+                                                <FiChevronRight size={26} />
+                                            </button>
+                                        )}
+
+                                        {/* Badge compteur de photos en haut au milieu */}
+                                        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 px-3.5 py-1.5 bg-black/60 backdrop-blur-md rounded-full text-white text-xs font-semibold flex items-center gap-1.5 shadow-md pointer-events-none">
+                                            <FiImage size={13} className="text-green-400" />
+                                            <span>{currentPhotoIndex + 1} / {currentMediaItems.length}</span>
+                                        </div>
+
+                                        {/* Puces de pagination en bas */}
+                                        <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 pointer-events-auto">
+                                            {currentMediaItems.map((_, pIdx) => (
+                                                <button
+                                                    key={pIdx}
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setCurrentPhotoIndex(pIdx);
+                                                    }}
+                                                    className={`h-2 rounded-full transition-all ${
+                                                        pIdx === currentPhotoIndex
+                                                            ? 'w-6 bg-white shadow-md'
+                                                            : 'w-2 bg-white/40 hover:bg-white/70'
+                                                    }`}
+                                                    title={`Photo ${pIdx + 1}`}
+                                                />
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         )}
                     </motion.div>
                 </AnimatePresence>

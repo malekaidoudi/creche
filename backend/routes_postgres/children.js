@@ -848,9 +848,10 @@ router.get('/', auth.authenticateToken, async (req, res) => {
 
     let sql = `
       SELECT 
-        c.id, c.first_name, c.last_name, c.birth_date, c.gender, c.medical_info, 
+        c.id, c.first_name, c.last_name, c.birth_date, c.gender, c.medical_info,
         c.allergies, c.medical_notes, c.doctor_name, c.doctor_phone, c.blood_type,
-        c.emergency_contact_name, c.emergency_contact_phone, c.photo_url, 
+        c.weight_kg, c.height_cm, c.growth_measured_at,
+        c.emergency_contact_name, c.emergency_contact_phone, c.photo_url,
         COALESCE(c.photo_shared_with_staff, true) as photo_shared_with_staff,
         c.is_active, c.created_at, c.updated_at, c.parent_id,
         COALESCE(c.status, 'active') as status,
@@ -930,8 +931,9 @@ router.get('/', auth.authenticateToken, async (req, res) => {
     }
 
     // GROUP BY et ORDER BY
-    sql += ` GROUP BY c.id, c.first_name, c.last_name, c.birth_date, c.gender, c.medical_info, 
+    sql += ` GROUP BY c.id, c.first_name, c.last_name, c.birth_date, c.gender, c.medical_info,
              c.allergies, c.medical_notes, c.doctor_name, c.doctor_phone, c.blood_type,
+             c.weight_kg, c.height_cm, c.growth_measured_at,
              c.emergency_contact_name, c.emergency_contact_phone, c.photo_url, 
              c.photo_shared_with_staff, c.is_active, c.created_at, c.updated_at, c.parent_id,
              c.status, c.suspension_reason, c.suspended_at, c.expected_return_date,
@@ -1035,8 +1037,9 @@ router.get('/:id', auth.authenticateToken, auth.requireChildAccess, async (req, 
     const { id } = req.params;
 
     const result = await pool.query(
-      `SELECT c.id, c.first_name, c.last_name, c.birth_date, c.gender, c.medical_info, 
+      `SELECT c.id, c.first_name, c.last_name, c.birth_date, c.gender, c.medical_info,
               c.allergies, c.medical_notes, c.doctor_name, c.doctor_phone, c.blood_type,
+              c.weight_kg, c.height_cm, c.growth_measured_at,
               c.emergency_contact_name, c.emergency_contact_phone, c.photo_url, c.photo_shared_with_staff,
               c.is_active, c.created_at, c.updated_at, c.parent_id,
               COALESCE(c.status, 'active') as status,
@@ -1329,11 +1332,14 @@ router.put('/:id', [
       parent_phone,
       photo_url,
       photo_shared_with_staff,
+      blood_type,
+      weight_kg,
+      height_cm,
       is_active
     } = req.body;
 
     // Vérifier si l'enfant existe
-    const existingChild = await pool.query('SELECT id, parent_id, account_holder FROM children WHERE id = $1', [id]);
+    const existingChild = await pool.query('SELECT id, parent_id, account_holder, weight_kg, height_cm FROM children WHERE id = $1', [id]);
     if (existingChild.rows.length === 0) {
       return res.status(404).json({
         success: false,
@@ -1417,7 +1423,10 @@ router.put('/:id', [
         allergies !== undefined ||
         medical_notes !== undefined ||
         doctor_name !== undefined ||
-        doctor_phone !== undefined;
+        doctor_phone !== undefined ||
+        blood_type !== undefined ||
+        weight_kg !== undefined ||
+        height_cm !== undefined;
 
       if (hasMedicalFields) {
         const userId = req.user.id || req.user.userId;
@@ -1540,6 +1549,37 @@ router.put('/:id', [
       params.push(doctor_phone);
     }
 
+    if (blood_type !== undefined) {
+      paramCount++;
+      updates.push(`blood_type = $${paramCount}`);
+      params.push(blood_type || null);
+    }
+
+    const prevWeight = existingChild.rows[0].weight_kg != null ? Number(existingChild.rows[0].weight_kg) : null;
+    const prevHeight = existingChild.rows[0].height_cm != null ? Number(existingChild.rows[0].height_cm) : null;
+    const parsedWeight = (weight_kg === null || weight_kg === '' || weight_kg === undefined || isNaN(Number(weight_kg))) ? null : Number(weight_kg);
+    const parsedHeight = (height_cm === null || height_cm === '' || height_cm === undefined || isNaN(Number(height_cm))) ? null : Number(height_cm);
+    const isNewMeasurement = (parsedWeight !== null && parsedWeight !== prevWeight) || (parsedHeight !== null && parsedHeight !== prevHeight);
+
+    if (weight_kg !== undefined) {
+      paramCount++;
+      updates.push(`weight_kg = $${paramCount}`);
+      params.push(parsedWeight);
+    }
+
+    if (height_cm !== undefined) {
+      paramCount++;
+      updates.push(`height_cm = $${paramCount}`);
+      params.push(parsedHeight);
+    }
+
+    // Nouvelle mesure → horodater pour le suivi de croissance
+    if (isNewMeasurement) {
+      paramCount++;
+      updates.push(`growth_measured_at = $${paramCount}`);
+      params.push(new Date());
+    }
+
     if (emergency_contact_name !== undefined) {
       paramCount++;
       updates.push(`emergency_contact_name = $${paramCount}`);
@@ -1643,12 +1683,28 @@ router.put('/:id', [
                 allergies, medical_notes, doctor_name, doctor_phone,
                 emergency_contact_name, emergency_contact_phone,
                 father_name, father_phone, mother_name, mother_phone, account_holder,
-                second_parent_name, second_parent_phone,
                 emergency_contact_choice, trusted_contacts,
                 photo_url, photo_shared_with_staff, is_active, updated_at
     `;
 
     const result = await pool.query(sql, params);
+
+    // Historiser la mesure pour l'analyse de croissance (uniquement si nouvelle mesure)
+    if (isNewMeasurement) {
+      try {
+        await pool.query(`
+          INSERT INTO child_growth_records (child_id, weight_kg, height_cm, recorded_by)
+          VALUES ($1, $2, $3, $4)
+        `, [
+          id,
+          parsedWeight,
+          parsedHeight,
+          req.user?.id || req.user?.userId || null
+        ]);
+      } catch (growthErr) {
+        console.warn('⚠️ Erreur historique croissance (ignorée):', growthErr.message);
+      }
+    }
 
     res.json({
       success: true,
@@ -1954,8 +2010,9 @@ router.get('/:id/medical', auth.authenticateToken, auth.requireChildAccess, asyn
 
     // Récupérer les données médicales
     const result = await pool.query(`
-      SELECT medical_info, allergies, medications, conditions, blood_type, 
-             doctor_name, doctor_phone, medical_notes
+      SELECT medical_info, allergies, medications, conditions, blood_type,
+             doctor_name, doctor_phone, medical_notes,
+             weight_kg, height_cm, growth_measured_at
       FROM children WHERE id = $1
     `, [id]);
 
@@ -1970,6 +2027,9 @@ router.get('/:id/medical', auth.authenticateToken, auth.requireChildAccess, asyn
       medications: data.medications || [],
       conditions: data.conditions || [],
       blood_type: data.blood_type || '',
+      weight_kg: data.weight_kg ?? '',
+      height_cm: data.height_cm ?? '',
+      growth_measured_at: data.growth_measured_at || null,
       doctor_name: data.doctor_name || '',
       doctor_phone: data.doctor_phone || '',
       notes: data.medical_notes || data.medical_info || ''
@@ -1985,7 +2045,7 @@ router.get('/:id/medical', auth.authenticateToken, auth.requireChildAccess, asyn
 router.put('/:id/medical', auth.authenticateToken, auth.requireChildAccess, async (req, res) => {
   try {
     const { id } = req.params;
-    const { allergies, medications, conditions, blood_type, doctor_name, doctor_phone, notes } = req.body;
+    const { allergies, medications, conditions, blood_type, weight_kg, height_cm, doctor_name, doctor_phone, notes } = req.body;
 
     if (req.user.role === 'staff') {
       const userId = req.user.id || req.user.userId;
@@ -2000,9 +2060,17 @@ router.put('/:id/medical', auth.authenticateToken, auth.requireChildAccess, asyn
       }
     }
 
-    // Mettre à jour
+    // Récupérer les valeurs actuelles pour détecter un réel changement
+    const existingChild = await pool.query('SELECT weight_kg, height_cm FROM children WHERE id = $1', [id]);
+    const prevWeight = existingChild.rows[0]?.weight_kg != null ? Number(existingChild.rows[0].weight_kg) : null;
+    const prevHeight = existingChild.rows[0]?.height_cm != null ? Number(existingChild.rows[0].height_cm) : null;
+
+    const parsedWeight = (weight_kg === null || weight_kg === '' || weight_kg === undefined || isNaN(Number(weight_kg))) ? null : Number(weight_kg);
+    const parsedHeight = (height_cm === null || height_cm === '' || height_cm === undefined || isNaN(Number(height_cm))) ? null : Number(height_cm);
+    const hasNewMeasurement = (parsedWeight !== null && parsedWeight !== prevWeight) || (parsedHeight !== null && parsedHeight !== prevHeight);
+
     await pool.query(`
-      UPDATE children SET 
+      UPDATE children SET
         allergies = $1,
         medications = $2,
         conditions = $3,
@@ -2010,6 +2078,9 @@ router.put('/:id/medical', auth.authenticateToken, auth.requireChildAccess, asyn
         doctor_name = $5,
         doctor_phone = $6,
         medical_notes = $7,
+        weight_kg = COALESCE($9, weight_kg),
+        height_cm = COALESCE($10, height_cm),
+        growth_measured_at = CASE WHEN $11 THEN NOW() ELSE growth_measured_at END,
         updated_at = NOW()
       WHERE id = $8
     `, [
@@ -2020,8 +2091,23 @@ router.put('/:id/medical', auth.authenticateToken, auth.requireChildAccess, asyn
       doctor_name || null,
       doctor_phone || null,
       notes || null,
-      id
+      id,
+      parsedWeight,
+      parsedHeight,
+      hasNewMeasurement
     ]);
+
+    // Historiser la mesure pour l'analyse de croissance
+    if (hasNewMeasurement) {
+      try {
+        await pool.query(`
+          INSERT INTO child_growth_records (child_id, weight_kg, height_cm, recorded_by)
+          VALUES ($1, $2, $3, $4)
+        `, [id, parsedWeight, parsedHeight, req.user?.id || req.user?.userId || null]);
+      } catch (growthErr) {
+        console.warn('⚠️ Erreur historique croissance (ignorée):', growthErr.message);
+      }
+    }
 
     res.json({ success: true, message: 'Données médicales mises à jour' });
 

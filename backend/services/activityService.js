@@ -13,16 +13,30 @@ const activityService = {
    */
   async createActivity(data, authorId) {
     try {
-      const { title, description, mediaType, mediaUrl, mediaThumbnailUrl, cloudinaryPublicId, isPinned } = data;
+      const {
+        title,
+        description,
+        mediaType,
+        mediaUrl,
+        mediaThumbnailUrl,
+        cloudinaryPublicId,
+        mediaUrls,
+        isPinned
+      } = data;
+
+      const formattedMediaUrls = Array.isArray(mediaUrls)
+        ? JSON.stringify(mediaUrls)
+        : (typeof mediaUrls === 'string' ? mediaUrls : JSON.stringify(mediaUrl ? [{ url: mediaUrl, thumbnailUrl: mediaThumbnailUrl, publicId: cloudinaryPublicId, type: mediaType || 'image' }] : []));
 
       const result = await db.query(
-        `INSERT INTO activities (author_id, title, description, media_type, media_url, media_thumbnail_url, cloudinary_public_id, is_pinned)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        `INSERT INTO activities (author_id, title, description, media_type, media_url, media_thumbnail_url, cloudinary_public_id, media_urls, is_pinned)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9)
          RETURNING *`,
-        [authorId, title, description || null, mediaType || 'none', mediaUrl || null, mediaThumbnailUrl || null, cloudinaryPublicId || null, isPinned || false]
+        [authorId, title, description || null, mediaType || 'none', mediaUrl || null, mediaThumbnailUrl || null, cloudinaryPublicId || null, formattedMediaUrls, isPinned || false]
       );
 
-      return { success: true, activity: result.rows[0] };
+      const created = await this.getActivityById(result.rows[0].id, authorId);
+      return created.success ? created : { success: true, activity: this.formatActivity(result.rows[0]) };
     } catch (error) {
       console.error('Erreur createActivity:', error);
       return { success: false, error: error.message };
@@ -170,6 +184,28 @@ const activityService = {
    * Formater une activité pour l'API
    */
   formatActivity(a) {
+    let mediaUrls = [];
+    if (a.media_urls) {
+      if (Array.isArray(a.media_urls)) {
+        mediaUrls = a.media_urls;
+      } else if (typeof a.media_urls === 'string') {
+        try {
+          mediaUrls = JSON.parse(a.media_urls);
+        } catch {
+          mediaUrls = [];
+        }
+      }
+    }
+    // Si mediaUrls est vide mais qu'on a un media_url existant, rétrocompatibilité fallback
+    if ((!mediaUrls || mediaUrls.length === 0) && a.media_url) {
+      mediaUrls = [{
+        url: a.media_url,
+        thumbnailUrl: a.media_thumbnail_url,
+        publicId: a.cloudinary_public_id,
+        type: a.media_type || 'image'
+      }];
+    }
+
     return {
       id: a.id,
       author: {
@@ -186,6 +222,7 @@ const activityService = {
       mediaType: a.media_type,
       mediaUrl: a.media_url,
       mediaThumbnailUrl: a.media_thumbnail_url,
+      mediaUrls: mediaUrls || [],
       isPinned: a.is_pinned,
       viewCount: a.view_count,
       createdAt: a.created_at,
@@ -238,7 +275,7 @@ const activityService = {
    */
   async deleteActivity(id, userId, userRole) {
     try {
-      const activity = await db.query('SELECT author_id, cloudinary_public_id FROM activities WHERE id = $1', [id]);
+      const activity = await db.query('SELECT author_id, cloudinary_public_id, media_urls FROM activities WHERE id = $1', [id]);
       if (activity.rows.length === 0) {
         return { success: false, error: 'Activité non trouvée' };
       }
@@ -247,9 +284,26 @@ const activityService = {
         return { success: false, error: 'Non autorisé' };
       }
 
-      // Supprimer le média de Cloudinary si présent
+      // Supprimer le média principal de Cloudinary si présent
       if (activity.rows[0].cloudinary_public_id) {
-        await cloudinaryService.deleteFile(activity.rows[0].cloudinary_public_id);
+        await cloudinaryService.deleteFile(activity.rows[0].cloudinary_public_id).catch(() => {});
+      }
+
+      // Supprimer les médias additionnels de Cloudinary si présents
+      if (activity.rows[0].media_urls) {
+        let mUrls = [];
+        try {
+          mUrls = typeof activity.rows[0].media_urls === 'string'
+            ? JSON.parse(activity.rows[0].media_urls)
+            : activity.rows[0].media_urls;
+        } catch {}
+        if (Array.isArray(mUrls)) {
+          for (const item of mUrls) {
+            if (item?.publicId && item.publicId !== activity.rows[0].cloudinary_public_id) {
+              await cloudinaryService.deleteFile(item.publicId).catch(() => {});
+            }
+          }
+        }
       }
 
       await db.query('DELETE FROM activities WHERE id = $1', [id]);
