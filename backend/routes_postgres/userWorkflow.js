@@ -37,7 +37,9 @@ router.post('/create-parent', auth.authenticateToken, auth.requireRole('admin'),
     body('last_name').notEmpty().withMessage('Nom requis'),
     body('email').optional({ checkFalsy: true }).isEmail().withMessage('Email invalide'),
     body('phone').notEmpty().withMessage('Téléphone requis'),
-    body('child_ids').isArray({ min: 1 }).withMessage('Au moins un enfant requis')
+    body('child_ids').isArray({ min: 1 }).withMessage('Au moins un enfant requis'),
+    body('spouse_name').optional({ checkFalsy: true }).isLength({ max: 100 }).withMessage('Nom du conjoint trop long'),
+    body('spouse_phone').optional({ checkFalsy: true }).isLength({ max: 20 }).withMessage('Téléphone du conjoint trop long')
 ], async (req, res) => {
     const client = await pool.connect();
 
@@ -60,6 +62,8 @@ router.post('/create-parent', auth.authenticateToken, auth.requireRole('admin'),
             emergency_contact_name,
             emergency_contact_phone,
             emergency_contact_choice,
+            spouse_name,
+            spouse_phone,
             gender
         } = req.body;
 
@@ -150,16 +154,23 @@ router.post('/create-parent', auth.authenticateToken, auth.requireRole('admin'),
         if (['male', 'female'].includes(gender)) {
             const holderRole = gender === 'female' ? 'mother' : 'father';
             const holderName = `${first_name} ${last_name}`.trim();
+            const spouseName = (spouse_name || '').trim() || null;
+            const spousePhone = (spouse_phone || '').trim() || null;
+            // Le conjoint renseigne le rôle opposé (père si le compte est la mère, et inversement)
             await client.query(`
                 UPDATE children SET
                     account_holder = $1,
-                    father_name = CASE WHEN $1 = 'father' THEN COALESCE(NULLIF(father_name, ''), $2) ELSE father_name END,
-                    father_phone = CASE WHEN $1 = 'father' THEN COALESCE(NULLIF(father_phone, ''), $3) ELSE father_phone END,
-                    mother_name = CASE WHEN $1 = 'mother' THEN COALESCE(NULLIF(mother_name, ''), $2) ELSE mother_name END,
-                    mother_phone = CASE WHEN $1 = 'mother' THEN COALESCE(NULLIF(mother_phone, ''), $3) ELSE mother_phone END,
+                    father_name = CASE WHEN $1 = 'father' THEN COALESCE(NULLIF(father_name, ''), $2)
+                                       ELSE COALESCE(NULLIF(father_name, ''), $5) END,
+                    father_phone = CASE WHEN $1 = 'father' THEN COALESCE(NULLIF(father_phone, ''), $3)
+                                        ELSE COALESCE(NULLIF(father_phone, ''), $6) END,
+                    mother_name = CASE WHEN $1 = 'mother' THEN COALESCE(NULLIF(mother_name, ''), $2)
+                                       ELSE COALESCE(NULLIF(mother_name, ''), $5) END,
+                    mother_phone = CASE WHEN $1 = 'mother' THEN COALESCE(NULLIF(mother_phone, ''), $3)
+                                        ELSE COALESCE(NULLIF(mother_phone, ''), $6) END,
                     updated_at = NOW()
                 WHERE id = ANY($4)
-            `, [holderRole, holderName, phone || null, child_ids]);
+            `, [holderRole, holderName, phone || null, child_ids, spouseName, spousePhone]);
         }
 
         // 6. Contact d'urgence — modèle unifié : 'father' | 'mother' | 'custom'

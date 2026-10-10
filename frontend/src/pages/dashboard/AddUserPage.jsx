@@ -58,6 +58,8 @@ const AddUserPage = () => {
         phone: '',
         gender: '',
         staff_position: '',
+        spouse_name: '',
+        spouse_phone: '',
         emergency_contact_choice: 'custom',
         emergency_contact_name: '',
         emergency_contact_phone: ''
@@ -239,6 +241,8 @@ const AddUserPage = () => {
                     phone: formData.phone,
                     gender: formData.gender,
                     child_ids: selectedChildren.map(c => c.id),
+                    spouse_name: formData.spouse_name?.trim() || '',
+                    spouse_phone: formData.spouse_phone?.trim() || '',
                     emergency_contact_choice: formData.emergency_contact_choice || 'custom',
                     emergency_contact_name: formData.emergency_contact_choice === 'custom' ? (formData.emergency_contact_name?.trim() || '') : '',
                     emergency_contact_phone: formData.emergency_contact_choice === 'custom' ? (formData.emergency_contact_phone?.trim() || '') : ''
@@ -290,6 +294,8 @@ const AddUserPage = () => {
             phone: '',
             gender: '',
             staff_position: '',
+            spouse_name: '',
+            spouse_phone: '',
             emergency_contact_choice: 'custom',
             emergency_contact_name: '',
             emergency_contact_phone: ''
@@ -666,6 +672,43 @@ const AddUserPage = () => {
                                         </p>
                                     )}
                                 </div>
+
+                                {/* Conjoint(e) — optionnel (pour parent) */}
+                                {selectedRole === 'parent' && (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                {formData.gender === 'female'
+                                                    ? (isRTL ? 'اسم الأب (الزوج)' : 'Nom complet du père (conjoint)')
+                                                    : (isRTL ? 'اسم الأم (الزوجة)' : 'Nom complet de la mère (conjointe)')
+                                                }
+                                                <span className="text-gray-400 font-normal"> ({isRTL ? 'اختياري' : 'optionnel'})</span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                name="spouse_name"
+                                                value={formData.spouse_name}
+                                                onChange={handleInputChange}
+                                                className="w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"
+                                                placeholder={isRTL ? 'الاسم الكامل' : 'Nom complet'}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                {isRTL ? 'هاتف الزوج/الزوجة' : 'Téléphone du conjoint'}
+                                                <span className="text-gray-400 font-normal"> ({isRTL ? 'اختياري' : 'optionnel'})</span>
+                                            </label>
+                                            <input
+                                                type="tel"
+                                                name="spouse_phone"
+                                                value={formData.spouse_phone}
+                                                onChange={handleInputChange}
+                                                className="w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"
+                                                placeholder="+216 XX XXX XXX"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
 
                                 {/* Poste (pour staff/admin) */}
                                 {(selectedRole === 'staff' || selectedRole === 'admin') && (
