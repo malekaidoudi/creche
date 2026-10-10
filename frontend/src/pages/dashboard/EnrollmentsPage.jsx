@@ -12,10 +12,7 @@ import {
   Calendar,
   User,
   Phone,
-  Mail,
-  Download,
-  RefreshCw,
-  MessageSquare
+  Mail
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -717,12 +714,21 @@ const EnrollmentsPage = () => {
                   </div>
                 </div>
 
-                {/* Contact d'urgence */}
-                {(selectedEnrollment.emergency_contact_name || selectedEnrollment.emergency_contact_phone) && (
+                {/* Contact d'urgence — choix unifié : Père / Mère / Autre */}
+                {(selectedEnrollment.emergency_contact_name || selectedEnrollment.emergency_contact_phone || ['father', 'mother'].includes(selectedEnrollment.emergency_contact_choice)) && (
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
                       {isRTL ? 'جهة الاتصال للطوارئ' : 'Contact d\'urgence'}
                     </h3>
+                    {['father', 'mother'].includes(selectedEnrollment.emergency_contact_choice) && (
+                      <div className="mb-3">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-100 dark:bg-orange-900/40 text-orange-800 dark:text-orange-200">
+                          {selectedEnrollment.emergency_contact_choice === 'father'
+                            ? (isRTL ? 'الأب' : 'Le Père')
+                            : (isRTL ? 'الأم' : 'La Mère')}
+                        </span>
+                      </div>
+                    )}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                       {selectedEnrollment.emergency_contact_name && (
                         <div>

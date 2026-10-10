@@ -705,7 +705,7 @@ const MySpacePage = () => {
                 {/* Contenu */}
                 <div className="p-5 space-y-4">
                   {/* Contact d'urgence principal */}
-                  {(selectedChildForModal.emergency_contact_name || selectedChildForModal.emergency_contact_phone) ? (
+                  {(selectedChildForModal.emergency_contact_name || selectedChildForModal.emergency_contact_phone || ['father', 'mother'].includes(selectedChildForModal.emergency_contact_choice)) ? (
                     <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-xl p-4">
                       <div className="flex items-center gap-3 mb-2">
                         <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/40 flex items-center justify-center">
@@ -717,6 +717,14 @@ const MySpacePage = () => {
                           </p>
                         </div>
                       </div>
+                      {['father', 'mother'].includes(selectedChildForModal.emergency_contact_choice) && (
+                        <p className="text-gray-700 dark:text-gray-300 text-sm mb-1">
+                          <span className="font-medium">{isRTL ? 'جهة الاتصال:' : 'Contact :'}</span>{' '}
+                          {selectedChildForModal.emergency_contact_choice === 'father'
+                            ? (isRTL ? 'الأب' : 'Le Père')
+                            : (isRTL ? 'الأم' : 'La Mère')}
+                        </p>
+                      )}
                       {selectedChildForModal.emergency_contact_name && (
                         <p className="text-gray-700 dark:text-gray-300 text-sm mb-1">
                           <span className="font-medium">{isRTL ? 'الاسم:' : 'Nom:'}</span> {selectedChildForModal.emergency_contact_name}
@@ -765,7 +773,7 @@ const MySpacePage = () => {
                   ) : null}
 
                   {/* Aucun contact si les deux sont vides */}
-                  {!selectedChildForModal.emergency_contact_name && !selectedChildForModal.emergency_contact_phone && !selectedChildForModal.doctor_name && !selectedChildForModal.doctor_phone && (
+                  {!selectedChildForModal.emergency_contact_name && !selectedChildForModal.emergency_contact_phone && !['father', 'mother'].includes(selectedChildForModal.emergency_contact_choice) && !selectedChildForModal.doctor_name && !selectedChildForModal.doctor_phone && (
                     <div className="text-center py-6 bg-gray-50 dark:bg-gray-700/30 rounded-xl p-4">
                       <Phone className="w-10 h-10 text-gray-300 dark:text-gray-500 mx-auto mb-2" />
                       <p className="text-gray-500 dark:text-gray-400 text-sm mb-3">

@@ -339,6 +339,7 @@ const ChildrenPage = () => {
       mother_name: child.mother_name || '',
       mother_phone: child.mother_phone || '',
       account_holder: child.account_holder || (child.parent_gender === 'female' ? 'mother' : 'father'),
+      emergency_contact_choice: child.emergency_contact_choice || 'custom',
       emergency_contact_name: child.emergency_contact_name || '',
       emergency_contact_phone: child.emergency_contact_phone || '',
       status: child.status || 'pending'
@@ -651,12 +652,13 @@ const ChildrenPage = () => {
         if (editFormData.account_holder !== undefined) {
           payload.account_holder = editFormData.account_holder;
         }
-        if (editFormData.emergency_contact_name !== undefined) {
-          payload.emergency_contact_name = editFormData.emergency_contact_name.trim();
+        if (editFormData.emergency_contact_choice !== undefined) {
+          payload.emergency_contact_choice = editFormData.emergency_contact_choice;
         }
-        if (editFormData.emergency_contact_phone !== undefined) {
-          payload.emergency_contact_phone = editFormData.emergency_contact_phone.trim();
-        }
+        // Modèle unifié : father/mother → nom/tél. déduits des champs du parent (purge du tiers)
+        const ecIsParent = ['father', 'mother'].includes(editFormData.emergency_contact_choice);
+        payload.emergency_contact_name = ecIsParent ? '' : (editFormData.emergency_contact_name || '').trim();
+        payload.emergency_contact_phone = ecIsParent ? '' : (editFormData.emergency_contact_phone || '').trim();
         // Synchronisation du téléphone du parent titulaire
         const curHolder = editFormData.account_holder || 'father';
         payload.parent_phone = curHolder === 'mother' ? editFormData.mother_phone?.trim() : editFormData.father_phone?.trim();
@@ -1500,7 +1502,7 @@ const ChildrenPage = () => {
       {/* Modal de visualisation d'enfant */}
       {selectedChild && !showAssociateModal && !showEditModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-100 dark:border-gray-700">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-100 dark:border-gray-700">
             <div className="p-6">
               {/* En-tête du modal */}
               <div className="flex items-center justify-between pb-4 mb-5 border-b border-gray-100 dark:border-gray-700">
@@ -2594,63 +2596,68 @@ const ChildrenPage = () => {
                       </div>
                     </div>
 
-                    {/* Contact d'urgence (Nom complet + Téléphone) */}
+                    {/* Contact d'urgence — choix unifié : Père / Mère / Autre */}
                     <div className="bg-orange-50/50 dark:bg-orange-950/20 p-3.5 rounded-xl border border-orange-200/60 dark:border-orange-900/40">
-                      <div className="flex items-center justify-between mb-2.5">
-                        <h5 className="font-semibold text-gray-900 dark:text-white text-xs flex items-center gap-1.5 uppercase tracking-wider text-orange-800 dark:text-orange-300">
-                          <AlertTriangle className="w-3.5 h-3.5 text-orange-500" />
-                          {isRTL ? 'جهة اتصال الطوارئ (شخص بديل)' : 'Contact d\'urgence (personne de recours)'}
-                        </h5>
-                        <div className="flex items-center gap-1">
+                      <h5 className="font-semibold text-gray-900 dark:text-white text-xs flex items-center gap-1.5 uppercase tracking-wider text-orange-800 dark:text-orange-300 mb-2.5">
+                        <AlertTriangle className="w-3.5 h-3.5 text-orange-500" />
+                        {isRTL ? 'جهة اتصال الطوارئ' : 'Contact d\'urgence'}
+                      </h5>
+                      <div className="grid grid-cols-3 gap-2 mb-3">
+                        {[
+                          { value: 'father', label: isRTL ? 'الأب' : 'Le Père', color: 'blue' },
+                          { value: 'mother', label: isRTL ? 'الأم' : 'La Mère', color: 'pink' },
+                          { value: 'custom', label: isRTL ? 'شخص آخر' : 'Autre', color: 'orange' }
+                        ].map((opt) => (
                           <button
+                            key={opt.value}
                             type="button"
-                            onClick={() => {
-                              handleFormChange('emergency_contact_name', editFormData.father_name || 'Père');
-                              handleFormChange('emergency_contact_phone', editFormData.father_phone || '');
-                            }}
-                            className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-200 font-medium"
+                            onClick={() => handleFormChange('emergency_contact_choice', opt.value)}
+                            className={`px-2 py-2 rounded-lg border text-xs font-medium transition-all ${
+                              editFormData.emergency_contact_choice === opt.value
+                                ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-950/40 dark:text-primary-300 ring-2 ring-primary-500/20'
+                                : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
+                            }`}
                           >
-                            {isRTL ? 'نسخ الأب' : 'Copier Père'}
+                            {opt.label}
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleFormChange('emergency_contact_name', editFormData.mother_name || 'Mère');
-                              handleFormChange('emergency_contact_phone', editFormData.mother_phone || '');
-                            }}
-                            className="text-[10px] px-1.5 py-0.5 rounded bg-pink-100 dark:bg-pink-900/40 text-pink-800 dark:text-pink-200 font-medium"
-                          >
-                            {isRTL ? 'نسخ الأم' : 'Copier Mère'}
-                          </button>
-                        </div>
+                        ))}
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            {isRTL ? 'الاسم الكامل لجهة الاتصال' : 'Nom complet du contact'}
-                          </label>
-                          <input
-                            type="text"
-                            value={editFormData.emergency_contact_name || ''}
-                            onChange={(e) => handleFormChange('emergency_contact_name', e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
-                            placeholder={isRTL ? 'الاسم واللقب' : 'Ex: Grand-mère, Oncle...'}
-                          />
+                      {(editFormData.emergency_contact_choice === 'custom' || !editFormData.emergency_contact_choice) && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                              {isRTL ? 'الاسم الكامل لجهة الاتصال' : 'Nom complet du contact'}
+                            </label>
+                            <input
+                              type="text"
+                              value={editFormData.emergency_contact_name || ''}
+                              onChange={(e) => handleFormChange('emergency_contact_name', e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                              placeholder={isRTL ? 'الاسم واللقب' : 'Ex: Grand-mère, Oncle...'}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                              {isRTL ? 'رقم الهاتف' : 'Numéro de téléphone'}
+                            </label>
+                            <input
+                              type="tel"
+                              value={editFormData.emergency_contact_phone || ''}
+                              onChange={(e) => handleFormChange('emergency_contact_phone', e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
+                              placeholder="+216 00 000 000"
+                              dir="ltr"
+                            />
+                          </div>
                         </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            {isRTL ? 'رقم الهاتف' : 'Numéro de téléphone'}
-                          </label>
-                          <input
-                            type="tel"
-                            value={editFormData.emergency_contact_phone || ''}
-                            onChange={(e) => handleFormChange('emergency_contact_phone', e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
-                            placeholder="+216 00 000 000"
-                            dir="ltr"
-                          />
-                        </div>
-                      </div>
+                      )}
+                      {['father', 'mother'].includes(editFormData.emergency_contact_choice) && (
+                        <p className="text-[11px] text-orange-700 dark:text-orange-300">
+                          {isRTL
+                            ? 'سيُستخدم رقم هاتف هذا الوالد المسجل أعلاه.'
+                            : 'Le numéro déjà renseigné pour ce parent sera utilisé.'}
+                        </p>
+                      )}
                     </div>
                   </div>
                 ) : (

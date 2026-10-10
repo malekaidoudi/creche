@@ -58,7 +58,9 @@ router.post('/create-parent', auth.authenticateToken, auth.requireRole('admin'),
             phone,
             child_ids, // Tableau d'IDs d'enfants
             emergency_contact_name,
-            emergency_contact_phone
+            emergency_contact_phone,
+            emergency_contact_choice,
+            gender
         } = req.body;
 
         const hasRealEmail = Boolean(email && typeof email === 'string' && email.trim() !== '');
@@ -119,10 +121,11 @@ router.post('/create-parent', auth.authenticateToken, auth.requireRole('admin'),
 
         // 4. Créer le compte parent
         const userResult = await client.query(`
-            INSERT INTO users (email, password, first_name, last_name, phone, role, is_active, created_at)
-            VALUES ($1, $2, $3, $4, $5, 'parent', true, NOW())
-            RETURNING id, email, first_name, last_name, phone, role
-        `, [finalEmail, tempPassword, first_name, last_name, phone]);
+            INSERT INTO users (email, password, first_name, last_name, phone, gender, role, is_active, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, 'parent', true, NOW())
+            RETURNING id, email, first_name, last_name, phone, gender, role
+        `, [finalEmail, tempPassword, first_name, last_name, phone,
+            ['male', 'female'].includes(gender) ? gender : null]);
 
         const newUser = userResult.rows[0];
 
@@ -141,17 +144,53 @@ router.post('/create-parent', auth.authenticateToken, auth.requireRole('admin'),
             `, [child_id, newUser.id]);
         }
 
-        // 6. Mettre à jour le contact d'urgence des enfants UNIQUEMENT si un contact distinct a été explicitement saisi
-        const cleanEmergencyName = (emergency_contact_name || '').trim();
-        const cleanEmergencyPhone = (emergency_contact_phone || '').trim();
-        const parentFullName = `${first_name} ${last_name}`.trim().toLowerCase();
+        // 5b. Renseigner l'identité du parent titulaire (père/mère selon le genre du compte)
+        //     → les champs father_*/mother_* et account_holder reflètent le compte réel.
+        //     Remplit uniquement les champs vides (jamais d'écrasement de saisie existante).
+        if (['male', 'female'].includes(gender)) {
+            const holderRole = gender === 'female' ? 'mother' : 'father';
+            const holderName = `${first_name} ${last_name}`.trim();
+            await client.query(`
+                UPDATE children SET
+                    account_holder = $1,
+                    father_name = CASE WHEN $1 = 'father' THEN COALESCE(NULLIF(father_name, ''), $2) ELSE father_name END,
+                    father_phone = CASE WHEN $1 = 'father' THEN COALESCE(NULLIF(father_phone, ''), $3) ELSE father_phone END,
+                    mother_name = CASE WHEN $1 = 'mother' THEN COALESCE(NULLIF(mother_name, ''), $2) ELSE mother_name END,
+                    mother_phone = CASE WHEN $1 = 'mother' THEN COALESCE(NULLIF(mother_phone, ''), $3) ELSE mother_phone END,
+                    updated_at = NOW()
+                WHERE id = ANY($4)
+            `, [holderRole, holderName, phone || null, child_ids]);
+        }
 
-        if (cleanEmergencyName && cleanEmergencyName.toLowerCase() !== parentFullName) {
+        // 6. Contact d'urgence — modèle unifié : 'father' | 'mother' | 'custom'
+        //    father/mother → le tél. est déjà porté par le parent (champs father_*/mother_*/compte),
+        //    on enregistre le choix seul et on purge l'ancien tiers éventuel.
+        //    custom → on stocke nom + téléphone du tiers (sauf s'il s'agit du parent lui-même).
+        const ecChoice = ['father', 'mother', 'custom'].includes(emergency_contact_choice)
+            ? emergency_contact_choice
+            : null;
+
+        if (ecChoice === 'father' || ecChoice === 'mother') {
             await client.query(`
                 UPDATE children 
-                SET emergency_contact_name = $1, emergency_contact_phone = $2, updated_at = NOW()
-                WHERE id = ANY($3)
-            `, [cleanEmergencyName, cleanEmergencyPhone || null, child_ids]);
+                SET emergency_contact_choice = $1,
+                    emergency_contact_name = NULL, emergency_contact_phone = NULL,
+                    updated_at = NOW()
+                WHERE id = ANY($2)
+            `, [ecChoice, child_ids]);
+        } else {
+            const cleanEmergencyName = (emergency_contact_name || '').trim();
+            const cleanEmergencyPhone = (emergency_contact_phone || '').trim();
+            const parentFullName = `${first_name} ${last_name}`.trim().toLowerCase();
+
+            if (cleanEmergencyName && cleanEmergencyName.toLowerCase() !== parentFullName) {
+                await client.query(`
+                    UPDATE children 
+                    SET emergency_contact_name = $1, emergency_contact_phone = $2,
+                        emergency_contact_choice = 'custom', updated_at = NOW()
+                    WHERE id = ANY($3)
+                `, [cleanEmergencyName, cleanEmergencyPhone || null, child_ids]);
+            }
         }
 
         await client.query('COMMIT');

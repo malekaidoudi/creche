@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useLanguage } from '../../hooks/useLanguage'
 import { useAuth } from '../../hooks/useAuth'
 import { useDialogContext } from '../../contexts/DialogContext'
-import { Baby, User, Calendar, Phone, FileText, Send, CheckCircle, AlertCircle, ChevronRight, ChevronLeft, Utensils, Heart, Upload, Download, Mail, Lock, Eye, EyeOff, Search, X, ArrowLeft } from 'lucide-react'
+import { Baby, User, Phone, FileText, Send, CheckCircle, AlertCircle, ChevronRight, ChevronLeft, Utensils, Upload, Download, Mail, Lock, Eye, EyeOff, Search, X, ArrowLeft } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
 import { Button } from '../../components/ui/Button'
@@ -30,7 +30,8 @@ const EnrollmentPage = () => {
   const [step, setStep] = useState(1)
   const [regulationScrolled, setRegulationScrolled] = useState(false)
   const regulationRef = useRef(null)
-  const [hasDifferentEmergencyContact, setHasDifferentEmergencyContact] = useState(false)
+  // Contact d'urgence unifié : 'father' | 'mother' | 'custom' (obligatoire)
+  const [emergencyChoice, setEmergencyChoice] = useState('')
   const [showPassword, setShowPassword] = useState(false)
 
   // États pour mode parent (recherche enfant)
@@ -337,7 +338,12 @@ const EnrollmentPage = () => {
           applicant_first_name: data.parent_first_name,
           applicant_last_name: data.parent_last_name,
           applicant_email: data.parent_email,
-          applicant_phone: data.parent_phone
+          applicant_phone: data.parent_phone,
+
+          // Contact d'urgence unifié : 'father' | 'mother' | 'custom' (+ nom/tél si tiers)
+          emergency_contact_choice: emergencyChoice,
+          emergency_contact_name: emergencyChoice === 'custom' ? data.emergency_contact_name : null,
+          emergency_contact_phone: emergencyChoice === 'custom' ? data.emergency_contact_phone : null
         };
 
         console.log('📤 Envoi au backend:', enrollmentData);
@@ -417,6 +423,16 @@ const EnrollmentPage = () => {
       // Vérifier que les champs sont remplis
       if (!childFirstName || !childLastName || !birthDate) {
         dialog.error(isRTL ? 'يرجى ملء جميع الحقول المطلوبة' : 'Veuillez remplir tous les champs requis')
+        return
+      }
+
+      // Contact d'urgence : choix obligatoire (Père / Mère / Autre)
+      if (!emergencyChoice) {
+        dialog.error(isRTL ? 'يرجى تحديد جهة اتصال الطوارئ' : 'Veuillez désigner le contact d\'urgence (Père, Mère ou Autre personne)')
+        return
+      }
+      if (emergencyChoice === 'custom' && (!watch('emergency_contact_name')?.trim() || !watch('emergency_contact_phone')?.trim())) {
+        dialog.error(isRTL ? 'يرجى إدخال اسم وهاتف جهة اتصال الطوارئ' : 'Veuillez saisir le nom et le téléphone du contact d\'urgence')
         return
       }
 
@@ -1118,36 +1134,46 @@ const EnrollmentPage = () => {
                     />
                   </div>
 
-                  {/* Contact d'urgence */}
+                  {/* Contact d'urgence — choix unifié : Père / Mère / Autre */}
                   <div className="mb-6">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                      {isRTL ? 'جهة الاتصال للطوارئ' : 'Contact d\'urgence'}
+                      {isRTL ? 'جهة الاتصال للطوارئ' : 'Contact d\'urgence'} *
                     </h3>
 
-                    <div className="flex items-center space-x-3 rtl:space-x-reverse mb-4">
-                      <input
-                        type="checkbox"
-                        id="differentContact"
-                        checked={hasDifferentEmergencyContact}
-                        onChange={(e) => setHasDifferentEmergencyContact(e.target.checked)}
-                        className="w-4 h-4 text-primary-600 border-gray-300 dark:border-gray-600 rounded focus:ring-primary-500"
-                      />
-                      <label htmlFor="differentContact" className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
-                        {isRTL ? 'شخص مختلف عن الوالد' : 'Personne différente du parent'}
-                      </label>
+                    <div className="grid grid-cols-3 gap-3 mb-4">
+                      {[
+                        { value: 'father', label: isRTL ? 'الأب' : 'Le Père' },
+                        { value: 'mother', label: isRTL ? 'الأم' : 'La Mère' },
+                        { value: 'custom', label: isRTL ? 'شخص آخر' : 'Autre personne' }
+                      ].map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setEmergencyChoice(opt.value)}
+                          className={`px-3 py-3 rounded-lg border text-sm font-medium text-center transition-all ${
+                            emergencyChoice === opt.value
+                              ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-950/40 dark:text-primary-300 ring-2 ring-primary-500/20'
+                              : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
                     </div>
 
-                    {!hasDifferentEmergencyContact && (
-                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
+                    {['father', 'mother'].includes(emergencyChoice) && (
+                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
                         <p className="text-sm text-blue-800 dark:text-blue-200">
-                          {isRTL ? 'سيتم استخدام معلومات الوالد كجهة اتصال للطوارئ' : 'Les informations du parent seront utilisées comme contact d\'urgence'}
+                          {isRTL
+                            ? 'سيتم استخدام رقم هاتف هذا الوالد كجهة اتصال للطوارئ'
+                            : 'Le numéro de téléphone de ce parent sera utilisé comme contact d\'urgence'}
                         </p>
                       </div>
                     )}
                   </div>
 
-                  {/* Champs contact d'urgence (conditionnels) */}
-                  {hasDifferentEmergencyContact && (
+                  {/* Champs contact d'urgence (uniquement si « Autre personne ») */}
+                  {emergencyChoice === 'custom' && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -1158,7 +1184,7 @@ const EnrollmentPage = () => {
                           className={`w-full px-4 py-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent ${errors.emergency_contact_name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
                           placeholder={isRTL ? 'اسم الشخص للاتصال' : 'Nom de la personne à contacter'}
                           {...register('emergency_contact_name', {
-                            required: hasDifferentEmergencyContact ? (isRTL ? 'اسم جهة الاتصال مطلوب' : 'Le nom du contact est requis') : false
+                            required: emergencyChoice === 'custom' ? (isRTL ? 'اسم جهة الاتصال مطلوب' : 'Le nom du contact est requis') : false
                           })}
                         />
                         {errors.emergency_contact_name && (
@@ -1175,7 +1201,7 @@ const EnrollmentPage = () => {
                           className={`w-full px-4 py-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent ${errors.emergency_contact_phone ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
                           placeholder={isRTL ? 'رقم الهاتف' : 'Numéro de téléphone'}
                           {...register('emergency_contact_phone', {
-                            required: hasDifferentEmergencyContact ? (isRTL ? 'رقم الهاتف مطلوب' : 'Le numéro de téléphone est requis') : false
+                            required: emergencyChoice === 'custom' ? (isRTL ? 'رقم الهاتف مطلوب' : 'Le numéro de téléphone est requis') : false
                           })}
                         />
                         {errors.emergency_contact_phone && (
@@ -1737,9 +1763,13 @@ const EnrollmentPage = () => {
                       <div className="md:col-span-2">
                         <span className="text-gray-600 dark:text-gray-300">{isRTL ? 'جهة الاتصال للطوارئ:' : 'Contact d\'urgence :'}</span>
                         <span className="ml-2 rtl:ml-0 rtl:mr-2 font-medium text-gray-900 dark:text-white">
-                          {hasDifferentEmergencyContact && watch('emergency_contact_name')
+                          {emergencyChoice === 'custom' && watch('emergency_contact_name')
                             ? `${watch('emergency_contact_name')} - ${watch('emergency_contact_phone')}`
-                            : `${watch('parent_first_name')} ${watch('parent_last_name')} - ${watch('parent_phone')} ${isRTL ? '(الوالد)' : '(Parent)'}`
+                            : emergencyChoice === 'father'
+                              ? `${watch('parent_first_name')} ${watch('parent_last_name')} - ${watch('parent_phone')} ${isRTL ? '(الأب)' : '(Père)'}`
+                              : emergencyChoice === 'mother'
+                                ? `${watch('parent_first_name')} ${watch('parent_last_name')} - ${watch('parent_phone')} ${isRTL ? '(الأم)' : '(Mère)'}`
+                                : `${watch('parent_first_name')} ${watch('parent_last_name')} - ${watch('parent_phone')} ${isRTL ? '(الوالد)' : '(Parent)'}`
                           }
                         </span>
                       </div>

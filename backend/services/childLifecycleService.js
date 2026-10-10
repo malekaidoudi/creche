@@ -48,6 +48,7 @@ async function createChild(childData, options = {}) {
         parent_id,
         emergency_contact_name,
         emergency_contact_phone,
+        emergency_contact_choice,
         father_name,
         father_phone,
         mother_name,
@@ -99,10 +100,10 @@ async function createChild(childData, options = {}) {
             INSERT INTO children (
                 first_name, last_name, birth_date, gender, 
                 medical_info, parent_id, emergency_contact_name,
-                emergency_contact_phone,
+                emergency_contact_phone, emergency_contact_choice,
                 father_name, father_phone, mother_name, mother_phone, account_holder,
                 photo_url, is_active, created_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, true, NOW())
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, true, NOW())
             RETURNING *
         `, [
             first_name,
@@ -111,8 +112,17 @@ async function createChild(childData, options = {}) {
             gender,
             medical_info || null,
             parent_id || null,
-            emergency_contact_name || null,
-            emergency_contact_phone || null,
+            // Modèle unifié : 'father'/'mother' → coordonnées déjà portées par
+            // les champs du parent ; 'custom' → nom + téléphone du tiers.
+            ['father', 'mother'].includes(emergency_contact_choice)
+                ? null
+                : (emergency_contact_name || null),
+            ['father', 'mother'].includes(emergency_contact_choice)
+                ? null
+                : (emergency_contact_phone || null),
+            ['father', 'mother', 'custom'].includes(emergency_contact_choice)
+                ? emergency_contact_choice
+                : 'custom',
             father_name || null,
             father_phone || null,
             mother_name || null,

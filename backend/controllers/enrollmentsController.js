@@ -61,7 +61,8 @@ const enrollmentsController = {
     try {
       const {
         applicant_first_name, applicant_last_name, applicant_email, applicant_phone,
-        child_first_name, child_last_name, child_birth_date, child_gender
+        child_first_name, child_last_name, child_birth_date, child_gender,
+        emergency_contact_name, emergency_contact_phone, emergency_contact_choice
       } = req.body;
 
       // Validation
@@ -69,16 +70,26 @@ const enrollmentsController = {
         return res.status(400).json({ success: false, error: 'Champs requis manquants' });
       }
 
+      // Contact d'urgence unifié : 'father' | 'mother' (tél. déjà connu) ou
+      // 'custom' (nom + téléphone du tiers). Valeur invalide → 'custom'.
+      const ecChoice = ['father', 'mother', 'custom'].includes(emergency_contact_choice)
+        ? emergency_contact_choice
+        : 'custom';
+      const ecName = ecChoice === 'custom' ? (emergency_contact_name || '').trim() || null : null;
+      const ecPhone = ecChoice === 'custom' ? (emergency_contact_phone || '').trim() || null : null;
+
       // Créer enrollment
       const result = await db.query(`
         INSERT INTO enrollments (
           applicant_first_name, applicant_last_name, applicant_email, applicant_phone,
           child_first_name, child_last_name, child_birth_date, child_gender,
+          emergency_contact_name, emergency_contact_phone, emergency_contact_choice,
           status, created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', NOW())
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'pending', NOW())
         RETURNING id, status
       `, [applicant_first_name, applicant_last_name, applicant_email, applicant_phone,
-        child_first_name, child_last_name, child_birth_date, child_gender]);
+        child_first_name, child_last_name, child_birth_date, child_gender,
+        ecName, ecPhone, ecChoice]);
 
       const enrollment = result.rows[0];
 

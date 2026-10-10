@@ -92,6 +92,7 @@ router.get('/children-summary', auth.authenticateToken, async (req, res) => {
         c.gender,
         c.emergency_contact_name,
         c.emergency_contact_phone,
+        COALESCE(c.emergency_contact_choice, 'custom') as emergency_contact_choice,
         c.doctor_name,
         c.doctor_phone,
         COALESCE(c.photo_shared_with_staff, true) as photo_shared_with_staff,
@@ -112,7 +113,7 @@ router.get('/children-summary', auth.authenticateToken, async (req, res) => {
        LEFT JOIN enrollments e ON c.id = e.child_id
        WHERE c.parent_id = $1 OR e.parent_id = $1
        GROUP BY c.id, c.first_name, c.last_name, c.birth_date, c.photo_url, c.gender, 
-                c.emergency_contact_name, c.emergency_contact_phone, c.doctor_name, c.doctor_phone,
+                c.emergency_contact_name, c.emergency_contact_phone, c.emergency_contact_choice, c.doctor_name, c.doctor_phone,
                 c.photo_shared_with_staff, c.enrollment_status, e.status, e.id
        ORDER BY c.first_name, c.last_name`,
       [userId]

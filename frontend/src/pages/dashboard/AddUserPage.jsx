@@ -18,20 +18,16 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
     UserPlus,
-    Users,
     Shield,
     Mail,
     Phone,
-    User,
     Check,
     AlertCircle,
     Baby,
     Send,
-    CheckCircle,
-    Briefcase
+    CheckCircle
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
-import { useAuth } from '../../hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { useDialogContext } from '../../contexts/DialogContext';
@@ -42,7 +38,6 @@ const AddUserPage = () => {
     const dialog = useDialogContext();
     const navigate = useNavigate();
     const location = useLocation();
-    const { isAdmin } = useAuth();
 
     // État du formulaire
     const [selectedRole, setSelectedRole] = useState('parent');
@@ -61,6 +56,7 @@ const AddUserPage = () => {
         phone: '',
         gender: '',
         staff_position: '',
+        emergency_contact_choice: 'custom',
         emergency_contact_name: '',
         emergency_contact_phone: ''
     });
@@ -241,8 +237,9 @@ const AddUserPage = () => {
                     phone: formData.phone,
                     gender: formData.gender,
                     child_ids: selectedChildren.map(c => c.id),
-                    emergency_contact_name: formData.emergency_contact_name?.trim() || '',
-                    emergency_contact_phone: formData.emergency_contact_phone?.trim() || ''
+                    emergency_contact_choice: formData.emergency_contact_choice || 'custom',
+                    emergency_contact_name: formData.emergency_contact_choice === 'custom' ? (formData.emergency_contact_name?.trim() || '') : '',
+                    emergency_contact_phone: formData.emergency_contact_choice === 'custom' ? (formData.emergency_contact_phone?.trim() || '') : ''
                 });
             } else {
                 // Créer un compte personnel
@@ -291,6 +288,7 @@ const AddUserPage = () => {
             phone: '',
             gender: '',
             staff_position: '',
+            emergency_contact_choice: 'custom',
             emergency_contact_name: '',
             emergency_contact_phone: ''
         });
@@ -785,39 +783,68 @@ const AddUserPage = () => {
                                         </h3>
                                         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                                             {isRTL
-                                                ? 'اختياري: شخص موثوق للاتصال به في حالات الطوارئ مختلف عن الولي (مثل الجد، العم، الجار...)'
-                                                : 'Optionnel : personne de confiance à contacter en cas d\'urgence autre que le parent responsable (ex: grand-parent, oncle, voisin...)'
+                                                ? 'من يجب الاتصال به أولاً في حالة طارئة؟'
+                                                : 'Qui doit être contacté en priorité en cas d\'urgence ?'
                                             }
                                         </p>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                                    {isRTL ? 'اسم جهة الاتصال' : 'Nom du contact'}
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    name="emergency_contact_name"
-                                                    value={formData.emergency_contact_name}
-                                                    onChange={handleInputChange}
-                                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                                    placeholder={isRTL ? 'اسم جهة الاتصال' : 'Nom du contact'}
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                                    {isRTL ? 'هاتف جهة الاتصال' : 'Téléphone du contact'}
-                                                </label>
-                                                <input
-                                                    type="tel"
-                                                    name="emergency_contact_phone"
-                                                    value={formData.emergency_contact_phone}
-                                                    onChange={handleInputChange}
-                                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                                    placeholder={isRTL ? 'رقم الهاتف' : 'Numéro de téléphone'}
-                                                    dir="ltr"
-                                                />
-                                            </div>
+                                        <div className="grid grid-cols-3 gap-2.5 mb-4">
+                                            {[
+                                                { value: 'father', label: isRTL ? 'الأب' : 'Le Père' },
+                                                { value: 'mother', label: isRTL ? 'الأم' : 'La Mère' },
+                                                { value: 'custom', label: isRTL ? 'شخص آخر' : 'Autre personne' }
+                                            ].map((opt) => (
+                                                <button
+                                                    key={opt.value}
+                                                    type="button"
+                                                    onClick={() => setFormData(prev => ({ ...prev, emergency_contact_choice: opt.value }))}
+                                                    className={`p-2.5 rounded-lg border text-sm font-medium text-center transition-all ${
+                                                        formData.emergency_contact_choice === opt.value
+                                                            ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-950/40 dark:text-primary-300 ring-2 ring-primary-500/20'
+                                                            : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
+                                                    }`}
+                                                >
+                                                    {opt.label}
+                                                </button>
+                                            ))}
                                         </div>
+                                        {formData.emergency_contact_choice !== 'custom' && (
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/40 rounded-lg p-2.5 mb-4">
+                                                {isRTL
+                                                    ? 'سيُستخدم رقم هاتف هذا الوالد المسجل في ملف الطفل.'
+                                                    : 'Le numéro déjà enregistré pour ce parent sera utilisé.'}
+                                            </p>
+                                        )}
+                                        {formData.emergency_contact_choice === 'custom' && (
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                        {isRTL ? 'اسم جهة الاتصال' : 'Nom du contact'}
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        name="emergency_contact_name"
+                                                        value={formData.emergency_contact_name}
+                                                        onChange={handleInputChange}
+                                                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                                        placeholder={isRTL ? 'مثال: الجد، العم، الجار' : 'Ex: grand-parent, oncle, voisin'}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                        {isRTL ? 'هاتف جهة الاتصال' : 'Téléphone du contact'}
+                                                    </label>
+                                                    <input
+                                                        type="tel"
+                                                        name="emergency_contact_phone"
+                                                        value={formData.emergency_contact_phone}
+                                                        onChange={handleInputChange}
+                                                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                                        placeholder={isRTL ? 'رقم الهاتف' : 'Numéro de téléphone'}
+                                                        dir="ltr"
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 

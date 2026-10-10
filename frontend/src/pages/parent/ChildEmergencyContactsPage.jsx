@@ -8,7 +8,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     ArrowLeft,
     Phone,
-    User,
     Plus,
     X,
     Save,
@@ -50,6 +49,10 @@ const ChildEmergencyContactsPage = () => {
 
     // Personnes de confiance (max 2)
     const [trustedContacts, setTrustedContacts] = useState([]);
+
+    // Fratrie : propager les contacts d'urgence/confiance aux autres enfants
+    const [siblings, setSiblings] = useState([]);
+    const [applyToSiblings, setApplyToSiblings] = useState(true);
     const [showTrustedModal, setShowTrustedModal] = useState(false);
     const [editingTrustedIndex, setEditingTrustedIndex] = useState(null);
     const [trustedFormData, setTrustedFormData] = useState({
@@ -100,6 +103,15 @@ const ChildEmergencyContactsPage = () => {
                 ? cData.trusted_contacts 
                 : (Array.isArray(childObj.trusted_contacts) ? childObj.trusted_contacts : []);
             setTrustedContacts(trusted);
+
+            // Fratrie : autres enfants du même compte parent
+            try {
+                const siblingsRes = await api.get('/api/user/children-summary');
+                const allChildren = siblingsRes.data?.children || [];
+                setSiblings(allChildren.filter((c) => String(c.id) !== String(id)));
+            } catch {
+                setSiblings([]);
+            }
         } catch (err) {
             console.error('Erreur chargement:', err);
         } finally {
@@ -120,7 +132,8 @@ const ChildEmergencyContactsPage = () => {
                 emergency_contact_choice: emergencyChoice,
                 emergency_contact_name: emergencyChoice === 'custom' ? emergencyName.trim() : '',
                 emergency_contact_phone: emergencyChoice === 'custom' ? emergencyPhone.trim() : '',
-                trusted_contacts: trustedContacts.slice(0, 2)
+                trusted_contacts: trustedContacts.slice(0, 2),
+                apply_to_siblings: applyToSiblings && siblings.length > 0
             };
 
             await api.put(`/api/children/${id}/emergency-contacts`, payload);
@@ -483,6 +496,23 @@ const ChildEmergencyContactsPage = () => {
                             </div>
                         )}
                     </div>
+
+                    {/* PROPAGATION À LA FRATRIE */}
+                    {siblings.length > 0 && (
+                        <label className="flex items-start gap-3 p-4 bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200/70 dark:border-blue-900/40 rounded-2xl cursor-pointer select-none">
+                            <input
+                                type="checkbox"
+                                checked={applyToSiblings}
+                                onChange={(e) => setApplyToSiblings(e.target.checked)}
+                                className="w-4 h-4 mt-0.5 text-primary-600 border-gray-300 dark:border-gray-600 rounded focus:ring-primary-500"
+                            />
+                            <span className="text-sm text-blue-900 dark:text-blue-200">
+                                {isRTL
+                                    ? `تطبيق جهة الاتصال والأشخاص الموثوقين على جميع أطفالي (${siblings.map(s => s.first_name).join('، ')})`
+                                    : `Appliquer le contact d'urgence et les personnes de confiance à tous mes enfants (${siblings.map(s => s.first_name).join(', ')})`}
+                            </span>
+                        </label>
+                    )}
 
                     {/* BOUTON ENREGISTRER */}
                     <div className="sticky bottom-4 z-20">

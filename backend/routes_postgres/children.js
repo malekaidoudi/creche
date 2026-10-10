@@ -177,6 +177,14 @@ const sanitizeChildContacts = (row) => {
   if (r.emergency_contact_name && parentFullName && r.emergency_contact_name.trim().toLowerCase() === parentFullName) {
     r.emergency_contact_name = null;
     r.emergency_contact_phone = null;
+    // Données héritées : un contact « custom » identique au titulaire signifie
+    // en réalité que ce parent est le contact d'urgence → refléter le choix réel.
+    if (r.emergency_contact_choice === 'custom' || r.emergency_contact_choice == null) {
+      const holderIsMother = r.account_holder
+        ? r.account_holder === 'mother'
+        : r.parent_gender === 'female';
+      r.emergency_contact_choice = holderIsMother ? 'mother' : 'father';
+    }
   }
   return r;
 };
@@ -849,8 +857,6 @@ router.get('/', auth.authenticateToken, async (req, res) => {
         c.suspension_reason, c.suspended_at, c.expected_return_date,
         c.father_name, c.father_phone, c.mother_name, c.mother_phone,
         COALESCE(c.account_holder, 'father') as account_holder,
-        (CASE WHEN COALESCE(c.account_holder, 'father') = 'father' THEN c.mother_name ELSE c.father_name END) as second_parent_name,
-        (CASE WHEN COALESCE(c.account_holder, 'father') = 'father' THEN c.mother_phone ELSE c.father_phone END) as second_parent_phone,
         COALESCE(c.emergency_contact_choice, 'custom') as emergency_contact_choice,
         COALESCE(c.trusted_contacts, '[]'::jsonb) as trusted_contacts,
         EXTRACT(YEAR FROM AGE(c.birth_date)) as age,
@@ -1037,8 +1043,6 @@ router.get('/:id', auth.authenticateToken, auth.requireChildAccess, async (req, 
               c.suspension_reason, c.suspended_at, c.expected_return_date,
               c.father_name, c.father_phone, c.mother_name, c.mother_phone,
               COALESCE(c.account_holder, 'father') as account_holder,
-              (CASE WHEN COALESCE(c.account_holder, 'father') = 'father' THEN c.mother_name ELSE c.father_name END) as second_parent_name,
-              (CASE WHEN COALESCE(c.account_holder, 'father') = 'father' THEN c.mother_phone ELSE c.father_phone END) as second_parent_phone,
               COALESCE(c.emergency_contact_choice, 'custom') as emergency_contact_choice,
               COALESCE(c.trusted_contacts, '[]'::jsonb) as trusted_contacts,
               EXTRACT(YEAR FROM AGE(c.birth_date)) as age,
@@ -1149,6 +1153,7 @@ router.post('/', [
       medical_info,
       emergency_contact_name,
       emergency_contact_phone,
+      emergency_contact_choice,
       photo_url,
       parent_id,
       enrollment_date
@@ -1178,6 +1183,7 @@ router.post('/', [
         medical_info,
         emergency_contact_name,
         emergency_contact_phone,
+        emergency_contact_choice,
         photo_url,
         parent_id
       },
@@ -1317,8 +1323,6 @@ router.put('/:id', [
       mother_name,
       mother_phone,
       account_holder,
-      second_parent_name,
-      second_parent_phone,
       emergency_contact_choice,
       trusted_contacts,
       parent_email,
@@ -1576,28 +1580,6 @@ router.put('/:id', [
       paramCount++;
       updates.push(`account_holder = $${paramCount}`);
       params.push(account_holder);
-    }
-
-    // Fallback pour anciens clients ayant envoyé second_parent_name / second_parent_phone
-    const curHolder = account_holder || existingChild.rows[0].account_holder || 'father';
-    if (second_parent_name && !mother_name && curHolder === 'father') {
-      paramCount++;
-      updates.push(`mother_name = $${paramCount}`);
-      params.push(second_parent_name.trim());
-    } else if (second_parent_name && !father_name && curHolder === 'mother') {
-      paramCount++;
-      updates.push(`father_name = $${paramCount}`);
-      params.push(second_parent_name.trim());
-    }
-
-    if (second_parent_phone && !mother_phone && curHolder === 'father') {
-      paramCount++;
-      updates.push(`mother_phone = $${paramCount}`);
-      params.push(second_parent_phone.trim());
-    } else if (second_parent_phone && !father_phone && curHolder === 'mother') {
-      paramCount++;
-      updates.push(`father_phone = $${paramCount}`);
-      params.push(second_parent_phone.trim());
     }
 
     if (emergency_contact_choice !== undefined) {
@@ -2037,13 +2019,12 @@ router.get('/:id/emergency-contacts', auth.authenticateToken, async (req, res) =
 
     // Récupérer l'enfant et les infos du parent titulaire
     const childCheck = await pool.query(`
-      SELECT c.parent_id, c.emergency_contacts,
+      SELECT c.parent_id,
              c.emergency_contact_name, c.emergency_contact_phone,
              c.emergency_contact_choice,
              COALESCE(c.trusted_contacts, '[]'::jsonb) as trusted_contacts,
              c.father_name, c.father_phone, c.mother_name, c.mother_phone,
              COALESCE(c.account_holder, 'father') as account_holder,
-             u.first_name as parent_first_name, u.last_name as parent_last_name,
              u.phone as parent_phone, u.gender as parent_gender
       FROM children c
       LEFT JOIN users u ON c.parent_id = u.id
@@ -2062,7 +2043,6 @@ router.get('/:id/emergency-contacts', auth.authenticateToken, async (req, res) =
     const holder = child.account_holder || 'father';
     res.json({
       success: true,
-      contacts: child.emergency_contacts || [],
       emergency_contact_name: child.emergency_contact_name,
       emergency_contact_phone: child.emergency_contact_phone,
       emergency_contact_choice: child.emergency_contact_choice || 'custom',
@@ -2072,9 +2052,6 @@ router.get('/:id/emergency-contacts', auth.authenticateToken, async (req, res) =
       mother_name: child.mother_name,
       mother_phone: child.mother_phone,
       account_holder: holder,
-      second_parent_name: holder === 'father' ? child.mother_name : child.father_name,
-      second_parent_phone: holder === 'father' ? child.mother_phone : child.father_phone,
-      parent_name: `${child.parent_first_name || ''} ${child.parent_last_name || ''}`.trim(),
       parent_phone: child.parent_phone,
       parent_gender: child.parent_gender
     });
@@ -2090,7 +2067,6 @@ router.put('/:id/emergency-contacts', auth.authenticateToken, async (req, res) =
   try {
     const { id } = req.params;
     const {
-      contacts,
       emergency_contact_name,
       emergency_contact_phone,
       emergency_contact_choice,
@@ -2100,9 +2076,8 @@ router.put('/:id/emergency-contacts', auth.authenticateToken, async (req, res) =
       mother_name,
       mother_phone,
       account_holder,
-      second_parent_name,
-      second_parent_phone,
-      parent_phone
+      parent_phone,
+      apply_to_siblings
     } = req.body;
 
     // Vérifier l'accès
@@ -2133,12 +2108,6 @@ router.put('/:id/emergency-contacts', auth.authenticateToken, async (req, res) =
     const updates = [];
     const params = [];
     let pCount = 0;
-
-    if (contacts !== undefined) {
-      pCount++;
-      updates.push(`emergency_contacts = $${pCount}`);
-      params.push(JSON.stringify(contacts || []));
-    }
 
     if (emergency_contact_name !== undefined) {
       pCount++;
@@ -2195,27 +2164,6 @@ router.put('/:id/emergency-contacts', auth.authenticateToken, async (req, res) =
       params.push(account_holder);
     }
 
-    const curHolderEc = account_holder || child.account_holder || 'father';
-    if (second_parent_name && !mother_name && curHolderEc === 'father') {
-      pCount++;
-      updates.push(`mother_name = $${pCount}`);
-      params.push(second_parent_name.trim());
-    } else if (second_parent_name && !father_name && curHolderEc === 'mother') {
-      pCount++;
-      updates.push(`father_name = $${pCount}`);
-      params.push(second_parent_name.trim());
-    }
-
-    if (second_parent_phone && !mother_phone && curHolderEc === 'father') {
-      pCount++;
-      updates.push(`mother_phone = $${pCount}`);
-      params.push(second_parent_phone.trim());
-    } else if (second_parent_phone && !father_phone && curHolderEc === 'mother') {
-      pCount++;
-      updates.push(`father_phone = $${pCount}`);
-      params.push(second_parent_phone.trim());
-    }
-
     pCount++;
     updates.push(`updated_at = $${pCount}`);
     params.push(new Date());
@@ -2228,6 +2176,53 @@ router.put('/:id/emergency-contacts', auth.authenticateToken, async (req, res) =
         ${updates.join(', ')}
       WHERE id = $${pCount}
     `, params);
+
+    // Propagation optionnelle à la fratrie : les contacts d'urgence et de
+    // confiance sont une donnée de FAMILLE (même parent_id). Seuls les champs
+    // explicitement fournis sont copiés — les champs de filiation
+    // (father_*/mother_*) restent propres à chaque enfant (demi-fratries).
+    if (apply_to_siblings === true && child.parent_id) {
+      const siblingUpdates = [];
+      const siblingParams = [];
+      let sCount = 0;
+
+      if (emergency_contact_choice !== undefined) {
+        sCount++;
+        siblingUpdates.push(`emergency_contact_choice = $${sCount}`);
+        siblingParams.push(emergency_contact_choice);
+      }
+      if (emergency_contact_name !== undefined) {
+        sCount++;
+        siblingUpdates.push(`emergency_contact_name = $${sCount}`);
+        siblingParams.push(emergency_contact_name);
+      }
+      if (emergency_contact_phone !== undefined) {
+        sCount++;
+        siblingUpdates.push(`emergency_contact_phone = $${sCount}`);
+        siblingParams.push(emergency_contact_phone);
+      }
+      if (trusted_contacts !== undefined) {
+        sCount++;
+        siblingUpdates.push(`trusted_contacts = $${sCount}`);
+        const validTrusted = Array.isArray(trusted_contacts) ? trusted_contacts.slice(0, 2) : [];
+        siblingParams.push(JSON.stringify(validTrusted));
+      }
+
+      if (siblingUpdates.length > 0) {
+        sCount++;
+        siblingUpdates.push(`updated_at = $${sCount}`);
+        siblingParams.push(new Date());
+
+        const parentIdx = ++sCount;
+        const childIdx = ++sCount;
+        siblingParams.push(child.parent_id, id);
+
+        await pool.query(`
+          UPDATE children SET ${siblingUpdates.join(', ')}
+          WHERE parent_id = $${parentIdx} AND id != $${childIdx} AND is_active = true
+        `, siblingParams);
+      }
+    }
 
     res.json({
       success: true,

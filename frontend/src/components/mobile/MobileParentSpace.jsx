@@ -17,22 +17,15 @@ import {
     User,
     FileText,
     MessageCircle,
-    AlertCircle,
     CheckCircle,
     Plus,
     CalendarPlus,
     X,
-    Activity,
-    Eye,
-    Heart,
     Phone,
     Stethoscope,
-    Pill,
     ClipboardList,
     PhoneCall,
-    Image,
-    CalendarX,
-    UserCheck
+    CalendarX
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -994,7 +987,7 @@ const MobileParentSpace = ({
                             {/* Contenu */}
                             <div className="p-4 space-y-4">
                                 {/* Contact d'urgence principal */}
-                                {(selectedChild.emergency_contact_name || selectedChild.emergency_contact_phone) && (
+                                {(selectedChild.emergency_contact_name || selectedChild.emergency_contact_phone || ['father', 'mother'].includes(selectedChild.emergency_contact_choice)) && (
                                     <div className="bg-orange-50 dark:bg-orange-900/20 rounded-xl p-4">
                                         <div className="flex items-center gap-3 mb-3">
                                             <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/40 flex items-center justify-center">
@@ -1006,6 +999,14 @@ const MobileParentSpace = ({
                                                 </p>
                                             </div>
                                         </div>
+                                        {['father', 'mother'].includes(selectedChild.emergency_contact_choice) && (
+                                            <p className="text-gray-700 dark:text-gray-300 mb-1">
+                                                <span className="font-medium">{isRTL ? 'جهة الاتصال:' : 'Contact :'}</span>{' '}
+                                                {selectedChild.emergency_contact_choice === 'father'
+                                                    ? (isRTL ? 'الأب' : 'Le Père')
+                                                    : (isRTL ? 'الأم' : 'La Mère')}
+                                            </p>
+                                        )}
                                         {selectedChild.emergency_contact_name && (
                                             <p className="text-gray-700 dark:text-gray-300 mb-1">
                                                 <span className="font-medium">{isRTL ? 'الاسم:' : 'Nom:'}</span> {selectedChild.emergency_contact_name}
@@ -1054,7 +1055,7 @@ const MobileParentSpace = ({
                                 )}
 
                                 {/* Message si aucun contact */}
-                                {!selectedChild.emergency_contact_name && !selectedChild.emergency_contact_phone && !selectedChild.doctor_name && !selectedChild.doctor_phone && (
+                                {!selectedChild.emergency_contact_name && !selectedChild.emergency_contact_phone && !['father', 'mother'].includes(selectedChild.emergency_contact_choice) && !selectedChild.doctor_name && !selectedChild.doctor_phone && (
                                     <div className="text-center py-8">
                                         <Phone className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                                         <p className="text-gray-500 dark:text-gray-400">

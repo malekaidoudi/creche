@@ -339,7 +339,8 @@ exports.completeAppointment = async (req, res) => {
                    e.created_at as e_created_at, e.applicant_first_name,
                    e.applicant_last_name, e.applicant_email, e.approved_by, e.approved_at,
                    e.child_first_name, e.child_last_name, e.child_birth_date, e.child_gender,
-                   e.child_medical_info, e.created_parent_user_id
+                   e.child_medical_info, e.created_parent_user_id,
+                   e.emergency_contact_name, e.emergency_contact_phone, e.emergency_contact_choice
             FROM appointments a
             LEFT JOIN enrollments e ON a.enrollment_id = e.id
             WHERE a.id = $1
@@ -382,7 +383,10 @@ exports.completeAppointment = async (req, res) => {
                         birth_date: appointment.child_birth_date,
                         gender: appointment.child_gender,
                         medical_info: appointment.child_medical_info,
-                        parent_id: parentId
+                        parent_id: parentId,
+                        emergency_contact_name: appointment.emergency_contact_name,
+                        emergency_contact_phone: appointment.emergency_contact_phone,
+                        emergency_contact_choice: appointment.emergency_contact_choice
                     },
                     {
                         enrollment_id: appointment.enrollment_id,
