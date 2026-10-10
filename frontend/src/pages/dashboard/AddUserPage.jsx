@@ -636,10 +636,12 @@ const AddUserPage = () => {
                                     </div>
                                 </div>
 
-                                {/* Sexe */}
+                                {/* Lien avec l'enfant (parent) / Sexe (staff) */}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                        {isRTL ? 'الجنس' : 'Sexe'} *
+                                        {selectedRole === 'parent'
+                                            ? (isRTL ? 'صلة القرابة بالطفل' : 'Lien avec l\'enfant')
+                                            : (isRTL ? 'الجنس' : 'Sexe')} *
                                     </label>
                                     <div className="flex gap-4">
                                         <label className="flex items-center">
@@ -651,7 +653,9 @@ const AddUserPage = () => {
                                                 onChange={handleInputChange}
                                                 className="mr-2 rtl:mr-0 rtl:ml-2"
                                             />
-                                            {isRTL ? 'ذكر' : 'Homme'}
+                                            {selectedRole === 'parent'
+                                                ? (isRTL ? 'بابا' : 'Papa')
+                                                : (isRTL ? 'ذكر' : 'Homme')}
                                         </label>
                                         <label className="flex items-center">
                                             <input
@@ -662,7 +666,9 @@ const AddUserPage = () => {
                                                 onChange={handleInputChange}
                                                 className="mr-2 rtl:mr-0 rtl:ml-2"
                                             />
-                                            {isRTL ? 'أنثى' : 'Femme'}
+                                            {selectedRole === 'parent'
+                                                ? (isRTL ? 'ماما' : 'Maman')
+                                                : (isRTL ? 'أنثى' : 'Femme')}
                                         </label>
                                     </div>
                                     {errors.gender && (
@@ -679,8 +685,8 @@ const AddUserPage = () => {
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                                 {formData.gender === 'female'
-                                                    ? (isRTL ? 'اسم الأب (الزوج)' : 'Nom complet du père (conjoint)')
-                                                    : (isRTL ? 'اسم الأم (الزوجة)' : 'Nom complet de la mère (conjointe)')
+                                                    ? (isRTL ? 'اسم بابا (الزوج)' : 'Nom complet de Papa (conjoint)')
+                                                    : (isRTL ? 'اسم ماما (الزوجة)' : 'Nom complet de Maman (conjointe)')
                                                 }
                                                 <span className="text-gray-400 font-normal"> ({isRTL ? 'اختياري' : 'optionnel'})</span>
                                             </label>
