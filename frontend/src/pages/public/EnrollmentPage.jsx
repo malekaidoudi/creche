@@ -8,7 +8,7 @@ import { Baby, User, Phone, FileText, Send, CheckCircle, AlertCircle, ChevronRig
 import { useForm } from 'react-hook-form'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
 import { Button } from '../../components/ui/Button'
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card'
+import { Card, CardContent } from '../../components/ui/Card'
 import DocumentUpload from '../../components/ui/DocumentUpload'
 import DatePicker from '../../components/ui/DatePicker'
 import api from '../../services/api'

@@ -18,6 +18,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
     UserPlus,
+    Users,
     Shield,
     Mail,
     Phone,
@@ -25,7 +26,8 @@ import {
     AlertCircle,
     Baby,
     Send,
-    CheckCircle
+    CheckCircle,
+    Briefcase
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';

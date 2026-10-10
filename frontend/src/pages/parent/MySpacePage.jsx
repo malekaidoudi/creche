@@ -23,7 +23,6 @@ import { useLanguage } from '../../hooks/useLanguage';
 import useIsMobile from '../../hooks/useIsMobile';
 import api from '../../services/api';
 import { useProfileImage } from '../../hooks/useProfileImage';
-import { Button } from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import WidgetCard, { WidgetEmptyState } from '../../components/ui/WidgetCard';
 import SimpleNotificationCenter from '../../components/dashboard/SimpleNotificationCenter';

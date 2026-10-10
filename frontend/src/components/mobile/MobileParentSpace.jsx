@@ -17,15 +17,19 @@ import {
     User,
     FileText,
     MessageCircle,
+    AlertCircle,
     CheckCircle,
     Plus,
     CalendarPlus,
     X,
     Phone,
     Stethoscope,
+    Pill,
     ClipboardList,
     PhoneCall,
-    CalendarX
+    Image,
+    CalendarX,
+    UserCheck
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';

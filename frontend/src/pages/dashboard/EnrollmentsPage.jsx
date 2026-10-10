@@ -19,7 +19,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import useIsMobile from '../../hooks/useIsMobile';
 import DatePicker from '../../components/ui/DatePicker';
 import { useDialogContext } from '../../contexts/DialogContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card';
+import { Card, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import enrollmentsService from '../../services/enrollmentsService';
