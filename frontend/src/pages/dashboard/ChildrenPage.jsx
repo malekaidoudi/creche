@@ -1734,6 +1734,13 @@ const ChildrenPage = () => {
                     emergencyDisplayPhone = motherDisplayPhone;
                   }
 
+                  // La carte "Contact d'urgence" n'apparaît que si un tiers est désigné
+                  // (le père/la mère reçoivent un badge sur leur carte) ou si le staff
+                  // restreint a besoin du bouton "Appeler directeur" en repli.
+                  const isEmergencyCustom = !isEmergencyFather && !isEmergencyMother;
+                  const emergencyRestricted = !isAdmin() && (selectedChild.emergency_contact_restricted || !can(FEATURES.PARENTS_PHONE_VIEW));
+                  const showEmergencyCard = (isEmergencyCustom && !!emergencyDisplayName) || emergencyRestricted;
+
                   return (
                     <div className="bg-blue-50/50 dark:bg-blue-950/20 rounded-2xl p-5 border border-blue-200/70 dark:border-blue-900/40 shadow-sm">
                       <div className="flex items-center gap-2 pb-3 mb-4 border-b border-blue-200/60 dark:border-blue-900/40">
@@ -1745,24 +1752,34 @@ const ChildrenPage = () => {
                         </h4>
                       </div>
 
-                      <div className={`grid grid-cols-1 ${isEmergencyFather || isEmergencyMother ? 'md:grid-cols-2' : 'md:grid-cols-3'} gap-4`}>
+                      <div className={`grid grid-cols-1 ${showEmergencyCard ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
                         {/* CARTE PÈRE */}
                         <div className="bg-white dark:bg-gray-800/90 rounded-xl p-4 border border-blue-100 dark:border-blue-900/30 flex flex-col justify-between">
                           <div>
-                            <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center justify-between gap-2 mb-2">
                               <span className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wider flex items-center gap-1">
                                 <span>👨</span>
-                                <span>{isRTL ? 'الأب' : 'Père'} {parentIsFather && (isRTL ? '(صاحب الحساب)' : '(Titulaire)')}</span>
+                                <span>{isRTL ? 'الأب' : 'Père'}</span>
                               </span>
-                              {isEmergencyFather && (
-                                <span
-                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 border border-orange-200 dark:border-orange-800 flex-shrink-0"
-                                  title={isRTL ? 'جهة اتصال الطوارئ المعينة' : "Contact d'urgence désigné"}
-                                >
-                                  <AlertTriangle className="w-3 h-3" />
-                                  {isRTL ? 'طوارئ' : 'Urgence'}
-                                </span>
-                              )}
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                {parentIsFather && (
+                                  <span
+                                    className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+                                    title={isRTL ? 'صاحب حساب ولي الأمر' : 'Titulaire du compte parent'}
+                                  >
+                                    {isRTL ? 'صاحب الحساب' : 'Titulaire'}
+                                  </span>
+                                )}
+                                {isEmergencyFather && (
+                                  <span
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 border border-orange-200 dark:border-orange-800"
+                                    title={isRTL ? 'جهة اتصال الطوارئ المعينة' : "Contact d'urgence désigné"}
+                                  >
+                                    <AlertTriangle className="w-3 h-3" />
+                                    {isRTL ? 'طوارئ' : 'Urgence'}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                             <div className="space-y-2 text-sm">
                               <p className="font-semibold text-gray-900 dark:text-white text-base my-1">
@@ -1836,20 +1853,30 @@ const ChildrenPage = () => {
                         {/* CARTE MÈRE */}
                         <div className="bg-white dark:bg-gray-800/90 rounded-xl p-4 border border-pink-100 dark:border-pink-900/30 flex flex-col justify-between">
                           <div>
-                            <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center justify-between gap-2 mb-2">
                               <span className="text-xs font-semibold text-pink-700 dark:text-pink-300 uppercase tracking-wider flex items-center gap-1">
                                 <span>👩</span>
-                                <span>{isRTL ? 'الأم' : 'Mère'} {!parentIsFather && (isRTL ? '(صاحبة الحساب)' : '(Titulaire)')}</span>
+                                <span>{isRTL ? 'الأم' : 'Mère'}</span>
                               </span>
-                              {isEmergencyMother && (
-                                <span
-                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 border border-orange-200 dark:border-orange-800 flex-shrink-0"
-                                  title={isRTL ? 'جهة اتصال الطوارئ المعينة' : "Contact d'urgence désigné"}
-                                >
-                                  <AlertTriangle className="w-3 h-3" />
-                                  {isRTL ? 'طوارئ' : 'Urgence'}
-                                </span>
-                              )}
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                {!parentIsFather && (
+                                  <span
+                                    className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300 border border-pink-200 dark:border-pink-800"
+                                    title={isRTL ? 'صاحبة حساب ولي الأمر' : 'Titulaire du compte parent'}
+                                  >
+                                    {isRTL ? 'صاحبة الحساب' : 'Titulaire'}
+                                  </span>
+                                )}
+                                {isEmergencyMother && (
+                                  <span
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300 border border-orange-200 dark:border-orange-800"
+                                    title={isRTL ? 'جهة اتصال الطوارئ المعينة' : "Contact d'urgence désigné"}
+                                  >
+                                    <AlertTriangle className="w-3 h-3" />
+                                    {isRTL ? 'طوارئ' : 'Urgence'}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                             <div className="space-y-2 text-sm">
                               <p className="font-semibold text-gray-900 dark:text-white text-base my-1">
@@ -1920,9 +1947,9 @@ const ChildrenPage = () => {
                           )}
                         </div>
 
-                        {/* Contact d'urgence — affiché uniquement s'il s'agit d'un tiers
-                            (quand c'est le père ou la mère, un badge "Urgence" est posé sur sa carte) */}
-                        {!(isEmergencyFather || isEmergencyMother) && (
+                        {/* Contact d'urgence — affiché uniquement si un tiers est désigné
+                            (père/mère → badge "Urgence" sur leur carte ; vide → masqué) */}
+                        {showEmergencyCard && (
                         <div className="bg-white dark:bg-gray-800/90 rounded-xl p-4 border border-orange-100 dark:border-orange-900/30 flex flex-col justify-between">
                           <div>
                             <div className="flex items-center justify-between mb-2">
