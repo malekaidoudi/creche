@@ -1719,9 +1719,24 @@ const ChildrenPage = () => {
                         ? (() => { try { return JSON.parse(selectedChild.trusted_contacts); } catch { return []; } })()
                         : []);
 
-                  // Détection contact d'urgence
-                  const isEmergencyFather = selectedChild.emergency_contact_choice === 'father';
-                  const isEmergencyMother = selectedChild.emergency_contact_choice === 'mother';
+                  // Détection contact d'urgence : choix explicite (father/mother)
+                  // OU contact "custom" dont le nom/téléphone correspond au père ou à la mère
+                  const normPhone = (p) => (p || '').replace(/\D/g, '');
+                  const normName = (n) => (n || '').trim().toLowerCase();
+                  const ecName = normName(selectedChild.emergency_contact_name);
+                  const ecPhone = normPhone(selectedChild.emergency_contact_phone);
+
+                  const matchesFather = Boolean(
+                    (ecPhone && ecPhone === normPhone(fatherDisplayPhone)) ||
+                    (ecName && fatherDisplayName && ecName === normName(fatherDisplayName))
+                  );
+                  const matchesMother = Boolean(
+                    (ecPhone && ecPhone === normPhone(motherDisplayPhone)) ||
+                    (ecName && motherDisplayName && ecName === normName(motherDisplayName))
+                  );
+
+                  const isEmergencyFather = selectedChild.emergency_contact_choice === 'father' || matchesFather;
+                  const isEmergencyMother = !isEmergencyFather && (selectedChild.emergency_contact_choice === 'mother' || matchesMother);
 
                   let emergencyDisplayName = selectedChild.emergency_contact_name;
                   let emergencyDisplayPhone = selectedChild.emergency_contact_phone;
