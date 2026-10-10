@@ -4,7 +4,6 @@
  */
 
 const db = require('../config/db_postgres');
-const emailService = require('../emails/emailService');
 
 /**
  * Récupérer tous les rendez-vous du jour

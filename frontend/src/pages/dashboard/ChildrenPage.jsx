@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -40,8 +40,6 @@ import { useDialogContext } from '../../contexts/DialogContext';
 import childrenService from '../../services/childrenService';
 import api from '../../services/api';
 import userService from '../../services/userService';
-import { documentService } from '../../services/documentService';
-import approvalService from '../../services/approvalService';
 import { Card, CardContent, CardDescription, CardTitle } from '../../components/ui/Card';
 import API_CONFIG from '../../config/api';
 
@@ -105,12 +103,10 @@ const ChildrenPage = () => {
   const [selectedPhotoFile, setSelectedPhotoFile] = useState(null);
   const [photoActionLoading, setPhotoActionLoading] = useState(false);
   const [photoImageKey, setPhotoImageKey] = useState(Date.now());
-  const [childDocuments, setChildDocuments] = useState([]);
-  const [documentsLoading, setDocumentsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageLimit] = useState(20);
   const [totalItems, setTotalItems] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
+
   const [missingInfoOpenId, setMissingInfoOpenId] = useState(null);
   const missingInfoPopoverRef = useRef(null);
   const [openActionsMenuId, setOpenActionsMenuId] = useState(null);
@@ -228,7 +224,7 @@ const ChildrenPage = () => {
         // Le backend filtre déjà par enrollment_status = 'approved'
         setChildren(childrenData);
         setTotalItems(response.data.pagination?.total || 0);
-        setTotalPages(response.data.pagination?.pages || 0);
+
       } else {
         console.error('❌ ChildrenPage - Erreur API:', response);
         dialog.error(isRTL ? 'خطأ في تحميل الأطفال' : 'Erreur lors du chargement des enfants');
@@ -289,11 +285,6 @@ const ChildrenPage = () => {
     }, 300);
   };
 
-  // Fonction pour rafraîchir les données
-  const handleRefresh = () => {
-    loadChildren();
-  };
-
   // Fonction pour voir un enfant
   const handleViewChild = async (child) => {
     setSelectedChild(child);
@@ -308,20 +299,6 @@ const ChildrenPage = () => {
       }
     } catch (err) {
       console.warn('Erreur chargement détails complets enfant:', err);
-    }
-
-    // Charger les documents de l'enfant
-    try {
-      setDocumentsLoading(true);
-      const response = await documentService.getChildDocuments(child.id);
-      if (response.success) {
-        setChildDocuments(response.documents);
-      }
-    } catch (error) {
-      console.error('Erreur chargement documents:', error);
-      setChildDocuments([]);
-    } finally {
-      setDocumentsLoading(false);
     }
   };
 
@@ -413,36 +390,6 @@ const ChildrenPage = () => {
       dialog.error(error.response?.data?.error || (isRTL ? 'خطأ في حذف الصورة' : 'Erreur lors de la suppression de la photo'));
     } finally {
       setPhotoActionLoading(false);
-    }
-  };
-
-  // Fonction pour désactiver le compte parent (remplace la suppression)
-  const handleDeactivateParent = async (child) => {
-    const confirmed = await dialog.confirm(
-      isRTL ? 'هل أنت متأكد من إلغاء تفعيل حساب الوالد؟' : 'Êtes-vous sûr de vouloir désactiver le compte parent ?',
-      isRTL ? 'تأكيد الإلغاء' : 'Confirmer la désactivation',
-      { type: 'danger', confirmText: isRTL ? 'إلغاء التفعيل' : 'Désactiver', cancelText: isRTL ? 'إلغاء' : 'Annuler' }
-    );
-
-    if (!confirmed) return;
-
-    try {
-      setActionLoading(child.id);
-
-      // Appel API pour désactiver le parent
-      const response = await api.put(`/api/children/${child.id}/deactivate-parent`);
-
-      if (response.data?.success) {
-        dialog.success(isRTL ? 'تم إلغاء تفعيل حساب الوالد بنجاح' : 'Compte parent désactivé avec succès');
-        loadChildren(); // Recharger la liste
-      } else {
-        throw new Error(response.data?.error || (isRTL ? 'خطأ في إلغاء التفعيل' : 'Erreur lors de la désactivation'));
-      }
-    } catch (error) {
-      console.error('Erreur lors de la désactivation:', error);
-      dialog.error(isRTL ? 'خطأ في إلغاء تفعيل الحساب' : 'Erreur lors de la désactivation du compte');
-    } finally {
-      setActionLoading(null);
     }
   };
 
@@ -697,93 +644,6 @@ const ChildrenPage = () => {
       ...prev,
       [field]: value
     }));
-  };
-
-  // Fonction pour voir un document
-  const handleViewDocument = async (document) => {
-    try {
-      await documentService.viewDocument(document);
-      // Pas de notification pour l'ouverture (action silencieuse)
-    } catch (error) {
-      dialog.error(isRTL ? 'خطأ في فتح الوثيقة' : 'Erreur lors de l\'ouverture');
-    }
-  };
-
-  // Fonction pour télécharger un document
-  const handleDownloadDocument = async (document) => {
-    try {
-      await documentService.downloadDocument(document);
-      // Pas de notification pour le téléchargement (action silencieuse)
-    } catch (error) {
-      dialog.error(isRTL ? 'خطأ في تحميل الوثيقة' : 'Erreur lors du téléchargement');
-    }
-  };
-
-  // Fonction pour approuver un enfant
-  const handleApproveChild = async (child) => {
-    const confirmed = await dialog.confirm(
-      isRTL ? 'هل أنت متأكد من قبول هذا الطلب؟' : 'Êtes-vous sûr d\'approuver cette demande ?',
-      isRTL ? 'تأكيد القبول' : 'Confirmer l\'approbation',
-      { type: 'info', confirmText: isRTL ? 'قبول' : 'Approuver', cancelText: isRTL ? 'إلغاء' : 'Annuler' }
-    );
-
-    if (!confirmed) return;
-
-    try {
-      setActionLoading('approve');
-      const response = await approvalService.approveChild(child.id);
-
-      if (response.success) {
-        dialog.success(isRTL ? 'تم قبول الطلب بنجاح' : 'Demande approuvée avec succès');
-
-        // Mettre à jour l'enfant sélectionné
-        setSelectedChild(prev => ({ ...prev, status: 'approved' }));
-
-        // Recharger la liste
-        loadChildren();
-      } else {
-        dialog.error(response.error || (isRTL ? 'خطأ في القبول' : 'Erreur lors de l\'approbation'));
-      }
-    } catch (error) {
-      console.error('Erreur approbation:', error);
-      dialog.error(error.response?.data?.error || (isRTL ? 'خطأ في الاتصال' : 'Erreur de connexion'));
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  // Fonction pour rejeter un enfant
-  const handleRejectChild = async (child) => {
-    const confirmed = await dialog.confirm(
-      isRTL ? 'هل تريد رفض طلب هذا الطفل؟' : 'Voulez-vous rejeter la demande de cet enfant ?',
-      isRTL ? 'تأكيد الرفض' : 'Confirmer le rejet',
-      { type: 'danger', confirmText: isRTL ? 'رفض' : 'Rejeter', cancelText: isRTL ? 'إلغاء' : 'Annuler' }
-    );
-
-    if (!confirmed) return; // Utilisateur a annulé
-    const reason = '';
-
-    try {
-      setActionLoading('reject');
-      const response = await approvalService.rejectChild(child.id, reason);
-
-      if (response.success) {
-        dialog.success(isRTL ? 'تم رفض الطلب' : 'Demande rejetée');
-
-        // Mettre à jour l'enfant sélectionné
-        setSelectedChild(prev => ({ ...prev, status: 'rejected' }));
-
-        // Recharger la liste
-        loadChildren();
-      } else {
-        dialog.error(response.error || (isRTL ? 'خطأ في الرفض' : 'Erreur lors du rejet'));
-      }
-    } catch (error) {
-      console.error('Erreur rejet:', error);
-      dialog.error(error.response?.data?.error || (isRTL ? 'خطأ في الاتصال' : 'Erreur de connexion'));
-    } finally {
-      setActionLoading(null);
-    }
   };
 
 
@@ -1536,7 +1396,6 @@ const ChildrenPage = () => {
                     className="rounded-full w-8 h-8 p-0 border-gray-200 dark:border-gray-700"
                     onClick={() => {
                       setSelectedChild(null);
-                      setChildDocuments([]);
                     }}
                   >
                     ✕
@@ -2311,7 +2170,6 @@ const ChildrenPage = () => {
               <div className="flex justify-end mt-6 pt-4 border-t border-gray-100 dark:border-gray-700">
                 <Button onClick={() => {
                   setSelectedChild(null);
-                  setChildDocuments([]);
                 }}>
                   {isRTL ? 'إغلاق' : 'Fermer'}
                 </Button>

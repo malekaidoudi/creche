@@ -59,7 +59,6 @@ const EnrollmentPage = () => {
 
   // États pour la vérification d'enfant (étape 1)
   const [childCheckResult, setChildCheckResult] = useState(null)
-  const [childCheckLoading, setChildCheckLoading] = useState(false)
 
   // Redirection pour les utilisateurs connectés
   useEffect(() => {
@@ -247,7 +246,6 @@ const EnrollmentPage = () => {
     if (!childFirstName || !childLastName || !childBirthDate) return null
 
     try {
-      setChildCheckLoading(true)
       setChildCheckResult(null)
 
       const response = await api.post('/api/enrollments/check-child', {
@@ -265,8 +263,6 @@ const EnrollmentPage = () => {
       console.error('Erreur vérification enfant:', error)
       setChildCheckResult(null)
       return null
-    } finally {
-      setChildCheckLoading(false)
     }
   }
 

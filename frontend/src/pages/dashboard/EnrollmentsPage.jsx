@@ -14,7 +14,6 @@ import {
   Phone,
   Mail
 } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import useIsMobile from '../../hooks/useIsMobile';
 import DatePicker from '../../components/ui/DatePicker';
@@ -28,12 +27,9 @@ import MobileNavigation from '../../components/mobile/MobileNavigation';
 import MobileHeader from '../../components/mobile/MobileHeader';
 
 const EnrollmentsPage = () => {
-  const { user } = useAuth();
   const dialog = useDialogContext();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
-  const isAdmin = () => user?.role === 'admin';
-  const isStaff = () => user?.role === 'staff';
   const { isRTL } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [enrollments, setEnrollments] = useState([]);
@@ -113,11 +109,6 @@ const EnrollmentsPage = () => {
     setShowModal(true);
   };
 
-  const handleApproveEnrollment = async (enrollmentId) => {
-    // Ouvrir le formulaire d'approbation
-    setShowApprovalForm(true);
-  };
-
   const submitApproval = async () => {
     if (!selectedEnrollment) return;
 
@@ -141,75 +132,6 @@ const EnrollmentsPage = () => {
     } finally {
       setActionLoading(false);
     }
-  };
-
-  const handleViewFile = async (fileId) => {
-    try {
-      const response = await fetch(`/api/uploads/view/${fileId}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        window.open(url, '_blank');
-      } else {
-        console.error('Erreur lors de l\'affichage du fichier');
-      }
-    } catch (error) {
-      console.error('Erreur:', error);
-    }
-  };
-
-  const handleDownloadFile = async (fileId, fileName) => {
-    try {
-      const response = await fetch(`/api/uploads/download/${fileId}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName || `document_${fileId}`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      } else {
-        console.error('Erreur lors du téléchargement du fichier');
-      }
-    } catch (error) {
-      console.error('Erreur:', error);
-    }
-  };
-
-  const handleRejectEnrollment = async (enrollmentId, reason = '', notes = '') => {
-    setActionLoading(true);
-    try {
-      await enrollmentsService.rejectEnrollment(enrollmentId, {
-        reason,
-        notes
-      });
-      dialog.success(isRTL ? 'تم رفض الطلب' : 'Demande rejetée');
-      fetchEnrollments();
-      setShowModal(false);
-    } catch (error) {
-      console.error('Erreur rejet:', error);
-      dialog.error(error.response?.data?.error || (isRTL ? 'خطأ في الرفض' : 'Erreur lors du rejet'));
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  // Fonction pour rafraîchir les données
-  const handleRefresh = () => {
-    fetchEnrollments();
   };
 
   const filteredEnrollments = enrollments.filter(enrollment => {

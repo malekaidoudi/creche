@@ -8,7 +8,6 @@ const apiResponse = require('../utils/apiResponse');
 const upload = require('../middleware/upload');
 const path = require('path');
 const fs = require('fs');
-const cloudinaryService = require('../services/cloudinaryService');
 const permissionsService = require('../services/permissionsService');
 
 // Assurer que les colonnes médicales et médecin existent dans children

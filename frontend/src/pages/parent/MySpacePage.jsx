@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -55,7 +55,7 @@ const MySpacePage = () => {
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [appointmentKey, setAppointmentKey] = useState(0);
   const [canAddChild, setCanAddChild] = useState(true);
-  const [childrenCountInfo, setChildrenCountInfo] = useState(null);
+
   const [showTestimonialForm, setShowTestimonialForm] = useState(false);
   const [selectedChildForModal, setSelectedChildForModal] = useState(null);
   const [showChildModal, setShowChildModal] = useState(false);
@@ -77,7 +77,6 @@ const MySpacePage = () => {
       const response = await api.get('/api/children/my-count');
       if (response.data?.success) {
         setCanAddChild(response.data.canAddChild);
-        setChildrenCountInfo(response.data);
       }
     } catch (error) {
       console.error('Erreur chargement compteur enfants:', error);

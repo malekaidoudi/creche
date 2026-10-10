@@ -216,18 +216,6 @@ const MobileParentSpace = ({
         return { text: isRTL ? 'في الانتظار' : 'En attente', color: 'orange', icon: Clock };
     };
 
-    const getStatusBadge = (status) => {
-        switch (status) {
-            case 'approved':
-            case 'enrolled':
-                return { text: isRTL ? 'مسجل' : 'Inscrit', color: 'green' };
-            case 'pending':
-                return { text: isRTL ? 'في الانتظار' : 'En attente', color: 'orange' };
-            default:
-                return { text: status, color: 'gray' };
-        }
-    };
-
     const getAppointmentStatus = (appointment) => {
         if (appointment.status === 'pending') {
             return { text: isRTL ? 'في الانتظار' : 'En attente', color: 'orange' };
