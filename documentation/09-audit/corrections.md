@@ -1083,3 +1083,42 @@
      - Interface dédiée permettant au parent connecté de renseigner les numéros des parents (Père / Mère), de choisir la priorité d'urgence (Père, Mère ou tiers dédié), et de déclarer jusqu'à **2 personnes de confiance** autorisées à récupérer l'enfant.
 - **Résultat** : Ergonomie et sécurité renforcées, structuration rigoureuse en 3 sections cohérentes, dissociation propre entre identité civile fixe, coordonnées administratives modifiables et dossier médical protégé.
 
+---
+
+### Fiche 47 - Migration Standardisée Parents & Outil de Saisie Rapide (Titulaire, Contacts Père/Mère, Urgence)
+
+- **Date** : 10 Octobre 2026
+- **Fichiers modifiés / créés** :
+  - [`backend/migrations/versions/003_standardize_parents_and_contacts.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/migrations/versions/003_standardize_parents_and_contacts.js) *(créé et appliqué sur Neon PostgreSQL)*
+  - [`backend/routes_postgres/children.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/children.js)
+  - [`backend/services/childLifecycleService.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/services/childLifecycleService.js)
+  - [`frontend/src/components/modals/QuickParentsModal.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/modals/QuickParentsModal.jsx) *(créé)*
+  - [`frontend/src/pages/dashboard/ChildrenPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/ChildrenPage.jsx)
+- **Objectifs & Besoins** :
+  1. **Assainissement du schéma de base de données (dev et prod Neon)** :
+     - La table `children` contenait des colonnes hétérogènes (`father_name`, `mother_name`, `second_parent_name`, `second_parent_phone`) sans distinction claire du numéro de chaque parent ni du titulaire du compte.
+     - Mise en place du modèle de référence :
+       - `father_name VARCHAR(150)` (Nom complet du père)
+       - `father_phone VARCHAR(50)` (Téléphone du père)
+       - `mother_name VARCHAR(150)` (Nom complet de la mère)
+       - `mother_phone VARCHAR(50)` (Téléphone de la mère)
+       - `account_holder VARCHAR(20) DEFAULT 'father'` (`'father'` ou `'mother'`, désignant le titulaire du compte utilisateur lié à l'email)
+       - Rétrocompatibilité garantie sur les anciennes colonnes `second_parent_*`.
+  2. **Migration automatique & Backfill (Migration 003)** :
+     - Application sur Neon PostgreSQL via `backend/migrations/runner.js up`.
+     - Récupération automatique des numéros et noms des comptes parents existants (`users`) et des `second_parent_*` pour alimenter directement les nouveaux champs sans perte d'information.
+  3. **Outil de saisie / mise à jour rapide pour les enfants inscrits** :
+     - Bouton dédié dans la barre d'outils de [`ChildrenPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/ChildrenPage.jsx) : **`⚡ Saisie rapide Parents`** avec badge indiquant le nombre d'enfants à compléter.
+     - Modale interactive [`QuickParentsModal.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/modals/QuickParentsModal.jsx) :
+       - Barre de progression dynamique (% complété).
+       - Filtres par onglets (*Tous*, *À compléter*, *Complets*) + champ de recherche instantané.
+       - Sélecteur de titulaire du compte (`👨 Le Père` / `👩 La Mère`) affichant l'email du compte.
+       - Blocs côte à côte : Nom + Tél Père, Nom + Tél Mère.
+       - Bloc Contact d'urgence avec boutons de recopie en 1 clic (*Copier Père*, *Copier Mère*).
+       - Bouton de sauvegarde unitaire par carte enfant avec synchronisation API immédiate et notification toast.
+  4. **Synchronisation API Backend & Comptes Utilisateurs (`PUT /api/children/:id`)** :
+     - Mise à jour cohérente de la table `children`.
+     - Synchronisation automatique du compte parent rattaché (`users`) : mise à jour du numéro de téléphone principal avec celui du parent titulaire, mise à jour du genre (`male` si père, `female` si mère) et synchronisation du nom.
+     - Rétrocompatibilité transparente avec les requêtes de consultation (`GET /api/children`, `GET /api/children/:id`, `emergency-contacts`).
+- **Résultat** : Une base de données parfaitement propre et normalisée, un moyen fluide et rapide pour l'administration de renseigner les familles et les contacts d'urgence de tous les enfants inscrits en quelques clics.
+

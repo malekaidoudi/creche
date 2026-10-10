@@ -66,7 +66,10 @@ const ensureFamilyAndContactColumns = async () => {
   try {
     await pool.query(`
       ALTER TABLE children ADD COLUMN IF NOT EXISTS father_name VARCHAR(100);
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS father_phone VARCHAR(20);
       ALTER TABLE children ADD COLUMN IF NOT EXISTS mother_name VARCHAR(100);
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS mother_phone VARCHAR(20);
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS account_holder VARCHAR(20) DEFAULT 'father';
       ALTER TABLE children ADD COLUMN IF NOT EXISTS second_parent_name VARCHAR(100);
       ALTER TABLE children ADD COLUMN IF NOT EXISTS second_parent_phone VARCHAR(20);
       ALTER TABLE children ADD COLUMN IF NOT EXISTS emergency_contact_choice VARCHAR(20) DEFAULT 'custom';
@@ -745,7 +748,7 @@ router.put('/:id/deactivate-parent', auth.authenticateToken, auth.requireRole('a
 });
 
 // PUT /api/children/:id/suspend - Mettre un enfant en pause (suspendu)
-router.put('/:id/suspend', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
+router.put('/:id/suspend', auth.authenticateToken, auth.requireRole('admin', 'developer', 'director'), async (req, res) => {
   try {
     const { id } = req.params;
     const { reason, expected_return_date } = req.body;
@@ -780,7 +783,7 @@ router.put('/:id/suspend', auth.authenticateToken, auth.requireRole('admin'), as
 });
 
 // PUT /api/children/:id/reactivate - Réactiver un enfant suspendu
-router.put('/:id/reactivate', auth.authenticateToken, auth.requireRole('admin'), async (req, res) => {
+router.put('/:id/reactivate', auth.authenticateToken, auth.requireRole('admin', 'developer', 'director'), async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -846,7 +849,9 @@ router.get('/', auth.authenticateToken, async (req, res) => {
         c.is_active, c.created_at, c.updated_at, c.parent_id,
         COALESCE(c.status, 'active') as status,
         c.suspension_reason, c.suspended_at, c.expected_return_date,
-        c.father_name, c.mother_name, c.second_parent_name, c.second_parent_phone,
+        c.father_name, c.father_phone, c.mother_name, c.mother_phone,
+        COALESCE(c.account_holder, 'father') as account_holder,
+        c.second_parent_name, c.second_parent_phone,
         COALESCE(c.emergency_contact_choice, 'custom') as emergency_contact_choice,
         COALESCE(c.trusted_contacts, '[]'::jsonb) as trusted_contacts,
         EXTRACT(YEAR FROM AGE(c.birth_date)) as age,
@@ -870,13 +875,13 @@ router.get('/', auth.authenticateToken, async (req, res) => {
 
     // Filtres de statut
     if (status === 'active' || status === 'approved') {
-      sql += ` AND c.is_active = true AND COALESCE(c.status, 'active') = 'active'`;
+      sql += ` AND c.is_active = true AND COALESCE(c.status, 'active') NOT IN ('suspended', 'archived')`;
     } else if (status === 'suspended') {
-      sql += ` AND c.is_active = true AND c.status = 'suspended'`;
+      sql += ` AND (c.status = 'suspended' OR c.status ILIKE 'suspended')`;
     } else if (status === 'all_enrolled' || status === 'all_active') {
-      sql += ` AND c.is_active = true AND COALESCE(c.status, 'active') IN ('active', 'suspended')`;
+      sql += ` AND (c.is_active = true OR c.status ILIKE 'suspended') AND COALESCE(c.status, 'active') != 'archived'`;
     } else if (status === 'archived' || status === 'inactive') {
-      sql += ` AND (c.is_active = false OR c.status = 'archived')`;
+      sql += ` AND (c.is_active = false OR c.status = 'archived') AND COALESCE(c.status, 'active') != 'suspended'`;
     } else if (status === 'all') {
       // Aucun filtre sur le statut
     }
@@ -923,8 +928,10 @@ router.get('/', auth.authenticateToken, async (req, res) => {
     sql += ` GROUP BY c.id, c.first_name, c.last_name, c.birth_date, c.gender, c.medical_info, 
              c.allergies, c.medical_notes, c.doctor_name, c.doctor_phone, c.blood_type,
              c.emergency_contact_name, c.emergency_contact_phone, c.photo_url, 
-             c.is_active, c.created_at, c.updated_at, c.parent_id,
-             c.father_name, c.mother_name, c.second_parent_name, c.second_parent_phone,
+             c.photo_shared_with_staff, c.is_active, c.created_at, c.updated_at, c.parent_id,
+             c.status, c.suspension_reason, c.suspended_at, c.expected_return_date,
+             c.father_name, c.father_phone, c.mother_name, c.mother_phone, c.account_holder,
+             c.second_parent_name, c.second_parent_phone,
              c.emergency_contact_choice, c.trusted_contacts,
              u.id, u.first_name, u.last_name, u.email, u.phone, u.gender,
              e.enrollment_date, e.status`;
@@ -945,13 +952,13 @@ router.get('/', auth.authenticateToken, async (req, res) => {
     let countParamCount = 0;
 
     if (status === 'active' || status === 'approved') {
-      countSql += ` AND c.is_active = true AND COALESCE(c.status, 'active') = 'active'`;
+      countSql += ` AND c.is_active = true AND COALESCE(c.status, 'active') NOT IN ('suspended', 'archived')`;
     } else if (status === 'suspended') {
-      countSql += ` AND c.is_active = true AND c.status = 'suspended'`;
+      countSql += ` AND (c.status = 'suspended' OR c.status ILIKE 'suspended')`;
     } else if (status === 'all_enrolled' || status === 'all_active') {
-      countSql += ` AND c.is_active = true AND COALESCE(c.status, 'active') IN ('active', 'suspended')`;
+      countSql += ` AND (c.is_active = true OR c.status ILIKE 'suspended') AND COALESCE(c.status, 'active') != 'archived'`;
     } else if (status === 'archived' || status === 'inactive') {
-      countSql += ` AND (c.is_active = false OR c.status = 'archived')`;
+      countSql += ` AND (c.is_active = false OR c.status = 'archived') AND COALESCE(c.status, 'active') != 'suspended'`;
     }
 
     if (search) {
@@ -1030,7 +1037,9 @@ router.get('/:id', auth.authenticateToken, auth.requireChildAccess, async (req, 
               c.is_active, c.created_at, c.updated_at, c.parent_id,
               COALESCE(c.status, 'active') as status,
               c.suspension_reason, c.suspended_at, c.expected_return_date,
-              c.father_name, c.mother_name, c.second_parent_name, c.second_parent_phone,
+              c.father_name, c.father_phone, c.mother_name, c.mother_phone,
+              COALESCE(c.account_holder, 'father') as account_holder,
+              c.second_parent_name, c.second_parent_phone,
               COALESCE(c.emergency_contact_choice, 'custom') as emergency_contact_choice,
               COALESCE(c.trusted_contacts, '[]'::jsonb) as trusted_contacts,
               EXTRACT(YEAR FROM AGE(c.birth_date)) as age,
@@ -1305,7 +1314,10 @@ router.put('/:id', [
       emergency_contact_name,
       emergency_contact_phone,
       father_name,
+      father_phone,
       mother_name,
+      mother_phone,
+      account_holder,
       second_parent_name,
       second_parent_phone,
       emergency_contact_choice,
@@ -1318,7 +1330,7 @@ router.put('/:id', [
     } = req.body;
 
     // Vérifier si l'enfant existe
-    const existingChild = await pool.query('SELECT id, parent_id FROM children WHERE id = $1', [id]);
+    const existingChild = await pool.query('SELECT id, parent_id, account_holder FROM children WHERE id = $1', [id]);
     if (existingChild.rows.length === 0) {
       return res.status(404).json({
         success: false,
@@ -1329,8 +1341,8 @@ router.put('/:id', [
     const currentParentId = existingChild.rows[0].parent_id;
     let parentUserUpdated = false;
 
-    // Mise à jour éventuelle des coordonnées du compte parent titulaire (email / téléphone)
-    if (currentParentId && (parent_email !== undefined || parent_phone !== undefined)) {
+    // Mise à jour éventuelle des coordonnées du compte parent titulaire (email / téléphone / identité)
+    if (currentParentId) {
       const uUpdates = [];
       const uParams = [];
       let uCount = 0;
@@ -1340,10 +1352,48 @@ router.put('/:id', [
         uUpdates.push(`email = $${uCount}`);
         uParams.push(parent_email.trim().toLowerCase());
       }
-      if (parent_phone !== undefined) {
+
+      // Téléphone du titulaire
+      const phoneToSet = parent_phone !== undefined ? parent_phone.trim() : (
+        account_holder === 'mother' ? (mother_phone || undefined) : (account_holder === 'father' ? (father_phone || undefined) : undefined)
+      );
+      if (phoneToSet !== undefined) {
         uCount++;
         uUpdates.push(`phone = $${uCount}`);
-        uParams.push(parent_phone.trim());
+        uParams.push(phoneToSet);
+      }
+
+      // Synchronisation du genre et nom du titulaire selon account_holder
+      if (account_holder === 'mother') {
+        uCount++;
+        uUpdates.push(`gender = $${uCount}`);
+        uParams.push('female');
+        if (mother_name && mother_name.trim()) {
+          const parts = mother_name.trim().split(' ');
+          const fName = parts[0];
+          const lName = parts.slice(1).join(' ') || fName;
+          uCount++;
+          uUpdates.push(`first_name = $${uCount}`);
+          uParams.push(fName);
+          uCount++;
+          uUpdates.push(`last_name = $${uCount}`);
+          uParams.push(lName);
+        }
+      } else if (account_holder === 'father') {
+        uCount++;
+        uUpdates.push(`gender = $${uCount}`);
+        uParams.push('male');
+        if (father_name && father_name.trim()) {
+          const parts = father_name.trim().split(' ');
+          const fName = parts[0];
+          const lName = parts.slice(1).join(' ') || fName;
+          uCount++;
+          uUpdates.push(`first_name = $${uCount}`);
+          uParams.push(fName);
+          uCount++;
+          uUpdates.push(`last_name = $${uCount}`);
+          uParams.push(lName);
+        }
       }
 
       if (uUpdates.length > 0) {
@@ -1502,25 +1552,52 @@ router.put('/:id', [
     if (father_name !== undefined) {
       paramCount++;
       updates.push(`father_name = $${paramCount}`);
-      params.push(father_name);
+      params.push(father_name ? father_name.trim() : null);
+    }
+
+    if (father_phone !== undefined) {
+      paramCount++;
+      updates.push(`father_phone = $${paramCount}`);
+      params.push(father_phone ? father_phone.trim() : null);
     }
 
     if (mother_name !== undefined) {
       paramCount++;
       updates.push(`mother_name = $${paramCount}`);
-      params.push(mother_name);
+      params.push(mother_name ? mother_name.trim() : null);
     }
 
-    if (second_parent_name !== undefined) {
+    if (mother_phone !== undefined) {
+      paramCount++;
+      updates.push(`mother_phone = $${paramCount}`);
+      params.push(mother_phone ? mother_phone.trim() : null);
+    }
+
+    if (account_holder !== undefined) {
+      paramCount++;
+      updates.push(`account_holder = $${paramCount}`);
+      params.push(account_holder);
+    }
+
+    // Maintenir second_parent synchronisé pour rétrocompatibilité
+    const curHolder = account_holder || existingChild.rows[0].account_holder || 'father';
+    const compSecName = second_parent_name !== undefined 
+      ? (second_parent_name ? second_parent_name.trim() : null)
+      : (curHolder === 'father' ? (mother_name ? mother_name.trim() : null) : (father_name ? father_name.trim() : null));
+    const compSecPhone = second_parent_phone !== undefined 
+      ? (second_parent_phone ? second_parent_phone.trim() : null)
+      : (curHolder === 'father' ? (mother_phone ? mother_phone.trim() : null) : (father_phone ? father_phone.trim() : null));
+
+    if (compSecName !== undefined) {
       paramCount++;
       updates.push(`second_parent_name = $${paramCount}`);
-      params.push(second_parent_name);
+      params.push(compSecName);
     }
 
-    if (second_parent_phone !== undefined) {
+    if (compSecPhone !== undefined) {
       paramCount++;
       updates.push(`second_parent_phone = $${paramCount}`);
-      params.push(second_parent_phone);
+      params.push(compSecPhone);
     }
 
     if (emergency_contact_choice !== undefined) {
@@ -1583,7 +1660,8 @@ router.put('/:id', [
       RETURNING id, first_name, last_name, birth_date, gender, medical_info, 
                 allergies, medical_notes, doctor_name, doctor_phone,
                 emergency_contact_name, emergency_contact_phone,
-                father_name, mother_name, second_parent_name, second_parent_phone,
+                father_name, father_phone, mother_name, mother_phone, account_holder,
+                second_parent_name, second_parent_phone,
                 emergency_contact_choice, trusted_contacts,
                 photo_url, photo_shared_with_staff, is_active, updated_at
     `;
@@ -1963,6 +2041,8 @@ router.get('/:id/emergency-contacts', auth.authenticateToken, async (req, res) =
              c.emergency_contact_name, c.emergency_contact_phone,
              c.emergency_contact_choice,
              COALESCE(c.trusted_contacts, '[]'::jsonb) as trusted_contacts,
+             c.father_name, c.father_phone, c.mother_name, c.mother_phone,
+             COALESCE(c.account_holder, 'father') as account_holder,
              c.second_parent_name, c.second_parent_phone,
              u.first_name as parent_first_name, u.last_name as parent_last_name,
              u.phone as parent_phone, u.gender as parent_gender
@@ -1987,6 +2067,11 @@ router.get('/:id/emergency-contacts', auth.authenticateToken, async (req, res) =
       emergency_contact_phone: child.emergency_contact_phone,
       emergency_contact_choice: child.emergency_contact_choice || 'custom',
       trusted_contacts: child.trusted_contacts || [],
+      father_name: child.father_name,
+      father_phone: child.father_phone,
+      mother_name: child.mother_name,
+      mother_phone: child.mother_phone,
+      account_holder: child.account_holder || 'father',
       second_parent_name: child.second_parent_name,
       second_parent_phone: child.second_parent_phone,
       parent_name: `${child.parent_first_name || ''} ${child.parent_last_name || ''}`.trim(),
@@ -2010,6 +2095,11 @@ router.put('/:id/emergency-contacts', auth.authenticateToken, async (req, res) =
       emergency_contact_phone,
       emergency_contact_choice,
       trusted_contacts,
+      father_name,
+      father_phone,
+      mother_name,
+      mother_phone,
+      account_holder,
       second_parent_name,
       second_parent_phone,
       parent_phone
@@ -2017,7 +2107,7 @@ router.put('/:id/emergency-contacts', auth.authenticateToken, async (req, res) =
 
     // Vérifier l'accès
     const childCheck = await pool.query(
-      'SELECT parent_id FROM children WHERE id = $1',
+      'SELECT parent_id, account_holder FROM children WHERE id = $1',
       [id]
     );
 
@@ -2075,16 +2165,46 @@ router.put('/:id/emergency-contacts', auth.authenticateToken, async (req, res) =
       params.push(JSON.stringify(validTrusted));
     }
 
+    if (father_name !== undefined) {
+      pCount++;
+      updates.push(`father_name = $${pCount}`);
+      params.push(father_name ? father_name.trim() : null);
+    }
+
+    if (father_phone !== undefined) {
+      pCount++;
+      updates.push(`father_phone = $${pCount}`);
+      params.push(father_phone ? father_phone.trim() : null);
+    }
+
+    if (mother_name !== undefined) {
+      pCount++;
+      updates.push(`mother_name = $${pCount}`);
+      params.push(mother_name ? mother_name.trim() : null);
+    }
+
+    if (mother_phone !== undefined) {
+      pCount++;
+      updates.push(`mother_phone = $${pCount}`);
+      params.push(mother_phone ? mother_phone.trim() : null);
+    }
+
+    if (account_holder !== undefined) {
+      pCount++;
+      updates.push(`account_holder = $${pCount}`);
+      params.push(account_holder);
+    }
+
     if (second_parent_name !== undefined) {
       pCount++;
       updates.push(`second_parent_name = $${pCount}`);
-      params.push(second_parent_name);
+      params.push(second_parent_name ? second_parent_name.trim() : null);
     }
 
     if (second_parent_phone !== undefined) {
       pCount++;
       updates.push(`second_parent_phone = $${pCount}`);
-      params.push(second_parent_phone);
+      params.push(second_parent_phone ? second_parent_phone.trim() : null);
     }
 
     pCount++;

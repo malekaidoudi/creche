@@ -48,6 +48,11 @@ async function createChild(childData, options = {}) {
         parent_id,
         emergency_contact_name,
         emergency_contact_phone,
+        father_name,
+        father_phone,
+        mother_name,
+        mother_phone,
+        account_holder,
         photo_url
     } = childData;
 
@@ -94,8 +99,10 @@ async function createChild(childData, options = {}) {
             INSERT INTO children (
                 first_name, last_name, birth_date, gender, 
                 medical_info, parent_id, emergency_contact_name,
-                emergency_contact_phone, photo_url, is_active, created_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true, NOW())
+                emergency_contact_phone,
+                father_name, father_phone, mother_name, mother_phone, account_holder,
+                photo_url, is_active, created_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, true, NOW())
             RETURNING *
         `, [
             first_name,
@@ -106,6 +113,11 @@ async function createChild(childData, options = {}) {
             parent_id || null,
             emergency_contact_name || null,
             emergency_contact_phone || null,
+            father_name || null,
+            father_phone || null,
+            mother_name || null,
+            mother_phone || null,
+            account_holder || 'father',
             photo_url || null
         ]);
 
