@@ -20,7 +20,8 @@ import {
   RefreshCw,
   KeyRound,
   Copy,
-  Check
+  Check,
+  AlertCircle
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useAuth } from '../../hooks/useAuth';
