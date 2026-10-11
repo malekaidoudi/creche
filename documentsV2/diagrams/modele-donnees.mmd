@@ -1,0 +1,35 @@
+erDiagram
+    USERS ||--o{ CHILDREN : "parent_id (nullable)"
+    USERS ||--o{ ENROLLMENTS : "parent_id (nullable)"
+    USERS ||--o{ USER_PERMISSIONS : "user_id"
+    PERMISSIONS ||--o{ USER_PERMISSIONS : "permission_id"
+    USERS ||--o{ REVOKED_TOKENS : "user_id"
+    USERS ||--o{ NOTIFICATIONS : "user_id"
+    USERS ||--o{ STAFF_MESSAGES : "sender_id / recipient_id"
+    USERS ||--o{ TASKS : "created_by / assigned_to"
+    USERS ||--o{ EVENTS : "created_by / assigned_to"
+
+    CHILDREN ||--o{ ENROLLMENTS : "child_id (nullable)"
+    CHILDREN ||--o{ CHILDREN_DOCUMENTS : "child_id"
+    CHILDREN ||--o{ ATTENDANCE : "child_id"
+    CHILDREN ||--o{ DAILY_REPORTS : "child_id"
+    CHILDREN ||--o{ CHILD_SUPPLIES : "child_id"
+    CHILDREN ||--o{ DAILY_SUPPLIES_BROUGHT : "child_id"
+    CHILDREN ||--o{ CHILD_TREATMENTS : "child_id"
+    CHILDREN ||--o{ ABSENCE_REQUESTS : "child_id"
+    CHILDREN ||--o{ CHILD_GROWTH_RECORDS : "child_id"
+
+    ENROLLMENTS ||--o{ ENROLLMENT_DOCUMENTS : "enrollment_id"
+    ENROLLMENTS ||--o{ APPOINTMENTS : "enrollment_id"
+
+    DAILY_REPORTS ||--o{ DAILY_MEALS : "report_id"
+    DAILY_REPORTS ||--o{ DAILY_DIAPER_CHANGES : "report_id"
+
+    CHILD_TREATMENTS ||--o{ TREATMENT_ADMINISTRATIONS : "treatment_id"
+
+    EVENTS ||--o{ EVENT_COMMENTS : "event_id"
+    EVENTS ||--o{ EVENT_HISTORY : "event_id"
+    EVENTS ||--o{ EVENT_REMINDERS : "event_id"
+
+    ACTIVITIES ||--o{ ACTIVITY_COMMENTS : "activity_id"
+    ACTIVITIES ||--o{ ACTIVITY_REACTIONS : "activity_id"

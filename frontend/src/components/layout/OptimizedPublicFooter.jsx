@@ -21,8 +21,7 @@ const OptimizedPublicFooter = () => {
   const {
     data: footerSettings,
     isLoading,
-    isError,
-    error
+    isError
   } = useFooterData(currentLang);
 
   // Données de fallback en cas d'erreur

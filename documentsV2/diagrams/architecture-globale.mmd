@@ -1,0 +1,17 @@
+flowchart LR
+    Browser["Navigateur (React 18 SPA, Vite)"] -->|HTTPS Axios, Bearer JWT| API["API Express\n(backend/server.js)"]
+    API -->|pg, SQL parametre| DB[("PostgreSQL Neon")]
+    API -->|SDK cloudinary| Cloudinary["Cloudinary\n(documents, photos, medias)"]
+    API -->|Resend API ou SMTP Hostinger| Email["Service e-mail"]
+    API -->|node-cron| Jobs["Jobs planifies\n(backend/jobs/*)"]
+    Browser -. build statique .-> Hosting["GitHub Pages / Vercel"]
+    API -. deploiement .-> Render["Render (backend)"]
+
+    subgraph Backend["backend/"]
+        API
+        Jobs
+    end
+
+    subgraph Frontend["frontend/src/"]
+        Browser
+    end

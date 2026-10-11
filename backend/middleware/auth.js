@@ -4,7 +4,16 @@ const logger = require('../utils/logger');
 const permissionsService = require('../services/permissionsService');
 const tokenBlacklistService = require('../services/tokenBlacklistService');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+// Sécurité (cf. documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md, anomalie #1) :
+// plus de valeur par défaut codée en dur. Si JWT_SECRET n'est pas défini, le
+// serveur doit s'arrêter immédiatement plutôt que de signer/vérifier des
+// jetons avec un secret public et prévisible.
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error(
+    "JWT_SECRET manquant : définissez cette variable d'environnement avant de démarrer le serveur (voir backend/.env.example)."
+  );
+}
 
 const auth = {
 

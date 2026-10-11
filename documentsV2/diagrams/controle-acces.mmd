@@ -1,0 +1,15 @@
+flowchart TD
+    Req["Requete entrante"] --> Auth{authenticateToken}
+    Auth -- "Pas de token / token revoque" --> R401["401"]
+    Auth -- "Token valide" --> Role{requireRole roles}
+    Role -- "Role non autorise" --> R403a["403 INSUFFICIENT_PRIVILEGES"]
+    Role -- "Role autorise ou absent du besoin" --> Perm{requirePermission code ?}
+    Perm -- "Non" --> Own{requireOwnershipOrStaff ?}
+    Perm -- "Oui" --> PermCheck["permissionsService.userHasPermission"]
+    PermCheck -- "admin/developer" --> OK["Acces autorise"]
+    PermCheck -- "staff avec permission" --> OK
+    PermCheck -- "staff sans permission" --> R403b["403 PERMISSION_DENIED"]
+    Own -- "admin/staff/developer" --> OK
+    Own -- "parent proprietaire (children.parent_id / parent_children / enrollments approuve)" --> OK
+    Own -- "parent non proprietaire" --> R403c["403 RESOURCE_ACCESS_DENIED"]
+    Own -- "Pas de controle de propriete sur cette route" --> OK

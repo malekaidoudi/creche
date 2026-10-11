@@ -126,7 +126,17 @@ const AppRoutes = () => {
                         <Route path="preview-location" element={<LocationShowcasePage />} />
 
                         {/* Activités */}
-                        <Route path="activites" element={<ActivitiesPage />} />
+                        {/* Protégée (cf. documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md, anomalie #3) :
+                            GET /api/activities exige une authentification côté backend (auth.authenticateToken,
+                            sans restriction de rôle) ; la page doit donc l'exiger également, pour tous les rôles. */}
+                        <Route
+                            path="activites"
+                            element={
+                                <ProtectedRoute roles={['parent', 'admin', 'staff', 'developer']}>
+                                    <ActivitiesPage />
+                                </ProtectedRoute>
+                            }
+                        />
 
                         {/* Mon Espace */}
                         <Route

@@ -1,0 +1,31 @@
+sequenceDiagram
+    participant U as Utilisateur
+    participant F as Frontend (AuthContext / api.js)
+    participant B as Backend (routes_postgres/auth.js)
+    participant M as Middleware auth.js
+    participant D as PostgreSQL (users, revoked_tokens)
+
+    U->>F: Saisit email + mot de passe
+    F->>B: POST /api/auth/login
+    B->>D: SELECT user WHERE email
+    D-->>B: Utilisateur + hash du mot de passe
+    B->>B: bcrypt.compare(password, hash)
+    B->>B: jwt.sign({userId, email, role})
+    B-->>F: { token, user }
+    F->>F: localStorage.setItem('token', token)
+
+    Note over F,B: Requetes suivantes
+    F->>B: GET /api/xxx (Authorization: Bearer token)
+    B->>M: authenticateToken
+    M->>D: isTokenRevoked(token) ?
+    D-->>M: non revoque
+    M->>M: jwt.verify(token)
+    M-->>B: req.user = { id, role }
+    B-->>F: Reponse
+
+    Note over U,D: Deconnexion
+    U->>F: Clique "Deconnexion"
+    F->>B: POST /api/auth/logout
+    B->>D: INSERT INTO revoked_tokens
+    B-->>F: { success: true }
+    F->>F: localStorage.removeItem('token')

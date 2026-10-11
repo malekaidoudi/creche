@@ -47,6 +47,9 @@
 | **43** | 09/10/2026 | `DatePicker.jsx`, `dateUtils.js`, `AddChildPage.jsx`, `AddUserPage.jsx`, `backend/routes_postgres/children.js` | UX/UI Saisie Date & Bouton Création Utilisateur | Correction intégrale du bug datepicker (saisie fluide JJ/MM/AAAA sans saut de curseur ni corruption d'année type 0262, synchronisation calendrier sécurisée) et libellé "Créer" si sans email | ✅ Validé & Appliqué |
 | **53** | 11/10/2026 | `frontend/src/services/api.js`, `PublicFooter.jsx`, `ContactPageDynamic.jsx`, `DashboardSettingsPage.jsx` | Performance, Cache & Résilience Hors-Ligne | Mise en cache automatique navigateur (`localStorage` + Stale-While-Revalidate), élimination des fallbacks en dur obsolètes et synchronisation temps réel | ✅ Validé & Appliqué |
 | **54** | 11/10/2026 | `attendanceAutoCheckoutService.js`, `attendanceJob.js`, `routes_postgres/attendance.js`, `server.js`, `TodaySection.jsx`, `MobileAttendance.jsx`, `dateUtils.js` | Métier, Présences & Automatisation | Clôture automatique des départs oubliés à l'heure de fermeture (`closing_time`), arrêt des compteurs de présence et synchronisation DB/UI | ✅ Validé & Appliqué |
+| **56** | 11/10/2026 | `backend/middleware/auth.js`, `backend/routes_postgres/auth.js`, `backend/.env.example` | Audit documentsV2 — Anomalie #1 | Suppression de la valeur par défaut `JWT_SECRET` codée en dur, arrêt immédiat (`throw`) du serveur si la variable d'environnement est absente | ✅ Validé & Appliqué |
+| **57** | 11/10/2026 | `backend/server.js`, `backend/.env.example` | Audit documentsV2 — Anomalie #2 | Alignement de la liste blanche CORS avec `CLIENT_URL`/`render.yaml` via une nouvelle variable `CORS_ADDITIONAL_ORIGINS`, suppression des vérifications dupliquées | ✅ Validé & Appliqué |
+| **58** | 11/10/2026 | `frontend/src/routes/AppRoutes.jsx` | Audit documentsV2 — Anomalie #3 | Protection de la page `/activites` par `ProtectedRoute` (tous rôles connectés), alignée avec `GET /api/activities` qui exige déjà une authentification | ✅ Validé & Appliqué |
 
 ---
 
@@ -1322,6 +1325,107 @@
      - Pastilles informatives `Clôture auto à la fermeture` affichées sur les fiches d'enfants auto-clôturés sur desktop (`TodaySection.jsx`) et mobile (`MobileAttendance.jsx`).
 - **Résultat** : Zéro enfant laissé présent la nuit, compteurs de présence rigoureusement stoppés à l'heure de fermeture officielle, et statistiques d'heures de garde parfaitement fiables.
 
+---
 
+### Fiche 55 - Audit de code mort et élimination des résidus sur tous les fichiers touchés
 
+- **Date** : 11 Octobre 2026
+- **Fichiers audités et assainis** :
+  - [`backend/routes_postgres/attendance.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/attendance.js)
+  - [`backend/server.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/server.js)
+  - [`frontend/src/components/layout/OptimizedPublicFooter.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/layout/OptimizedPublicFooter.jsx)
+  - [`frontend/src/components/mobile/MobileAttendance.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/mobile/MobileAttendance.jsx)
+  - [`frontend/src/pages/dashboard/AttendancePage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/AttendancePage.jsx)
+  - [`frontend/src/pages/dashboard/DashboardSettingsPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/DashboardSettingsPage.jsx)
+- **Objectifs & Actions** :
+  1. **Audit AST automatisé** :
+     - Analyse syntaxique complète par parcours d'arbres AST (`@babel/parser` et `@babel/traverse`) sur l'ensemble des 20 fichiers touchés au cours de la session (backend & frontend).
+     - Traque systématique des imports non référencés, `require` orphelins, variables locales et états React non utilisés.
+  2. **Nettoyages appliqués** :
+     - `backend/routes_postgres/attendance.js` : suppression du require orphelin de `express-validator` (`body`, `validationResult`).
+     - `backend/server.js` : suppression de l'assignation orpheline `const db = require(...)` remplacée par l'initialisation directe `require(...)`.
+     - `frontend/src/components/mobile/MobileAttendance.jsx` : suppression de 5 imports non utilisés (`Search`, `Clock`, `ChevronDown`, `MobileCard`, `MobileStatCard`).
+     - `frontend/src/pages/dashboard/AttendancePage.jsx` : suppression de 3 imports non utilisés (`RefreshCw`, `api`, `Button`).
+     - `frontend/src/components/layout/OptimizedPublicFooter.jsx` : suppression de la variable orpheline `error` dans la déstructuration de `useFooterData`.
+     - `frontend/src/pages/dashboard/DashboardSettingsPage.jsx` : purge de 9 icônes inutilisées de `lucide-react` (`Settings`, `Globe`, `Shield`, `Clock`, `Moon`, `Sun`, `Database`, `Archive`, `Download`) et de 4 variables d'état résiduelles (`loadingHolidays`, `holidays`, `holidayFilter`, `setHolidayFilter`).
+  3. **Vérification de la propreté et intégrité** :
+     - Re-parcours AST complet sur les 20 fichiers : **0 import/require orphelin restant**.
+     - Validation syntaxique backend via `node -c` : **0 erreur**.
+     - Compilation de production Vite (`npm run build`) : **0 avertissement bloquant, succès en 17.6s**.
+- **Résultat** : Codebase rigoureusement nettoyée, allégée de ses résidus et imports orphelins, sans régression fonctionnelle.
 
+---
+
+### Fiche 56 - Suppression du secret JWT par défaut codé en dur (démarrage sécurisé obligatoire)
+
+- **Date** : 11 Octobre 2026
+- **Référence** : Audit `documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md`, anomalie **#1**
+- **Fichiers modifiés / créés** :
+  - [`backend/middleware/auth.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/middleware/auth.js)
+  - [`backend/routes_postgres/auth.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/auth.js)
+  - [`backend/.env.example`](file:///Volumes/Data/Works/Windsurf/creche/backend/.env.example)
+  - [`documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md)
+- **Problématique** :
+  - `JWT_SECRET` était défini avec un filet de secours codé en dur et identique dans deux fichiers : `const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';` (`middleware/auth.js` et `routes_postgres/auth.js`).
+  - Cette chaîne est visible publiquement dans le code source. Si la variable d'environnement `JWT_SECRET` n'était pas correctement positionnée sur un environnement de déploiement (erreur de configuration, nouvel environnement, oubli), le serveur démarrait quand même et signait/vérifiait silencieusement tous les jetons de session avec ce secret connu de tous — permettant à un attaquant de forger un jeton valide pour n'importe quel utilisateur, y compris `admin`/`developer`.
+- **Objectifs & Actions** :
+  1. **Suppression du filet de secours** dans les deux fichiers concernés : `const JWT_SECRET = process.env.JWT_SECRET;`.
+  2. **Échec rapide (fail-fast)** : ajout d'un contrôle explicite qui lève une exception (`throw new Error(...)`) au chargement du module si `JWT_SECRET` est absent, avec un message renvoyant vers `backend/.env.example`. Le serveur ne peut plus démarrer « silencieusement » en mode non sécurisé.
+  3. **Documentation de la variable** : `backend/.env.example` indique désormais explicitement que `JWT_SECRET` est **obligatoire** et suggère une méthode de génération robuste (`openssl rand -hex 64`).
+  4. **Vérification de non-régression** :
+     - Relecture complète des deux fichiers modifiés pour confirmer qu'aucun autre usage de `JWT_SECRET` n'a été impacté (signature des jetons sur `/login`, `/register`, `/create-password`, `/reset-password`, et vérification sur `authenticateToken`/`/api/auth/me`).
+     - Confirmation que `backend/.env` (développement local) définit déjà `JWT_SECRET`, donc aucun impact sur le démarrage en local ni sur les tests Jest existants (`backend/tests/middleware/auth.test.js`, `backend/tests/enrollments.test.js`), qui positionnent ou consomment déjà `process.env.JWT_SECRET` avant de charger les modules concernés.
+     - Test en isolation du comportement d'échec : en retirant temporairement le fichier `.env` racine (lu par `backend/config/db_postgres.js` via `dotenv`), confirmation que le mécanisme de garde est bien exécuté au chargement du module (le fichier `.env` a été restauré immédiatement après, aucune donnée modifiée).
+  5. **Mise à jour de l'audit** : la ligne correspondante dans `documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md` est marquée comme corrigée.
+- **Résultat** : Il n'existe plus aucune valeur de secret JWT devinable dans le code source. Toute omission de `JWT_SECRET` dans la configuration d'un environnement (local, Render, ou futur) provoque désormais un arrêt immédiat et explicite du serveur au lieu d'une vulnérabilité silencieuse.
+
+---
+
+### Fiche 57 - Alignement de la liste blanche CORS avec la configuration de déploiement (`CLIENT_URL`)
+
+- **Date** : 11 Octobre 2026
+- **Référence** : Audit `documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md`, anomalie **#2**
+- **Fichiers modifiés / créés** :
+  - [`backend/server.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/server.js)
+  - [`backend/.env.example`](file:///Volumes/Data/Works/Windsurf/creche/backend/.env.example)
+  - [`documentsV2/18_CONFIGURATION_ENVIRONNEMENT.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/18_CONFIGURATION_ENVIRONNEMENT.md)
+  - [`documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md)
+- **Problématique** :
+  - Le bloc CORS de `backend/server.js` définissait une liste blanche d'origines (`allowedOrigins`) entièrement codée en dur dans le fichier, recréée à chaque requête entrante (à l'intérieur de la fonction `origin`).
+  - `backend/render.yaml` déclare pourtant une variable `CLIENT_URL` (valeur `https://malekaidoudi.github.io`) censée représenter l'origine du frontend déployé — **mais cette variable n'était lue nulle part dans le code**. Si ce domaine GitHub Pages était la cible de production réelle (voir anomalie #18), toutes ses requêtes auraient été bloquées par le CORS malgré une configuration de déploiement qui laissait penser le contraire.
+  - La fonction contenait en outre des vérifications redondantes : certaines origines (`mima-elghalia.com`, `www.mima-elghalia.com`, `mimaelghalia.tn`, `www.mimaelghalia.tn`) étaient testées à la fois via des `if` dédiés et via le tableau `allowedOrigins`, ce qui nuisait à la lisibilité et augmentait le risque d'incohérence lors d'une future modification.
+- **Objectifs & Actions** :
+  1. **Extraction de la liste d'origines hors de la fonction `origin`** : `DEFAULT_ALLOWED_ORIGINS` est désormais calculée une seule fois au démarrage du serveur (plus de recréation du tableau à chaque requête HTTP).
+  2. **Lecture de la configuration de déploiement** : ajout de `ENV_ALLOWED_ORIGINS`, construit à partir de `process.env.CLIENT_URL` (une origine) et d'une nouvelle variable `process.env.CORS_ADDITIONAL_ORIGINS` (plusieurs origines séparées par des virgules, trim + filtrage des valeurs vides).
+  3. **Fusion et déduplication** : `ALLOWED_ORIGINS = [...new Set([...DEFAULT_ALLOWED_ORIGINS, ...ENV_ALLOWED_ORIGINS])]`, utilisée par la fonction `origin` à la place des multiples `if` dupliqués (suppression des vérifications redondantes sur `mima-elghalia.com`/`mimaelghalia.tn` et sur le domaine backend Render, désormais intégrées au tableau unique).
+  4. **Traçabilité au démarrage** : un message de log indique le nombre total d'origines autorisées et combien proviennent des variables d'environnement, pour faciliter le diagnostic en production.
+  5. **Documentation** : `backend/.env.example` documente les nouvelles variables `CLIENT_URL`/`CORS_ADDITIONAL_ORIGINS` (optionnelles, viennent s'ajouter à la liste par défaut, ne la remplacent pas) ; `documentsV2/18_CONFIGURATION_ENVIRONNEMENT.md` et `documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md` mis à jour pour refléter que `CLIENT_URL` est désormais effectivement lue.
+  6. **Vérification de non-régression** :
+     - Validation syntaxique (`node -c backend/server.js`) : aucune erreur.
+     - Relecture du comportement conservé à l'identique pour toutes les origines historiques (`localhost:5173`, `localhost:3000`, `127.0.0.1:5173`, IP LAN de dev, domaines `mima-elghalia.com`/`mimaelghalia.tn`, backend Render) : toutes restent présentes dans `DEFAULT_ALLOWED_ORIGINS`.
+     - Aucune valeur sensible ajoutée au code ; les nouvelles variables restent optionnelles (le serveur fonctionne à l'identique si elles sont absentes).
+- **Résultat** : La liste CORS peut désormais être étendue via la configuration de déploiement (`CLIENT_URL`, `CORS_ADDITIONAL_ORIGINS`) sans modifier le code source, et le domaine déclaré dans `backend/render.yaml` est effectivement pris en compte. Le code est également plus lisible (plus de vérifications dupliquées, liste calculée une seule fois au démarrage plutôt qu'à chaque requête).
+
+---
+
+### Fiche 58 - Protection de la page « Fil d'activités » (`/activites`) par authentification
+
+- **Date** : 11 Octobre 2026
+- **Référence** : Audit `documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md`, anomalie **#3**
+- **Fichiers modifiés / créés** :
+  - [`frontend/src/routes/AppRoutes.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/routes/AppRoutes.jsx)
+  - [`documentsV2/07_CATALOGUE_FONCTIONNALITES.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/07_CATALOGUE_FONCTIONNALITES.md)
+  - [`documentsV2/21_FLUX_METIER.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/21_FLUX_METIER.md)
+  - [`documentsV2/22_ETAT_DES_FONCTIONNALITES.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/22_ETAT_DES_FONCTIONNALITES.md)
+  - [`documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md)
+- **Problématique** :
+  - La route `<Route path="activites" element={<ActivitiesPage />} />` était déclarée sous `PublicLayout` sans `ProtectedRoute`, donc accessible par URL directe sans connexion.
+  - Or `GET /api/activities` (`backend/routes_postgres/activities.js` ligne 66) exige `auth.authenticateToken` : un visiteur non connecté arrivant sur `/activites` obtenait une page qui échouait à charger ses données (401), sans message d'explication adapté.
+  - Le menu public (`PublicHeader.jsx` ligne 46-48) n'affichait déjà le lien « Activités » qu'aux utilisateurs connectés : seule la route elle-même restait accessible par URL directe, créant une incohérence entre l'intention produit (déjà restreinte dans la navigation) et le routage réel.
+- **Décision retenue** : protéger la page plutôt que rendre l'API publique, conformément à la demande explicite — cela préserve le comportement métier existant (le fil d'activités contient des photos d'enfants, destinées aux familles et au personnel, pas au grand public) et évite de devoir redéfinir une politique de confidentialité pour une diffusion publique des médias pédagogiques.
+- **Objectifs & Actions** :
+  1. Encapsulation de la route `activites` dans `<ProtectedRoute roles={['parent', 'admin', 'staff', 'developer']}>`, soit l'ensemble des rôles applicatifs existants (alignement avec `authenticateToken` côté backend, qui n'impose aucune restriction de rôle particulière).
+  2. Ajout d'un commentaire dans le code renvoyant vers l'anomalie documentée, pour tracer la raison du choix.
+  3. **Mise à jour de la documentation** : le catalogue des fonctionnalités ([07](../documentsV2/07_CATALOGUE_FONCTIONNALITES.md)) déplace la fonctionnalité de la section « Site public » vers « Mon Espace » ; [21_FLUX_METIER.md](../documentsV2/21_FLUX_METIER.md) et [22_ETAT_DES_FONCTIONNALITES.md](../documentsV2/22_ETAT_DES_FONCTIONNALITES.md) mis à jour en conséquence ; anomalie #3 marquée corrigée dans [23_ANOMALIES_ET_RECOMMANDATIONS.md](../documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md).
+  4. **Vérification de non-régression** : relecture de la structure JSX (comparaison avec le bloc `mon-espace` juste en dessous, qui utilise exactement le même motif `ProtectedRoute`) ; confirmation qu'aucun lien de navigation public ne pointait vers `/activites` pour un visiteur non connecté (le lien du menu était déjà conditionné à `isAuthenticated`).
+- **Résultat** : Un visiteur non connecté qui accède directement à l'URL `/activites` est désormais redirigé vers la page d'accueil comme pour toute autre page protégée de l'application, au lieu d'atterrir sur une page cassée faute de données chargées. Le comportement du routage frontend est maintenant cohérent avec l'exigence d'authentification déjà imposée par l'API.

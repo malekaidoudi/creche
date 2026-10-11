@@ -1,24 +1,15 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Settings,
   Save,
-  Globe,
   Bell,
-  Shield,
-  Clock,
   Users,
   Building,
   Mail,
   Phone,
   MapPin,
   Palette,
-  Moon,
-  Sun,
   Languages,
-  Database,
-  Archive,
-  Download,
   Calendar,
   RefreshCw,
   AlertTriangle,
@@ -49,9 +40,6 @@ const DashboardSettingsPage = () => {
   const { user } = useAuth();
   const dialog = useDialogContext();
   const [loading, setLoading] = useState(false);
-  const [loadingHolidays, setLoadingHolidays] = useState(false);
-  const [holidays, setHolidays] = useState([]);
-  const [holidayFilter, setHolidayFilter] = useState('national'); // 'national', 'religious', 'school'
   const [menuType, setMenuType] = useState(() => {
     return localStorage.getItem('menuType') || 'side';
   });

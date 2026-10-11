@@ -1,5 +1,4 @@
 const express = require('express');
-const { body, validationResult } = require('express-validator');
 const router = express.Router();
 const db = require('../config/db_postgres');
 const auth = require('../middleware/auth');

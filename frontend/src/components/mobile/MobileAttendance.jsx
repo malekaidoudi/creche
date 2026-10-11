@@ -10,20 +10,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     UserCheck,
     UserX,
-    Search,
     Filter,
-    Clock,
     Users,
     CheckCircle,
     XCircle,
     Baby,
-    ChevronDown,
     RefreshCw
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import MobileHeader from './MobileHeader';
-import MobileCard from './MobileCard';
-import MobileStatCard from './MobileStatCard';
 
 const MobileAttendance = ({
     children = [],

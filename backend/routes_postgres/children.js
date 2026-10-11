@@ -520,7 +520,9 @@ router.get('/parent/:parentId', auth.authenticateToken, async (req, res) => {
 });
 
 // GET /api/children/birthdays/month - Anniversaires du mois en cours
-router.get('/birthdays/month', async (req, res) => {
+// Sécurité (cf. documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md, anomalie #4) :
+// expose noms, dates de naissance, photos et noms des parents -> réservé au personnel.
+router.get('/birthdays/month', auth.authenticateToken, auth.requireStaff, async (req, res) => {
   try {
     const now = new Date();
     const currentMonth = now.getMonth() + 1; // JavaScript months are 0-indexed
@@ -587,7 +589,9 @@ router.get('/birthdays/month', async (req, res) => {
 });
 
 // GET /api/children/stats - Statistiques des enfants
-router.get('/stats', async (req, res) => {
+// Sécurité (cf. documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md, anomalie #4) :
+// expose des agrégats internes (effectifs, répartition) -> réservé au personnel.
+router.get('/stats', auth.authenticateToken, auth.requireStaff, async (req, res) => {
   try {
     const statsQuery = `
       SELECT 
@@ -824,7 +828,8 @@ router.put('/:id/reactivate', auth.authenticateToken, auth.requireRole('admin', 
 });
 
 // GET /api/children/unassociated - Enfants non associés (route spécifique avant la route générale)
-router.get('/unassociated', async (req, res) => {
+// Sécurité (cf. documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md, anomalie #4) : réservé au personnel.
+router.get('/unassociated', auth.authenticateToken, auth.requireStaff, async (req, res) => {
   try {
     res.json({
       success: true,
@@ -1958,7 +1963,9 @@ router.delete('/:id/photo', auth.authenticateToken, requireChildPhotoAccess, asy
 });
 
 // GET /api/children/stats - Statistiques des enfants
-router.get('/stats/overview', async (req, res) => {
+// Sécurité (cf. documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md, anomalie #4) :
+// expose des agrégats internes (effectifs, répartition) -> réservé au personnel.
+router.get('/stats/overview', auth.authenticateToken, auth.requireStaff, async (req, res) => {
   try {
     const stats = await pool.query(`
       SELECT 

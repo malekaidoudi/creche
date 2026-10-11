@@ -37,7 +37,7 @@ console.log(`📦 Version: 2.1.0`);
 console.log('═══════════════════════════════════════════════════════════════\n');
 
 // Configuration PostgreSQL Neon
-const db = require('./config/db_postgres');
+require('./config/db_postgres');
 
 // Exécution des migrations (Pattern Baseline - 1 seule requête rapide au boot, 0 DDL redondant)
 const migrationRunner = require('./migrations/runner');
@@ -139,21 +139,45 @@ if (process.env.NODE_ENV === 'production') {
 // ⚠️ Le CORS doit être monté AVANT le rate limiter : sinon, une réponse 429
 // (trop de requêtes) ne porte pas les en-têtes Access-Control-Allow-Origin,
 // et le navigateur masque l'erreur 429 réelle derrière une fausse erreur CORS.
+//
+// Sécurité (cf. documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md, anomalie #2) :
+// la liste des origines autorisées n'est plus uniquement codée en dur. Elle
+// est désormais complétée par les variables d'environnement `CLIENT_URL`
+// (une seule origine, ex. celle déclarée dans render.yaml) et
+// `CORS_ADDITIONAL_ORIGINS` (plusieurs origines séparées par des virgules),
+// afin qu'un changement de domaine de production ne nécessite plus
+// obligatoirement une modification du code source.
+
+// Liste des origines autorisées explicitement (valeurs historiques connues),
+// construite une seule fois au démarrage plutôt qu'à chaque requête.
+const DEFAULT_ALLOWED_ORIGINS = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:5173',
+  'http://192.168.1.60:5173',
+  'https://mimaelghalia.tn',
+  'https://www.mimaelghalia.tn',
+  'https://www.mima-elghalia.com',
+  'https://mima-elghalia.com',
+  'https://creche-backend-prod.onrender.com'
+];
+
+// Origines supplémentaires pilotées par la configuration de déploiement
+// (ex. CLIENT_URL=https://malekaidoudi.github.io dans backend/render.yaml).
+const ENV_ALLOWED_ORIGINS = [
+  process.env.CLIENT_URL,
+  ...(process.env.CORS_ADDITIONAL_ORIGINS || '').split(',')
+]
+  .map((origin) => origin && origin.trim())
+  .filter(Boolean);
+
+const ALLOWED_ORIGINS = [...new Set([...DEFAULT_ALLOWED_ORIGINS, ...ENV_ALLOWED_ORIGINS])];
+
+console.log(`🌐 CORS: ${ALLOWED_ORIGINS.length} origine(s) autorisée(s)` +
+  (ENV_ALLOWED_ORIGINS.length ? ` (dont ${ENV_ALLOWED_ORIGINS.length} via variables d'environnement)` : ''));
 
 const corsOptions = {
   origin: function (origin, callback) {
-    // Liste des origines autorisées explicitement
-    const allowedOrigins = [
-      'http://localhost:5173',
-      'http://localhost:3000',
-      'http://127.0.0.1:5173',
-      'http://192.168.1.60:5173',
-      'https://mimaelghalia.tn',
-      'https://www.mimaelghalia.tn',
-      'https://www.mima-elghalia.com',
-      'https://mima-elghalia.com'
-    ];
-
     // Autoriser les requêtes sans origin (Postman, curl, mobile apps)
     if (!origin) {
       return callback(null, true);
@@ -166,19 +190,8 @@ const corsOptions = {
       }
     }
 
-    // Autoriser uniquement les sous-domaines spécifiques de Render (notre backend)
-    if (origin === 'https://creche-backend-prod.onrender.com') {
-      return callback(null, true);
-    }
-
-    // Autoriser le domaine principal de production uniquement
-    if (origin === 'https://mima-elghalia.com' || origin === 'https://www.mima-elghalia.com' ||
-      origin === 'https://mimaelghalia.tn' || origin === 'https://www.mimaelghalia.tn') {
-      return callback(null, true);
-    }
-
-    // Vérifier la liste explicite
-    if (allowedOrigins.includes(origin)) {
+    // Vérifier la liste des origines autorisées (statiques + environnement)
+    if (ALLOWED_ORIGINS.includes(origin)) {
       return callback(null, true);
     }
 

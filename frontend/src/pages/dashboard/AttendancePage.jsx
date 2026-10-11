@@ -4,16 +4,13 @@ import { useLocation, useNavigate, Link } from 'react-router-dom';
 import {
   Clock,
   Calendar,
-  BarChart3,
-  RefreshCw
+  BarChart3
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import useIsMobile from '../../hooks/useIsMobile';
 import { useAccess } from '../../access';
-import api from '../../services/api';
 import { useDialogContext } from '../../contexts/DialogContext';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import { Button } from '../../components/ui/Button';
 import attendanceService from '../../services/attendanceService';
 import childrenService from '../../services/childrenService';
 import TodaySection from '../../components/attendance/TodaySection';

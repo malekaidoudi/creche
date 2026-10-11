@@ -1,0 +1,15 @@
+flowchart TD
+    A["Visiteur soumet le formulaire\nPOST /api/enrollments"] --> B["enrollments.status = pending\nE-mail REGISTRATION_CONFIRMATION"]
+    B --> C{"Decision de la direction"}
+    C -- "Documents manquants" --> D["E-mail ENROLLMENT_MISSING_DOCS\nlien /upload-documents"]
+    D --> C
+    C -- "Rejet (4 motifs)" --> E["enrollments.status = rejected_*\nE-mail ENROLLMENT_REJECTED"]
+    C -- "Approbation + date de RDV\nPOST /:id/approve" --> F["Creation compte users (role=parent)\npassword_set=false"]
+    F --> G["Creation appointments\nstatus=proposed"]
+    G --> H["enrollments.status = in_progress\nE-mail ENROLLMENT_ACCEPTED\n+ lien /create-password"]
+    H --> I{"Parent confirme ou\ncontre-propose le RDV"}
+    I -- "Confirme" --> J["appointments.status = confirmed"]
+    I -- "Contre-propose" --> G
+    J --> K["Parent cree son mot de passe\nPOST /api/auth/create-password"]
+    K --> L["Connexion automatique (JWT)\nAcces a Mon Espace"]
+    L --> M["Finalisation: creation/liaison children\nmigration documents Cloudinary\nenrollments.status = approved"]
