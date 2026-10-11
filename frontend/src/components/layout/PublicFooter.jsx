@@ -22,31 +22,29 @@ const PublicFooter = () => {
         // Adapter au format de l'API contact
         if (data && data.success && data.contact) {
           const contactData = data.contact;
-          // Utiliser les horaires selon la langue (hours pour FR, hours_ar pour AR)
-          const hoursValue = isRTL ? (contactData.hours_ar || contactData.hours) : contactData.hours;
-          const addressValue = isRTL ? (contactData.address_ar || contactData.address) : contactData.address;
+          // Utiliser les horaires et l'adresse selon la langue
+          const hoursValue = isRTL ? (contactData.hours_ar || contactData.hours) : (contactData.hours || contactData.hours_ar);
+          const addressValue = isRTL ? (contactData.address_ar || contactData.address) : (contactData.address || contactData.address_ar);
+          const nameValue = isRTL ? (contactData.nursery_name_ar || 'روضة ميما الغالية') : (contactData.nursery_name || 'Crèche Mima Elghalia');
 
           setNurserySettings({
-            nursery_name: { value: isRTL ? 'حضانة ميما الغالية' : 'Crèche Mima Elghalia' },
-            address: { value: addressValue },
-            phone: { value: contactData.phone },
-            email: { value: contactData.email },
-            hours_formatted: { value: hoursValue } // Utiliser les horaires selon la langue
+            nursery_name: { value: nameValue },
+            address: { value: addressValue || (isRTL ? 'غير محددة' : 'Non définie') },
+            phone: { value: contactData.phone || '+216 25 95 35 32' },
+            email: { value: contactData.email || 'contact@mimaelghalia.tn' },
+            hours_formatted: { value: hoursValue }
           });
         }
 
       } catch (error) {
-        // En cas d'erreur, utiliser les valeurs par défaut robustes
+        // En cas d'erreur réseau, utiliser les valeurs par défaut harmonisées
         setNurserySettings({
-          nursery_name: { value: isRTL ? 'حضانة ميما الغالية' : 'Crèche Mima Elghalia' },
+          nursery_name: { value: isRTL ? 'روضة ميما الغالية' : 'Crèche Mima Elghalia' },
           nursery_description: { value: isRTL ? 'بيئة آمنة ومحبة لنمو طفلك وتطوره' : 'Un environnement sûr et bienveillant pour l\'épanouissement de votre enfant' },
-          address: { value: isRTL ? '8 شارع بنزرت، مدنين 4100، تونس' : '8 Rue Bizerte, Medenine 4100, Tunisie' },
+          address: { value: isRTL ? '9 نهج لطيف الكسيكسي, مدنين 4100' : '9 Rue Latif Ksiksi, Médenine 4100' },
           phone: { value: '+216 25 95 35 32' },
           email: { value: 'contact@mimaelghalia.tn' },
-          working_hours_weekdays: { value: '{"start": "07:00", "end": "18:00"}' },
-          working_hours_saturday: { value: '{"start": "08:00", "end": "14:00"}' },
-          saturday_open: { value: 'true' },
-          hours_formatted: { value: isRTL ? 'الإثنين-الجمعة: 07:00-18:00 | السبت: 08:00-14:00' : 'Lun-Ven: 07:00-18:00 | Sam: 08:00-14:00' }
+          hours_formatted: { value: isRTL ? 'الإثنين - الجمعة: 07:00-18:00، السبت: مغلق' : 'Lun - Ven: 07:00-18:00, Sam: Fermé' }
         });
       } finally {
         setLoading(false);
@@ -63,56 +61,6 @@ const PublicFooter = () => {
     } catch (error) {
       console.error('Erreur récupération setting:', key, error);
       return defaultValue;
-    }
-  };
-
-  // Formater les horaires d'ouverture
-  const formatOpeningHours = () => {
-    try {
-      // Récupérer les horaires de semaine
-      const weekdaysRaw = getSettingValue('working_hours_weekdays', '{"start": "07:00", "end": "18:00"}');
-      let weekdaysFormatted = '07:00-18:00';
-
-      try {
-        const weekdaysObj = JSON.parse(weekdaysRaw);
-        weekdaysFormatted = `${weekdaysObj.start}-${weekdaysObj.end}`;
-      } catch (e) {
-        // Si ce n'est pas du JSON, utiliser tel quel
-        weekdaysFormatted = weekdaysRaw;
-      }
-
-      // Vérifier si le samedi est ouvert
-      const saturdayOpen = getSettingValue('saturday_open', 'true') === 'true';
-
-      if (!saturdayOpen) {
-        // Samedi fermé
-        if (isRTL) {
-          return `الإثنين - الجمعة: ${weekdaysFormatted}، السبت: مغلق`;
-        } else {
-          return `Lun - Ven: ${weekdaysFormatted}`;
-        }
-      }
-
-      // Samedi ouvert - récupérer les horaires
-      const saturdayRaw = getSettingValue('working_hours_saturday', '{"start": "08:00", "end": "14:00"}');
-      let saturdayFormatted = '08:00-14:00';
-
-      try {
-        const saturdayObj = JSON.parse(saturdayRaw);
-        saturdayFormatted = `${saturdayObj.start}-${saturdayObj.end}`;
-      } catch (e) {
-        // Si ce n'est pas du JSON, utiliser tel quel
-        saturdayFormatted = saturdayRaw;
-      }
-
-      if (isRTL) {
-        return `الإثنين - الجمعة: ${weekdaysFormatted}، السبت: ${saturdayFormatted}`;
-      } else {
-        return `Lun - Ven: ${weekdaysFormatted}, Sam: ${saturdayFormatted}`;
-      }
-    } catch (error) {
-      console.error('Erreur formatage horaires:', error);
-      return isRTL ? 'الإثنين - السبت' : 'Lun - Sam';
     }
   };
 
@@ -183,7 +131,7 @@ const PublicFooter = () => {
               <li className="flex items-center space-x-3 rtl:space-x-reverse">
                 <MapPin className="w-4 h-4 text-primary-400 flex-shrink-0" />
                 <span className="text-gray-300 text-sm">
-                  {getSettingValue('address', '8 Rue Bizerte, Medenine 4100, Tunisie')}
+                  {getSettingValue('address', isRTL ? '8 نهج بنزرت، مدنين 4100، تونس' : '8 Rue Bizerte, Medenine 4100, Tunisie')}
                 </span>
               </li>
               <li className="flex items-center space-x-3 rtl:space-x-reverse">
@@ -201,7 +149,7 @@ const PublicFooter = () => {
               <li className="flex items-center space-x-3 rtl:space-x-reverse">
                 <Clock className="w-4 h-4 text-primary-400 flex-shrink-0" />
                 <span className="text-gray-300 text-sm">
-                  {getSettingValue('hours_formatted', isRTL ? 'الإثنين-الجمعة: 07:00-18:00' : 'Lun-Ven: 07:00-18:00')}
+                  {getSettingValue('hours_formatted', isRTL ? 'الإثنين - الجمعة: 07:00-18:00، السبت: مغلق' : 'Lun - Ven: 07:00-18:00, Sam: Fermé')}
                 </span>
               </li>
             </ul>
@@ -213,7 +161,7 @@ const PublicFooter = () => {
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             <p className="text-gray-400 text-sm">
               {isRTL
-                ? `© ${new Date().getFullYear()} ${getSettingValue('nursery_name', 'ميما الغالية')}. جميع الحقوق محفوظة.`
+                ? `© ${new Date().getFullYear()} ${getSettingValue('nursery_name', 'روضة ميما الغالية')}. جميع الحقوق محفوظة.`
                 : `© ${new Date().getFullYear()} ${getSettingValue('nursery_name', 'Crèche Mima Elghalia')}. Tous droits réservés.`
               }
             </p>

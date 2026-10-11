@@ -22,14 +22,17 @@ router.get('/', async (req, res) => {
 
     // Transformer en objet avec les valeurs selon la langue
     const settings = {};
+    const settings_ar = {};
     result.rows.forEach(row => {
       const value = lang === 'ar' && row.value_ar ? row.value_ar : row.value_fr;
       settings[row.setting_key] = value;
+      settings_ar[row.setting_key] = row.value_ar || row.value_fr;
     });
 
     res.json({
       success: true,
       settings,
+      settings_ar,
       language: lang,
       total: result.rows.length
     });
@@ -209,25 +212,93 @@ router.post('/simple-update', auth.authenticateToken, auth.requireRole('admin', 
     try {
       await client.query('BEGIN');
 
-      // Pour chaque paramètre à mettre à jour
+      // Clés bilingues gérées explicitement
+      // Règle demandée : si address_ar est vide => prend address_fr, et inversement
+      if (updates.address !== undefined || updates.address_ar !== undefined) {
+        let addressFr = updates.address !== undefined ? String(updates.address).trim() : null;
+        let addressAr = updates.address_ar !== undefined ? String(updates.address_ar).trim() : null;
+
+        // Récupérer les valeurs existantes pour les fusions partielles
+        const currAddress = await client.query('SELECT value_fr, value_ar FROM nursery_settings WHERE setting_key = $1', ['address']);
+        const currFr = currAddress.rows[0]?.value_fr || '';
+        const currAr = currAddress.rows[0]?.value_ar || '';
+
+        if (addressFr === null) addressFr = currFr;
+        if (addressAr === null) addressAr = currAr;
+
+        // Application de la règle : si l'un est vide, il prend la valeur de l'autre
+        if (!addressAr && addressFr) addressAr = addressFr;
+        if (!addressFr && addressAr) addressFr = addressAr;
+
+        if (currAddress.rows.length > 0) {
+          await client.query(
+            `UPDATE nursery_settings 
+             SET value_fr = $1, value_ar = $2, updated_at = CURRENT_TIMESTAMP 
+             WHERE setting_key = 'address'`,
+            [addressFr, addressAr]
+          );
+        } else {
+          await client.query(
+            `INSERT INTO nursery_settings (setting_key, value_fr, value_ar, category, is_active) 
+             VALUES ('address', $1, $2, 'contact', true)`,
+            [addressFr, addressAr]
+          );
+        }
+      }
+
+      // Règle identique pour le nom de la crèche (nursery_name et nursery_name_ar)
+      if (updates.nursery_name !== undefined || updates.nursery_name_ar !== undefined) {
+        let nameFr = updates.nursery_name !== undefined ? String(updates.nursery_name).trim() : null;
+        let nameAr = updates.nursery_name_ar !== undefined ? String(updates.nursery_name_ar).trim() : null;
+
+        const currName = await client.query('SELECT value_fr, value_ar FROM nursery_settings WHERE setting_key = $1', ['nursery_name']);
+        const currFr = currName.rows[0]?.value_fr || '';
+        const currAr = currName.rows[0]?.value_ar || '';
+
+        if (nameFr === null) nameFr = currFr;
+        if (nameAr === null) nameAr = currAr;
+
+        if (!nameAr && nameFr) nameAr = nameFr;
+        if (!nameFr && nameAr) nameFr = nameAr;
+
+        if (currName.rows.length > 0) {
+          await client.query(
+            `UPDATE nursery_settings 
+             SET value_fr = $1, value_ar = $2, updated_at = CURRENT_TIMESTAMP 
+             WHERE setting_key = 'nursery_name'`,
+            [nameFr, nameAr]
+          );
+        } else {
+          await client.query(
+            `INSERT INTO nursery_settings (setting_key, value_fr, value_ar, category, is_active) 
+             VALUES ('nursery_name', $1, $2, 'general', true)`,
+            [nameFr, nameAr]
+          );
+        }
+      }
+
+      // Clés non traduisibles à valeur identique FR/AR
+      const sameValueKeys = [
+        'opening_time', 'closing_time',
+        'saturday_opening_time', 'saturday_closing_time',
+        'saturday_open', 'max_capacity', 'phone', 'email'
+      ];
+
+      // Pour chaque autre paramètre à mettre à jour
       for (const [key, value] of Object.entries(updates)) {
-        // Déterminer si value_ar doit être identique à value_fr
-        // (pour les horaires, capacité, téléphone, email - valeurs non traduisibles)
-        const sameValueKeys = [
-          'opening_time', 'closing_time',
-          'saturday_opening_time', 'saturday_closing_time',
-          'saturday_open', 'max_capacity', 'phone', 'email'
-        ];
+        // Ignorer les clés bilingues déjà gérées ci-dessus
+        if (['address', 'address_ar', 'nursery_name', 'nursery_name_ar'].includes(key)) {
+          continue;
+        }
+
         const updateAr = sameValueKeys.includes(key);
 
-        // Vérifier si le paramètre existe
         const existing = await client.query(
           'SELECT id FROM nursery_settings WHERE setting_key = $1',
           [key]
         );
 
         if (existing.rows.length > 0) {
-          // Mettre à jour value_fr et value_ar si nécessaire
           if (updateAr) {
             await client.query(
               `UPDATE nursery_settings 
@@ -244,7 +315,6 @@ router.post('/simple-update', auth.authenticateToken, auth.requireRole('admin', 
             );
           }
         } else {
-          // Créer si n'existe pas
           const valueAr = updateAr ? value : null;
           await client.query(
             `INSERT INTO nursery_settings (setting_key, value_fr, value_ar, category, is_active) 
@@ -252,6 +322,28 @@ router.post('/simple-update', auth.authenticateToken, auth.requireRole('admin', 
             [key, value, valueAr]
           );
         }
+      }
+
+      // Synchroniser working_hours_weekdays si opening_time ou closing_time modifié
+      if (updates.opening_time !== undefined || updates.closing_time !== undefined) {
+        await client.query(`
+          UPDATE nursery_settings 
+          SET value_fr = (SELECT value_fr FROM nursery_settings WHERE setting_key = 'opening_time') || '-' || (SELECT value_fr FROM nursery_settings WHERE setting_key = 'closing_time'),
+              value_ar = (SELECT value_fr FROM nursery_settings WHERE setting_key = 'opening_time') || '-' || (SELECT value_fr FROM nursery_settings WHERE setting_key = 'closing_time'),
+              updated_at = CURRENT_TIMESTAMP
+          WHERE setting_key = 'working_hours_weekdays'
+        `);
+      }
+
+      // Synchroniser working_hours_saturday si saturday_opening_time ou saturday_closing_time modifié
+      if (updates.saturday_opening_time !== undefined || updates.saturday_closing_time !== undefined) {
+        await client.query(`
+          UPDATE nursery_settings 
+          SET value_fr = (SELECT value_fr FROM nursery_settings WHERE setting_key = 'saturday_opening_time') || '-' || (SELECT value_fr FROM nursery_settings WHERE setting_key = 'saturday_closing_time'),
+              value_ar = (SELECT value_fr FROM nursery_settings WHERE setting_key = 'saturday_opening_time') || '-' || (SELECT value_fr FROM nursery_settings WHERE setting_key = 'saturday_closing_time'),
+              updated_at = CURRENT_TIMESTAMP
+          WHERE setting_key = 'working_hours_saturday'
+        `);
       }
 
       await client.query('COMMIT');

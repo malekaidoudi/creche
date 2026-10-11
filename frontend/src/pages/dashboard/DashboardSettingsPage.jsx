@@ -75,19 +75,21 @@ const DashboardSettingsPage = () => {
   ];
 
   const [settings, setSettings] = useState({
-    // Informations générales
+    // Informations générales (Bilingue FR/AR)
     nurseryName: '',
+    nurseryNameAr: '',
     address: '',
+    addressAr: '',
     phone: '',
     email: '',
     capacity: 0,
     openingTime: '',
     closingTime: '',
 
-    // Horaires samedi
+    // Horaires samedi (fermé par défaut, 08:00 à 13:00)
     saturdayOpen: false,
     saturdayOpeningTime: '08:00',
-    saturdayClosingTime: '14:00',
+    saturdayClosingTime: '13:00',
 
     // Vacances annuelles
     annualVacationEnabled: false,
@@ -153,10 +155,19 @@ const DashboardSettingsPage = () => {
           console.log('  - saturday_open:', apiSettings.saturday_open);
           console.log('  - working_hours_saturday:', apiSettings.working_hours_saturday);
 
-          // Transformer les données pour l'état local (clés unifiées)
+          // Transformer les données pour l'état local (clés unifiées et bilingues)
+          const apiSettingsAr = data.settings_ar || {};
+
+          const addrFr = apiSettings.address || '';
+          const addrAr = apiSettingsAr.address || '';
+          const nameFr = apiSettings.nursery_name || '';
+          const nameAr = apiSettingsAr.nursery_name || '';
+
           const transformedSettings = {
-            nurseryName: apiSettings.nursery_name || 'Crèche Mima Elghalia',
-            address: apiSettings.address || '16 Rue Bizerte, Medenine 4100, Tunisie',
+            nurseryName: nameFr || nameAr || 'Crèche Mima Elghalia',
+            nurseryNameAr: nameAr || nameFr || 'روضة ميما الغالية',
+            address: addrFr || addrAr || '',
+            addressAr: addrAr || addrFr || '',
             phone: apiSettings.phone || '+216 25 95 35 32',
             email: apiSettings.email || 'contact@mimaelghalia.tn',
             capacity: parseInt(apiSettings.max_capacity?.toString().replace(/\D/g, '')) || 30,
@@ -164,7 +175,7 @@ const DashboardSettingsPage = () => {
             closingTime: apiSettings.closing_time || '18:00',
             saturdayOpen: apiSettings.saturday_open === 'true' || apiSettings.saturday_open === true,
             saturdayOpeningTime: apiSettings.saturday_opening_time || '08:00',
-            saturdayClosingTime: apiSettings.saturday_closing_time || '12:00'
+            saturdayClosingTime: apiSettings.saturday_closing_time || '13:00'
           };
 
           console.log('🎯 PARAMÈTRES FINAUX:', transformedSettings);
@@ -798,10 +809,12 @@ const DashboardSettingsPage = () => {
     try {
       const token = localStorage.getItem('token');
 
-      // Utiliser les clés unifiées pour la sauvegarde
+      // Utiliser les clés unifiées et bilingues pour la sauvegarde
       const updateData = {
         nursery_name: settings.nurseryName,
+        nursery_name_ar: settings.nurseryNameAr,
         address: settings.address,
+        address_ar: settings.addressAr,
         phone: settings.phone,
         email: settings.email,
         max_capacity: settings.capacity.toString(),
@@ -906,30 +919,83 @@ const DashboardSettingsPage = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    {isRTL ? 'اسم الحضانة' : 'Nom de la crèche'}
-                  </label>
-                  <input
-                    type="text"
-                    value={settings.nurseryName}
-                    onChange={(e) => handleSettingChange('nurseryName', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    {isRTL ? 'العنوان' : 'Adresse'}
-                  </label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                {/* Nom de la crèche bilingue */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {isRTL ? 'اسم الحضانة (فرنسية)' : 'Nom de la crèche (FR)'}
+                      </label>
+                      <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200 font-mono">FR</span>
+                    </div>
                     <input
                       type="text"
-                      value={settings.address}
-                      onChange={(e) => handleSettingChange('address', e.target.value)}
-                      className="w-full pl-10 rtl:pl-3 rtl:pr-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      dir="ltr"
+                      placeholder="Ex: Crèche Mima Elghalia"
+                      value={settings.nurseryName}
+                      onChange={(e) => handleSettingChange('nurseryName', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {isRTL ? 'اسم الحضانة (عربية)' : 'Nom de la crèche (AR)'}
+                      </label>
+                      <span className="text-xs px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-200 font-mono">AR</span>
+                    </div>
+                    <input
+                      type="text"
+                      dir="rtl"
+                      placeholder="مثال: روضة ميما الغالية"
+                      value={settings.nurseryNameAr}
+                      onChange={(e) => handleSettingChange('nurseryNameAr', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    />
+                  </div>
+                </div>
+
+                {/* Adresse bilingue */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {isRTL ? 'العنوان (فرنسية)' : 'Adresse (FR)'}
+                      </label>
+                      <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200 font-mono">FR</span>
+                    </div>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+                      <input
+                        type="text"
+                        dir="ltr"
+                        placeholder="Ex: 9 Rue Latif Ksiksi, Médenine 4100"
+                        value={settings.address}
+                        onChange={(e) => handleSettingChange('address', e.target.value)}
+                        style={{ paddingLeft: '2.5rem', paddingRight: '0.75rem' }}
+                        className="w-full py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {isRTL ? 'العنوان (عربية)' : 'Adresse (AR)'}
+                      </label>
+                      <span className="text-xs px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-200 font-mono">AR</span>
+                    </div>
+                    <div className="relative">
+                      <MapPin className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+                      <input
+                        type="text"
+                        dir="rtl"
+                        placeholder="مثال: 9 نهج لطيف الكسيكسي, مدنين 4100"
+                        value={settings.addressAr}
+                        onChange={(e) => handleSettingChange('addressAr', e.target.value)}
+                        style={{ paddingRight: '2.5rem', paddingLeft: '0.75rem' }}
+                        className="w-full py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      />
+                    </div>
                   </div>
                 </div>
 

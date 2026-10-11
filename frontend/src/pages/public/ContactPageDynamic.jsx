@@ -6,110 +6,110 @@ import {
     Mail,
     Clock,
     Send,
-    CheckCircle,
     MessageCircle,
-    Globe,
-    Baby
+    Copy,
+    Check,
+    Navigation,
+    Compass,
+    Sparkles,
+    CheckCircle
 } from 'lucide-react'
 import { useLanguage } from '../../hooks/useLanguage'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
-import { Button } from '../../components/ui/Button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card'
 import { useDialogContext } from '../../contexts/DialogContext'
+import InteractiveNurseryMap from '../../components/common/InteractiveNurseryMap'
 import api, { cachedGet } from '../../services/api'
 
 const ContactPageDynamic = () => {
-    // Hook pour la langue - v2.0 contact form fix
     const { isRTL } = useLanguage()
-    const dialog = useDialogContext();
+    const dialog = useDialogContext()
 
     // États de base
     const [loading, setLoading] = useState(false)
     const [submitted, setSubmitted] = useState(false)
+    const [copied, setCopied] = useState(false)
     const [contactData, setContactData] = useState(null)
     const [isLoading, setIsLoading] = useState(true)
     const [formData, setFormData] = useState({
         name: '',
         email: '',
+        phone: '',
         subject: '',
         message: ''
     })
 
-    // Charger les données
+    // Coordonnées GPS exactes
+    const EXACT_LAT = '33.340592'
+    const EXACT_LNG = '10.490699'
+
+    // Charger les données de contact
     useEffect(() => {
         const loadData = async () => {
             setIsLoading(true)
             try {
-                // Récupérer les données depuis l'API (mise en cache: partagé avec
-                // le footer, évite de refetch à chaque navigation)
                 const response = await cachedGet('/api/contact/info')
                 const apiData = response.data
 
                 if (apiData.success && apiData.contact) {
-                    const contactData = {
-                        address: isRTL ? apiData.contact.address_ar : apiData.contact.address,
-                        phone: apiData.contact.phone,
-                        email: apiData.contact.email,
-                        title: isRTL ? 'تواصل معنا' : 'Contactez-nous',
-                        subtitle: isRTL ? 'نحن هنا للإجابة على جميع أسئلتكم ومساعدتكم في رحلة طفلكم التعليمية' : 'Nous sommes là pour répondre à toutes vos questions et vous accompagner dans le parcours éducatif de votre enfant',
-                        hours: isRTL ? apiData.contact.hours_ar : apiData.contact.hours,
-                        // Données de localisation
-                        nursery_name: isRTL ? 'حضانة ميما الغالية' : 'Crèche Mima Elghalia',
-                        map_title: isRTL ? 'موقعنا على الخريطة' : 'Notre localisation',
-                        map_description: isRTL ? 'تجدونا في هذا الموقع بمدنين' : 'Vous nous trouverez à cette adresse à Médenine',
-                        google_maps_button: isRTL ? 'فتح في خرائط جوجل' : 'Ouvrir dans Google Maps',
-                        latitude: '33.3407',
-                        longitude: '10.4899'
-                    }
+                    const c = apiData.contact
+                    const rawAddr = isRTL ? c.address_ar : c.address
+                    const fallbackAddr = isRTL ? c.address : c.address_ar
+                    const displayAddr = rawAddr || fallbackAddr || (isRTL ? '9 نهج لطيف الكسيكسي, مدنين 4100' : '9 Rue Latif Ksiksi, Médenine 4100')
 
-                    setContactData(contactData)
+                    setContactData({
+                        address: displayAddr,
+                        phone: c.phone || '+216 25 95 35 32',
+                        email: c.email || 'contact@mimaelghalia.tn',
+                        title: isRTL ? 'تواصل معنا' : 'Contactez-nous',
+                        subtitle: isRTL
+                            ? 'نحن هنا للإجابة على جميع أسئلتكم ومساعدتكم في رحلة طفلكم التعليمية في روضة ميما الغالية'
+                            : 'Nous sommes là pour répondre à toutes vos questions et vous accompagner dans le parcours éducatif de votre enfant.',
+                        hours: isRTL ? (c.hours_ar || c.hours) : (c.hours || c.hours_ar),
+                        nursery_name: isRTL ? (c.nursery_name_ar || 'روضة ميما الغالية') : (c.nursery_name || 'Crèche Mima Elghalia'),
+                        latitude: c.latitude || EXACT_LAT,
+                        longitude: c.longitude || EXACT_LNG
+                    })
                 } else {
                     throw new Error('Données API invalides')
                 }
             } catch (error) {
                 console.error('Erreur chargement contact:', error)
-                // Fallback avec données par défaut
-                const defaultData = {
-                    address: isRTL ? '8 شارع بنزرت، مدنين 4100، تونس' : '8 Rue Bizerte, Medenine 4100, Tunisie',
+                // Fallback avec données exactes harmonisées
+                setContactData({
+                    address: isRTL ? '9 نهج لطيف الكسيكسي, مدنين 4100' : '9 Rue Latif Ksiksi, Médenine 4100',
                     phone: '+216 25 95 35 32',
                     email: 'contact@mimaelghalia.tn',
                     title: isRTL ? 'تواصل معنا' : 'Contactez-nous',
-                    subtitle: isRTL ? 'نحن هنا للإجابة على جميع أسئلتكم ومساعدتكم في رحلة طفلكم التعليمية' : 'Nous sommes là pour répondre à toutes vos questions et vous accompagner dans le parcours éducatif de votre enfant',
-                    hours: isRTL ? 'الإثنين - الجمعة: 07:00-18:00، السبت: 08:00-14:00' : 'Lun - Ven: 07:00-18:00, Sam: 08:00-14:00',
-                    // Données de localisation
-                    nursery_name: isRTL ? 'حضانة ميما الغالية' : 'Crèche Mima Elghalia',
-                    map_title: isRTL ? 'موقعنا على الخريطة' : 'Notre localisation',
-                    map_description: isRTL ? 'تجدونا في هذا الموقع بمدنين' : 'Vous nous trouverez à cette adresse à Médenine',
-                    google_maps_button: isRTL ? 'فتح في خرائط جوجل' : 'Ouvrir dans Google Maps',
-                    latitude: '33.3407',
-                    longitude: '10.4899'
-                }
-
-                setContactData(defaultData)
+                    subtitle: isRTL
+                        ? 'نحن هنا للإجابة على جميع أسئلتكم ومساعدتكم في رحلة طفلكم التعليمية في روضة ميما الغالية'
+                        : 'Nous sommes là pour répondre à toutes vos questions et vous accompagner dans le parcours éducatif de votre enfant.',
+                    hours: isRTL ? 'الإثنين - الجمعة: 07:00-18:00، السبت: مغلق' : 'Lun - Ven: 07:00-18:00, Sam: Fermé',
+                    nursery_name: isRTL ? 'روضة ميما الغالية' : 'Crèche Mima Elghalia',
+                    latitude: EXACT_LAT,
+                    longitude: EXACT_LNG
+                })
             } finally {
                 setIsLoading(false)
             }
         }
 
         loadData()
-    }, [isRTL]) // Recharger seulement quand la langue change
+    }, [isRTL])
 
     const handleSubmit = async (e) => {
         e.preventDefault()
         setLoading(true)
 
         try {
-            // Envoyer les données à l'API
             const response = await api.post('/api/contacts', formData)
 
             if (response.data.success) {
                 setSubmitted(true)
                 dialog.success(isRTL ? 'تم إرسال رسالتك بنجاح' : 'Message envoyé avec succès')
-                // Réinitialiser le formulaire après 3 secondes
                 setTimeout(() => {
                     setSubmitted(false)
-                    setFormData({ name: '', email: '', subject: '', message: '' })
-                }, 3000)
+                    setFormData({ name: '', email: '', phone: '', subject: '', message: '' })
+                }, 3500)
             } else {
                 throw new Error(response.data.error || 'Erreur')
             }
@@ -126,336 +126,401 @@ const ContactPageDynamic = () => {
         setFormData(prev => ({ ...prev, [name]: value }))
     }
 
+    const copyAddressToClipboard = () => {
+        if (!contactData) return
+        navigator.clipboard.writeText(contactData.address)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2500)
+    }
+
     // Affichage de chargement
-    if (isLoading) {
+    if (isLoading || !contactData) {
         return (
-            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+            <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
                 <LoadingSpinner size="lg" />
             </div>
         )
     }
 
-    // Données à afficher (dynamiques ou par défaut)
-    const data = contactData || defaultData
+    const data = contactData
+
+    // Liens GPS exacts
+    const googleMapsDirectionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${data.latitude},${data.longitude}`
+    const wazeDirectionsUrl = `https://www.waze.com/ul?ll=${data.latitude},${data.longitude}&navigate=yes`
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12">
-            <div className="container mx-auto px-4">
-                {/* Header */}
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 py-12 px-4 sm:px-6 lg:px-8 transition-colors duration-200">
+            <div className="max-w-7xl mx-auto space-y-12">
+
+                {/* ========================================================================= */}
+                {/* 1. HERO HEADER                                                            */}
+                {/* ========================================================================= */}
                 <motion.div
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6 }}
-                    className="text-center mb-16"
+                    className="text-center max-w-3xl mx-auto space-y-3"
                 >
-                    <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary-50 dark:bg-primary-950 text-primary-600 dark:text-primary-400 text-xs font-semibold border border-primary-200/60 dark:border-primary-800/60">
+                        <Sparkles className="w-3.5 h-3.5" />
+                        {isRTL ? 'نحن في خدمتكم دائماً' : 'À votre écoute 6j/7'}
+                    </span>
+                    <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white">
                         {data.title}
                     </h1>
-                    <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+                    <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
                         {data.subtitle}
                     </p>
                 </motion.div>
 
-                <div className="grid lg:grid-cols-2 gap-12">
-                    {/* Contact Information */}
+                {/* ========================================================================= */}
+                {/* 2. SECTION SUPÉRIEURE : FORMULAIRE DE CONTACT (7 COL) + CARTES EXPRESS (5 COL) */}
+                {/* ========================================================================= */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+                    {/* Bloc Formulaire de Contact */}
                     <motion.div
-                        initial={{ opacity: 0, x: -50 }}
+                        initial={{ opacity: 0, x: isRTL ? 40 : -40 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ duration: 0.6, delay: 0.2 }}
-                        className="space-y-8"
+                        className="lg:col-span-7 bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xl space-y-6"
                     >
-                        <div>
-                            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-                                {isRTL ? 'معلومات الاتصال' : 'Informations de contact'}
-                            </h2>
-                            <div className="grid gap-6">
-                                {/* Adresse */}
-                                <Card className="group hover:shadow-lg transition-all duration-300 border-0 bg-white dark:bg-gray-800">
-                                    <CardContent className="p-6">
-                                        <div className="flex items-start space-x-4 rtl:space-x-reverse">
-                                            <div className="p-3 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg">
-                                                <MapPin className="w-6 h-6" />
-                                            </div>
-                                            <div className="flex-1">
-                                                <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
-                                                    {isRTL ? 'العنوان' : 'Adresse'}
-                                                </h3>
-                                                <p className="text-gray-600 dark:text-gray-300">
-                                                    {data.address}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
+                        <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2.5 rounded-xl bg-gradient-to-tr from-primary-500 to-indigo-600 text-white shadow-md shadow-primary-500/20">
+                                    <MessageCircle className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                                        {isRTL ? 'أرسل لنا رسالة' : 'Envoyez-nous un message'}
+                                    </h2>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                                        {isRTL ? 'سنرد عليكم في غضون 24 ساعة' : 'Réponse garantie sous 24 heures ouvrées'}
+                                    </p>
+                                </div>
+                            </div>
+                            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-3 py-1 rounded-full border border-emerald-200 dark:border-emerald-800 hidden sm:inline-block">
+                                {isRTL ? 'استجابة سريعة' : 'Réponse rapide'}
+                            </span>
+                        </div>
 
-                                {/* Téléphone */}
-                                <Card className="group hover:shadow-lg transition-all duration-300 border-0 bg-white dark:bg-gray-800">
-                                    <CardContent className="p-6">
-                                        <div className="flex items-start space-x-4 rtl:space-x-reverse">
-                                            <div className="p-3 rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg">
-                                                <Phone className="w-6 h-6" />
-                                            </div>
-                                            <div className="flex-1">
-                                                <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
-                                                    {isRTL ? 'الهاتف' : 'Téléphone'}
-                                                </h3>
-                                                <p className="text-gray-600 dark:text-gray-300" dir="ltr">
-                                                    {data.phone}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
+                        {submitted ? (
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="p-8 text-center bg-emerald-50/70 dark:bg-emerald-950/30 rounded-2xl border border-emerald-200 dark:border-emerald-800"
+                            >
+                                <CheckCircle className="w-16 h-16 text-emerald-500 mx-auto mb-3 animate-bounce" />
+                                <h3 className="text-lg font-bold text-emerald-900 dark:text-emerald-200 mb-1">
+                                    {isRTL ? 'تم استلام رسالتك بنجاح!' : 'Message envoyé avec succès !'}
+                                </h3>
+                                <p className="text-sm text-emerald-700 dark:text-emerald-300">
+                                    {isRTL
+                                        ? 'شكراً لك، سيتواصل فريق روضة ميما الغالية معك في أقرب وقت.'
+                                        : 'Merci de nous avoir contactés, notre équipe vous répondra très prochainement.'}
+                                </p>
+                            </motion.div>
+                        ) : (
+                            <form onSubmit={handleSubmit} className="space-y-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                            {isRTL ? 'الاسم واللقب *' : 'Nom et Prénom *'}
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="name"
+                                            required
+                                            value={formData.name}
+                                            onChange={handleInputChange}
+                                            placeholder={isRTL ? 'مثال: سارة بن علي' : 'Ex: Sarah Mansour'}
+                                            className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                            {isRTL ? 'البريد الإلكتروني *' : 'Email *'}
+                                        </label>
+                                        <input
+                                            type="email"
+                                            name="email"
+                                            required
+                                            value={formData.email}
+                                            onChange={handleInputChange}
+                                            placeholder="contact@exemple.com"
+                                            className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                                        />
+                                    </div>
+                                </div>
 
-                                {/* Email */}
-                                <Card className="group hover:shadow-lg transition-all duration-300 border-0 bg-white dark:bg-gray-800">
-                                    <CardContent className="p-6">
-                                        <div className="flex items-start space-x-4 rtl:space-x-reverse">
-                                            <div className="p-3 rounded-xl bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg">
-                                                <Mail className="w-6 h-6" />
-                                            </div>
-                                            <div className="flex-1">
-                                                <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
-                                                    {isRTL ? 'البريد الإلكتروني' : 'Email'}
-                                                </h3>
-                                                <p className="text-gray-600 dark:text-gray-300">
-                                                    {data.email}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                            {isRTL ? 'رقم الهاتف' : 'Téléphone'}
+                                        </label>
+                                        <input
+                                            type="tel"
+                                            name="phone"
+                                            dir="ltr"
+                                            value={formData.phone}
+                                            onChange={handleInputChange}
+                                            placeholder="+216 -- --- ---"
+                                            className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                            {isRTL ? 'الموضوع *' : 'Sujet *'}
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="subject"
+                                            required
+                                            value={formData.subject}
+                                            onChange={handleInputChange}
+                                            placeholder={isRTL ? 'طلب تسجيل / استفسار' : 'Demande d\'inscription / Renseignement'}
+                                            className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                                        />
+                                    </div>
+                                </div>
 
-                                {/* Horaires */}
-                                <Card className="group hover:shadow-lg transition-all duration-300 border-0 bg-white dark:bg-gray-800">
-                                    <CardContent className="p-6">
-                                        <div className="flex items-start space-x-4 rtl:space-x-reverse">
-                                            <div className="p-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg">
-                                                <Clock className="w-6 h-6" />
-                                            </div>
-                                            <div className="flex-1">
-                                                <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
-                                                    {isRTL ? 'ساعات العمل' : 'Horaires'}
-                                                </h3>
-                                                <p className="text-gray-600 dark:text-gray-300">
-                                                    {data.hours}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                                        {isRTL ? 'رسالتكم *' : 'Votre message *'}
+                                    </label>
+                                    <textarea
+                                        name="message"
+                                        rows="4"
+                                        required
+                                        value={formData.message}
+                                        onChange={handleInputChange}
+                                        placeholder={isRTL ? 'اكتب رسالتك أو استفسارك هنا...' : 'Écrivez votre question ou demande ici...'}
+                                        className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all resize-none"
+                                    ></textarea>
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    disabled={loading}
+                                    className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-primary-500 to-indigo-600 hover:from-primary-600 hover:to-indigo-700 text-white font-semibold text-sm shadow-lg shadow-primary-500/25 hover:shadow-primary-500/40 hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-60"
+                                >
+                                    {loading ? (
+                                        <LoadingSpinner size="sm" />
+                                    ) : (
+                                        <>
+                                            <Send className="w-4 h-4" />
+                                            <span>{isRTL ? 'إرسال الرسالة' : 'Envoyer le message'}</span>
+                                        </>
+                                    )}
+                                </button>
+                            </form>
+                        )}
+                    </motion.div>
+
+                    {/* Bloc Coordonnées Express */}
+                    <motion.div
+                        initial={{ opacity: 0, x: isRTL ? -40 : 40 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.6, delay: 0.3 }}
+                        className="lg:col-span-5 space-y-4"
+                    >
+                        {/* Téléphone direct */}
+                        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-md hover:border-primary-500/50 transition-all flex items-start gap-3.5">
+                            <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex-shrink-0">
+                                <Phone className="w-5 h-5" />
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-0.5">
+                                    {isRTL ? 'الهاتف المباشر' : 'Téléphone direct'}
+                                </h3>
+                                <a
+                                    href={`tel:${data.phone}`}
+                                    dir="ltr"
+                                    className="text-base font-bold text-slate-900 dark:text-white hover:text-primary-600 transition-colors inline-block"
+                                >
+                                    {data.phone}
+                                </a>
+                                <p className="text-xs text-slate-500 mt-0.5">
+                                    {isRTL ? 'متاح من 07:00 إلى 18:00' : 'Disponible dès 07h00 du matin'}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Email */}
+                        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-md hover:border-primary-500/50 transition-all flex items-start gap-3.5">
+                            <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex-shrink-0">
+                                <Mail className="w-5 h-5" />
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-0.5">
+                                    {isRTL ? 'البريد الإلكتروني' : 'Email'}
+                                </h3>
+                                <a
+                                    href={`mailto:${data.email}`}
+                                    className="text-sm font-bold text-slate-900 dark:text-white hover:text-primary-600 transition-colors"
+                                >
+                                    {data.email}
+                                </a>
+                                <p className="text-xs text-slate-500 mt-0.5">
+                                    {isRTL ? 'للتسجيلات والمراسلات الإدارية' : 'Pour inscriptions et démarches'}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Horaires */}
+                        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-md hover:border-primary-500/50 transition-all flex items-start gap-3.5">
+                            <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex-shrink-0">
+                                <Clock className="w-5 h-5" />
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-0.5">
+                                    {isRTL ? 'أوقات العمل' : 'Horaires d\'ouverture'}
+                                </h3>
+                                <p className="text-sm font-bold text-slate-900 dark:text-white">
+                                    {data.hours}
+                                </p>
+                                <p className="text-xs text-slate-500 mt-0.5">
+                                    {isRTL ? 'استقبال الأطفال ابتداءً من 07:00' : 'Accueil échelonné dès 07:00'}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Adresse officielle réelle avec bouton copier + badge Plus Code */}
+                        <div className="p-5 rounded-2xl bg-gradient-to-br from-primary-50/60 to-indigo-50/60 dark:from-slate-900 dark:to-slate-800/80 border border-primary-200/70 dark:border-slate-700 shadow-md flex items-start gap-3.5">
+                            <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex-shrink-0">
+                                <MapPin className="w-5 h-5" />
+                            </div>
+                            <div className="flex-1">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                                        {isRTL ? 'العنوان الفعلي' : 'Adresse physique'}
+                                    </h3>
+                                    <button
+                                        onClick={copyAddressToClipboard}
+                                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-primary-600 dark:text-primary-400 bg-white/80 dark:bg-slate-800 hover:bg-primary-100/60 transition-colors shadow-sm"
+                                    >
+                                        {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                                        <span>{copied ? (isRTL ? 'تم النسخ!' : 'Copié !') : (isRTL ? 'نسخ' : 'Copier')}</span>
+                                    </button>
+                                </div>
+                                <p className="text-sm font-bold text-slate-900 dark:text-white mt-1">
+                                    {data.address}
+                                </p>
                             </div>
                         </div>
                     </motion.div>
-
-                    {/* Contact Form */}
-                    <motion.div
-                        initial={{ opacity: 0, x: 50 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.6, delay: 0.4 }}
-                    >
-                        <Card className="border-0 bg-white dark:bg-gray-800 shadow-xl">
-                            <CardHeader>
-                                <CardTitle className="flex items-center text-gray-900 dark:text-white">
-                                    <MessageCircle className="w-5 h-5 mr-2 rtl:mr-0 rtl:ml-2" />
-                                    {isRTL ? 'أرسل لنا رسالة' : 'Envoyez-nous un message'}
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                {submitted ? (
-                                    <motion.div
-                                        initial={{ opacity: 0, scale: 0.8 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        className="text-center py-8"
-                                    >
-                                        <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-                                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                                            {isRTL ? 'تم إرسال رسالتك!' : 'Message envoyé !'}
-                                        </h3>
-                                        <p className="text-gray-600 dark:text-gray-300">
-                                            {isRTL ? 'شكراً لك، سنتواصل معك قريباً' : 'Merci, nous vous répondrons bientôt'}
-                                        </p>
-                                    </motion.div>
-                                ) : (
-                                    <form onSubmit={handleSubmit} className="space-y-6">
-                                        <div className="grid md:grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                                    {isRTL ? 'الاسم' : 'Nom'}
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    name="name"
-                                                    value={formData.name}
-                                                    onChange={handleInputChange}
-                                                    required
-                                                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                                    {isRTL ? 'البريد الإلكتروني' : 'Email'}
-                                                </label>
-                                                <input
-                                                    type="email"
-                                                    name="email"
-                                                    value={formData.email}
-                                                    onChange={handleInputChange}
-                                                    required
-                                                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                                {isRTL ? 'الموضوع' : 'Sujet'}
-                                            </label>
-                                            <input
-                                                type="text"
-                                                name="subject"
-                                                value={formData.subject}
-                                                onChange={handleInputChange}
-                                                required
-                                                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                                {isRTL ? 'الرسالة' : 'Message'}
-                                            </label>
-                                            <textarea
-                                                name="message"
-                                                value={formData.message}
-                                                onChange={handleInputChange}
-                                                rows="5"
-                                                required
-                                                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none"
-                                            ></textarea>
-                                        </div>
-
-                                        <Button
-                                            type="submit"
-                                            disabled={loading}
-                                            className="w-full bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105"
-                                        >
-                                            {loading ? (
-                                                <LoadingSpinner size="sm" />
-                                            ) : (
-                                                <>
-                                                    <Send className="w-5 h-5 mr-2 rtl:mr-0 rtl:ml-2" />
-                                                    {isRTL ? 'إرسال الرسالة' : 'Envoyer le message'}
-                                                </>
-                                            )}
-                                        </Button>
-                                    </form>
-                                )}
-                            </CardContent>
-                        </Card>
-                    </motion.div>
                 </div>
 
-                {/* Section Carte */}
+                {/* ========================================================================= */}
+                {/* 3. SECTION BASSE : PROPOSITION 1 — SPLIT LOCALISATION (5/7) AVEC LOGO PIN */}
+                {/* ========================================================================= */}
                 <motion.div
-                    initial={{ opacity: 0, y: 50 }}
+                    initial={{ opacity: 0, y: 40 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, delay: 0.6 }}
-                    className="mt-16"
+                    transition={{ duration: 0.6, delay: 0.4 }}
+                    className="pt-6 border-t border-slate-200 dark:border-slate-800 space-y-6"
                 >
-                    <Card className="overflow-hidden border-0 bg-white dark:bg-gray-800 shadow-xl">
-                        <CardHeader>
-                            <CardTitle className="flex items-center text-gray-900 dark:text-white">
-                                <Globe className="w-5 h-5 mr-2 rtl:mr-0 rtl:ml-2" />
-                                {data.map_title}
-                            </CardTitle>
-                            <CardDescription className="text-gray-600 dark:text-gray-300">
-                                {data.map_description}
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="p-0">
-                            <div className="relative w-full h-96 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
-                                {/* Carte Google Maps intégrée */}
-                                <iframe
-                                    src={`https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d655.04!2d${data.longitude}!3d${data.latitude}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f18.1!3m3!1m2!1s0x125a50a5b1234567%3A0x987654321abcdef0!2s${encodeURIComponent(data.address)}!5e0!3m2!1s${isRTL ? 'ar' : 'fr'}!2stn!4v1698765432100!5m2!1s${isRTL ? 'ar' : 'fr'}!2stn`}
-                                    width="100%"
-                                    height="100%"
-                                    style={{ border: 0 }}
-                                    allowFullScreen=""
-                                    loading="lazy"
-                                    referrerPolicy="no-referrer-when-downgrade"
-                                    title={isRTL ? 'موقع الحضانة على الخريطة' : 'Localisation de la crèche'}
-                                    className="w-full h-full"
-                                ></iframe>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2.5 rounded-xl bg-primary-100 dark:bg-primary-950 text-primary-600 dark:text-primary-400">
+                                <MapPin className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+                                    {isRTL ? 'موقعنا على الخريطة' : 'Notre localisation à Médenine'}
+                                </h2>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                    {isRTL ? 'موقع الحضانة بدقة مع إرشادات الوصول السريع' : 'Repère officiel Google Maps avec facilités d\'accès'}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
 
-                                {/* Marqueur personnalisé au centre */}
-                                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-                                    <div className="relative">
-                                        {/* Nom de la crèche au-dessus du marqueur */}
-                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-4">
-                                            <div className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-4 py-2 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600 whitespace-nowrap">
-                                                <div className="text-sm font-bold text-center">
-                                                    {data.nursery_name}
-                                                </div>
-                                                {/* Flèche pointant vers le marqueur */}
-                                                <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-l-transparent border-r-transparent border-t-white dark:border-t-gray-800"></div>
-                                            </div>
-                                        </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
 
-                                        {/* Pin de localisation personnalisé */}
-                                        <div className="flex flex-col items-center">
-                                            <div className="bg-red-500 text-white p-3 rounded-full shadow-lg border-4 border-white animate-pulse">
-                                                <Baby className="w-6 h-6" />
-                                            </div>
-                                            {/* Pointe du pin */}
-                                            <div className="w-0 h-0 border-l-[8px] border-r-[8px] border-t-[12px] border-l-transparent border-r-transparent border-t-red-500 -mt-1"></div>
-                                        </div>
-
-                                        {/* Cercle d'animation */}
-                                        <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-16 h-16 bg-red-500 bg-opacity-20 rounded-full animate-ping"></div>
-                                    </div>
+                        {/* Panneau latéral gauche (5 colonnes) : Accès, statut & GPS */}
+                        <div className="lg:col-span-5 flex flex-col justify-between space-y-6 bg-white dark:bg-slate-900 p-6 sm:p-7 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xl">
+                            <div>
+                                {/* Badge de statut en temps réel */}
+                                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-xs font-semibold mb-4">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    {isRTL ? 'مفتوح للزيارات والتسجيل' : 'Accueil & Inscriptions ouverts'}
                                 </div>
 
-                                {/* Overlay avec informations */}
-                                <div className="absolute top-4 left-4 rtl:left-auto rtl:right-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 max-w-xs">
-                                    <div className="flex items-start space-x-3 rtl:space-x-reverse">
-                                        <div className="p-2 rounded-lg bg-red-500 text-white">
-                                            <MapPin className="w-4 h-4" />
-                                        </div>
-                                        <div className="flex-1">
-                                            <h4 className="font-semibold text-gray-900 dark:text-white text-sm mb-1">
-                                                {data.title}
-                                            </h4>
-                                            <p className="text-gray-600 dark:text-gray-300 text-xs leading-relaxed">
-                                                {data.address}
-                                            </p>
-                                            <div className="mt-2 flex items-center space-x-2 rtl:space-x-reverse">
-                                                <Phone className="w-3 h-3 text-red-500" />
-                                                <span className="text-xs text-gray-600 dark:text-gray-300" dir="ltr">
-                                                    {data.phone}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                <h3 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                                    {data.nursery_name}
+                                </h3>
+                                <p className="text-sm font-medium text-slate-600 dark:text-slate-300 mt-1">
+                                    {data.address}
+                                </p>
 
-                                {/* Bouton d'action */}
-                                <div className="absolute bottom-4 right-4 rtl:right-auto rtl:left-4">
-                                    <Button
-                                        onClick={() => {
-                                            const address = encodeURIComponent(data.address);
-                                            window.open(`https://www.google.com/maps/search/${address}`, '_blank');
-                                        }}
-                                        className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 shadow-lg"
-                                    >
-                                        <Globe className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
-                                        {data.google_maps_button}
-                                    </Button>
+                                {/* Horaires & Téléphone express */}
+                                <div className="mt-5 space-y-2.5 text-xs text-slate-600 dark:text-slate-300">
+                                    <div className="flex items-center gap-2">
+                                        <Clock className="w-4 h-4 text-primary-500 flex-shrink-0" />
+                                        <span>{data.hours}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Phone className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                                        <span dir="ltr">{data.phone}</span>
+                                    </div>
                                 </div>
                             </div>
-                        </CardContent>
-                    </Card>
+
+                            <div className="space-y-3 pt-2">
+                                {/* Boutons GPS directs */}
+                                <div className="grid grid-cols-2 gap-2">
+                                    <a
+                                        href={googleMapsDirectionsUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold shadow-md shadow-primary-500/20 transition-all"
+                                    >
+                                        <Navigation className="w-3.5 h-3.5" />
+                                        <span>{isRTL ? 'خرائط جوجل' : 'Google Maps'}</span>
+                                    </a>
+                                    <a
+                                        href={wazeDirectionsUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold shadow-md shadow-blue-500/20 transition-all"
+                                    >
+                                        <Compass className="w-3.5 h-3.5" />
+                                        <span>Waze</span>
+                                    </a>
+                                </div>
+
+                                {/* 3 Capsules d'atouts d'accès parents */}
+                                <div className="grid grid-cols-3 gap-2 text-[11px] text-center text-slate-500 dark:text-slate-400">
+                                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800">
+                                        <span className="block text-base mb-0.5">🅿️</span>
+                                        <span>{isRTL ? 'موقف سهل' : 'Dépose-minute'}</span>
+                                    </div>
+                                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800">
+                                        <span className="block text-base mb-0.5">🚼</span>
+                                        <span>{isRTL ? 'عربات أطفال' : 'Poussettes OK'}</span>
+                                    </div>
+                                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800">
+                                        <span className="block text-base mb-0.5">🛡️</span>
+                                        <span>{isRTL ? 'منطقة آمنة' : 'Zone calme'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Panneau interactif droit (7 colonnes) : Carte Satellite Haute Précision avec REPÈRE LOGO ANCRÉ */}
+                        <div className="lg:col-span-7 h-[460px] lg:h-auto min-h-[460px] flex flex-col">
+                            <InteractiveNurseryMap
+                                latitude={data.latitude}
+                                longitude={data.longitude}
+                                nurseryName={data.nursery_name}
+                                address={data.address}
+                                isRTL={isRTL}
+                            />
+                        </div>
+                    </div>
                 </motion.div>
+
             </div>
         </div>
     )

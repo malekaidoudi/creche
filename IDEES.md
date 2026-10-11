@@ -42,7 +42,7 @@ Format suggéré : `- [ ] Description de l'idée` (laisser `[ ]`, passer à `[x]
 - [x] **Correction du champ date d'inscription (bug de saisie datepicker)** :
   - Par défaut la date d'inscription est celle d'aujourd'hui, mais la modification manuelle ou via le picker bloque ou corrompt l'année (ex: affichage erroné `11/02/0262`).
   - Corriger le composant datepicker / input date pour garantir un formatage `JJ/MM/AAAA` (ou `AAAA-MM-JJ`) fiable, souple et sans corruption d'année.
-- [ ] **Modélisation complète des contacts de l'enfant (Parents, Urgence & Personnes de confiance)** :
+- [x] **Modélisation complète des contacts de l'enfant (Parents, Urgence & Personnes de confiance)** :
   - **Filiation parents** :
     - Saisie distincte : Nom, prénom et téléphone du **Père** + Nom, prénom et téléphone de la **Mère**.
     - Le titulaire du compte parent sur la plateforme doit être l'un des parents (père ou mère).
@@ -67,6 +67,16 @@ Format suggéré : `- [ ] Description de l'idée` (laisser `[ ]`, passer à `[x]
 - [ ] **Courbes de croissance & percentiles OMS** — exploiter `child_growth_records` :
   - Endpoint `GET /api/children/:id/growth` (relevés triés par `measured_at`) + graphique (Recharts/Chart.js) dans la fiche médicale.
   - Comparaison aux courbes de référence OMS par âge et sexe ; saisie optionnelle de la date de mesure (`measured_at` manuel pour backfill par le médecin).
+- [x] **Adresse bilingue (FR/AR) éditable depuis les paramètres** — l'adresse affichée dans le **footer public** (`PublicFooter.jsx`, `OptimizedPublicFooter.jsx`) et la **page Contact** (`ContactPageDynamic.jsx`) provient de `nursery_settings.address` via `GET /api/contact/info`, qui expose `address` (FR) et `address_ar` (AR).
+  - Deux champs distincts dans `DashboardSettingsPage.jsx` (FR + AR) avec fallback croisé si l'un est vide et "Non définie" / "غير محددة" si les deux sont vides.
+  - Backend `POST /api/nursery-settings/simple-update` accepte `address_ar` et `nursery_name_ar` et synchronise les clés composites d'horaires.
+  - Harmonisation complète des fallbacks en dur et des horaires du samedi (fermé par défaut, 08:00-13:00 si activé).
+- [x] **Page Contact — Proposition 1 (Split Layout) adoptée avec repère Logo Crèche** :
+  - Adresse physique officielle : `9 Rue Latif Ksiksi, Médenine 4100` (FR) / `9 نهج لطيف الكسيكسي, مدنين 4100` (AR).
+  - Coordonnées GPS exactes : `33.340592, 10.490699` avec référence Google Maps Plus Code `8FRR+77 Médenine, Tunisie`.
+  - Marqueur de carte sur-mesure utilisant le logo officiel de la crèche (`/images/logo.jpg`) ancré géographiquement (Leaflet) : reste solidaire des coordonnées lors du zoom et du déplacement.
+  - Vue Satellite Google Hybrid par défaut, zoom rapproché d'entrée (zoom 19), bascule Plan/Satellite et recentrage instantané (`InteractiveNurseryMap.jsx`).
+  - Formulaire de contact moderne et cartes d'accès express (Tél 1-clic, Email, Horaires, Itinéraires Google Maps & Waze, capsules dépose-minute/poussettes/sécurité).
 - [ ] *(ajouter ici)*
 
 ## 🚀 Performance & Technique

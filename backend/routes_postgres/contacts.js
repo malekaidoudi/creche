@@ -138,7 +138,7 @@ router.get('/info', async (req, res) => {
     const settingsAr = {};
     result.rows.forEach(row => {
       settings[row.setting_key] = row.value_fr;
-      settingsAr[row.setting_key] = row.value_ar || row.value_fr;
+      settingsAr[row.setting_key] = row.value_ar;
     });
 
     console.log('📋 Settings trouvés:', settings);
@@ -146,30 +146,56 @@ router.get('/info', async (req, res) => {
     // Construire les horaires
     const openingTime = settings.opening_time || '07:00';
     const closingTime = settings.closing_time || '18:00';
-    const saturdayOpen = settings.saturday_open === 'true';
+    const saturdayOpen = settings.saturday_open === 'true'; // false par défaut
     const satOpeningTime = settings.saturday_opening_time || '08:00';
-    const satClosingTime = settings.saturday_closing_time || '12:00';
+    const satClosingTime = settings.saturday_closing_time || '13:00'; // 13:00 par défaut
 
-    // Horaires formatés
+    // Horaires formatés avec statut explicite du samedi
     let hoursFr = `Lun - Ven: ${openingTime}-${closingTime}`;
     let hoursAr = `الإثنين - الجمعة: ${openingTime}-${closingTime}`;
 
     if (saturdayOpen) {
       hoursFr += `, Sam: ${satOpeningTime}-${satClosingTime}`;
       hoursAr += `، السبت: ${satOpeningTime}-${satClosingTime}`;
+    } else {
+      hoursFr += `, Sam: Fermé`;
+      hoursAr += `، السبت: مغلق`;
     }
 
     console.log('✅ Horaires finaux:', hoursFr);
 
+    // Gestion de l'adresse bilingue avec règle de secours croisé :
+    // Si addressAr est vide => prend addressFr, et inversement.
+    // Si les deux sont vides => 'Non définie' (FR) / 'غير محددة' (AR)
+    const rawAddressFr = settings.address ? settings.address.trim() : '';
+    const rawAddressAr = settingsAr.address ? settingsAr.address.trim() : '';
+
+    const addressFr = rawAddressFr || rawAddressAr || 'Non définie';
+    const addressAr = rawAddressAr || rawAddressFr || 'غير محددة';
+
+    // Nom de la crèche bilingue
+    const rawNameFr = settings.nursery_name ? settings.nursery_name.trim() : '';
+    const rawNameAr = settingsAr.nursery_name ? settingsAr.nursery_name.trim() : '';
+    const nurseryNameFr = rawNameFr || rawNameAr || 'Crèche Mima Elghalia';
+    const nurseryNameAr = rawNameAr || rawNameFr || 'روضة ميما الغالية';
+
     res.json({
       success: true,
       contact: {
-        address: settings.address || '8 Rue Bizerte, Medenine 4100, Tunisie',
-        address_ar: settingsAr.address || '8 نهج بنزرت، مدنين 4100، تونس',
+        nursery_name: nurseryNameFr,
+        nursery_name_ar: nurseryNameAr,
+        address: addressFr,
+        address_ar: addressAr,
         phone: settings.phone || '+216 25 95 35 32',
         email: settings.email || 'contact@mimaelghalia.tn',
         hours: hoursFr,
-        hours_ar: hoursAr
+        hours_ar: hoursAr,
+        saturday_open: saturdayOpen,
+        saturday_opening_time: satOpeningTime,
+        saturday_closing_time: satClosingTime,
+        latitude: '33.340592',
+        longitude: '10.490699',
+        plus_code: '8FRR+77'
       }
     });
 

@@ -28,7 +28,7 @@ const OptimizedPublicFooter = () => {
   // Données de fallback en cas d'erreur
   const fallbackData = {
     nursery_name: {
-      value: isRTL ? 'حضانة ميما الغالية' : 'Crèche Mima Elghalia'
+      value: isRTL ? 'روضة ميما الغالية' : 'Crèche Mima Elghalia'
     },
     nursery_description: {
       value: isRTL
@@ -37,13 +37,13 @@ const OptimizedPublicFooter = () => {
     },
     address: {
       value: isRTL
-        ? '8 شارع بنزرت، مدنين 4100، تونس'
-        : '8 Rue Bizerte, Medenine 4100, Tunisie'
+        ? '9 نهج لطيف الكسيكسي, مدنين 4100'
+        : '9 Rue Latif Ksiksi, Médenine 4100'
     },
     phone: { value: '+216 25 95 35 32' },
     email: { value: 'contact@mimaelghalia.tn' },
     working_hours_weekdays: {
-      value: isRTL ? 'الإثنين-الجمعة: 07:00-18:00' : 'Lun-Ven: 07:00-18:00'
+      value: isRTL ? 'الإثنين - الجمعة: 07:00-18:00، السبت: مغلق' : 'Lun - Ven: 07:00-18:00, Sam: Fermé'
     },
     facebook_url: { value: 'https://facebook.com/crechemimaelghalia' },
     instagram_url: { value: 'https://instagram.com/crechemimaelghalia' }

@@ -18,6 +18,7 @@ const ContactPageDynamic = lazy(() => import('../pages/public/ContactPageDynamic
 const VirtualTourPage = lazy(() => import('../pages/public/VirtualTourPage'))
 const CreatePasswordPage = lazy(() => import('../pages/public/CreatePasswordPage'))
 const UploadDocumentsPage = lazy(() => import('../pages/public/UploadDocumentsPage'))
+const LocationShowcasePage = lazy(() => import('../pages/public/LocationShowcasePage'))
 
 // Pages d'authentification
 const RegisterPage = lazy(() => import('../pages/auth/RegisterPage'))
@@ -122,6 +123,7 @@ const AppRoutes = () => {
                         <Route path="inscription" element={<EnrollmentPage />} />
                         <Route path="contact" element={<ContactPageDynamic />} />
                         <Route path="visite-virtuelle" element={<VirtualTourPage />} />
+                        <Route path="preview-location" element={<LocationShowcasePage />} />
 
                         {/* Activités */}
                         <Route path="activites" element={<ActivitiesPage />} />
