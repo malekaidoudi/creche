@@ -45,6 +45,7 @@
 | **41** | 09/10/2026 | `frontend/src/pages/UnifiedProfilePage.jsx`, `frontend/src/pages/parent/ChildDetailsPage.jsx` | UI/UX & Harmonisation Globale Photos (Comptes & Espace Parent) | Unification du bouton caméra moderne sur profil utilisateur (parent/admin/staff) et fiche enfant | ✅ Validé & Appliqué |
 | **42** | 09/10/2026 | `AddChildPage.jsx`, `AddUserPage.jsx`, `ParentsPage.jsx`, `backend/routes_postgres/userWorkflow.js` | Inscription Enfant & Gestion Parent Sans Email | Préremplissage automatique du nom de famille de l'enfant, association pré-sélectionnée et support des parents sans email initial (avec mise à jour ultérieure) | ✅ Validé & Appliqué |
 | **43** | 09/10/2026 | `DatePicker.jsx`, `dateUtils.js`, `AddChildPage.jsx`, `AddUserPage.jsx`, `backend/routes_postgres/children.js` | UX/UI Saisie Date & Bouton Création Utilisateur | Correction intégrale du bug datepicker (saisie fluide JJ/MM/AAAA sans saut de curseur ni corruption d'année type 0262, synchronisation calendrier sécurisée) et libellé "Créer" si sans email | ✅ Validé & Appliqué |
+| **53** | 11/10/2026 | `frontend/src/services/api.js`, `PublicFooter.jsx`, `ContactPageDynamic.jsx`, `DashboardSettingsPage.jsx` | Performance, Cache & Résilience Hors-Ligne | Mise en cache automatique navigateur (`localStorage` + Stale-While-Revalidate), élimination des fallbacks en dur obsolètes et synchronisation temps réel | ✅ Validé & Appliqué |
 
 ---
 
@@ -1258,5 +1259,35 @@
   4. **Nettoyage d'import inutilisé** : retrait de `Edit` (lucide-react) dans `ChildMedicalPage.jsx`.
   5. **Audit complet des fichiers touchés** : vérification automatisée des imports/requires sur les 10 fichiers modifiés de la session, syntaxe validée via `esbuild` (frontend) et `node --check` (backend).
 - **Résultat** : Fluidification drastique des tests d'inscription en dev (un clic remplace tout le cycle d'attente du RDV), correction d'un bug latent qui cassait toute mise à jour d'enfant depuis la migration 004, et suppression de ~110 lignes de code mort frontend.
+
+---
+
+### Fiche 53 - Mise en cache automatique navigateur (`localStorage` + Stale-While-Revalidate) & Élimination des fallbacks en dur obsolètes
+
+- **Date** : 11 Octobre 2026
+- **Fichiers modifiés / créés** :
+  - [`frontend/src/services/api.js`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/services/api.js)
+  - [`frontend/src/components/layout/PublicFooter.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/layout/PublicFooter.jsx)
+  - [`frontend/src/pages/public/ContactPageDynamic.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/public/ContactPageDynamic.jsx)
+  - [`frontend/src/pages/dashboard/DashboardSettingsPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/DashboardSettingsPage.jsx)
+  - [`IDEES.md`](file:///Volumes/Data/Works/Windsurf/creche/IDEES.md)
+- **Objectifs & Actions** :
+  1. **Problématique d'architecture** :
+     - Les composants publics (`PublicFooter`, `ContactPageDynamic`) utilisaient des textes en dur comme valeurs de secours (fallbacks) en cas de lenteur réseau ou d'erreur API.
+     - Lors d'une mise à jour de l'adresse ou des horaires en base de données, les valeurs en dur ne pouvaient pas être automatiquement modifiées dans les fichiers sources (impossible et non viable en production avec un build statique minifié).
+     - Conséquence : présence résiduelle d'adresses ou horaires périmés (ex: résidu *"8 Rue Bizerte"* au lieu de *"9 Rue Latif Ksiksi"*).
+  2. **Couche de Cache Hybride Navigateur (`api.js`)** :
+     - Évolution de `cachedGet` : association d'un cache mémoire RAM et d'une persistance `localStorage` sous le préfixe `creche_api_cache:`.
+     - Résolution instantanée sans latence ni requête réseau redondante si les données ont moins de 5 minutes (`TTL = 5 min`).
+     - **Stratégie Stale-While-Revalidate / Résilience hors-ligne** : si le réseau est indisponible ou si l'API échoue, `cachedGet` bascule automatiquement sur les **dernières données réelles enregistrées depuis la base de données** dans le stockage local du navigateur.
+     - Nouvelles fonctions exportées : `getStoredCache(url, params)` (lecture synchrone sécurisée pour initialiser l'état React sans scintillement) et `setStoredCache(url, params, data, ttlMs)`.
+  3. **Invalidation Synchronisée (`clearApiCache`)** :
+     - `clearApiCache(urlPrefix)` purge simultanément la mémoire vive et toutes les clés correspondantes dans le `localStorage` du navigateur.
+     - Déclenchée automatiquement lors de la sauvegarde des paramètres crèche, coordonnées de contact, ou jours fériés dans `DashboardSettingsPage.jsx`.
+  4. **Adaptation des Composants Frontend** :
+     - `PublicFooter.jsx` : initialisation synchrone de `nurserySettings` avec `getStoredCache('/api/contact/info')`, suppression de la variable orpheline `isUsingFallback`, et correction du résidu d'adresse vers `9 Rue Latif Ksiksi, Médenine 4100` / `9 نهج لطيف الكسيكسي, مدنين 4100`.
+     - `ContactPageDynamic.jsx` : initialisation synchrone de `contactData` via `getStoredCache('/api/contact/info')` pour éliminer le décalage de rendu (CLS / Layout Shift).
+- **Résultat** : Zéro texte obsolète en dur affiché en cas de panne, affichage instantané des coordonnées et mise à jour transparente du cache navigateur dès qu'une modification est enregistrée en base.
+
 
 

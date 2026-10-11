@@ -2,49 +2,60 @@ import { Link } from 'react-router-dom'
 import { MapPin, Phone, Mail, Clock } from 'lucide-react'
 import { useLanguage } from '../../hooks/useLanguage'
 import { useState, useEffect } from 'react'
-import { cachedGet } from '../../services/api'
+import { cachedGet, getStoredCache } from '../../services/api'
+
+// Helper de formatage unifié des paramètres de contact
+const formatSettingsFromContact = (contactData, isRTL) => {
+  if (!contactData) return null;
+  const hoursValue = isRTL ? (contactData.hours_ar || contactData.hours) : (contactData.hours || contactData.hours_ar);
+  const addressValue = isRTL ? (contactData.address_ar || contactData.address) : (contactData.address || contactData.address_ar);
+  const nameValue = isRTL ? (contactData.nursery_name_ar || 'روضة ميما الغالية') : (contactData.nursery_name || 'Crèche Mima Elghalia');
+
+  return {
+    nursery_name: { value: nameValue },
+    address: { value: addressValue || (isRTL ? 'غير محددة' : 'Non définie') },
+    phone: { value: contactData.phone || '+216 25 95 35 32' },
+    email: { value: contactData.email || 'contact@mimaelghalia.tn' },
+    hours_formatted: { value: hoursValue }
+  };
+};
 
 const PublicFooter = () => {
   const { isRTL } = useLanguage();
-  const [nurserySettings, setNurserySettings] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [isUsingFallback, setIsUsingFallback] = useState(false);
 
-  // Charger les paramètres de la crèche
+  // Initialisation instantanée depuis le cache navigateur persistant (évite le flash et les textes en dur)
+  const [nurserySettings, setNurserySettings] = useState(() => {
+    const cached = getStoredCache('/api/contact/info');
+    if (cached?.data?.success && cached?.data?.contact) {
+      return formatSettingsFromContact(cached.data.contact, isRTL) || {};
+    }
+    return {};
+  });
+  const [loading, setLoading] = useState(false);
+
+  // Charger les paramètres de la crèche (réseau ou cache persistant réactualisé)
   useEffect(() => {
     const loadNurserySettings = async () => {
       try {
-        // Utiliser le client API centralisé avec cache (le footer est monté sur
-        // chaque page publique, ce cache évite de refetch à chaque navigation)
         const response = await cachedGet('/api/contact/info');
         const data = response.data;
 
-        // Adapter au format de l'API contact
         if (data && data.success && data.contact) {
-          const contactData = data.contact;
-          // Utiliser les horaires et l'adresse selon la langue
-          const hoursValue = isRTL ? (contactData.hours_ar || contactData.hours) : (contactData.hours || contactData.hours_ar);
-          const addressValue = isRTL ? (contactData.address_ar || contactData.address) : (contactData.address || contactData.address_ar);
-          const nameValue = isRTL ? (contactData.nursery_name_ar || 'روضة ميما الغالية') : (contactData.nursery_name || 'Crèche Mima Elghalia');
-
-          setNurserySettings({
-            nursery_name: { value: nameValue },
-            address: { value: addressValue || (isRTL ? 'غير محددة' : 'Non définie') },
-            phone: { value: contactData.phone || '+216 25 95 35 32' },
-            email: { value: contactData.email || 'contact@mimaelghalia.tn' },
-            hours_formatted: { value: hoursValue }
-          });
+          const formatted = formatSettingsFromContact(data.contact, isRTL);
+          if (formatted) setNurserySettings(formatted);
         }
-
       } catch (error) {
-        // En cas d'erreur réseau, utiliser les valeurs par défaut harmonisées
-        setNurserySettings({
-          nursery_name: { value: isRTL ? 'روضة ميما الغالية' : 'Crèche Mima Elghalia' },
-          nursery_description: { value: isRTL ? 'بيئة آمنة ومحبة لنمو طفلك وتطوره' : 'Un environnement sûr et bienveillant pour l\'épanouissement de votre enfant' },
-          address: { value: isRTL ? '9 نهج لطيف الكسيكسي, مدنين 4100' : '9 Rue Latif Ksiksi, Médenine 4100' },
-          phone: { value: '+216 25 95 35 32' },
-          email: { value: 'contact@mimaelghalia.tn' },
-          hours_formatted: { value: isRTL ? 'الإثنين - الجمعة: 07:00-18:00، السبت: مغلق' : 'Lun - Ven: 07:00-18:00, Sam: Fermé' }
+        // En cas d'erreur réseau sans cache existant dans le navigateur
+        setNurserySettings((prev) => {
+          if (prev.address?.value) return prev; // Conserver les dernières données du cache navigateur
+          return {
+            nursery_name: { value: isRTL ? 'روضة ميما الغالية' : 'Crèche Mima Elghalia' },
+            nursery_description: { value: isRTL ? 'بيئة آمنة ومحبة لنمو طفلك وتطوره' : 'Un environnement sûr et bienveillant pour l\'épanouissement de votre enfant' },
+            address: { value: isRTL ? '9 نهج لطيف الكسيكسي, مدنين 4100' : '9 Rue Latif Ksiksi, Médenine 4100' },
+            phone: { value: '+216 25 95 35 32' },
+            email: { value: 'contact@mimaelghalia.tn' },
+            hours_formatted: { value: isRTL ? 'الإثنين - الجمعة: 07:00-18:00، السبت: مغلق' : 'Lun - Ven: 07:00-18:00, Sam: Fermé' }
+          };
         });
       } finally {
         setLoading(false);
@@ -131,7 +142,7 @@ const PublicFooter = () => {
               <li className="flex items-center space-x-3 rtl:space-x-reverse">
                 <MapPin className="w-4 h-4 text-primary-400 flex-shrink-0" />
                 <span className="text-gray-300 text-sm">
-                  {getSettingValue('address', isRTL ? '8 نهج بنزرت، مدنين 4100، تونس' : '8 Rue Bizerte, Medenine 4100, Tunisie')}
+                  {getSettingValue('address', isRTL ? '9 نهج لطيف الكسيكسي, مدنين 4100' : '9 Rue Latif Ksiksi, Médenine 4100')}
                 </span>
               </li>
               <li className="flex items-center space-x-3 rtl:space-x-reverse">

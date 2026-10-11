@@ -18,18 +18,43 @@ import { useLanguage } from '../../hooks/useLanguage'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
 import { useDialogContext } from '../../contexts/DialogContext'
 import InteractiveNurseryMap from '../../components/common/InteractiveNurseryMap'
-import api, { cachedGet } from '../../services/api'
+import api, { cachedGet, getStoredCache } from '../../services/api'
 
 const ContactPageDynamic = () => {
     const { isRTL } = useLanguage()
     const dialog = useDialogContext()
 
-    // États de base
+    // Coordonnées GPS exactes
+    const EXACT_LAT = '33.340592'
+    const EXACT_LNG = '10.490699'
+
+    // Initialisation instantanée depuis le cache navigateur persistant si disponible
+    const [contactData, setContactData] = useState(() => {
+        const cached = getStoredCache('/api/contact/info')
+        if (cached?.data?.success && cached?.data?.contact) {
+            const c = cached.data.contact
+            const rawAddr = isRTL ? c.address_ar : c.address
+            const fallbackAddr = isRTL ? c.address : c.address_ar
+            return {
+                address: rawAddr || fallbackAddr || (isRTL ? '9 نهج لطيف الكسيكسي, مدنين 4100' : '9 Rue Latif Ksiksi, Médenine 4100'),
+                phone: c.phone || '+216 25 95 35 32',
+                email: c.email || 'contact@mimaelghalia.tn',
+                title: isRTL ? 'تواصل معنا' : 'Contactez-nous',
+                subtitle: isRTL
+                    ? 'نحن هنا للإجابة على جميع أسئلتكم ومساعدتكم في رحلة طفلكم التعليمية في روضة ميما الغالية'
+                    : 'Nous sommes là pour répondre à toutes vos questions et vous accompagner dans le parcours éducatif de votre enfant.',
+                hours: isRTL ? (c.hours_ar || c.hours) : (c.hours || c.hours_ar),
+                nursery_name: isRTL ? (c.nursery_name_ar || 'روضة ميما الغالية') : (c.nursery_name || 'Crèche Mima Elghalia'),
+                latitude: c.latitude || EXACT_LAT,
+                longitude: c.longitude || EXACT_LNG
+            }
+        }
+        return null
+    })
+    const [isLoading, setIsLoading] = useState(!contactData)
     const [loading, setLoading] = useState(false)
     const [submitted, setSubmitted] = useState(false)
     const [copied, setCopied] = useState(false)
-    const [contactData, setContactData] = useState(null)
-    const [isLoading, setIsLoading] = useState(true)
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -38,14 +63,10 @@ const ContactPageDynamic = () => {
         message: ''
     })
 
-    // Coordonnées GPS exactes
-    const EXACT_LAT = '33.340592'
-    const EXACT_LNG = '10.490699'
-
     // Charger les données de contact
     useEffect(() => {
         const loadData = async () => {
-            setIsLoading(true)
+            if (!contactData) setIsLoading(true)
             try {
                 const response = await cachedGet('/api/contact/info')
                 const apiData = response.data
@@ -74,19 +95,22 @@ const ContactPageDynamic = () => {
                 }
             } catch (error) {
                 console.error('Erreur chargement contact:', error)
-                // Fallback avec données exactes harmonisées
-                setContactData({
-                    address: isRTL ? '9 نهج لطيف الكسيكسي, مدنين 4100' : '9 Rue Latif Ksiksi, Médenine 4100',
-                    phone: '+216 25 95 35 32',
-                    email: 'contact@mimaelghalia.tn',
-                    title: isRTL ? 'تواصل معنا' : 'Contactez-nous',
-                    subtitle: isRTL
-                        ? 'نحن هنا للإجابة على جميع أسئلتكم ومساعدتكم في رحلة طفلكم التعليمية في روضة ميما الغالية'
-                        : 'Nous sommes là pour répondre à toutes vos questions et vous accompagner dans le parcours éducatif de votre enfant.',
-                    hours: isRTL ? 'الإثنين - الجمعة: 07:00-18:00، السبت: مغلق' : 'Lun - Ven: 07:00-18:00, Sam: Fermé',
-                    nursery_name: isRTL ? 'روضة ميما الغالية' : 'Crèche Mima Elghalia',
-                    latitude: EXACT_LAT,
-                    longitude: EXACT_LNG
+                // Fallback avec données exactes harmonisées si aucun cache existant
+                setContactData((prev) => {
+                    if (prev) return prev
+                    return {
+                        address: isRTL ? '9 نهج لطيف الكسيكسي, مدنين 4100' : '9 Rue Latif Ksiksi, Médenine 4100',
+                        phone: '+216 25 95 35 32',
+                        email: 'contact@mimaelghalia.tn',
+                        title: isRTL ? 'تواصل معنا' : 'Contactez-nous',
+                        subtitle: isRTL
+                            ? 'نحن هنا للإجابة على جميع أسئلتكم ومساعدتكم في رحلة طفلكم التعليمية في روضة ميما الغالية'
+                            : 'Nous sommes là pour répondre à toutes vos questions et vous accompagner dans le parcours éducatif de votre enfant.',
+                        hours: isRTL ? 'الإثنين - الجمعة: 07:00-18:00، السبت: مغلق' : 'Lun - Ven: 07:00-18:00, Sam: Fermé',
+                        nursery_name: isRTL ? 'روضة ميما الغالية' : 'Crèche Mima Elghalia',
+                        latitude: EXACT_LAT,
+                        longitude: EXACT_LNG
+                    }
                 })
             } finally {
                 setIsLoading(false)

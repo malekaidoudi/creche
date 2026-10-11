@@ -140,14 +140,50 @@ export const apiRequest = {
 // ─────────────────────────────────────────────────────────────────────────
 const getCache = new Map() // clé -> { promise, expiry }
 const DEFAULT_CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
+const STORAGE_CACHE_PREFIX = 'creche_api_cache:'
 
 const buildCacheKey = (url, params) => `${url}?${JSON.stringify(params || {})}`
 
 /**
- * GET avec cache mémoire (partagé entre toutes les pages de l'onglet).
- * À utiliser uniquement pour des données peu volatiles (settings, contact,
- * holidays...). Les appels concurrents pendant le chargement partagent la
- * même promesse (pas de requêtes dupliquées en rafale).
+ * Lit une entrée depuis le localStorage du navigateur
+ */
+export const getStoredCache = (url, params) => {
+  if (typeof window === 'undefined' || !window.localStorage) return null
+  const storageKey = STORAGE_CACHE_PREFIX + buildCacheKey(url, params)
+  try {
+    const raw = window.localStorage.getItem(storageKey)
+    if (!raw) return null
+    return JSON.parse(raw)
+  } catch (err) {
+    console.warn('[Cache Storage] Erreur lecture:', err)
+    return null
+  }
+}
+
+/**
+ * Enregistre une entrée dans le localStorage du navigateur
+ */
+export const setStoredCache = (url, params, data, ttlMs = DEFAULT_CACHE_TTL_MS) => {
+  if (typeof window === 'undefined' || !window.localStorage) return
+  const storageKey = STORAGE_CACHE_PREFIX + buildCacheKey(url, params)
+  try {
+    const entry = {
+      data,
+      timestamp: Date.now(),
+      expiry: Date.now() + ttlMs
+    }
+    window.localStorage.setItem(storageKey, JSON.stringify(entry))
+  } catch (err) {
+    console.warn('[Cache Storage] Erreur écriture:', err)
+  }
+}
+
+/**
+ * GET avec cache hybride (mémoire RAM + persistance localStorage navigateur).
+ * - Réduit les requêtes réseau redondantes entre pages et rechargements
+ * - Si le cache est valide (expiry > now), résolution instantanée
+ * - Si le réseau échoue (panne, offline), bascule automatiquement sur les
+ *   dernières données réelles de la BD stockées dans le navigateur
  *
  * @param {string} url
  * @param {object} config - config axios (params, headers...)
@@ -161,28 +197,81 @@ export const cachedGet = (url, config = {}, ttlMs = DEFAULT_CACHE_TTL_MS) => {
     return cached.promise
   }
 
-  const promise = api.get(url, config).catch((error) => {
-    // Ne pas garder une promesse rejetée en cache: on retentera au prochain appel
-    getCache.delete(key)
-    throw error
-  })
+  // Vérifier d'abord le cache persistant dans le localStorage
+  const stored = getStoredCache(url, config.params)
+  if (stored && stored.expiry > Date.now()) {
+    const resolvedPromise = Promise.resolve({
+      data: stored.data,
+      status: 200,
+      fromCache: true,
+      timestamp: stored.timestamp
+    })
+    getCache.set(key, { promise: resolvedPromise, expiry: stored.expiry })
+    return resolvedPromise
+  }
+
+  // Effectuer la requête réseau réelle
+  const promise = api
+    .get(url, config)
+    .then((response) => {
+      // Persister dans le stockage du navigateur
+      setStoredCache(url, config.params, response.data, ttlMs)
+      return response
+    })
+    .catch((error) => {
+      // En cas d'erreur réseau, vérifier si on a une version précédente en localStorage (offline/stale fallback)
+      if (stored && stored.data) {
+        console.warn(`[Cache Storage] Réseau indisponible pour ${url}, utilisation des dernières données de la base en cache navigateur`)
+        return {
+          data: stored.data,
+          status: 200,
+          fromCache: true,
+          isStale: true,
+          timestamp: stored.timestamp
+        }
+      }
+      // Ne pas garder une promesse rejetée en cache mémoire
+      getCache.delete(key)
+      throw error
+    })
 
   getCache.set(key, { promise, expiry: Date.now() + ttlMs })
   return promise
 }
 
 /**
- * Invalide le cache (partiellement via un préfixe d'URL, ou totalement).
- * À appeler après une mutation (ex: updateSetting) pour forcer un refetch frais.
+ * Invalide le cache en mémoire ET dans le localStorage du navigateur.
+ * À appeler après une mutation (ex: mise à jour des paramètres dans Dashboard)
+ * pour forcer un refetch frais de la base de données.
  */
 export const clearApiCache = (urlPrefix) => {
+  // 1. Invalidation du cache mémoire
   if (!urlPrefix) {
     getCache.clear()
-    return
+  } else {
+    for (const key of getCache.keys()) {
+      if (key.startsWith(urlPrefix)) {
+        getCache.delete(key)
+      }
+    }
   }
-  for (const key of getCache.keys()) {
-    if (key.startsWith(urlPrefix)) {
-      getCache.delete(key)
+
+  // 2. Invalidation du cache persistant localStorage
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const keysToRemove = []
+      for (let i = 0; i < window.localStorage.length; i++) {
+        const k = window.localStorage.key(i)
+        if (k && k.startsWith(STORAGE_CACHE_PREFIX)) {
+          const apiPart = k.slice(STORAGE_CACHE_PREFIX.length)
+          if (!urlPrefix || apiPart.startsWith(urlPrefix)) {
+            keysToRemove.push(k)
+          }
+        }
+      }
+      keysToRemove.forEach((k) => window.localStorage.removeItem(k))
+    } catch (err) {
+      console.warn('[Cache Storage] Erreur invalidation localStorage:', err)
     }
   }
 }

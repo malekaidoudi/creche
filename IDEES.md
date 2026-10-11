@@ -86,6 +86,10 @@ Format suggéré : `- [ ] Description de l'idée` (laisser `[ ]`, passer à `[x]
 - [x] Pool PostgreSQL : `min: 1` + `idleTimeoutMillis` plus long (évite de recréer une connexion TLS Neon par requête)
 - [x] `cors({ maxAge: 86400 })` pour cacher les preflight OPTIONS
 - [x] Merger `SELECT notifications` + `COUNT(*)` en une seule requête (`COUNT(*) OVER()`)
+- [x] **Mise en cache automatique navigateur (`localStorage` + Stale-While-Revalidate)** :
+  - `cachedGet` dans `api.js` enrichi d'une persistance `localStorage` (`creche_api_cache:*`) avec TTL 5 min pour settings, contact et vacances.
+  - Élimination des valeurs de secours en dur obsolètes (ex: résidu "8 Rue Bizerte" supprimé) : en cas d'indisponibilité réseau, le frontend réutilise automatiquement la dernière valeur réelle enregistrée depuis la base de données.
+  - Invalidation instantanée : `clearApiCache` purge la mémoire et le stockage local dès la sauvegarde dans le tableau de bord.
 
 ## 🏗️ Architecture
 
