@@ -1429,3 +1429,30 @@
   3. **Mise à jour de la documentation** : le catalogue des fonctionnalités ([07](../documentsV2/07_CATALOGUE_FONCTIONNALITES.md)) déplace la fonctionnalité de la section « Site public » vers « Mon Espace » ; [21_FLUX_METIER.md](../documentsV2/21_FLUX_METIER.md) et [22_ETAT_DES_FONCTIONNALITES.md](../documentsV2/22_ETAT_DES_FONCTIONNALITES.md) mis à jour en conséquence ; anomalie #3 marquée corrigée dans [23_ANOMALIES_ET_RECOMMANDATIONS.md](../documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md).
   4. **Vérification de non-régression** : relecture de la structure JSX (comparaison avec le bloc `mon-espace` juste en dessous, qui utilise exactement le même motif `ProtectedRoute`) ; confirmation qu'aucun lien de navigation public ne pointait vers `/activites` pour un visiteur non connecté (le lien du menu était déjà conditionné à `isAuthenticated`).
 - **Résultat** : Un visiteur non connecté qui accède directement à l'URL `/activites` est désormais redirigé vers la page d'accueil comme pour toute autre page protégée de l'application, au lieu d'atterrir sur une page cassée faute de données chargées. Le comportement du routage frontend est maintenant cohérent avec l'exigence d'authentification déjà imposée par l'API.
+
+---
+
+### Fiche 59 - Correction du crash / écran blanc lors de l'affichage des détails d'un parent sans email (`ParentsPage.jsx`)
+
+- **Date** : 11 Octobre 2026
+- **Fichier modifié** :
+  - [`frontend/src/pages/dashboard/ParentsPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/ParentsPage.jsx)
+  - [`IDEES.md`](file:///Volumes/Data/Works/Windsurf/creche/IDEES.md)
+- **Problématique** :
+  - Lorsqu'un parent était enregistré en base sans adresse email (ou avec `email: null` / `email: ""` / `noemail`), la consultation de sa fiche ou le filtrage de la liste entraînait un crash complet de React et une page blanche.
+  - Causes identifiées :
+    1. Le helper `isNoEmail` ne vérifiait que `email && email.endsWith('@creche.local')`, renvoyant `false` si l'email était `null` ou indéfini.
+    2. Le filtre de recherche exécutait `parentEmailDisplay.toLowerCase()` sur une valeur nulle (`TypeError: Cannot read properties of null`).
+    3. Dans la modale de détails, `selectedParent.children.map(...)` levait une exception si `children` n'était pas un tableau.
+    4. Formatage de date sur `last_login` et `registration_date` sans vérification de validité.
+- **Actions appliquées** :
+  1. **Harmonisation et blindage de `isNoEmail`** : gestion de `null`, `undefined`, chaînes vides, `@creche.local` et `noemail`.
+  2. **Sécurisation du filtrage** : normalisation des champs textuels (`firstName`, `lastName`, `phone`, `parentEmailDisplay`) avec fallback systématique vers `''`.
+  3. **Sécurisation de `handleViewDetails`** : garantie que `children` est toujours un tableau `Array.isArray(parent.children) ? parent.children : []`.
+  4. **Sécurisation du rendu de la modale** :
+     - Liste des enfants avec fallback gracieux *"Aucun enfant associé"*.
+     - Affichage de la date de dernière connexion avec fallback *"Jamais connecté"*.
+     - Affichage du téléphone avec fallback *"Non renseigné"*.
+     - Conditionnement strict de l'encart d'activation de compte et masquage des contrôles de réinitialisation sans email.
+- **Résultat** : Élimination définitive du crash, consultation fluide des fiches parents sans email et affichage clair de l'invitation à ajouter une adresse email pour activer leur compte.
+

@@ -9,6 +9,14 @@ Format suggéré : `- [ ] Description de l'idée` (laisser `[ ]`, passer à `[x]
 ## � Urgent — Bugs en production
 
 - [x] **Upload document administratif impossible en production** — la page `dashboard/documents` ne permet pas d'ajouter un document sur le site en prod (fonctionne en local ?). Vérifier : config Cloudinary prod, `CORS` des origines Render, limite taille multer, variables `CLOUDINARY_*` sur Render
+- [x] **Correction de bug : Page blanche lors de la consultation des détails d'un parent sans email (`ParentsPage.jsx`)** :
+  - **Symptôme** : Lorsqu'un parent a été créé sans adresse email (ou avec `email` null/vide) et que l'administrateur clique sur "Voir les détails" (icône œil) dans `/dashboard/parents`, l'application plante et affiche un écran blanc.
+  - **Causes identifiées** :
+    1. Définition trop stricte de `isNoEmail(email)` dans `ParentsPage.jsx` (`email && email.endsWith('@creche.local')`) qui renvoie `false` si `email` est `null` ou `undefined`, provoquant un crash sur `parentEmailDisplay.toLowerCase()` (`TypeError: Cannot read properties of null (reading 'toLowerCase')`).
+    2. Absence de garde sur `selectedParent.children.map(...)` (crash si `children` est undefined/null).
+    3. Absence de vérification sur `selectedParent.last_login` passé directement dans `new Date()`.
+    4. Tentative d'affichage des boutons de réinitialisation/envoi de lien de mot de passe alors que le parent ne possède pas d'email valide.
+  - **Solutions préconisées** : Harmoniser le helper `isNoEmail` (`!email || email.includes('@creche.local') || email.includes('noemail')`), sécuriser les chaînes de recherche avec `|| ''`, sécuriser le mapping des enfants `(selectedParent.children || [])`, et afficher un état propre "Parent sans compte numérique".
 
 ## �👤 Rôles & Permissions
 

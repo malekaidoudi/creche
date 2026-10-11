@@ -55,7 +55,11 @@ const ParentsPage = () => {
   const [emailInput, setEmailInput] = useState('');
   const [savingEmail, setSavingEmail] = useState(false);
 
-  const isNoEmail = (email) => Boolean(email && email.endsWith('@creche.local'));
+  const isNoEmail = (email) => {
+    if (!email || typeof email !== 'string') return true;
+    const clean = email.trim().toLowerCase();
+    return clean === '' || clean.endsWith('@creche.local') || clean.includes('noemail');
+  };
 
   // Charger les parents depuis l'API
   useEffect(() => {
@@ -125,12 +129,18 @@ const ParentsPage = () => {
   }, [isRTL, filterStatus]);
 
   const filteredParents = parents.filter(parent => {
-    const parentEmailDisplay = isNoEmail(parent.email) ? '' : parent.email;
+    const firstName = (parent.first_name || '').toLowerCase();
+    const lastName = (parent.last_name || '').toLowerCase();
+    const parentEmailDisplay = isNoEmail(parent.email) ? '' : (parent.email || '').toLowerCase();
+    const phone = parent.phone || '';
+    const search = (searchTerm || '').trim().toLowerCase();
+
     const matchesSearch =
-      parent.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      parent.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      parentEmailDisplay.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (parent.phone && parent.phone.includes(searchTerm));
+      !search ||
+      firstName.includes(search) ||
+      lastName.includes(search) ||
+      parentEmailDisplay.includes(search) ||
+      phone.includes(search);
 
     const matchesFilter = filterStatus === 'all' || parent.status === filterStatus;
 
@@ -138,7 +148,11 @@ const ParentsPage = () => {
   });
 
   const handleViewDetails = (parent) => {
-    setSelectedParent(parent);
+    if (!parent) return;
+    setSelectedParent({
+      ...parent,
+      children: Array.isArray(parent.children) ? parent.children : []
+    });
     setShowDetails(true);
     setGeneratedLink(null);
     setLinkCopied(false);
@@ -629,7 +643,10 @@ const ParentsPage = () => {
                           {parent.first_name} {parent.last_name}
                         </div>
                         <div className="text-sm text-gray-500 dark:text-gray-400">
-                          {isRTL ? 'مسجل منذ' : 'Inscrit le'} {new Date(parent.registration_date).toLocaleDateString()}
+                          {isRTL ? 'مسجل منذ' : 'Inscrit le'}{' '}
+                          {parent.registration_date && !isNaN(new Date(parent.registration_date).getTime())
+                            ? new Date(parent.registration_date).toLocaleDateString()
+                            : '-'}
                         </div>
                       </td>
                       <td className="py-3 px-4">
@@ -840,8 +857,8 @@ const ParentsPage = () => {
                 <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
                   {isRTL ? 'الاسم الكامل' : 'Nom complet'}
                 </label>
-                <p className="text-gray-900 dark:text-white">
-                  {selectedParent.first_name} {selectedParent.last_name}
+                <p className="text-gray-900 dark:text-white font-medium">
+                  {selectedParent.first_name || ''} {selectedParent.last_name || ''}
                 </p>
               </div>
               <div className="p-3 bg-gray-50 dark:bg-gray-700/40 rounded-xl border border-gray-200 dark:border-gray-600">
@@ -916,27 +933,37 @@ const ParentsPage = () => {
                 <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
                   {isRTL ? 'رقم الهاتف' : 'Téléphone'}
                 </label>
-                <p className="text-gray-900 dark:text-white" dir="ltr">{selectedParent.phone}</p>
+                <p className="text-gray-900 dark:text-white" dir="ltr">
+                  {selectedParent.phone || (isRTL ? 'غير متوفر' : 'Non renseigné')}
+                </p>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
                   {isRTL ? 'الأطفال' : 'Enfants'}
                 </label>
-                <ul className="text-gray-900 dark:text-white">
-                  {selectedParent.children.map((child, index) => (
-                    <li key={index} className="flex items-center">
-                      <Baby className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2 text-blue-500" />
-                      {child}
-                    </li>
-                  ))}
-                </ul>
+                {(selectedParent.children || []).length > 0 ? (
+                  <ul className="text-gray-900 dark:text-white space-y-1 mt-1">
+                    {selectedParent.children.map((child, index) => (
+                      <li key={index} className="flex items-center">
+                        <Baby className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2 text-blue-500 shrink-0" />
+                        <span>{child}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-gray-400 italic mt-1">
+                    {isRTL ? 'لا يوجد أطفال مرتبطون' : 'Aucun enfant associé'}
+                  </p>
+                )}
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-600 dark:text-gray-400">
                   {isRTL ? 'آخر تسجيل دخول' : 'Dernière connexion'}
                 </label>
                 <p className="text-gray-900 dark:text-white">
-                  {new Date(selectedParent.last_login).toLocaleDateString()}
+                  {selectedParent.last_login && !isNaN(new Date(selectedParent.last_login).getTime())
+                    ? new Date(selectedParent.last_login).toLocaleDateString()
+                    : (isRTL ? 'لم يسجل دخول بعد' : 'Jamais connecté')}
                 </p>
               </div>
             </div>
