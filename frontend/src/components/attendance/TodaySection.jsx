@@ -16,7 +16,7 @@ import { useLanguage } from '../../hooks/useLanguage';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
 import { Button } from '../ui/Button';
 import LoadingSpinner from '../ui/LoadingSpinner';
-import { formatTime, calculateDuration } from '../../utils/dateUtils';
+import { formatTime, calculateDuration, calculateLivePresenceDuration, formatDurationHuman } from '../../utils/dateUtils';
 
 const TodaySection = ({
   currentlyPresent,
@@ -265,14 +265,44 @@ const TodaySection = ({
                   </div>
 
                   <div className="space-y-2 text-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-600 dark:text-gray-300">
-                        {isRTL ? 'وقت الوصول:' : 'Arrivée:'}
-                      </span>
-                      <span className="font-medium">
-                        {formatTime(child.check_in_time, isRTL)}
-                      </span>
-                    </div>
+                    {(() => {
+                      const live = calculateLivePresenceDuration(child.check_in_time, '18:00', isRTL);
+                      return (
+                        <>
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-600 dark:text-gray-300">
+                              {isRTL ? 'وقت الوصول:' : 'Arrivée:'}
+                            </span>
+                            <span className="font-medium">
+                              {formatTime(child.check_in_time, isRTL)}
+                            </span>
+                          </div>
+
+                          {live && (
+                            <div className="flex items-center justify-between pt-1">
+                              <span className="text-gray-600 dark:text-gray-300 flex items-center">
+                                <Clock className="w-3.5 h-3.5 mr-1 rtl:mr-0 rtl:ml-1 text-primary-500" />
+                                {isRTL ? 'المدة الحالية:' : 'Durée actuelle:'}
+                              </span>
+                              <span className="font-semibold text-primary-600 dark:text-primary-400">
+                                {live.formatted}
+                              </span>
+                            </div>
+                          )}
+
+                          {live?.isCapped && (
+                            <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded px-2 py-1 text-xs text-amber-700 dark:text-amber-300 flex items-center gap-1.5 mt-1">
+                              <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+                              <span>
+                                {isRTL 
+                                  ? `توقف العداد عند وقت الإغلاق (${live.closingTime})` 
+                                  : `Compteur arrêté à l'heure de fermeture (${live.closingTime})`}
+                              </span>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
 
                     <Button
                       onClick={() => onCheckOut(child.id)}
@@ -391,16 +421,17 @@ const TodaySection = ({
                               <span className="font-semibold text-primary-600 dark:text-primary-400">
                                 {(() => {
                                   const duration = calculateDuration(todayRecord.check_in_time, todayRecord.check_out_time);
-                                  if (duration) {
-                                    const hours = Math.floor(duration);
-                                    const minutes = Math.round((duration - hours) * 60);
-                                    return hours > 0
-                                      ? `${hours}h${minutes > 0 ? ` ${minutes}min` : ''}`
-                                      : `${minutes}min`;
-                                  }
-                                  return '-';
+                                  return formatDurationHuman(duration, isRTL);
                                 })()}
                               </span>
+                            </div>
+                          )}
+
+                          {/* Badge informatif si clôturé automatiquement */}
+                          {todayRecord.notes?.includes('[Départ automatique') && (
+                            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded px-2 py-1 text-xs text-blue-700 dark:text-blue-300 flex items-center gap-1 mt-1">
+                              <Clock className="w-3 h-3 flex-shrink-0" />
+                              <span>{isRTL ? 'إغلاق تلقائي عند انتهاء الدوام' : 'Clôture auto à la fermeture'}</span>
                             </div>
                           )}
                         </>

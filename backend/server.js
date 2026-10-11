@@ -504,6 +504,14 @@ const server = app.listen(PORT, () => {
   } catch (error) {
     console.error('❌ Erreur démarrage job traitements:', error.message);
   }
+
+  // Démarrer le job de clôture automatique des présences à la fermeture
+  try {
+    const { startAttendanceJob } = require('./jobs/attendanceJob');
+    startAttendanceJob();
+  } catch (error) {
+    console.error('❌ Erreur démarrage job présence:', error.message);
+  }
 });
 
 // Timeout serveur pour les uploads volumineux (5 minutes)

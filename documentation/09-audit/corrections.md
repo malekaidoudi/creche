@@ -46,6 +46,7 @@
 | **42** | 09/10/2026 | `AddChildPage.jsx`, `AddUserPage.jsx`, `ParentsPage.jsx`, `backend/routes_postgres/userWorkflow.js` | Inscription Enfant & Gestion Parent Sans Email | Préremplissage automatique du nom de famille de l'enfant, association pré-sélectionnée et support des parents sans email initial (avec mise à jour ultérieure) | ✅ Validé & Appliqué |
 | **43** | 09/10/2026 | `DatePicker.jsx`, `dateUtils.js`, `AddChildPage.jsx`, `AddUserPage.jsx`, `backend/routes_postgres/children.js` | UX/UI Saisie Date & Bouton Création Utilisateur | Correction intégrale du bug datepicker (saisie fluide JJ/MM/AAAA sans saut de curseur ni corruption d'année type 0262, synchronisation calendrier sécurisée) et libellé "Créer" si sans email | ✅ Validé & Appliqué |
 | **53** | 11/10/2026 | `frontend/src/services/api.js`, `PublicFooter.jsx`, `ContactPageDynamic.jsx`, `DashboardSettingsPage.jsx` | Performance, Cache & Résilience Hors-Ligne | Mise en cache automatique navigateur (`localStorage` + Stale-While-Revalidate), élimination des fallbacks en dur obsolètes et synchronisation temps réel | ✅ Validé & Appliqué |
+| **54** | 11/10/2026 | `attendanceAutoCheckoutService.js`, `attendanceJob.js`, `routes_postgres/attendance.js`, `server.js`, `TodaySection.jsx`, `MobileAttendance.jsx`, `dateUtils.js` | Métier, Présences & Automatisation | Clôture automatique des départs oubliés à l'heure de fermeture (`closing_time`), arrêt des compteurs de présence et synchronisation DB/UI | ✅ Validé & Appliqué |
 
 ---
 
@@ -1288,6 +1289,39 @@
      - `PublicFooter.jsx` : initialisation synchrone de `nurserySettings` avec `getStoredCache('/api/contact/info')`, suppression de la variable orpheline `isUsingFallback`, et correction du résidu d'adresse vers `9 Rue Latif Ksiksi, Médenine 4100` / `9 نهج لطيف الكسيكسي, مدنين 4100`.
      - `ContactPageDynamic.jsx` : initialisation synchrone de `contactData` via `getStoredCache('/api/contact/info')` pour éliminer le décalage de rendu (CLS / Layout Shift).
 - **Résultat** : Zéro texte obsolète en dur affiché en cas de panne, affichage instantané des coordonnées et mise à jour transparente du cache navigateur dès qu'une modification est enregistrée en base.
+
+---
+
+### Fiche 54 - Clôture automatique des départs oubliés à l'heure de fermeture & Arrêt automatique des compteurs
+
+- **Date** : 11 Octobre 2026
+- **Fichiers modifiés / créés** :
+  - [`backend/services/attendanceAutoCheckoutService.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/services/attendanceAutoCheckoutService.js)
+  - [`backend/jobs/attendanceJob.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/jobs/attendanceJob.js)
+  - [`backend/routes_postgres/attendance.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/attendance.js)
+  - [`backend/server.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/server.js)
+  - [`frontend/src/utils/dateUtils.js`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/utils/dateUtils.js)
+  - [`frontend/src/components/attendance/TodaySection.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/attendance/TodaySection.jsx)
+  - [`frontend/src/components/mobile/MobileAttendance.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/mobile/MobileAttendance.jsx)
+  - [`frontend/src/pages/dashboard/AttendancePage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/AttendancePage.jsx)
+  - [`IDEES.md`](file:///Volumes/Data/Works/Windsurf/creche/IDEES.md)
+- **Objectifs & Actions** :
+  1. **Problématique métier** :
+     - Lorsqu'un membre du personnel oubliait de pointer la sortie d'un enfant en fin de journée, le statut de l'enfant restait bloqué à « actuellement présent » toute la nuit et les jours suivants.
+     - Les compteurs de présence continuaient à défiler jusqu'au soir ou au lendemain, faussant lourdement le temps de garde et les statistiques de la crèche.
+  2. **Service de Clôture Automatique Backend (`attendanceAutoCheckoutService.js`)** :
+     - Récupération dynamique des heures de fermeture officielles (`closing_time` à 18h00 en semaine, `saturday_closing_time` à 13h00 le samedi) configurées dans `nursery_settings`.
+     - **Rattrapage d'historique automatique** : Détection et clôture immédiate de tous les enregistrements orphelins des dates passées (`date < CURRENT_DATE`) avec attribution de `check_out_time = date + closing_time` et note `[Départ automatique - fin de journée non pointée (fermeture 18:00)]` (31 présences historiques assainies dès l'activation).
+     - **Clôture du jour en direct** : Si l'heure locale tunisienne dépasse l'heure de fermeture du jour, tous les enfants encore pointés présents sont automatiquement clôturés à l'heure de fermeture légale.
+  3. **Déclencheurs Hybrides (Temps Réel + Cron)** :
+     - Intégration dans les routes d'API de présence (`GET /today`, `GET /currently-present`, `GET /stats`, `GET /date/:date`, `GET /`) : toute consultation après l'heure de fermeture remet la base à niveau instantanément.
+     - Nouveau cron `attendanceJob.js` programmé à 13h/18h (par tranche de 15 min) et filet de sécurité à 20h00, initialisé au boot dans `server.js`.
+  4. **Plafonnement & Affichage UI Frontend** :
+     - Helpers `calculateLivePresenceDuration` et `formatDurationHuman` dans `dateUtils.js` capables de manipuler timestamps ISO et chaînes `HH:MM`.
+     - `TodaySection.jsx` : affichage du temps de présence en temps réel pour chaque enfant présent, gel automatique du compteur dès que l'heure de fermeture est atteinte avec alerte visuelle ambrée `Compteur arrêté à l'heure de fermeture (18:00)`.
+     - Pastilles informatives `Clôture auto à la fermeture` affichées sur les fiches d'enfants auto-clôturés sur desktop (`TodaySection.jsx`) et mobile (`MobileAttendance.jsx`).
+- **Résultat** : Zéro enfant laissé présent la nuit, compteurs de présence rigoureusement stoppés à l'heure de fermeture officielle, et statistiques d'heures de garde parfaitement fiables.
+
 
 
 

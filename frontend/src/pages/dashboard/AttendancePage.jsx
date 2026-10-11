@@ -256,7 +256,8 @@ const AttendancePage = () => {
     attendanceData.forEach(record => {
       map[record.child_id] = {
         check_in: record.check_in_time || record.check_in,
-        check_out: record.check_out_time || record.check_out
+        check_out: record.check_out_time || record.check_out,
+        notes: record.notes
       };
     });
     return map;

@@ -3,10 +3,14 @@ const { body, validationResult } = require('express-validator');
 const router = express.Router();
 const db = require('../config/db_postgres');
 const auth = require('../middleware/auth');
+const { autoCloseExpiredAttendances } = require('../services/attendanceAutoCheckoutService');
 
 // GET /api/attendance/today - Présences d'aujourd'hui
 router.get('/today', auth.authenticateToken, async (req, res) => {
   try {
+    // Clôturer automatiquement tout enfant non pointé si la crèche est fermée
+    await autoCloseExpiredAttendances();
+
     const { page = 1, limit = 50 } = req.query;
     const today = new Date().toISOString().split('T')[0];
 
@@ -98,6 +102,9 @@ router.get('/child/:id/month', auth.authenticateToken, async (req, res) => {
 // GET /api/attendance/currently-present - Enfants actuellement présents
 router.get('/currently-present', auth.authenticateToken, async (req, res) => {
   try {
+    // Clôturer automatiquement tout enfant non pointé si la crèche est fermée
+    await autoCloseExpiredAttendances();
+
     const today = new Date().toISOString().split('T')[0];
 
     const sql = `
@@ -129,6 +136,9 @@ router.get('/currently-present', auth.authenticateToken, async (req, res) => {
 // GET /api/attendance/stats - Statistiques de présence
 router.get('/stats', auth.authenticateToken, async (req, res) => {
   try {
+    // Clôturer automatiquement tout enfant non pointé si la crèche est fermée
+    await autoCloseExpiredAttendances();
+
     const { date } = req.query;
     const targetDate = date || new Date().toISOString().split('T')[0];
 
@@ -169,6 +179,9 @@ router.get('/stats', auth.authenticateToken, async (req, res) => {
 // GET /api/attendance/date/:date - Présences pour une date spécifique
 router.get('/date/:date', auth.authenticateToken, async (req, res) => {
   try {
+    // Clôturer automatiquement tout enfant non pointé si la date est passée ou la crèche fermée
+    await autoCloseExpiredAttendances();
+
     const { date } = req.params;
     const { page = 1, limit = 100 } = req.query;
 
@@ -230,6 +243,9 @@ router.get('/report', auth.authenticateToken, async (req, res) => {
 // GET /api/attendance - Récupérer toutes les présences
 router.get('/', auth.authenticateToken, async (req, res) => {
   try {
+    // Clôturer automatiquement tout enfant non pointé si la crèche est fermée
+    await autoCloseExpiredAttendances();
+
     const { child_id, date, start_date, end_date, page = 1, limit = 50 } = req.query;
 
     let sql = `

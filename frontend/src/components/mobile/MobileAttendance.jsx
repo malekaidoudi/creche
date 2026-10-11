@@ -271,7 +271,14 @@ const MobileAttendance = ({
                                                 {status === 'left' && (
                                                     <>
                                                         <XCircle className="w-3.5 h-3.5 text-gray-400" />
-                                                        <span>{isRTL ? 'خروج:' : 'Sorti à'} {formatTime(record?.check_out)}</span>
+                                                        <span className="flex items-center gap-1">
+                                                            {isRTL ? 'خروج:' : 'Sorti à'} {formatTime(record?.check_out)}
+                                                            {record?.notes?.includes('[Départ automatique') && (
+                                                                <span className="text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded font-medium">
+                                                                    {isRTL ? 'تلقائي' : 'auto'}
+                                                                </span>
+                                                            )}
+                                                        </span>
                                                     </>
                                                 )}
                                                 {status === 'absent' && (

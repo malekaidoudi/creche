@@ -77,6 +77,11 @@ Format suggéré : `- [ ] Description de l'idée` (laisser `[ ]`, passer à `[x]
   - Marqueur de carte sur-mesure utilisant le logo officiel de la crèche (`/images/logo.jpg`) ancré géographiquement (Leaflet) : reste solidaire des coordonnées lors du zoom et du déplacement.
   - Vue Satellite Google Hybrid par défaut, zoom rapproché d'entrée (zoom 19), bascule Plan/Satellite et recentrage instantané (`InteractiveNurseryMap.jsx`).
   - Formulaire de contact moderne et cartes d'accès express (Tél 1-clic, Email, Horaires, Itinéraires Google Maps & Waze, capsules dépose-minute/poussettes/sécurité).
+- [x] **Clôture automatique des présences à l'heure de fermeture & arrêt automatique des compteurs** :
+  - Détection automatique des sorties non pointées par le personnel à l'heure officielle de fermeture (`nursery_settings.closing_time`, ex: 18h00 en semaine / 13h00 le samedi).
+  - Backend : `attendanceAutoCheckoutService.js` clôture automatiquement en base tout enregistrement non terminé (`check_out_time = date + closing_time`) avec note d'audit `[Départ automatique - fermeture de la crèche]`.
+  - Exécution double : automatique à chaque consultation des présences (`/today`, `/currently-present`, `/stats`, `/date/:date`) + cron planifié `attendanceJob.js` (13h/18h et sécurité à 20h).
+  - Frontend : arrêt et plafonnement visuel du compteur en cours dès que l'heure de fermeture est atteinte avec badge `Compteur arrêté à l'heure de fermeture (18:00)`, et pastilles explicatives `Clôture auto à la fermeture` sur desktop (`TodaySection.jsx`) et mobile (`MobileAttendance.jsx`).
 - [ ] *(ajouter ici)*
 
 ## 🚀 Performance & Technique

@@ -89,9 +89,9 @@ export const formatDateTime = (dateTimeString, isRTL = false) => {
 };
 
 /**
- * Calcule la durée entre deux heures en heures
- * @param {string} startTime - Heure de début
- * @param {string} endTime - Heure de fin
+ * Calcule la durée entre deux heures en heures (supporte timestamps complets et chaînes HH:MM)
+ * @param {string|Date} startTime - Heure de début
+ * @param {string|Date} endTime - Heure de fin
  * @returns {number|null} Durée en heures ou null si invalide
  */
 export const calculateDuration = (startTime, endTime) => {
@@ -100,19 +100,88 @@ export const calculateDuration = (startTime, endTime) => {
   }
 
   try {
-    const start = new Date(startTime);
-    const end = new Date(endTime);
+    let start = startTime instanceof Date ? startTime : new Date(startTime);
+    let end = endTime instanceof Date ? endTime : new Date(endTime);
+
+    // Si start est invalide mais de format HH:MM(:SS), lui attacher une date
+    if (isNaN(start.getTime()) && typeof startTime === 'string' && startTime.includes(':')) {
+      const [sh, sm, ss] = startTime.split(':');
+      start = new Date();
+      start.setHours(parseInt(sh, 10), parseInt(sm, 10), parseInt(ss || 0, 10), 0);
+    }
+
+    // Si end est invalide mais de format HH:MM(:SS), lui attacher la date de start
+    if (isNaN(end.getTime()) && typeof endTime === 'string' && endTime.includes(':')) {
+      const [eh, em, es] = endTime.split(':');
+      end = new Date(start);
+      end.setHours(parseInt(eh, 10), parseInt(em, 10), parseInt(es || 0, 10), 0);
+    }
 
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
       return null;
     }
 
-    const durationMs = end.getTime() - start.getTime();
+    const durationMs = Math.max(0, end.getTime() - start.getTime());
     const durationHours = durationMs / (1000 * 60 * 60);
 
     return Math.round(durationHours * 10) / 10; // Arrondir à 1 décimale
   } catch (error) {
     console.error('Erreur calculateDuration:', error);
+    return null;
+  }
+};
+
+/**
+ * Formate une durée numérique (en heures) en texte lisible (ex: "4h 30min" ou "45min")
+ */
+export const formatDurationHuman = (durationHours, isRTL = false) => {
+  if (durationHours === null || durationHours === undefined || isNaN(durationHours)) return '-';
+  const totalMinutes = Math.round(durationHours * 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours === 0) {
+    return isRTL ? `${minutes} دقيقة` : `${minutes}min`;
+  }
+  if (minutes === 0) {
+    return isRTL ? `${hours} ساعة` : `${hours}h`;
+  }
+  return isRTL ? `${hours} س و ${minutes} د` : `${hours}h ${minutes}min`;
+};
+
+/**
+ * Calcule la durée de présence en cours, plafonnée à l'heure de fermeture de la crèche
+ * @param {string|Date} checkInTime - Heure d'arrivée
+ * @param {string} closingTime - Heure de fermeture (ex: "18:00")
+ * @param {boolean} isRTL - RTL language
+ */
+export const calculateLivePresenceDuration = (checkInTime, closingTime = '18:00', isRTL = false) => {
+  if (!checkInTime) return null;
+  try {
+    const start = checkInTime instanceof Date ? checkInTime : new Date(checkInTime);
+    if (isNaN(start.getTime())) return null;
+
+    const now = new Date();
+    // Déterminer l'heure de fermeture sur la même journée que le pointage
+    const [ch, cm] = (closingTime || '18:00').split(':');
+    const closingDate = new Date(start);
+    closingDate.setHours(parseInt(ch, 10) || 18, parseInt(cm, 10) || 0, 0, 0);
+
+    // Si l'heure actuelle dépasse l'heure de fermeture sur la même journée, plafonner
+    const isPastClosing = now.getTime() >= closingDate.getTime();
+    const effectiveEnd = isPastClosing ? closingDate : now;
+
+    const durationMs = Math.max(0, effectiveEnd.getTime() - start.getTime());
+    const hours = durationMs / (1000 * 60 * 60);
+
+    return {
+      durationHours: Math.round(hours * 10) / 10,
+      formatted: formatDurationHuman(hours, isRTL),
+      isCapped: isPastClosing,
+      closingTime
+    };
+  } catch (err) {
+    console.error('Erreur calculateLivePresenceDuration:', err);
     return null;
   }
 };
