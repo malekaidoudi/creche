@@ -62,7 +62,8 @@ const enrollmentsController = {
       const {
         applicant_first_name, applicant_last_name, applicant_email, applicant_phone,
         child_first_name, child_last_name, child_birth_date, child_gender,
-        emergency_contact_name, emergency_contact_phone, emergency_contact_choice
+        emergency_contact_name, emergency_contact_phone, emergency_contact_choice,
+        saturday_attendance
       } = req.body;
 
       // Validation
@@ -84,12 +85,12 @@ const enrollmentsController = {
           applicant_first_name, applicant_last_name, applicant_email, applicant_phone,
           child_first_name, child_last_name, child_birth_date, child_gender,
           emergency_contact_name, emergency_contact_phone, emergency_contact_choice,
-          status, created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'pending', NOW())
+          saturday_attendance, status, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'pending', NOW())
         RETURNING id, status
       `, [applicant_first_name, applicant_last_name, applicant_email, applicant_phone,
         child_first_name, child_last_name, child_birth_date, child_gender,
-        ecName, ecPhone, ecChoice]);
+        ecName, ecPhone, ecChoice, !!saturday_attendance]);
 
       const enrollment = result.rows[0];
 
@@ -415,6 +416,7 @@ const enrollmentsController = {
               COALESCE(u.phone, e.applicant_phone) AS parent_phone,
               e.admin_notes, e.approved_by, e.approved_at,
               e.active_appointment_id, e.failed_appointments_count,
+              e.saturday_attendance,
               COALESCE((SELECT COUNT(*) FROM enrollment_documents ed WHERE ed.enrollment_id = e.id), 0) as documents_count,
               'active' as source
             FROM enrollments e
@@ -435,6 +437,7 @@ const enrollmentsController = {
               NULL AS parent_phone,
               ea.admin_notes, ea.approved_by, ea.approved_at,
               NULL as active_appointment_id, NULL as failed_appointments_count,
+              ea.saturday_attendance,
               0 as documents_count,
               'archived' as source
             FROM enrollments_archive ea
@@ -451,6 +454,7 @@ const enrollmentsController = {
             e.id, e.status, e.created_at, e.updated_at,
             e.admin_notes, e.approved_by, e.approved_at,
             e.active_appointment_id, e.failed_appointments_count,
+            e.saturday_attendance,
             -- Priorité: données de la table children, sinon données de enrollments
             COALESCE(c.first_name, e.child_first_name) as child_first_name,
             COALESCE(c.last_name, e.child_last_name) as child_last_name,

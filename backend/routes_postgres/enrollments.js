@@ -34,7 +34,7 @@ router.post('/', [
 
   // Validation optionnelle
   body('regulation_accepted').isBoolean().optional(),
-  body('lunch_assistance').isBoolean().optional()
+  body('saturday_attendance').isBoolean().optional()
 ], (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {

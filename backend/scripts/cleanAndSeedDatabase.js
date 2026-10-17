@@ -212,7 +212,7 @@ async function seedDatabase() {
     console.log('\n📝 Création des inscriptions...');
     for (let i = 0; i < childIds.length; i++) {
       await client.query(`
-        INSERT INTO enrollments (child_id, parent_id, status, enrollment_date, lunch_assistance, regulation_accepted)
+        INSERT INTO enrollments (child_id, parent_id, status, enrollment_date, saturday_attendance, regulation_accepted)
         VALUES ($1, $2, 'approved', CURRENT_DATE - INTERVAL '30 days', $3, true)
       `, [childIds[i], children[i].parent_id, i % 2 === 0]);
       console.log(`   ✓ Inscription pour ${children[i].first_name}`);

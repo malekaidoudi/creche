@@ -85,6 +85,11 @@ Format suggéré : `- [ ] Description de l'idée` (laisser `[ ]`, passer à `[x]
   - Marqueur de carte sur-mesure utilisant le logo officiel de la crèche (`/images/logo.jpg`) ancré géographiquement (Leaflet) : reste solidaire des coordonnées lors du zoom et du déplacement.
   - Vue Satellite Google Hybrid par défaut, zoom rapproché d'entrée (zoom 19), bascule Plan/Satellite et recentrage instantané (`InteractiveNurseryMap.jsx`).
   - Formulaire de contact moderne et cartes d'accès express (Tél 1-clic, Email, Horaires, Itinéraires Google Maps & Waze, capsules dépose-minute/poussettes/sécurité).
+- [x] **Remplacer "Assistance au déjeuner" par "Présence le samedi" dans le formulaire d'inscription** :
+  - Le champ `enrollments.lunch_assistance` n'était utilisé nulle part côté métier : la valeur n'était même pas envoyée au backend par les formulaires (`EnrollmentPage.jsx`, `AddChildPage.jsx` dashboard), jamais transférée vers `children`, jamais affichée côté staff/admin.
+  - Renommé en `saturday_attendance` sur `enrollments`/`enrollments_archive` (migration `009_saturday_attendance`) + nouvelle colonne durable `children.saturday_attendance` (survit à l'archivage de l'inscription, modifiable dans le temps).
+  - Transféré correctement lors de l'approbation (`childLifecycleService.createChild`, `appointmentsController.completeAppointment`), exposé en lecture/écriture sur `PUT /api/children/:id`, affiché et éditable dans `ChildrenPage.jsx` (modal enfant), visible pour l'admin dans `PendingEnrollmentsPage.jsx`, et mis en avant le samedi dans l'écran de pointage (`TodaySection.jsx` : tri + badge "attendu aujourd'hui").
+  - Voir `corrections.md` Fiche 60 (nettoyage préalable du code mort) et Fiche 61 (implémentation complète).
 - [x] **Clôture automatique des présences à l'heure de fermeture & arrêt automatique des compteurs** :
   - Détection automatique des sorties non pointées par le personnel à l'heure officielle de fermeture (`nursery_settings.closing_time`, ex: 18h00 en semaine / 13h00 le samedi).
   - Backend : `attendanceAutoCheckoutService.js` clôture automatiquement en base tout enregistrement non terminé (`check_out_time = date + closing_time`) avec note d'audit `[Départ automatique - fermeture de la crèche]`.

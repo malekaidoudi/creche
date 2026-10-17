@@ -381,7 +381,7 @@ router.get('/available', auth.authenticateToken, auth.requireStaff, async (req, 
     const sql = `
       SELECT c.id, c.first_name, c.last_name, c.birth_date, c.gender, 
              c.medical_info, c.emergency_contact_name, c.emergency_contact_phone, 
-             c.photo_url, c.is_active, c.created_at,
+             c.photo_url, c.is_active, c.saturday_attendance, c.created_at,
              EXTRACT(YEAR FROM AGE(c.birth_date)) as age
       FROM children c
       LEFT JOIN enrollments e ON c.id = e.child_id
@@ -497,7 +497,7 @@ router.get('/parent/:parentId', auth.authenticateToken, async (req, res) => {
     const sql = `
       SELECT c.id, c.first_name, c.last_name, c.birth_date, c.gender, 
              c.medical_info, c.emergency_contact_name, c.emergency_contact_phone, 
-             c.photo_url, c.is_active, c.created_at,
+             c.photo_url, c.is_active, c.saturday_attendance, c.created_at,
              EXTRACT(YEAR FROM AGE(c.birth_date)) as age
       FROM children c
       WHERE c.parent_id = $1 AND c.is_active = true
@@ -858,6 +858,7 @@ router.get('/', auth.authenticateToken, async (req, res) => {
         c.weight_kg, c.height_cm, c.growth_measured_at,
         c.emergency_contact_name, c.emergency_contact_phone, c.photo_url,
         COALESCE(c.photo_shared_with_staff, true) as photo_shared_with_staff,
+        c.saturday_attendance,
         c.is_active, c.created_at, c.updated_at, c.parent_id,
         COALESCE(c.status, 'active') as status,
         c.suspension_reason, c.suspended_at, c.expected_return_date,
@@ -940,7 +941,7 @@ router.get('/', auth.authenticateToken, async (req, res) => {
              c.allergies, c.medical_notes, c.doctor_name, c.doctor_phone, c.blood_type,
              c.weight_kg, c.height_cm, c.growth_measured_at,
              c.emergency_contact_name, c.emergency_contact_phone, c.photo_url, 
-             c.photo_shared_with_staff, c.is_active, c.created_at, c.updated_at, c.parent_id,
+             c.photo_shared_with_staff, c.saturday_attendance, c.is_active, c.created_at, c.updated_at, c.parent_id,
              c.status, c.suspension_reason, c.suspended_at, c.expected_return_date,
              c.father_name, c.father_phone, c.mother_name, c.mother_phone, c.account_holder,
              c.emergency_contact_choice, c.trusted_contacts,
@@ -1046,6 +1047,7 @@ router.get('/:id', auth.authenticateToken, auth.requireChildAccess, async (req, 
               c.allergies, c.medical_notes, c.doctor_name, c.doctor_phone, c.blood_type,
               c.weight_kg, c.height_cm, c.growth_measured_at,
               c.emergency_contact_name, c.emergency_contact_phone, c.photo_url, c.photo_shared_with_staff,
+              c.saturday_attendance,
               c.is_active, c.created_at, c.updated_at, c.parent_id,
               COALESCE(c.status, 'active') as status,
               c.suspension_reason, c.suspended_at, c.expected_return_date,
@@ -1164,7 +1166,8 @@ router.post('/', [
       emergency_contact_choice,
       photo_url,
       parent_id,
-      enrollment_date
+      enrollment_date,
+      saturday_attendance
     } = req.body;
 
     // Protection médicale : vérifier la permission medical.view pour le staff si medical_info est fourni
@@ -1193,7 +1196,8 @@ router.post('/', [
         emergency_contact_phone,
         emergency_contact_choice,
         photo_url,
-        parent_id
+        parent_id,
+        saturday_attendance
       },
       {
         created_by: req.user?.id,
@@ -1340,7 +1344,8 @@ router.put('/:id', [
       blood_type,
       weight_kg,
       height_cm,
-      is_active
+      is_active,
+      saturday_attendance
     } = req.body;
 
     // Vérifier si l'enfant existe
@@ -1656,6 +1661,12 @@ router.put('/:id', [
       paramCount++;
       updates.push(`is_active = $${paramCount}`);
       params.push(is_active);
+    }
+
+    if (saturday_attendance !== undefined) {
+      paramCount++;
+      updates.push(`saturday_attendance = $${paramCount}`);
+      params.push(!!saturday_attendance);
     }
 
     if (updates.length === 0) {

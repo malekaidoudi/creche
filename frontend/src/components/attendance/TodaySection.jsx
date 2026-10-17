@@ -10,7 +10,8 @@ import {
   Users,
   UserCheck,
   ChevronDown,
-  BarChart3
+  BarChart3,
+  CalendarCheck
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
@@ -29,6 +30,9 @@ const TodaySection = ({
 }) => {
   const { isRTL } = useLanguage();
   const [statsExpanded, setStatsExpanded] = useState(false);
+  // Le samedi, la crèche ouvre à horaires réduits : on met en avant les enfants
+  // déclarés présents ce jour-là (cf. children.saturday_attendance)
+  const isSaturdayToday = new Date().getDay() === 6;
 
   const calculateAge = (birthDate) => {
     const today = new Date();
@@ -334,6 +338,14 @@ const TodaySection = ({
           <CardTitle className="flex items-center">
             <Clock className="w-5 h-5 mr-2 rtl:mr-0 rtl:ml-2" />
             {isRTL ? 'تسجيل الحضور السريع' : 'Enregistrement rapide'}
+            {isSaturdayToday && (
+              <span className="ml-2 rtl:ml-0 rtl:mr-2 inline-flex items-center gap-1 bg-primary-100 dark:bg-primary-900 text-primary-800 dark:text-primary-200 px-2 py-1 rounded-full text-xs font-medium">
+                <CalendarCheck className="w-3.5 h-3.5" />
+                {isRTL
+                  ? `${allChildren?.filter(c => c.saturday_attendance).length || 0} منتظر اليوم`
+                  : `${allChildren?.filter(c => c.saturday_attendance).length || 0} attendu(s) aujourd'hui`}
+              </span>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -345,7 +357,12 @@ const TodaySection = ({
                 return !isPresentNow;
               }) || [];
 
-              return filteredChildren.map((child) => {
+              // Le samedi : mettre en avant les enfants attendus (saturday_attendance)
+              const sortedChildren = isSaturdayToday
+                ? [...filteredChildren].sort((a, b) => (b.saturday_attendance ? 1 : 0) - (a.saturday_attendance ? 1 : 0))
+                : filteredChildren;
+
+              return sortedChildren.map((child) => {
                 // Trouver l'enregistrement d'attendance pour cet enfant aujourd'hui
                 const todayRecord = attendanceData?.find(record => record.child_id === child.id);
                 const isPresent = todayRecord?.check_in_time && !todayRecord?.check_out_time;
@@ -369,8 +386,11 @@ const TodaySection = ({
                             }`} />
                         </div>
                         <div>
-                          <h3 className="font-semibold text-gray-900 dark:text-white">
+                          <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-1.5">
                             {child.first_name} {child.last_name}
+                            {isSaturdayToday && child.saturday_attendance && (
+                              <CalendarCheck className="w-4 h-4 text-primary-500" title={isRTL ? 'منتظر اليوم' : 'Attendu aujourd\'hui'} />
+                            )}
                           </h3>
                           <p className="text-sm text-gray-500 dark:text-gray-400">
                             {calculateAge(child.birth_date)}

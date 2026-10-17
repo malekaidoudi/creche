@@ -333,7 +333,7 @@ exports.completeAppointment = async (req, res) => {
         const appointmentCheck = await db.query(`
             SELECT a.*, 
                    e.id as enrollment_id, e.status as enrollment_status,
-                   e.parent_id, e.child_id, e.enrollment_date, e.lunch_assistance,
+                   e.parent_id, e.child_id, e.enrollment_date, e.saturday_attendance,
                    e.regulation_accepted, e.admin_notes as e_admin_notes,
                    e.created_at as e_created_at, e.applicant_first_name,
                    e.applicant_last_name, e.applicant_email, e.approved_by, e.approved_at,
@@ -385,7 +385,8 @@ exports.completeAppointment = async (req, res) => {
                         parent_id: parentId,
                         emergency_contact_name: appointment.emergency_contact_name,
                         emergency_contact_phone: appointment.emergency_contact_phone,
-                        emergency_contact_choice: appointment.emergency_contact_choice
+                        emergency_contact_choice: appointment.emergency_contact_choice,
+                        saturday_attendance: appointment.saturday_attendance
                     },
                     {
                         enrollment_id: appointment.enrollment_id,
@@ -610,7 +611,7 @@ exports.markAppointmentFailed = async (req, res) => {
                    e.failed_appointments_count, e.created_parent_user_id,
                    e.applicant_email, e.applicant_first_name, e.applicant_last_name,
                    e.child_first_name, e.child_last_name, e.applicant_phone,
-                   e.parent_id, e.child_id, e.enrollment_date, e.lunch_assistance,
+                   e.parent_id, e.child_id, e.enrollment_date, e.saturday_attendance,
                    e.regulation_accepted, e.admin_notes as e_admin_notes,
                    e.created_at as e_created_at, e.approved_by, e.approved_at
             FROM appointments a
@@ -725,7 +726,7 @@ exports.markAppointmentFailed = async (req, res) => {
             await db.query(`
                 INSERT INTO enrollments_archive (
                     id, parent_id, child_id, enrollment_date, status,
-                    lunch_assistance, regulation_accepted, appointment_date, appointment_time,
+                    saturday_attendance, regulation_accepted, appointment_date, appointment_time,
                     admin_notes, created_at, updated_at, applicant_first_name,
                     applicant_last_name, applicant_email, new_status, approved_by, approved_at
                 ) VALUES (
@@ -739,7 +740,7 @@ exports.markAppointmentFailed = async (req, res) => {
                 appointment.parent_id,
                 appointment.child_id,
                 appointment.enrollment_date || new Date(),
-                appointment.lunch_assistance || false,
+                appointment.saturday_attendance || false,
                 appointment.regulation_accepted || false,
                 appointment.proposed_date,
                 appointment.proposed_date ? new Date(appointment.proposed_date).toTimeString().slice(0, 8) : null,

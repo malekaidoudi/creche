@@ -93,6 +93,7 @@ const AddChildPage = () => {
         medical_info: can(FEATURES.MEDICAL_VIEW) ? (data.medical_info || '') : '',
         parent_id: data.parent_id || null,
         enrollment_date: convertToISO(data.enrollment_date) || new Date().toISOString().split('T')[0],
+        saturday_attendance: !!data.saturday_attendance,
       };
 
       const response = await childrenService.createChild(childData);
@@ -551,11 +552,12 @@ const AddChildPage = () => {
               <div className="flex items-center">
                 <input
                   type="checkbox"
-                  {...register('lunch_assistance')}
+                  {...register('saturday_attendance')}
                   className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                 />
-                <label className="ml-2 rtl:ml-0 rtl:mr-2 block text-sm text-gray-700 dark:text-gray-300">
-                  {isRTL ? 'مساعدة في الغداء' : 'Assistance pour le déjeuner'}
+                <label className="ml-2 rtl:ml-0 rtl:mr-2 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                  <Calendar className="w-4 h-4 text-primary-600" />
+                  {isRTL ? 'الحضور يوم السبت' : 'Présence le samedi'}
                 </label>
               </div>
             </div>

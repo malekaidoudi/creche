@@ -41,6 +41,7 @@ async function initializeDatabase() {
         emergency_contact_name VARCHAR(100),
         emergency_contact_phone VARCHAR(20),
         photo_url VARCHAR(500),
+        saturday_attendance BOOLEAN NOT NULL DEFAULT FALSE,
         is_active BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -58,7 +59,7 @@ async function initializeDatabase() {
         child_id INTEGER REFERENCES children(id) ON DELETE CASCADE,
         enrollment_date DATE DEFAULT CURRENT_DATE,
         status VARCHAR(50) DEFAULT 'pending',
-        lunch_assistance BOOLEAN DEFAULT FALSE,
+        saturday_attendance BOOLEAN DEFAULT FALSE,
         regulation_accepted BOOLEAN DEFAULT FALSE,
         admin_notes TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -384,7 +385,7 @@ async function insertTestData() {
 
       for (const child of allChildrenIds.rows) {
         await db.query(
-          `INSERT INTO enrollments (parent_id, child_id, status, lunch_assistance, regulation_accepted) 
+          `INSERT INTO enrollments (parent_id, child_id, status, saturday_attendance, regulation_accepted) 
            VALUES ($1, $2, $3, $4, $5)`,
           [parentId, child.id, 'approved', true, true]
         );

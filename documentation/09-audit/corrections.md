@@ -50,6 +50,9 @@
 | **56** | 11/10/2026 | `backend/middleware/auth.js`, `backend/routes_postgres/auth.js`, `backend/.env.example` | Audit documentsV2 — Anomalie #1 | Suppression de la valeur par défaut `JWT_SECRET` codée en dur, arrêt immédiat (`throw`) du serveur si la variable d'environnement est absente | ✅ Validé & Appliqué |
 | **57** | 11/10/2026 | `backend/server.js`, `backend/.env.example` | Audit documentsV2 — Anomalie #2 | Alignement de la liste blanche CORS avec `CLIENT_URL`/`render.yaml` via une nouvelle variable `CORS_ADDITIONAL_ORIGINS`, suppression des vérifications dupliquées | ✅ Validé & Appliqué |
 | **58** | 11/10/2026 | `frontend/src/routes/AppRoutes.jsx` | Audit documentsV2 — Anomalie #3 | Protection de la page `/activites` par `ProtectedRoute` (tous rôles connectés), alignée avec `GET /api/activities` qui exige déjà une authentification | ✅ Validé & Appliqué |
+| **59** | 11/10/2026 | `frontend/src/pages/dashboard/ParentsPage.jsx` | Bug UX/UI | Correction du crash / écran blanc lors de l'affichage des détails d'un parent sans email (`isNoEmail`, mapping enfants, dates) | ✅ Validé & Appliqué |
+| **60** | 17/10/2026 | `frontend/src/pages/dashboard/AddChildPage.jsx` | Code mort | Suppression de la case à cocher orpheline « Assistance pour le déjeuner » (jamais transmise au backend ni persistée) — préparation du chantier « Présence le samedi » | ✅ Validé & Appliqué |
+| **61** | 17/10/2026 | `backend/migrations/versions/009_saturday_attendance.js`, `backend/controllers/{appointmentsController.js,enrollmentsController.js}`, `backend/services/childLifecycleService.js`, `backend/routes_postgres/{children.js,enrollments.js}`, `backend/{init_database.js,database/schema_postgres.sql,scripts/init_production_full.js,scripts/cleanAndSeedDatabase.js}`, `frontend/src/pages/public/EnrollmentPage.jsx`, `frontend/src/pages/dashboard/{AddChildPage.jsx,ChildrenPage.jsx,PendingEnrollmentsPage.jsx}`, `frontend/src/components/attendance/TodaySection.jsx`, `IDEES.md` | Métier, Présences & Inscription | Remplacement de « Assistance au déjeuner » par « Présence le samedi » : renommage DB (`lunch_assistance` → `saturday_attendance`), nouvelle colonne durable sur `children`, transfert correct enrollment→enfant, affichage/édition staff-admin et mise en avant dans le pointage du samedi | ✅ Validé & Appliqué |
 
 ---
 
@@ -1455,4 +1458,53 @@
      - Affichage du téléphone avec fallback *"Non renseigné"*.
      - Conditionnement strict de l'encart d'activation de compte et masquage des contrôles de réinitialisation sans email.
 - **Résultat** : Élimination définitive du crash, consultation fluide des fiches parents sans email et affichage clair de l'invitation à ajouter une adresse email pour activer leur compte.
+
+---
+
+### Fiche 60 - Suppression de la case à cocher orpheline « Assistance pour le déjeuner » (`AddChildPage.jsx`)
+
+- **Date** : 17 Octobre 2026
+- **Contexte** : Analyse préalable au chantier « Présence le samedi » (remplacement du champ `lunch_assistance` par un indicateur de présence le samedi, cf. `IDEES.md`).
+- **Fichier modifié** :
+  - [`frontend/src/pages/dashboard/AddChildPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/AddChildPage.jsx)
+- **Problématique** :
+  - Le formulaire d'ajout d'enfant (back-office) affichait une case à cocher « Assistance pour le déjeuner » (`register('lunch_assistance')`) qui n'était **jamais lue** dans `onSubmit` : l'objet `childData` envoyé à `childrenService.createChild` ne contenait pas ce champ.
+  - De plus, la table `children` ne possède aucune colonne `lunch_assistance` (le champ n'existe que sur `enrollments`) : même corrigée côté frontend, la valeur n'aurait eu nulle part où être persistée.
+  - Vérification effectuée : recherche de toutes les occurrences de `lunch_assistance` dans `frontend/` et `backend/` ; confirmation qu'aucune route, service ou composant ne consommait la valeur issue de ce champ précis dans `AddChildPage.jsx`.
+- **Action appliquée** : Suppression du bloc JSX « Options » (case à cocher + libellé bilingue), sans effet de bord car aucune donnée n'était perdue (le champ n'a jamais été fonctionnel sur cet écran).
+- **Résultat** : Formulaire allégé, suppression d'un champ trompeur pour les administrateurs/staff (laissait croire à une fonctionnalité active). Le futur champ « Présence le samedi » sera réintroduit correctement câblé (DB + API + UI) dans le cadre du chantier dédié.
+
+---
+
+### Fiche 61 - Remplacement de « Assistance au déjeuner » par « Présence le samedi » (chantier complet)
+
+- **Date** : 17 Octobre 2026
+- **Contexte** : La crèche ouvre le samedi avec des horaires réduits (`attendanceJob.js` : fermeture 13h au lieu de 18h). Le personnel n'avait aucun moyen de savoir à l'avance quels enfants seraient présents ce jour-là. Le champ `lunch_assistance`, collecté à l'inscription mais totalement inexploité, a été repensé en indicateur de présence le samedi.
+- **Vérification préalable (demandée explicitement)** : analyse complète de la chaîne de transfert `enrollments` → `children` avant toute implémentation. Elle a révélé que le champ était **mort à trois niveaux distincts**, et pas seulement « non affiché » comme supposé initialement :
+  1. **Front (saisie)** : `EnrollmentPage.jsx` construisait l'objet `enrollmentData` envoyé à `POST /api/enrollments` **sans jamais y inclure `lunch_assistance`** — la case à cocher n'avait aucun effet dès la soumission du formulaire public.
+  2. **Back (création du dossier)** : `enrollmentsController.createEnrollment` ne déstructurait même pas `lunch_assistance`/`regulation_accepted` depuis `req.body` et ne les insérait pas dans la requête `INSERT INTO enrollments` — même si le front avait envoyé la valeur, elle aurait été ignorée.
+  3. **Back (transfert à l'approbation)** : `appointmentsController.completeAppointment` (point unique de création de l'enfant à partir d'un dossier approuvé) sélectionnait bien `e.lunch_assistance` en SQL mais ne la transmettait jamais à `childLifecycleService.createChild` : la valeur était silencieusement perdue avant l'archivage du dossier dans `enrollments_archive`.
+- **Fichiers modifiés / créés** :
+  - **DB** : [`backend/migrations/versions/009_saturday_attendance.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/migrations/versions/009_saturday_attendance.js) *(nouveau)* — renomme `enrollments.lunch_assistance` et `enrollments_archive.lunch_assistance` en `saturday_attendance` (idempotent, `DO $$ ... $$`), ajoute `children.saturday_attendance BOOLEAN NOT NULL DEFAULT FALSE`.
+  - **Scripts de référence** (non exécutés en prod, alignés par cohérence) : [`backend/init_database.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/init_database.js), [`backend/database/schema_postgres.sql`](file:///Volumes/Data/Works/Windsurf/creche/backend/database/schema_postgres.sql), [`backend/scripts/init_production_full.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/scripts/init_production_full.js), [`backend/scripts/cleanAndSeedDatabase.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/scripts/cleanAndSeedDatabase.js).
+  - **Backend** :
+    - [`backend/controllers/enrollmentsController.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/controllers/enrollmentsController.js) : `createEnrollment` capture désormais `saturday_attendance` et l'insère réellement ; `getAllEnrollments` (branches avec et sans archive) expose la colonne pour l'écran admin.
+    - [`backend/controllers/appointmentsController.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/controllers/appointmentsController.js) : `completeAppointment` transmet désormais `saturday_attendance` à `createChild` (correction du point de perte identifié) ; renommage dans `failAppointment`/l'archivage d'abandon.
+    - [`backend/services/childLifecycleService.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/services/childLifecycleService.js) : `createChild` persiste `saturday_attendance` sur `children` ; `archiveEnrollment` renommé.
+    - [`backend/routes_postgres/children.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/children.js) : colonne exposée dans les 4 `SELECT` de listing/détail, éditable via `PUT /:id`, acceptée à la création directe `POST /` (dashboard).
+    - [`backend/routes_postgres/enrollments.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/enrollments.js) : validation renommée.
+  - **Frontend** :
+    - [`frontend/src/pages/public/EnrollmentPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/public/EnrollmentPage.jsx) : case à cocher et récapitulatif renommés (« Présence le samedi », icône `CalendarCheck`), **et surtout** ajout du champ dans le payload réellement envoyé à l'API (bug corrigé au passage).
+    - [`frontend/src/pages/dashboard/AddChildPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/AddChildPage.jsx) : case réintroduite, cette fois câblée jusqu'à `childrenService.createChild`.
+    - [`frontend/src/pages/dashboard/ChildrenPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/ChildrenPage.jsx) : affichage en lecture dans la fiche détail + case éditable dans le modal (hors permissions médicales/contact, car information de planning) + sauvegarde.
+    - [`frontend/src/pages/dashboard/PendingEnrollmentsPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/PendingEnrollmentsPage.jsx) : badge « Présence le samedi » dans les deux variantes (desktop/mobile) de la carte de dossier, information absente auparavant.
+    - [`frontend/src/components/attendance/TodaySection.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/attendance/TodaySection.jsx) : le samedi, compteur « X attendu(s) aujourd'hui », tri des enfants attendus en tête de la liste de pointage rapide, badge visuel sur leur carte.
+  - **Documentation** : [`IDEES.md`](file:///Volumes/Data/Works/Windsurf/creche/IDEES.md), [`documentsV2/13_DICTIONNAIRE_DONNEES.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/13_DICTIONNAIRE_DONNEES.md), [`documentsV2/12_MODELE_DONNEES.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/12_MODELE_DONNEES.md).
+- **Vérification de non-régression** :
+  - `node -c` sur tous les fichiers backend modifiés : aucune erreur de syntaxe.
+  - `npm run build` (frontend) : build de production réussi sans erreur.
+  - `npx jest` (backend) : 17 échecs / 38 réussites avant **et** après la modification (échecs pré-existants liés à une déclaration dupliquée dans `services/eventService.js`, sans rapport avec ce chantier) — confirmé par `git stash`/`git stash pop`.
+  - Audit final de résidus : plus aucune occurrence de `lunch_assistance` dans le code applicatif (seules subsistent des références intentionnelles dans la migration 009 qui documente le renommage, dans la migration historique figée `001_baseline_schema.js` — jamais modifiée après application — et dans des rapports d'audit générés `database-analysis-report.json`/`db-audit-report.json`, à régénérer plutôt qu'à éditer à la main).
+- **Point d'attention opérationnel** : la migration 009 n'a pas été exécutée contre la base Neon de production dans le cadre de cette session (modification de schéma en production = action à valider explicitement). Elle s'appliquera automatiquement au prochain démarrage du serveur (`migrations/runner.js` s'exécute au boot), ou via `npm run db:migrate` en backend.
+- **Résultat** : La case à cocher produit désormais un effet réel de bout en bout (saisie → stockage → transfert → affichage → exploitation opérationnelle le samedi), alors qu'elle était intégralement cosmétique avant cette intervention.
 

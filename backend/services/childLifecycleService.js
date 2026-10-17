@@ -54,7 +54,8 @@ async function createChild(childData, options = {}) {
         mother_name,
         mother_phone,
         account_holder,
-        photo_url
+        photo_url,
+        saturday_attendance
     } = childData;
 
     const {
@@ -102,8 +103,8 @@ async function createChild(childData, options = {}) {
                 medical_info, parent_id, emergency_contact_name,
                 emergency_contact_phone, emergency_contact_choice,
                 father_name, father_phone, mother_name, mother_phone, account_holder,
-                photo_url, is_active, created_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, true, NOW())
+                photo_url, saturday_attendance, is_active, created_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, true, NOW())
             RETURNING *
         `, [
             first_name,
@@ -128,7 +129,8 @@ async function createChild(childData, options = {}) {
             mother_name || null,
             mother_phone || null,
             account_holder || 'father',
-            photo_url || null
+            photo_url || null,
+            !!saturday_attendance
         ]);
 
         const child = childResult.rows[0];
@@ -501,12 +503,12 @@ async function archiveEnrollment(enrollmentId, childId, parentId, enrollmentData
         await db.query(`
             INSERT INTO enrollments_archive (
                 id, parent_id, child_id, enrollment_date, status, new_status,
-                lunch_assistance, regulation_accepted, admin_notes,
+                saturday_attendance, regulation_accepted, admin_notes,
                 created_at, updated_at, applicant_first_name,
                 applicant_last_name, applicant_email, approved_by, approved_at
             ) SELECT 
                 id, COALESCE($2, parent_id), $3, COALESCE(enrollment_date, NOW()), 'approved', 'approved',
-                lunch_assistance, regulation_accepted, admin_notes,
+                saturday_attendance, regulation_accepted, admin_notes,
                 created_at, NOW(), applicant_first_name,
                 applicant_last_name, applicant_email, $4, NOW()
             FROM enrollments WHERE id = $1

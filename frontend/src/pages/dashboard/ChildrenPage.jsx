@@ -26,7 +26,8 @@ import {
   Play,
   Users,
   UserCheck,
-  TrendingUp
+  TrendingUp,
+  CalendarCheck
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -323,7 +324,8 @@ const ChildrenPage = () => {
       blood_type: child.blood_type || '',
       weight_kg: child.weight_kg ?? '',
       height_cm: child.height_cm ?? '',
-      status: child.status || 'pending'
+      status: child.status || 'pending',
+      saturday_attendance: !!child.saturday_attendance
     });
     setSelectedPhotoFile(null);
     setShowEditModal(true);
@@ -584,6 +586,12 @@ const ChildrenPage = () => {
 
       // Préparer le payload en incluant les champs de contact autorisés
       const payload = {};
+
+      // Présence le samedi : information de planning, pas une donnée médicale/contact sensible
+      if (editFormData.saturday_attendance !== undefined) {
+        payload.saturday_attendance = !!editFormData.saturday_attendance;
+      }
+
       if (canManageEmergencyPhone || userIsAdmin) {
         if (editFormData.parent_email !== undefined) {
           payload.parent_email = editFormData.parent_email.trim();
@@ -1532,6 +1540,16 @@ const ChildrenPage = () => {
                           {selectedChild.birth_date ? calculateAge(selectedChild.birth_date) : (isRTL ? 'غير محدد (RS)' : 'Non renseigné (R.S)')}
                         </p>
                       </div>
+                      <div className="bg-white dark:bg-gray-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-gray-700/50">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{isRTL ? 'الحضور يوم السبت' : 'Présence le samedi'}</p>
+                        <p className="font-semibold text-sm mt-0.5">
+                          {selectedChild.saturday_attendance ? (
+                            <span className="text-green-700 dark:text-green-400">{isRTL ? 'نعم' : 'Oui'}</span>
+                          ) : (
+                            <span className="text-gray-500 dark:text-gray-400">{isRTL ? 'لا' : 'Non'}</span>
+                          )}
+                        </p>
+                      </div>
                       {(() => {
                         // Même résolution que la section Parents : repli sur le titulaire du compte
                         const holderIsFather = selectedChild.account_holder
@@ -2355,6 +2373,25 @@ const ChildrenPage = () => {
                       </span>
                     </div>
                   </div>
+                </div>
+
+                {/* 2bis. Présence le samedi (planning, modifiable par toute personne pouvant éditer la fiche) */}
+                <div className="bg-slate-50 dark:bg-gray-700/50 rounded-xl p-4 border border-slate-200 dark:border-gray-700">
+                  <label className="flex items-center gap-2.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={!!editFormData.saturday_attendance}
+                      onChange={(e) => handleFormChange('saturday_attendance', e.target.checked)}
+                      className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                    />
+                    <CalendarCheck className="w-4 h-4 text-primary-500" />
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      {isRTL ? 'الحضور يوم السبت' : 'Présence le samedi'}
+                    </span>
+                  </label>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5 ml-6 rtl:ml-0 rtl:mr-6">
+                    {isRTL ? 'يتيح لفريق الحضانة معرفة الأطفال المنتظرين أيام السبت' : 'Permet au personnel de savoir quels enfants sont attendus le samedi (ouverture à horaires réduits)'}
+                  </p>
                 </div>
 
                 {/* 3. Section Parents & Moyens de contact (MODIFIABLE PAR LA DIRECTION) */}

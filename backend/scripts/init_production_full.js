@@ -129,6 +129,7 @@ async function createAllTables() {
             emergency_contact_phone VARCHAR(20),
             photo_url VARCHAR(500),
             parent_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            saturday_attendance BOOLEAN NOT NULL DEFAULT FALSE,
             is_active BOOLEAN DEFAULT TRUE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -144,7 +145,7 @@ async function createAllTables() {
             child_id INTEGER REFERENCES children(id) ON DELETE CASCADE,
             enrollment_date DATE DEFAULT CURRENT_DATE,
             status VARCHAR(50) DEFAULT 'pending',
-            lunch_assistance BOOLEAN DEFAULT FALSE,
+            saturday_attendance BOOLEAN DEFAULT FALSE,
             regulation_accepted BOOLEAN DEFAULT FALSE,
             admin_notes TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

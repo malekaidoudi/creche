@@ -397,6 +397,12 @@ const PendingEnrollmentsPage = () => {
                               <Calendar className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
                               {calculateAge(enrollment.child_birth_date)} ({enrollment.child_gender === 'M' ? (isRTL ? 'ذكر' : 'Garçon') : (isRTL ? 'أنثى' : 'Fille')})
                             </div>
+                            {enrollment.saturday_attendance && (
+                              <div className="flex items-center text-green-700 dark:text-green-400">
+                                <CheckCircle className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                                {isRTL ? 'الحضور يوم السبت' : 'Présence le samedi'}
+                              </div>
+                            )}
                             {enrollment.medical_info && (
                               <div className="flex items-center">
                                 <FileText className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
@@ -491,6 +497,12 @@ const PendingEnrollmentsPage = () => {
                             <Calendar className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
                             {calculateAge(enrollment.child_birth_date)} ({enrollment.child_gender === 'M' ? (isRTL ? 'ذكر' : 'Garçon') : (isRTL ? 'أنثى' : 'Fille')})
                           </div>
+                          {enrollment.saturday_attendance && (
+                            <div className="flex items-center text-green-700 dark:text-green-400">
+                              <CheckCircle className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                              {isRTL ? 'الحضور يوم السبت' : 'Présence le samedi'}
+                            </div>
+                          )}
                           {enrollment.medical_info && (
                             <div className="flex items-center">
                               <FileText className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />

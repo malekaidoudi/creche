@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useLanguage } from '../../hooks/useLanguage'
 import { useAuth } from '../../hooks/useAuth'
 import { useDialogContext } from '../../contexts/DialogContext'
-import { Baby, User, Phone, FileText, Send, CheckCircle, AlertCircle, ChevronRight, ChevronLeft, Utensils, Upload, Download, Mail, Lock, Eye, EyeOff, Search, X, ArrowLeft } from 'lucide-react'
+import { Baby, User, Phone, FileText, Send, CheckCircle, AlertCircle, ChevronRight, ChevronLeft, CalendarCheck, Upload, Download, Mail, Lock, Eye, EyeOff, Search, X, ArrowLeft } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
 import { Button } from '../../components/ui/Button'
@@ -339,7 +339,10 @@ const EnrollmentPage = () => {
           // Contact d'urgence unifié : 'father' | 'mother' | 'custom' (+ nom/tél si tiers)
           emergency_contact_choice: emergencyChoice,
           emergency_contact_name: emergencyChoice === 'custom' ? data.emergency_contact_name : null,
-          emergency_contact_phone: emergencyChoice === 'custom' ? data.emergency_contact_phone : null
+          emergency_contact_phone: emergencyChoice === 'custom' ? data.emergency_contact_phone : null,
+
+          // Présence le samedi (la crèche ouvre le samedi avec des horaires réduits)
+          saturday_attendance: !!data.saturday_attendance
         };
 
         console.log('📤 Envoi au backend:', enrollmentData);
@@ -1355,26 +1358,26 @@ const EnrollmentPage = () => {
                     readOnlyInput={true}
                   />
 
-                  {/* Assistance au déjeuner */}
+                  {/* Présence le samedi */}
                   <div>
                     <div className="flex items-center space-x-3 rtl:space-x-reverse">
                       <input
                         type="checkbox"
-                        id="lunch_assistance"
+                        id="saturday_attendance"
                         className="w-4 h-4 text-primary-600 border-gray-300 dark:border-gray-600 rounded focus:ring-primary-500"
-                        {...register('lunch_assistance')}
+                        {...register('saturday_attendance')}
                       />
-                      <label htmlFor="lunch_assistance" className="flex-1 cursor-pointer">
+                      <label htmlFor="saturday_attendance" className="flex-1 cursor-pointer">
                         <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                          <Utensils className="w-5 h-5 text-primary-600" />
+                          <CalendarCheck className="w-5 h-5 text-primary-600" />
                           <div>
                             <h3 className="font-semibold text-gray-900 dark:text-white">
-                              {isRTL ? 'المساعدة في الغداء' : 'Assistance au déjeuner'}
+                              {isRTL ? 'الحضور يوم السبت' : 'Présence le samedi'}
                             </h3>
                             <p className="text-sm text-gray-600 dark:text-gray-300">
                               {isRTL
-                                ? 'يحتاج طفلي إلى مساعدة في تناول الطعام'
-                                : 'Mon enfant a besoin d\'aide pour manger'
+                                ? 'طفلي سيحضر إلى الحضانة أيام السبت'
+                                : 'Mon enfant sera présent à la crèche le samedi'
                               }
                             </p>
                           </div>
@@ -1779,9 +1782,9 @@ const EnrollmentPage = () => {
                     </h3>
                     <div className="space-y-2 text-sm">
                       <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                        <CheckCircle className={`w-4 h-4 ${watch('lunch_assistance') ? 'text-green-600' : 'text-gray-400'}`} />
-                        <span className={watch('lunch_assistance') ? 'text-green-800 dark:text-green-300 font-medium' : 'text-gray-600 dark:text-gray-400'}>
-                          {isRTL ? 'المساعدة في الغداء' : 'Assistance au déjeuner'}
+                        <CheckCircle className={`w-4 h-4 ${watch('saturday_attendance') ? 'text-green-600' : 'text-gray-400'}`} />
+                        <span className={watch('saturday_attendance') ? 'text-green-800 dark:text-green-300 font-medium' : 'text-gray-600 dark:text-gray-400'}>
+                          {isRTL ? 'الحضور يوم السبت' : 'Présence le samedi'}
                         </span>
                       </div>
                       <div className="flex items-center space-x-2 rtl:space-x-reverse">
