@@ -1,0 +1,2 @@
+import{r}from"./vendor-BKU87Gzz.js";const m=()=>{const[t,a]=r.useState(()=>{const e=localStorage.getItem("theme");return e||(window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light")});return r.useEffect(()=>{const e=window.document.documentElement;t==="dark"?e.classList.add("dark"):e.classList.remove("dark"),localStorage.setItem("theme",t)},[t]),{theme:t,toggleTheme:()=>{a(e=>e==="light"?"dark":"light")},isDark:t==="dark"}};export{m as u};
+//# sourceMappingURL=useTheme-BICYbLqP.js.map
