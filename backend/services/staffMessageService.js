@@ -27,6 +27,7 @@ async function sendMessage(messageData, senderId) {
 
     // Notifier le destinataire
     const sender = await getUserById(senderId);
+    const recipient = await getUserById(recipient_id);
     const isReply = parent_message_id !== null;
 
     // related_id = sender_id pour permettre d'ouvrir la conversation directement
@@ -45,10 +46,14 @@ async function sendMessage(messageData, senderId) {
     console.log(`✅ Message envoyé: ${senderId} → ${recipient_id}`);
 
     // Notification push OS (ne doit jamais faire échouer l'envoi du message)
+    // Même convention de route que le centre de notifications in-app
+    // (SimpleNotificationCenter.jsx) : /mon-espace/messages pour les parents,
+    // /dashboard/messages pour staff/admin, avec ?contactId=<sender_id>.
+    const messagesRoute = recipient?.role === 'parent' ? '/mon-espace/messages' : '/dashboard/messages';
     await pushNotificationService.sendPushToUser(recipient_id, {
       title: `${sender.first_name} ${sender.last_name}`,
       message: content.substring(0, 100),
-      url: '/dashboard/staff-messages'
+      url: `${messagesRoute}?contactId=${senderId}`
     });
 
     return { success: true, message };

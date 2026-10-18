@@ -48,6 +48,9 @@ router.post('/login', [
     );
 
     if (result.rows.length === 0) {
+      logLoginFailed(email, 'Utilisateur introuvable', req).catch(err => {
+        console.warn('⚠️ Erreur log échec connexion:', err.message);
+      });
       return res.status(401).json({ success: false, error: 'Email ou mot de passe incorrect' });
     }
 
@@ -55,12 +58,18 @@ router.post('/login', [
 
     // Vérifier si l'utilisateur est actif
     if (!user.is_active) {
+      logLoginFailed(email, 'Compte désactivé', req).catch(err => {
+        console.warn('⚠️ Erreur log échec connexion:', err.message);
+      });
       return res.status(401).json({ success: false, error: 'Compte désactivé' });
     }
 
     // Vérifier le mot de passe
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
+      logLoginFailed(email, 'Mot de passe incorrect', req).catch(err => {
+        console.warn('⚠️ Erreur log échec connexion:', err.message);
+      });
       return res.status(401).json({ success: false, error: 'Email ou mot de passe incorrect' });
     }
 

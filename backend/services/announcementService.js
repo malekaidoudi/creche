@@ -4,6 +4,7 @@
  */
 
 const { pool } = require('../config/db_postgres');
+const pushNotificationService = require('./pushNotificationService');
 
 /**
  * Créer une annonce
@@ -250,17 +251,16 @@ async function notifyParents(client, announcement) {
     }
 
     // Créer notifications
+    const title = `📢 ${announcement.title}`;
+    const message = announcement.description.substring(0, 200);
     for (const parentUserId of parentUserIds) {
       await client.query(`
         INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
         VALUES ($1, $2, $3, 'announcement', $4, false)
-      `, [
-        parentUserId,
-        `📢 ${announcement.title}`,
-        announcement.description.substring(0, 200),
-        announcement.id
-      ]);
+      `, [parentUserId, title, message, announcement.id]);
     }
+
+    pushNotificationService.sendPushToMany(parentUserIds, { title, message, url: '/mon-espace/announcements' });
 
     console.log(`✅ ${parentUserIds.length} parents notifiés`);
 

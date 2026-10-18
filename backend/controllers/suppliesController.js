@@ -4,6 +4,7 @@
  */
 
 const db = require('../config/db_postgres');
+const pushNotificationService = require('../services/pushNotificationService');
 
 /**
  * GET /api/supplies/child/:childId
@@ -140,17 +141,21 @@ const createLowStockNotification = async (childId, supplyType, remainingQuantity
         };
 
         const supplyName = supplyNames[supplyType] || supplyType;
+        const title = `Stock bas - ${supplyName}`;
+        const message = `Le stock de ${supplyName} de ${child.first_name} est bas (${remainingQuantity} restantes). Merci d'en apporter.`;
 
         // Créer la notification
         await db.query(`
             INSERT INTO notifications (user_id, type, title, message, data)
-            VALUES ($1, 'supply_alert', 'Stock bas - ${supplyName}', 
-                    $2, $3)
+            VALUES ($1, 'supply_alert', $2, $3, $4)
         `, [
             child.parent_id,
-            `Le stock de ${supplyName} de ${child.first_name} est bas (${remainingQuantity} restantes). Merci d'en apporter.`,
+            title,
+            message,
             JSON.stringify({ child_id: childId, supply_type: supplyType, remaining: remainingQuantity })
         ]);
+
+        pushNotificationService.sendPushToUser(child.parent_id, { title, message, url: '/mon-espace' });
     } catch (error) {
         console.error('Erreur createLowStockNotification:', error);
     }

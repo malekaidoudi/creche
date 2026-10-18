@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db_postgres');
 const auth = require('../middleware/auth');
+const pushNotificationService = require('../services/pushNotificationService');
 
 // GET /api/absence-requests/all - Toutes les demandes (admin/staff avec permission)
 router.get('/all', auth.authenticateToken, auth.requirePermission('absences.manage'), async (req, res) => {
@@ -213,6 +214,12 @@ router.post('/', auth.authenticateToken, async (req, res) => {
          VALUES ($1, $2, $3, 'absence_request', $4, false)`,
         [staff.id, notificationTitle, notificationMessage, absenceRequest.id]
       );
+
+      pushNotificationService.sendPushToUser(staff.id, {
+        title: notificationTitle,
+        message: notificationMessage,
+        url: `/dashboard/absence-management?requestId=${absenceRequest.id}`
+      });
     }
 
     console.log(`✅ Notifications créées pour ${staffUsers.rows.length} membres du staff`);

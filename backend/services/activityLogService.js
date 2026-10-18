@@ -5,6 +5,7 @@
 
 const db = require('../config/db_postgres');
 const { getCountryFromIp } = require('../utils/geoip');
+const pushNotificationService = require('./pushNotificationService');
 
 // Catégories d'activités
 const CATEGORIES = {
@@ -151,11 +152,51 @@ const activityLogService = {
                 await this.checkAndCreateAlert(log);
             }
 
+            // Notifier le(s) compte(s) developer : connexions (réussies/échouées) et erreurs critiques
+            this.notifyDevelopers(log).catch(err => {
+                console.error('❌ Erreur notification developer:', err.message);
+            });
+
             return log;
         } catch (error) {
             console.error('❌ Erreur création activity log:', error);
             throw error;
         }
+    },
+
+    /**
+     * Notifie tous les comptes "developer" (compte invisible pour les autres
+     * rôles, cf. middleware/activityLogger.js) pour les événements sensibles :
+     * connexions réussies/échouées et erreurs critiques système.
+     */
+    async notifyDevelopers(log) {
+        const isLoginEvent = log.action === 'login_success' || log.action === 'login_failed';
+        const isCritical = log.severity === SEVERITY.CRITICAL;
+
+        if (!isLoginEvent && !isCritical) return;
+
+        // Ne pas notifier sur les propres actions d'un compte developer
+        if (log.user_role === 'developer') return;
+
+        const developers = await db.query(
+            "SELECT id FROM users WHERE role = 'developer' AND is_active = true"
+        );
+        const developerIds = developers.rows.map(r => r.id);
+        if (developerIds.length === 0) return;
+
+        const title = isLoginEvent
+            ? (log.action === 'login_success' ? '🔐 Connexion réussie' : '🔐 Échec de connexion')
+            : '🔴 Erreur critique';
+        const message = log.description || log.title;
+
+        const insertSql = `
+            INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
+            VALUES ${developerIds.map((_, i) => `($${i * 4 + 1}, $${i * 4 + 2}, $${i * 4 + 3}, 'dev_alert', $${i * 4 + 4}, false)`).join(', ')}
+        `;
+        const params = developerIds.flatMap(id => [id, title, message, log.id]);
+
+        await db.query(insertSql, params);
+        await pushNotificationService.sendPushToMany(developerIds, { title, message, url: '/dashboard/activity-logs' });
     },
 
     /**

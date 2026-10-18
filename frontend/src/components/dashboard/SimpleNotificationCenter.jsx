@@ -188,6 +188,15 @@ const SimpleNotificationCenter = ({ isOpen, onClose }) => {
       } else if (notification.type === 'activity') {
         // Activité publiée - Parents vers activités
         navigate(isParent ? '/mon-espace/activities' : '/dashboard/activities');
+      } else if (notification.type === 'holiday_reminder') {
+        // Rappel de fermeture (veille d'un jour férié) - Parents vers mon-espace
+        navigate(isParent ? '/mon-espace' : '/dashboard');
+      } else if (notification.type === 'attendance_not_recorded') {
+        // Alerte présences non enregistrées - Admin/staff vers la page présences
+        navigate('/dashboard/attendance');
+      } else if (notification.type === 'dev_alert') {
+        // Connexion ou erreur critique - Developer vers le journal d'activité
+        navigate('/dashboard/activity-logs');
       }
     } catch (error) {
       console.error('Erreur lors du clic sur la notification:', error);

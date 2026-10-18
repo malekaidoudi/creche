@@ -4,6 +4,7 @@
  */
 
 const { pool } = require('../config/db_postgres');
+const pushNotificationService = require('./pushNotificationService');
 
 /**
  * Créer une nouvelle tâche
@@ -28,23 +29,31 @@ async function createTask(taskData, creatorId) {
     const task = result.rows[0];
 
     // Créer notification pour le staff assigné
+    let pushPayload = null;
     if (assigned_to !== creatorId) {
       const creator = await getUserById(creatorId);
+      const taskTitle = '✅ Nouvelle tâche assignée';
+      const taskMessage = `${creator.first_name} ${creator.last_name} vous a assigné une tâche : "${title}"`;
 
       await client.query(`
         INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
         VALUES ($1, $2, $3, 'task_assigned', $4, false)
-      `, [
-        assigned_to,
-        '✅ Nouvelle tâche assignée',
-        `${creator.first_name} ${creator.last_name} vous a assigné une tâche : "${title}"`,
-        task.id
-      ]);
+      `, [assigned_to, taskTitle, taskMessage, task.id]);
+
+      pushPayload = { userId: assigned_to, title: taskTitle, message: taskMessage, taskId: task.id };
     }
 
     await client.query('COMMIT');
 
     console.log(`✅ Tâche créée: ${title} → assignée à user ${assigned_to}`);
+
+    if (pushPayload) {
+      await pushNotificationService.sendPushToUser(pushPayload.userId, {
+        title: pushPayload.title,
+        message: pushPayload.message,
+        url: `/dashboard/tasks?taskId=${pushPayload.taskId}`
+      });
+    }
 
     return { success: true, task };
 
@@ -246,23 +255,31 @@ async function updateTaskStatus(taskId, status, userId) {
     const updatedTask = result.rows[0];
 
     // Si complétée, notifier le créateur
+    let pushPayload = null;
     if (status === 'completed' && task.created_by !== userId) {
       const completer = await getUserById(userId);
+      const title = '✅ Tâche complétée';
+      const message = `${completer.first_name} ${completer.last_name} a complété la tâche : "${task.title}"`;
 
       await client.query(`
         INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
         VALUES ($1, $2, $3, 'task_completed', $4, false)
-      `, [
-        task.created_by,
-        '✅ Tâche complétée',
-        `${completer.first_name} ${completer.last_name} a complété la tâche : "${task.title}"`,
-        task.id
-      ]);
+      `, [task.created_by, title, message, task.id]);
+
+      pushPayload = { userId: task.created_by, title, message };
     }
 
     await client.query('COMMIT');
 
     console.log(`✅ Tâche ${taskId} → statut: ${status}`);
+
+    if (pushPayload) {
+      await pushNotificationService.sendPushToUser(pushPayload.userId, {
+        title: pushPayload.title,
+        message: pushPayload.message,
+        url: `/dashboard/tasks?taskId=${taskId}`
+      });
+    }
 
     return { success: true, task: updatedTask };
 
@@ -296,21 +313,24 @@ async function sendTaskReminder(taskId, adminId) {
 
     const taskData = task.rows[0];
     const admin = await getUserById(adminId);
+    const title = '⏰ Rappel: Tâche en retard';
+    const message = `${admin.first_name} ${admin.last_name} vous rappelle la tâche en retard : "${taskData.title}"`;
 
     // Créer notification de rappel
     await client.query(`
       INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
       VALUES ($1, $2, $3, 'task_reminder', $4, false)
-    `, [
-      taskData.assigned_to,
-      '⏰ Rappel: Tâche en retard',
-      `${admin.first_name} ${admin.last_name} vous rappelle la tâche en retard : "${taskData.title}"`,
-      taskData.id
-    ]);
+    `, [taskData.assigned_to, title, message, taskData.id]);
 
     await client.query('COMMIT');
 
     console.log(`✅ Rappel envoyé pour tâche ${taskId}`);
+
+    await pushNotificationService.sendPushToUser(taskData.assigned_to, {
+      title,
+      message,
+      url: `/dashboard/tasks?taskId=${taskData.id}`
+    });
 
     return { success: true, message: 'Rappel envoyé' };
 

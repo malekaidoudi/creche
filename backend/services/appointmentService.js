@@ -59,11 +59,16 @@ function formatDate(date) {
 /**
  * Envoie les notifications push OS mises en attente pendant la transaction.
  * Appelé uniquement après le COMMIT (ne doit jamais faire échouer l'appel principal).
+ *
+ * Il n'existe pas (encore) de page dédiée aux RDV : le centre de notifications
+ * in-app ouvre un modal via l'API plutôt que de naviguer vers une URL. Pour le
+ * push (qui doit fonctionner app fermée), on renvoie donc vers l'accueil du
+ * rôle concerné, où le widget RDV est visible — jamais vers une route inexistante.
  */
 async function flushPushQueue(pushQueue) {
   if (!pushQueue.length) return;
-  await Promise.all(pushQueue.map(({ userId, title, message }) =>
-    pushNotificationService.sendPushToUser(userId, { title, message, url: '/dashboard/appointments' })
+  await Promise.all(pushQueue.map(({ userId, title, message, isParent }) =>
+    pushNotificationService.sendPushToUser(userId, { title, message, url: isParent ? '/mon-espace' : '/dashboard' })
   ));
 }
 
@@ -128,7 +133,7 @@ async function createAppointment(appointmentData, creatorId) {
           INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
           VALUES ($1, $2, $3, 'appointment_proposed', $4, false)
         `, [admin.id, title, message, appointment.id]);
-        pushQueue.push({ userId: admin.id, title, message });
+        pushQueue.push({ userId: admin.id, title, message, isParent: false });
       }
 
       // Créer tâche pour le premier admin
@@ -146,7 +151,7 @@ async function createAppointment(appointmentData, creatorId) {
         INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
         VALUES ($1, $2, $3, 'appointment_proposed', $4, false)
       `, [parent_id, title, message, appointment.id]);
-      pushQueue.push({ userId: parent_id, title, message });
+      pushQueue.push({ userId: parent_id, title, message, isParent: true });
 
       console.log(`✅ RDV proposé par admin au parent ${parent_id}`);
     }
@@ -243,7 +248,7 @@ async function confirmAppointment(appointmentId, userId, userRole) {
       INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
       VALUES ($1, $2, $3, 'appointment_confirmed', $4, false)
     `, [updatedAppointment.parent_id, parentTitle, parentMessage, appointmentId]);
-    pushQueue.push({ userId: updatedAppointment.parent_id, title: parentTitle, message: parentMessage });
+    pushQueue.push({ userId: updatedAppointment.parent_id, title: parentTitle, message: parentMessage, isParent: true });
 
     // 2. Notifier les admins
     const admins = await getAdmins(client);
@@ -255,7 +260,7 @@ async function confirmAppointment(appointmentId, userId, userRole) {
           INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
           VALUES ($1, $2, $3, 'appointment_confirmed', $4, false)
         `, [admin.id, title, message, appointmentId]);
-        pushQueue.push({ userId: admin.id, title, message });
+        pushQueue.push({ userId: admin.id, title, message, isParent: false });
       }
     }
 
@@ -353,7 +358,7 @@ async function counterProposeDate(appointmentId, newDate, userId, userRole) {
           INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
           VALUES ($1, $2, $3, 'appointment_counter_proposed', $4, false)
         `, [admin.id, title, message, appointmentId]);
-        pushQueue.push({ userId: admin.id, title, message });
+        pushQueue.push({ userId: admin.id, title, message, isParent: false });
       }
 
       // Marquer anciennes tâches complètes et créer nouvelle
@@ -370,7 +375,7 @@ async function counterProposeDate(appointmentId, newDate, userId, userRole) {
         INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
         VALUES ($1, $2, $3, 'appointment_counter_proposed', $4, false)
       `, [appointment.parent_id, title, message, appointmentId]);
-      pushQueue.push({ userId: appointment.parent_id, title, message });
+      pushQueue.push({ userId: appointment.parent_id, title, message, isParent: true });
 
       // Marquer anciennes tâches complètes
       await completeAppointmentTasks(client, appointmentId);
@@ -645,7 +650,7 @@ async function cancelAppointment(appointmentId, userId) {
     await completeAppointmentTasks(client, appointmentId);
 
     await client.query('COMMIT');
-    await flushPushQueue([{ userId: appointment.parent_id, title, message }]);
+    await flushPushQueue([{ userId: appointment.parent_id, title, message, isParent: true }]);
     console.log(`✅ RDV ${appointmentId} annulé`);
 
     return { success: true, appointment };

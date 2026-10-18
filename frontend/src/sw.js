@@ -41,11 +41,20 @@ self.addEventListener('notificationclick', (event) => {
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // Une fenêtre de l'app est déjà ouverte (même sur une autre page) :
+      // on la met au premier plan ET on la navigue vers l'URL ciblée, plutôt que
+      // de simplement la focus (sinon le clic ne mène jamais à la conversation
+      // si l'app était ouverte sur une autre page).
       for (const client of clientList) {
-        if (client.url.includes(targetUrl) && 'focus' in client) {
-          return client.focus();
+        if ('focus' in client) {
+          client.focus();
+          if ('navigate' in client) {
+            return client.navigate(targetUrl);
+          }
+          return;
         }
       }
+      // Aucune fenêtre ouverte (app fermée/swipée) : on en ouvre une nouvelle.
       if (clients.openWindow) {
         return clients.openWindow(targetUrl);
       }

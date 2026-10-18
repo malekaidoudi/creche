@@ -3,83 +3,8 @@ const router = express.Router();
 const db = require('../config/db_postgres');
 const { authenticateToken } = require('../middleware/auth');
 const notificationService = require('../services/notificationService');
-const { getIslamicHolidays, getNationalHolidays } = require('../utils/tunisianHolidays');
-
-/**
- * Génère les dates effectives des jours fériés basées sur les politiques actives
- * Utilisé pour l'affichage dans les widgets
- */
-function generateEffectiveHolidays(holidays) {
-  const effective = [];
-  const currentYear = new Date().getFullYear();
-  const years = [currentYear, currentYear + 1];
-
-  for (const holiday of holidays) {
-    if (!holiday.is_active) continue;
-
-    // Pour les fêtes multi-jours (Aïd), générer les jours individuels
-    if ((holiday.holiday_key === 'eid_fitr' || holiday.holiday_key === 'eid_adha') && holiday.days_count > 1) {
-      for (const year of years) {
-        const islamicHolidays = getIslamicHolidays(year);
-        const eidDays = islamicHolidays.filter(h => h.holiday_key === holiday.holiday_key && h.day_index);
-
-        for (const day of eidDays) {
-          if (day.day_index <= holiday.days_count) {
-            effective.push({
-              id: holiday.id,
-              name: day.name,
-              name_ar: day.name_ar,
-              date: day.date,
-              type: holiday.type,
-              is_closed: true,
-              holiday_key: holiday.holiday_key,
-              day_index: day.day_index
-            });
-          }
-        }
-      }
-    } else if (holiday.fixed_day && holiday.fixed_month) {
-      // Jours nationaux avec date fixe
-      for (const year of years) {
-        const date = `${year}-${String(holiday.fixed_month).padStart(2, '0')}-${String(holiday.fixed_day).padStart(2, '0')}`;
-        effective.push({
-          id: holiday.id,
-          name: holiday.name,
-          name_ar: holiday.name_ar,
-          date: date,
-          type: holiday.type,
-          is_closed: true,
-          holiday_key: holiday.holiday_key
-        });
-      }
-    } else {
-      // Jours religieux avec date variable
-      for (const year of years) {
-        const islamicHolidays = getIslamicHolidays(year);
-        const match = islamicHolidays.find(h => h.holiday_key === holiday.holiday_key && !h.day_index);
-        if (match) {
-          effective.push({
-            id: holiday.id,
-            name: holiday.name,
-            name_ar: holiday.name_ar,
-            date: match.date,
-            type: holiday.type,
-            is_closed: true,
-            holiday_key: holiday.holiday_key
-          });
-        }
-      }
-    }
-  }
-
-  // Trier par date et filtrer les dates passées (garder 30 derniers jours)
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-  return effective
-    .filter(h => new Date(h.date) >= thirtyDaysAgo)
-    .sort((a, b) => new Date(a.date) - new Date(b.date));
-}
+const { getNationalHolidays } = require('../utils/tunisianHolidays');
+const { generateEffectiveHolidays } = require('../utils/holidayEffectiveDates');
 
 // GET /api/holidays - Récupérer tous les jours fériés (politiques + dates effectives)
 router.get('/', async (req, res) => {

@@ -12,6 +12,7 @@
  */
 
 const db = require('../config/db_postgres');
+const pushNotificationService = require('../services/pushNotificationService');
 
 /**
  * Notifier le job cron d'un changement de traitement pour ajuster la mise en veille
@@ -725,21 +726,21 @@ const hasBeenAdministeredRecently = (treatment, withinMinutes) => {
  */
 const sendStaffNotifications = async (notifications) => {
     try {
-        // Récupérer tous les tokens push du staff
-        const staffTokens = await db.query(`
-            SELECT DISTINCT push_token 
-            FROM users 
-            WHERE role IN ('staff', 'admin', 'direction') 
-            AND push_token IS NOT NULL
+        // Récupérer le staff/admin/direction actif pour le push (en plus de l'INSERT en masse ci-dessous)
+        const staffUsers = await db.query(`
+            SELECT id FROM users WHERE role IN ('staff', 'admin', 'direction') AND is_active = true
         `);
 
-        if (staffTokens.rows.length === 0) {
-            console.log('⚠️ Aucun token push staff trouvé');
+        if (staffUsers.rows.length === 0) {
+            console.log('⚠️ Aucun membre du staff trouvé pour les notifications de traitement');
             return;
         }
 
         // Créer les notifications en base
         for (const notif of notifications) {
+            const title = '💊 Traitement à donner';
+            const message = `${notif.child_name} - ${notif.medication} ${notif.dose}`;
+
             await db.query(`
                 INSERT INTO notifications (
                     user_id, title, message, type, data, created_at
@@ -748,10 +749,15 @@ const sendStaffNotifications = async (notifications) => {
                 FROM users 
                 WHERE role IN ('staff', 'admin', 'direction')
             `, [
-                '💊 Traitement à donner',
-                `${notif.child_name} - ${notif.medication} ${notif.dose}`,
+                title,
+                message,
                 JSON.stringify({ treatment_id: notif.treatment_id })
             ]);
+
+            pushNotificationService.sendPushToMany(
+                staffUsers.rows.map(u => u.id),
+                { title, message, url: '/dashboard/treatments' }
+            );
         }
 
         console.log(`✅ ${notifications.length} notifications envoyées au staff`);

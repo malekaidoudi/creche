@@ -63,10 +63,12 @@ router.post('/', auth.authenticateToken, auth.requireRole('admin', 'staff'), asy
       notifications.push(result.rows[0]);
 
       // Notification push OS (en parallèle, sans bloquer la boucle en cas d'échec)
+      // Pas de page paiements dédiée : même route que le centre de notifications
+      // in-app pour 'payment_alert' (SimpleNotificationCenter.jsx) → /mon-espace.
       pushNotificationService.sendPushToUser(parentId, {
         title,
         message: notificationMessage,
-        url: '/dashboard/payments'
+        url: '/mon-espace'
       });
     }
 

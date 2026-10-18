@@ -232,7 +232,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Activity Logger - Journal d'activité automatique
-const { activityLogger } = require('./middleware/activityLogger');
+const { activityLogger, logSystemError } = require('./middleware/activityLogger');
 app.use(activityLogger({ logErrors: true }));
 console.log('📊 Activity Logger: activé');
 
@@ -463,6 +463,17 @@ app.use('*', (req, res) => {
 app.use((error, req, res, next) => {
   console.error('❌ Erreur serveur:', error);
 
+  // Journaliser les erreurs serveur (severity critical) : déclenche la
+  // notification developer-only via activityLogService.notifyDevelopers
+  if (error.name !== 'ValidationError' && error.name !== 'JsonWebTokenError' && error.message !== 'Non autorisé par CORS') {
+    logSystemError(error, {
+      requestPath: req.originalUrl,
+      requestMethod: req.method,
+      userId: req.user?.id || null,
+      userEmail: req.user?.email || null
+    }).catch(err => console.error('❌ Erreur journalisation erreur système:', err.message));
+  }
+
   // Erreur de validation
   if (error.name === 'ValidationError') {
     return res.status(400).json({
@@ -550,6 +561,22 @@ const server = app.listen(PORT, () => {
     startAttendanceJob();
   } catch (error) {
     console.error('❌ Erreur démarrage job présence:', error.message);
+  }
+
+  // Démarrer le job de rappel de fermeture pour jour férié (veille, 18h00)
+  try {
+    const { startHolidayReminderJob } = require('./jobs/holidayReminderJob');
+    startHolidayReminderJob();
+  } catch (error) {
+    console.error('❌ Erreur démarrage job rappel jours fériés:', error.message);
+  }
+
+  // Démarrer le job d'alerte présences non enregistrées (jours ouvrés, 8h30)
+  try {
+    const { startAttendanceReminderJob } = require('./jobs/attendanceReminderJob');
+    startAttendanceReminderJob();
+  } catch (error) {
+    console.error('❌ Erreur démarrage job alerte présences:', error.message);
   }
 });
 

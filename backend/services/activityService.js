@@ -4,6 +4,7 @@
 
 const db = require('../config/db_postgres');
 const cloudinaryService = require('./cloudinaryService');
+const pushNotificationService = require('./pushNotificationService');
 
 const REACTION_TYPES = ['like', 'love', 'laugh', 'wow', 'clap', 'celebrate'];
 
@@ -546,6 +547,14 @@ const activityService = {
          VALUES ${values}`,
         params
       );
+
+      // Push OS : uniquement pour les parents (le staff/admin suit déjà le fil d'activités au quotidien)
+      const parentIds = users.rows.filter(u => u.role === 'parent').map(u => u.id);
+      pushNotificationService.sendPushToMany(parentIds, {
+        title: '📸 Nouvelle activité',
+        message: activity.title || 'Une nouvelle activité a été publiée',
+        url: '/mon-espace/activities'
+      });
 
       console.log(`📢 Notifications envoyées à ${users.rows.length} utilisateurs pour l'activité "${activity.title}"`);
       return { success: true, notified: users.rows.length };

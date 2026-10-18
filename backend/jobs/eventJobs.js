@@ -6,6 +6,7 @@ const cron = require('node-cron');
 const db = require('../config/db_postgres');
 const { sendEventReminder, sendEventOverdue } = require('../services/eventEmailService');
 const { generateBirthdayEvents, sendBirthdayReminders } = require('../services/birthdayService');
+const pushNotificationService = require('../services/pushNotificationService');
 
 /**
  * Job: Envoi des rappels d'événements
@@ -235,33 +236,36 @@ function startAppointmentReminderJob() {
             tasksCreated++;
 
             // Notifier tous les admins
+            const adminTitle = '⏰ Rappel: RDV en attente';
+            const adminMessage = `Le RDV avec ${parentName} attend votre réponse depuis plus de 24h`;
             for (const admin of admins.rows) {
               await db.query(`
                 INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
                 VALUES ($1, $2, $3, 'appointment_reminder', $4, false)
-              `, [
-                admin.id,
-                '⏰ Rappel: RDV en attente',
-                `Le RDV avec ${parentName} attend votre réponse depuis plus de 24h`,
-                appointment.id
-              ]);
+              `, [admin.id, adminTitle, adminMessage, appointment.id]);
               notificationsSent++;
             }
+            pushNotificationService.sendPushToMany(
+              admins.rows.map(a => a.id),
+              { title: adminTitle, message: adminMessage, url: '/dashboard' }
+            );
           }
 
         } else if (appointment.pending_response_from === 'parent') {
           // Parent doit répondre → notifier le parent seulement
           if (appointment.parent_id) {
+            const parentTitle = '⏰ Rappel: RDV en attente';
+            const parentMessage = `Votre RDV du ${formattedDate} attend votre confirmation`;
             await db.query(`
               INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
               VALUES ($1, $2, $3, 'appointment_reminder', $4, false)
-            `, [
-              appointment.parent_id,
-              '⏰ Rappel: RDV en attente',
-              `Votre RDV du ${formattedDate} attend votre confirmation`,
-              appointment.id
-            ]);
+            `, [appointment.parent_id, parentTitle, parentMessage, appointment.id]);
             notificationsSent++;
+            pushNotificationService.sendPushToUser(appointment.parent_id, {
+              title: parentTitle,
+              message: parentMessage,
+              url: '/mon-espace'
+            });
           }
         }
       }

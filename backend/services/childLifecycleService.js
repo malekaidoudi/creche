@@ -12,6 +12,7 @@
 
 const db = require('../config/db_postgres');
 const cloudinaryService = require('./cloudinaryService');
+const pushNotificationService = require('./pushNotificationService');
 
 /**
  * Crée un enfant avec toutes les étapes associées
@@ -479,16 +480,17 @@ async function createBirthdayEvent(childId, firstName, lastName, birthDate, crea
  */
 async function createEnrollmentNotification(parentId, childFirstName) {
     try {
+        const title = '🎉 Inscription finalisée !';
+        const message = `L'inscription de ${childFirstName} à la crèche Mima Elghalia est maintenant complète. Bienvenue !`;
+
         await db.query(`
             INSERT INTO notifications (user_id, title, message, type, is_read, created_at)
             VALUES ($1, $2, $3, 'enrollment_completed', false, NOW())
-        `, [
-            parentId,
-            '🎉 Inscription finalisée !',
-            `L'inscription de ${childFirstName} à la crèche Mima Elghalia est maintenant complète. Bienvenue !`
-        ]);
+        `, [parentId, title, message]);
 
         console.log(`📬 [ChildLifecycle] Notification envoyée au parent #${parentId}`);
+
+        await pushNotificationService.sendPushToUser(parentId, { title, message, url: '/mon-espace' });
 
     } catch (error) {
         console.error(`❌ [ChildLifecycle] Erreur création notification:`, error);
