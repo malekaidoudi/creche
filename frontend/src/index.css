@@ -464,3 +464,12 @@
 .animate-ai-specular {
   animation: ai-specular 2.4s ease-in-out infinite;
 }
+
+/* Utilitaires de défilement masqué pour carrousels et onglets mobiles */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

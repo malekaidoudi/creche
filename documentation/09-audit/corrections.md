@@ -1833,3 +1833,36 @@
   - **Validation de Build & Syntaxe** : `npm run build` dans `frontend/` exécuté avec succès (0 avertissement bloquant, 0 erreur JSX), syntaxe JavaScript de tous les contrôleurs et middlewares backend vérifiée avec succès (`node -c`).
 - **Résultat** : Codebase parfaitement saine, optimisée et exempte de tout résidu.
 
+---
+
+### Fiche 84 - Optimisation Responsive & Adaptation Petits Écrans du Centre d'Aide
+
+- **Date** : 18 Octobre 2026
+- **Contexte** : Sur les petits écrans (smartphones de 320px à 430px, encoches iOS / Dynamic Island, barres de navigation virtuelles Android), la fenêtre du centre d'aide présentait des défauts d'ergonomie et d'affichage :
+  1. La hauteur fixe et les barres système masquaient le champ de saisie du chat et le bouton d'envoi.
+  2. L'en-tête était en partie rogné sous l'encoche des téléphones par manque de gestion des zones de sécurité (`env(safe-area-inset-top)`).
+  3. Les 5 onglets (`flex-1`) s'écrasaient mutuellement et tronquaient les intitulés textuels en français et en arabe.
+  4. Les suggestions de questions d'aide empilées en `flex-wrap` consommaient jusqu'à 50% de la hauteur disponible.
+  5. Le footer de contact statique s'empilait sous la barre de saisie de chat, réduisant drastiquement l'espace de lecture des réponses.
+- **Action appliquée** :
+  - **Conteneur Plein Écran Adaptatif (`100dvh`)** :
+    - Remplacement de `fixed top-0 bottom-0` par `fixed inset-y-0 h-full max-h-[100dvh] h-[100dvh] w-full sm:w-[480px] lg:w-[540px]`.
+    - Prise en compte dynamique des barres d'outils de navigation des navigateurs mobiles (iOS Safari et Android Chrome).
+  - **Gestion Matérielle des Safe Areas (Encoche & Home Indicator)** :
+    - En-tête : `pt-[calc(0.75rem+env(safe-area-inset-top,0px))] sm:pt-4` assurant un dégagement total sous l'encoche / îlot dynamique.
+    - Zone de saisie : `pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:pb-3.5` pour éviter toute superposition avec la barre d'accueil iOS.
+  - **Onglets Tactiles en Carrousel Horizontal Défilant** :
+    - Remplacement de `flex-1` par `flex-nowrap shrink-0 overflow-x-auto no-scrollbar scroll-smooth`.
+    - Chaque onglet conserve sa largeur naturelle et son libellé complet sans chevauchement ni troncature.
+  - **Pills de Suggestions Horizontales Fluides** :
+    - Transformation du bloc de suggestions empilées en un ruban horizontal défilable d'un simple glissement de doigt (`overflow-x-auto no-scrollbar`), libérant plus de 120px de hauteur pour la conversation.
+  - **Rationalisation du Footer** :
+    - Masquage automatique du pied de page statique lorsque l'onglet actif est `chat` (la barre de saisie servant de point de contact principal), offrant un confort de lecture optimal.
+  - **Utilitaire CSS `.no-scrollbar`** :
+    - Ajout dans [`frontend/src/index.css`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/index.css) pour masquer les barres de défilement inesthétiques tout en conservant le défilement tactile fluide sur tous les moteurs de rendu (WebKit, Gecko, Blink).
+  - **Nettoyage Visuel du Bouton Déclencheur** :
+    - Masquage du déclencheur flottant en arrière-plan sur petit écran dès que le tiroir est ouvert (`${isOpen ? 'hidden sm:block' : 'block'}`).
+- **Documentation** : [`documentsV2/15_FRONTEND_ET_INTERFACE.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/15_FRONTEND_ET_INTERFACE.md).
+- **Résultat** : Expérience mobile native, fluide, ergonomique et visuellement somptueuse sur tous les appareils mobiles et tablettes.
+
+
