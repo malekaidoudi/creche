@@ -17,6 +17,7 @@
 
 const { pool } = require('../config/db_postgres');
 const cloudinaryService = require('./cloudinaryService');
+const pushNotificationService = require('./pushNotificationService');
 
 // ============================================================================
 // HELPERS
@@ -53,6 +54,17 @@ function formatDate(date) {
     hour: '2-digit',
     minute: '2-digit'
   });
+}
+
+/**
+ * Envoie les notifications push OS mises en attente pendant la transaction.
+ * Appelé uniquement après le COMMIT (ne doit jamais faire échouer l'appel principal).
+ */
+async function flushPushQueue(pushQueue) {
+  if (!pushQueue.length) return;
+  await Promise.all(pushQueue.map(({ userId, title, message }) =>
+    pushNotificationService.sendPushToUser(userId, { title, message, url: '/dashboard/appointments' })
+  ));
 }
 
 // ============================================================================
@@ -100,6 +112,7 @@ async function createAppointment(appointmentData, creatorId) {
 
     const appointment = result.rows[0];
     const formattedDate = formatDate(proposed_date);
+    const pushQueue = [];
 
     if (isParentCreator) {
       // PARENT CRÉE → Notifier admins + créer tâche admin
@@ -109,15 +122,13 @@ async function createAppointment(appointmentData, creatorId) {
 
       // Notifier chaque admin
       for (const admin of admins) {
+        const title = '📅 Nouvelle proposition de RDV';
+        const message = `${creator?.first_name || 'Un parent'} ${creator?.last_name || ''} propose un RDV le ${formattedDate} : "${subject}"`;
         await client.query(`
           INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
           VALUES ($1, $2, $3, 'appointment_proposed', $4, false)
-        `, [
-          admin.id,
-          '📅 Nouvelle proposition de RDV',
-          `${creator?.first_name || 'Un parent'} ${creator?.last_name || ''} propose un RDV le ${formattedDate} : "${subject}"`,
-          appointment.id
-        ]);
+        `, [admin.id, title, message, appointment.id]);
+        pushQueue.push({ userId: admin.id, title, message });
       }
 
       // Créer tâche pour le premier admin
@@ -129,20 +140,19 @@ async function createAppointment(appointmentData, creatorId) {
 
     } else {
       // ADMIN CRÉE → Notifier le parent seulement (pas de tâche pour parent)
+      const title = '📅 Proposition de rendez-vous';
+      const message = `L'administration vous propose un RDV le ${formattedDate} : "${subject}"`;
       await client.query(`
         INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
         VALUES ($1, $2, $3, 'appointment_proposed', $4, false)
-      `, [
-        parent_id,
-        '📅 Proposition de rendez-vous',
-        `L'administration vous propose un RDV le ${formattedDate} : "${subject}"`,
-        appointment.id
-      ]);
+      `, [parent_id, title, message, appointment.id]);
+      pushQueue.push({ userId: parent_id, title, message });
 
       console.log(`✅ RDV proposé par admin au parent ${parent_id}`);
     }
 
     await client.query('COMMIT');
+    await flushPushQueue(pushQueue);
     return { success: true, appointment };
 
   } catch (error) {
@@ -223,32 +233,29 @@ async function confirmAppointment(appointmentId, userId, userRole) {
     const updatedAppointment = result.rows[0];
     const confirmer = await getUserById(userId);
     const formattedDate = formatDate(updatedAppointment.confirmed_date);
+    const pushQueue = [];
 
     // Notifier les DEUX parties
     // 1. Notifier le parent
+    const parentTitle = '✅ Rendez-vous confirmé';
+    const parentMessage = `Le RDV "${updatedAppointment.subject}" est confirmé pour le ${formattedDate}`;
     await client.query(`
       INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
       VALUES ($1, $2, $3, 'appointment_confirmed', $4, false)
-    `, [
-      updatedAppointment.parent_id,
-      '✅ Rendez-vous confirmé',
-      `Le RDV "${updatedAppointment.subject}" est confirmé pour le ${formattedDate}`,
-      appointmentId
-    ]);
+    `, [updatedAppointment.parent_id, parentTitle, parentMessage, appointmentId]);
+    pushQueue.push({ userId: updatedAppointment.parent_id, title: parentTitle, message: parentMessage });
 
     // 2. Notifier les admins
     const admins = await getAdmins(client);
     for (const admin of admins) {
       if (admin.id !== userId) { // Ne pas notifier celui qui confirme
+        const title = '✅ Rendez-vous confirmé';
+        const message = `${confirmer?.first_name || 'Quelqu\'un'} a confirmé le RDV "${updatedAppointment.subject}" pour le ${formattedDate}`;
         await client.query(`
           INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
           VALUES ($1, $2, $3, 'appointment_confirmed', $4, false)
-        `, [
-          admin.id,
-          '✅ Rendez-vous confirmé',
-          `${confirmer?.first_name || 'Quelqu\'un'} a confirmé le RDV "${updatedAppointment.subject}" pour le ${formattedDate}`,
-          appointmentId
-        ]);
+        `, [admin.id, title, message, appointmentId]);
+        pushQueue.push({ userId: admin.id, title, message });
       }
     }
 
@@ -256,6 +263,7 @@ async function confirmAppointment(appointmentId, userId, userRole) {
     await completeAppointmentTasks(client, appointmentId);
 
     await client.query('COMMIT');
+    await flushPushQueue(pushQueue);
     console.log(`✅ RDV ${appointmentId} confirmé par ${userRole}`);
 
     return { success: true, appointment: updatedAppointment };
@@ -332,21 +340,20 @@ async function counterProposeDate(appointmentId, newDate, userId, userRole) {
 
     const updatedAppointment = result.rows[0];
     const formattedDate = formatDate(newDate);
+    const pushQueue = [];
 
     if (isParent) {
       // PARENT CONTRE-PROPOSE → Notifier admins + créer tâche
       const admins = await getAdmins(client);
 
       for (const admin of admins) {
+        const title = '🔄 Nouvelle date proposée';
+        const message = `${proposer?.first_name || 'Un parent'} propose une autre date : ${formattedDate}`;
         await client.query(`
           INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
           VALUES ($1, $2, $3, 'appointment_counter_proposed', $4, false)
-        `, [
-          admin.id,
-          '🔄 Nouvelle date proposée',
-          `${proposer?.first_name || 'Un parent'} propose une autre date : ${formattedDate}`,
-          appointmentId
-        ]);
+        `, [admin.id, title, message, appointmentId]);
+        pushQueue.push({ userId: admin.id, title, message });
       }
 
       // Marquer anciennes tâches complètes et créer nouvelle
@@ -357,21 +364,20 @@ async function counterProposeDate(appointmentId, newDate, userId, userRole) {
 
     } else {
       // ADMIN CONTRE-PROPOSE → Notifier parent seulement
+      const title = '🔄 Nouvelle date proposée';
+      const message = `L'administration propose une autre date : ${formattedDate}`;
       await client.query(`
         INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
         VALUES ($1, $2, $3, 'appointment_counter_proposed', $4, false)
-      `, [
-        appointment.parent_id,
-        '🔄 Nouvelle date proposée',
-        `L'administration propose une autre date : ${formattedDate}`,
-        appointmentId
-      ]);
+      `, [appointment.parent_id, title, message, appointmentId]);
+      pushQueue.push({ userId: appointment.parent_id, title, message });
 
       // Marquer anciennes tâches complètes
       await completeAppointmentTasks(client, appointmentId);
     }
 
     await client.query('COMMIT');
+    await flushPushQueue(pushQueue);
     console.log(`✅ RDV ${appointmentId}: nouvelle date proposée par ${userRole}`);
 
     return { success: true, appointment: updatedAppointment };
@@ -628,20 +634,18 @@ async function cancelAppointment(appointmentId, userId) {
     const canceller = await getUserById(userId);
 
     // Notifier l'autre partie
+    const title = '❌ Rendez-vous annulé';
+    const message = `Le RDV "${appointment.subject}" a été annulé`;
     await client.query(`
       INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
       VALUES ($1, $2, $3, 'appointment_cancelled', $4, false)
-    `, [
-      appointment.parent_id,
-      '❌ Rendez-vous annulé',
-      `Le RDV "${appointment.subject}" a été annulé`,
-      appointmentId
-    ]);
+    `, [appointment.parent_id, title, message, appointmentId]);
 
     // Marquer tâches complètes
     await completeAppointmentTasks(client, appointmentId);
 
     await client.query('COMMIT');
+    await flushPushQueue([{ userId: appointment.parent_id, title, message }]);
     console.log(`✅ RDV ${appointmentId} annulé`);
 
     return { success: true, appointment };

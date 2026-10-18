@@ -89,6 +89,7 @@ const testimonialsRoutes = require('./routes_postgres/testimonials');
 const treatmentsRoutes = require('./routes_postgres/treatments');
 const staffPermissionsRoutes = require('./routes_postgres/staffPermissions');
 const aiAssistantRoutes = require('./routes_postgres/aiAssistant');
+const pushSubscriptionsRoutes = require('./routes_postgres/pushSubscriptions');
 console.log('✅ Routes chargées\n');
 
 const app = express();
@@ -404,6 +405,9 @@ console.log('  ✓ /api/staff-permissions (gestion accès par éducatrice) 🔐'
 app.use('/api/ai', aiAssistantRoutes);
 app.use('/ai', aiAssistantRoutes); // Alias de tolérance
 console.log('  ✓ /api/ai & /ai (assistant intelligent Google Gemini) 🤖');
+
+app.use('/api/push', pushSubscriptionsRoutes);
+console.log('  ✓ /api/push (notifications push OS Web Push/VAPID) 🔔');
 
 console.log('\n✅ Toutes les routes montées avec succès\n');
 

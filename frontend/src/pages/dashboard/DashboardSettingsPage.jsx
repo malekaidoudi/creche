@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useTheme } from '../../hooks/useTheme';
+import { usePushNotifications } from '../../hooks/usePushNotifications';
 import api, { clearApiCache } from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
@@ -41,6 +42,7 @@ const DashboardSettingsPage = () => {
   const { theme, toggleTheme } = useTheme();
   const { user } = useAuth();
   const dialog = useDialogContext();
+  const pushNotifications = usePushNotifications();
   const [loading, setLoading] = useState(false);
   const [menuType, setMenuType] = useState(() => {
     return localStorage.getItem('menuType') || 'side';
@@ -1279,6 +1281,65 @@ const DashboardSettingsPage = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* Notifications Push OS (Android / iOS en PWA installée) */}
+                <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-4">
+                  <div className="pr-4 rtl:pr-0 rtl:pl-4">
+                    <p className="font-medium text-gray-900 dark:text-white">
+                      {isRTL ? 'إشعارات الهاتف' : 'Notifications sur l\'appareil'}
+                    </p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {isRTL
+                        ? 'تلقي إشعارات فورية على هاتفك حتى عند إغلاق التطبيق'
+                        : 'Recevoir des alertes même lorsque l\'application est fermée'}
+                    </p>
+                    {pushNotifications.needsSafari && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                        {isRTL
+                          ? 'على iOS، افتح هذا الموقع في Safari ثم أضفه إلى الشاشة الرئيسية من هناك (لا يعمل عبر Chrome/Firefox على iOS)'
+                          : 'Sur iOS, ouvrez ce site dans Safari puis ajoutez-le à l\'écran d\'accueil depuis Safari (ne fonctionne pas via Chrome/Firefox sur iOS)'}
+                      </p>
+                    )}
+                    {pushNotifications.needsInstall && !pushNotifications.needsSafari && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                        {isRTL
+                          ? 'على iOS: أضف التطبيق إلى الشاشة الرئيسية أولاً (مشاركة ← على الشاشة الرئيسية)'
+                          : 'Sur iOS : ajoutez d\'abord l\'app à l\'écran d\'accueil (Partager → Sur l\'écran d\'accueil)'}
+                      </p>
+                    )}
+                    {!pushNotifications.isSupported && !pushNotifications.needsSafari && !pushNotifications.needsInstall && (
+                      <p className="text-xs text-gray-400 mt-1">
+                        {isRTL ? 'غير مدعوم على هذا المتصفح' : 'Non pris en charge par ce navigateur'}
+                      </p>
+                    )}
+                  </div>
+                  <ToggleSwitch
+                    checked={pushNotifications.isSubscribed}
+                    disabled={!pushNotifications.isSupported || pushNotifications.needsInstall || pushNotifications.needsSafari || pushNotifications.loading}
+                    onChange={async (value) => {
+                      const success = value
+                        ? await pushNotifications.subscribe()
+                        : await pushNotifications.unsubscribe();
+
+                      if (success) {
+                        dialog.showToast(
+                          value
+                            ? (isRTL ? 'تم تفعيل إشعارات الهاتف' : 'Notifications sur l\'appareil activées')
+                            : (isRTL ? 'تم إيقاف إشعارات الهاتف' : 'Notifications sur l\'appareil désactivées'),
+                          'success'
+                        );
+                      } else if (value && pushNotifications.permission === 'denied') {
+                        dialog.showToast(
+                          isRTL
+                            ? 'الإذن مرفوض، فعّله من إعدادات المتصفح'
+                            : 'Permission refusée : activez-la dans les paramètres du navigateur',
+                          'error'
+                        );
+                      }
+                    }}
+                    ariaLabel={isRTL ? 'إشعارات الهاتف' : 'Notifications sur l\'appareil'}
+                  />
+                </div>
+
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium text-gray-900 dark:text-white">

@@ -86,6 +86,9 @@ dist
 # Vite build output
 dist/
 
+# vite-plugin-pwa (service worker compilé en mode dev)
+dev-dist/
+
 # Rollup build output
 build/
 

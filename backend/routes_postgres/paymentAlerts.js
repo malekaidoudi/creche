@@ -6,6 +6,7 @@ const express = require('express');
 const router = express.Router();
 const { pool } = require('../config/db_postgres');
 const auth = require('../middleware/auth');
+const pushNotificationService = require('../services/pushNotificationService');
 
 /**
  * POST /api/payment-alerts
@@ -60,6 +61,13 @@ router.post('/', auth.authenticateToken, auth.requireRole('admin', 'staff'), asy
       `, [parentId, title, notificationMessage, 'payment_alert']);
 
       notifications.push(result.rows[0]);
+
+      // Notification push OS (en parallèle, sans bloquer la boucle en cas d'échec)
+      pushNotificationService.sendPushToUser(parentId, {
+        title,
+        message: notificationMessage,
+        url: '/dashboard/payments'
+      });
     }
 
     // Logger l'action dans la table logs
