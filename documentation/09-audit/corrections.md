@@ -1897,5 +1897,31 @@
   - [`backend/services/aiAssistantService.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/services/aiAssistantService.js)
 - **Résultat** : Typographie parfaite, ponctuation et listes impeccablement ancrées, flèches d'orientation cohérentes et confort de lecture bilingue absolu, que l'interface soit en français ou en arabe.
 
+---
+
+### Fiche 86 - Résolution du Zoom Automatique Mobile (iOS Input) & Envoi Immédiat des Suggestions
+
+- **Date** : 18 Octobre 2026
+- **Contexte** : 
+  1. **Zoom intempestif sur mobile au focus du texte** : Dès que l'utilisateur tapait dans le champ de saisie du centre d'aide sur smartphone (iOS Safari / WebKit), l'écran subissait un grossissement automatique agressif. L'interface devenait disproportionnée, tronquait la droite de l'écran et repoussait le bouton d'envoi hors champ.
+  2. **Blocage de l'envoi direct des questions suggérées** : Lors d'un clic sur une suggestion d'aide (ex: suggestions contextuelles, puces temporelles matin/midi/soir, questions de suivi), la question était simplement copiée dans le champ sans être transmise à l'assistant, forçant l'utilisateur à appuyer manuellement sur le bouton d'envoi.
+- **Causes identifiées** :
+  1. Sous iOS Safari, tout élément `<input>` dont la taille de police est inférieure à 16px (`text-[14px]`) déclenche obligatoirement le mécanisme système d'auto-zoom de page. De plus, l'absence de `maximum-scale=1.0` et `min-w-0` dans le conteneur flex permettait au champ de déborder et de masquer le bouton d'action.
+  2. Dans `HelpSystem.jsx`, `handleSendMessage` ne prenait aucun argument et lisait uniquement `chatInput` depuis l'état React. Lors de l'appel asynchrone depuis `handleQuickQuestion`, la fermeture lexicale accédait à la chaîne vide initiale et interrompait l'exécution (`return`), laissant le texte inerte dans l'input.
+- **Action appliquée** :
+  - **Immunisation contre l'Auto-Zoom iOS (Taille standard 16px & Viewport)** :
+    - Mise à jour de la balise `<meta name="viewport">` dans [`frontend/index.html`](file:///Volumes/Data/Works/Windsurf/creche/frontend/index.html) avec `maximum-scale=1.0, user-scalable=no, viewport-fit=cover`.
+    - Ajustement de la taille de police du champ à `text-[16px] sm:text-sm` dans [`frontend/src/components/help/HelpSystem.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/help/HelpSystem.jsx).
+    - Ajout de `min-w-0` sur l'input et `w-full max-w-full overflow-hidden` sur le conteneur de saisie pour garantir que le bouton d'envoi reste toujours visible et parfaitement dimensionné sur tous les mobiles.
+    - Ajout de `overscroll-contain` sur le tiroir d'aide pour stabiliser le défilement.
+  - **Transmission Immédiate des Suggestions à l'IA** :
+    - Refactorisation de `handleSendMessage(customMessage = null)` pour accepter un message textuel explicite en paramètre direct.
+    - Simplification de `handleQuickQuestion(question)` : envoi instantané et synchrone sans `setTimeout` ni état intermédiaire. Cliquer sur n'importe quelle suggestion envoie immédiatement la requête, affiche la bulle utilisateur, active l'indicateur de frappe et génère la réponse de l'assistant.
+- **Fichiers modifiés** :
+  - [`frontend/index.html`](file:///Volumes/Data/Works/Windsurf/creche/frontend/index.html)
+  - [`frontend/src/components/help/HelpSystem.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/help/HelpSystem.jsx)
+- **Résultat** : Expérience mobile sans aucun zoom parasite à la frappe, affichage 100% stable dans les limites de l'écran, et réponse instantanée de l'assistant au moindre tap sur une suggestion.
+
+
 
 

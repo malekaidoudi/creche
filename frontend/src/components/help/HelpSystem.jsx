@@ -340,10 +340,11 @@ const HelpSystem = () => {
     setIsOpen(!isOpen);
   };
 
-  const handleSendMessage = async () => {
-    if (!chatInput.trim() || isTyping) return;
+  const handleSendMessage = async (customMessage = null) => {
+    const rawText = typeof customMessage === 'string' ? customMessage : chatInput;
+    if (!rawText || !rawText.trim() || isTyping) return;
 
-    const userText = chatInput.trim();
+    const userText = rawText.trim();
     const userMsg = {
       id: `user-${Date.now()}`,
       type: 'user',
@@ -428,10 +429,9 @@ const HelpSystem = () => {
   };
 
   const handleQuickQuestion = (question) => {
-    setChatInput(question);
-    setTimeout(() => {
-      handleSendMessage();
-    }, 50);
+    if (!question || isTyping) return;
+    setChatInput('');
+    handleSendMessage(question);
   };
 
   const handleCopyText = (id, text) => {
@@ -662,11 +662,11 @@ const HelpSystem = () => {
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: isRTL ? -500 : 500, opacity: 0 }}
               transition={{ type: 'spring', damping: 28, stiffness: 240 }}
-              className={`fixed inset-y-0 z-50 w-full sm:w-[480px] lg:w-[540px] sm:max-w-[calc(100vw-2rem)]
+              className={`fixed inset-y-0 z-50 w-full sm:w-[480px] lg:w-[540px] max-w-full sm:max-w-[calc(100vw-2rem)]
                 h-full max-h-[100dvh] h-[100dvh]
                 bg-white dark:bg-gray-900 shadow-2xl flex flex-col
                 ${isRTL ? 'left-0 border-r' : 'right-0 border-l'} 
-                border-gray-200 dark:border-gray-800 overflow-hidden`}
+                border-gray-200 dark:border-gray-800 overflow-hidden overscroll-contain`}
             >
               {/* ==================== HEADER ==================== */}
               <div className="relative px-3.5 sm:px-5 pt-[calc(0.75rem+env(safe-area-inset-top,0px))] sm:pt-4 pb-3 sm:pb-3.5 bg-gradient-to-r from-slate-950 via-cyan-950 to-blue-950 text-white shadow-md border-b border-cyan-500/20 shrink-0 overflow-hidden">
@@ -1010,8 +1010,8 @@ const HelpSystem = () => {
                     )}
 
                     {/* Input Area (Safe-area bottom padding) */}
-                    <div className="p-2.5 sm:p-3.5 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-lg pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:pb-3.5 shrink-0">
-                      <div className="flex items-center gap-2">
+                    <div className="p-2.5 sm:p-3.5 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-lg pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:pb-3.5 shrink-0 w-full max-w-full">
+                      <div className="flex items-center gap-2 w-full max-w-full">
                         <input
                           type="text"
                           dir="auto"
@@ -1019,12 +1019,12 @@ const HelpSystem = () => {
                           onChange={(e) => setChatInput(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                           placeholder={data.chat.placeholder}
-                          className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 
-                            rounded-xl text-[14px] sm:text-sm text-gray-800 dark:text-gray-100 placeholder-gray-400 
+                          className="flex-1 min-w-0 px-3 sm:px-4 py-2 sm:py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 
+                            rounded-xl text-[16px] sm:text-sm text-gray-800 dark:text-gray-100 placeholder-gray-400 
                             focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500 transition-all text-start"
                         />
                         <button
-                          onClick={handleSendMessage}
+                          onClick={() => handleSendMessage()}
                           disabled={!chatInput.trim()}
                           aria-label={data.chat.send}
                           className="p-2 sm:p-2.5 bg-gradient-to-r from-cyan-600 via-sky-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 
