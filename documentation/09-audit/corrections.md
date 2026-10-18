@@ -1922,6 +1922,39 @@
   - [`frontend/src/components/help/HelpSystem.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/help/HelpSystem.jsx)
 - **Résultat** : Expérience mobile sans aucun zoom parasite à la frappe, affichage 100% stable dans les limites de l'écran, et réponse instantanée de l'assistant au moindre tap sur une suggestion.
 
+---
 
+### Fiche 87 - Refonte Mobile & Responsive de la Messagerie Instantanée (/messages)
 
-
+- **Date** : 18 Octobre 2026
+- **Contexte** : 
+  1. **Débordement horizontal des contacts & Emails provisoires** : Les fiches parents sans email configuré affichaient l'identifiant technique provisoire brut (ex: `parent.noemail.26646804.a705dffb@creche.local`). Cette chaîne ultra-longue étirait le conteneur hors de l'écran sur mobile, masquant le bouton d'information des enfants associés et forçant l'utilisateur à faire un scroll horizontal maladroit avec le doigt.
+  2. **En-tête de conversation inaccessible sur mobile (Notch / Dynamic Island)** : À l'ouverture d'un fil de discussion sur smartphone, les boutons de navigation arrière (`←`) et de fermeture (`✕`) se superposaient avec la barre d'état iOS (heure, icône batterie, encoche/Dynamic Island), rendant le clic quasi impossible pour l'utilisateur.
+  3. **Zone de saisie dégradée** : La barre de saisie de message comportait un espace vide excessif (`pb-20` / 80px), un contour bleu agressif, et manquait d'ergonomie tactile moderne.
+  4. **Structure non adaptée aux petits écrans** : La liste des contacts et la fenêtre de discussion s'empilaient l'une sous l'autre au lieu d'offrir une navigation maître-détail fluide type application de messagerie native.
+- **Causes identifiées** :
+  1. Affichage inconditionnel de `contact.email` sans filtre d'exclusion des alias techniques provisoires générés par le backend.
+  2. En-tête de conversation positionné sans marge supérieure tenant compte des variables d'encoche `env(safe-area-inset-top)`.
+  3. Présence redondante d'un bouton de fermeture `✕` et d'un bouton retour `←` trop petits et mal espacés.
+- **Action appliquée** :
+  - **Refonte Complète Maître-Détail Mobile / Desktop** :
+    - Sur smartphone (`isMobile`), affichage exclusif de la liste des contacts lorsque aucune conversation n'est active, et passage en plein écran immersif de la conversation active avec bouton de retour dédié (`ArrowLeft`).
+    - Sur desktop (`md:`), conservation d'une mise en page 2 colonnes raffinée (volet gauche des contacts de 380px + fil de discussion à droite avec état vide chaleureux).
+  - **Suppression des Emails Provisoires & Affichage Direct des Enfants** :
+    - Implémentation du filtre `isProvisionalEmail` masquant systématiquement les adresses `parent.noemail...` et `@creche.local`.
+    - Remplacement par l'affichage direct des prénoms des enfants associés (`👶 Adam, Youssef`) sous forme de badges élégants directement sur la carte de contact, sans aucun popover ni bouton `(i)` difficile d'accès.
+    - Ajout de pastilles de statut (badge de rôle, indicateur en ligne vert émeraude, avatar avec initiales colorées).
+  - **En-tête Tactile Sécurisé & Compatible Safe-Area iOS** :
+    - Ajout du padding supérieur dynamique `pt-[calc(env(safe-area-inset-top,0px)+0.75rem)]` pour dégager parfaitement l'en-tête sous la Dynamic Island / encoche iPhone.
+    - Suppression du double bouton confus : un unique bouton retour tactile grand format (42x42px, `touch-manipulation`, coins arrondis xl) avec retour direct à la liste.
+  - **Barre d'Envoi Moderne & Dockée** :
+    - Champ de saisie moderne `rounded-2xl` avec focus glassmorphism subtil.
+    - Police standardisée à `text-[16px]` pour éradiquer tout zoom parasite iOS au tap.
+    - Bouton d'envoi en dégradé bleu saphir avec état désactivé fluide et animation au tap.
+    - Respect de la zone de sécurité basse avec `pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]`.
+  - **Filtres et Recherche Instantanée** :
+    - Barre de recherche de contact avec bouton d'effacement rapide.
+    - Onglets de filtrage par rôle : Tous, Parents, Éducatrices, Direction avec compteurs contextuels.
+- **Fichiers modifiés** :
+  - [`frontend/src/pages/messages/MessagesPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/messages/MessagesPage.jsx)
+- **Résultat** : Interface de messagerie mobile digne des meilleures applications natives (WhatsApp / iMessage), lisibilité immédiate des parents et de leurs enfants sans scroll horizontal, boutons de navigation 100% accessibles sous l'encoche iOS, et zone de frappe parfaitement ergonomique.

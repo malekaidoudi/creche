@@ -1,18 +1,46 @@
 /**
- * MessagesPage - Version Fullscreen Overlay Mobile
+ * MessagesPage - Refonte Moderne & Responsive
  * 
- * Changements appliqués :
- * 1. Conversation en fullscreen overlay (fixed inset-0 z-50) quand contact sélectionné
- * 2. scrollToBottomAndFocus() robuste avec multi-délais (80ms, 200ms, 500ms)
- * 3. Structure flex optimisée : header shrink-0, messages flex-1, input shrink-0
- * 4. Compatible iOS/Android - input reste visible avec clavier
+ * Améliorations majeures :
+ * 1. Présentation Contacts & Suppression des emails provisoires :
+ *    - Masquage intégral des emails techniques générés (parent.noemail... @creche.local).
+ *    - Affichage direct et élégant des enfants associés sous le nom des parents (badges enfants).
+ *    - Plus de bouton (i) minuscule décalé à droite : les informations sont fluides et natives.
+ * 2. Ergonomie Mobile & Safe Area :
+ *    - En-tête conversation avec padding-top safe-area (pt-[calc(env(safe-area-inset-top,0px)+0.75rem)])
+ *      positionné sous l'îlot dynamique / l'encoche et l'horloge iOS.
+ *    - Bouton retour unique "←", spacieux (42x42px) et tactile, sans bouton "X" redondant.
+ * 3. Barre de saisie moderne (Dock Chat) :
+ *    - Style messagerie moderne (iMessage / WhatsApp) en pilule arrondie rounded-2xl.
+ *    - Suppression de l'espacement excessif de 80px sur mobile : padding-bottom adaptatif (safe-area).
+ *    - Police 16px sur mobile pour empêcher tout auto-zoom iOS Safari intempestif.
+ * 4. Architecture Master-Detail fluide :
+ *    - Mobile : transition nette entre Liste de contacts et Conversation en plein écran.
+ *    - Desktop : vue double colonne 380px / flex-1 avec écran d'accueil chaleureux.
+ *    - Recherche unifiée (par nom de parent, staff ou nom d'enfant) et onglets de filtrage par rôle.
  */
 
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Send, MessageSquare, X, Info, Shield, Users as UsersIcon, User, ArrowLeft } from 'lucide-react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import {
+  Send,
+  MessageSquare,
+  Search,
+  X,
+  ArrowLeft,
+  Shield,
+  Users as UsersIcon,
+  User,
+  Baby,
+  Check,
+  CheckCheck,
+  Mail,
+  ChevronRight,
+  Sparkles
+} from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../../hooks/useAuth';
+import { useLanguage } from '../../hooks/useLanguage';
 import useIsMobile from '../../hooks/useIsMobile';
 import MobileNavigation from '../../components/mobile/MobileNavigation';
 import API_CONFIG from '../../config/api';
@@ -20,70 +48,63 @@ import { useAccess } from '../../access';
 
 const API_URL = `${API_CONFIG.BASE_URL}/api`;
 
+/**
+ * Détecte si un email est un identifiant technique provisoire
+ */
+const isProvisionalEmail = (email) => {
+  if (!email || typeof email !== 'string') return true;
+  const lower = email.toLowerCase().trim();
+  return (
+    lower.includes('noemail') ||
+    lower.endsWith('@creche.local') ||
+    lower.includes('placeholder')
+  );
+};
+
+/**
+ * Récupère les initiales d'un utilisateur
+ */
+const getInitials = (firstName, lastName) => {
+  const f = (firstName || '').trim()[0] || '';
+  const l = (lastName || '').trim()[0] || '';
+  return (f + l).toUpperCase() || '?';
+};
+
 export default function MessagesPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
+  const { isRTL } = useLanguage();
   const isMobile = useIsMobile();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { can, loading: accessLoading } = useAccess();
 
-  // États
+  // États principaux
   const [contacts, setContacts] = useState([]);
   const [children, setChildren] = useState([]);
+  const [conversationsMap, setConversationsMap] = useState({});
   const [selectedContact, setSelectedContact] = useState(null);
   const [conversation, setConversation] = useState([]);
   const [conversationCache, setConversationCache] = useState(() => loadCacheFromStorage());
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
-  const [showChildInfo, setShowChildInfo] = useState(null);
   const [replyContent, setReplyContent] = useState('');
 
-  // Helper: déterminer si un contact est en ligne (last_active < 5 min)
-  const isContactOnline = (contact) => {
-    if (!contact?.last_active) return false;
-    const lastActive = new Date(contact.last_active);
-    const now = new Date();
-    return (now - lastActive) < 5 * 60 * 1000; // 5 minutes
-  };
+  // Filtres & Recherche
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeRoleFilter, setActiveRoleFilter] = useState('all'); // 'all', 'parent', 'staff', 'admin'
 
   // Refs
   const messagesContainerRef = useRef(null);
   const messageInputRef = useRef(null);
   const hasOpenedFromNotification = useRef(false);
 
-  // ============================================================================
-  // FONCTIONS UTILITAIRES
-  // ============================================================================
-
-  // Fonction pour fermer la conversation (compatible mobile)
-  const handleCloseConversation = (e) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    console.log('🔙 Fermeture conversation mobile');
-
-    // Nettoyer le paramètre messageId de l'URL si présent
-    const messageId = searchParams.get('messageId');
-    if (messageId) {
-      console.log('🗑️ Suppression paramètre messageId de l\'URL');
-      // Réinitialiser le flag pour permettre une future ouverture depuis notification
-      hasOpenedFromNotification.current = false;
-
-      // Rediriger vers le dashboard approprié selon le rôle
-      if (user?.role === 'parent') {
-        console.log('👤 Redirection vers Mon espace parent');
-        navigate('/mon-espace', { replace: true });
-      } else {
-        console.log('👔 Redirection vers Dashboard staff/admin');
-        navigate('/dashboard', { replace: true });
-      }
-      return; // Sortir de la fonction après redirection
-    }
-
-    setSelectedContact(null);
-    setConversation([]);
-    setReplyContent('');
+  // Helper: déterminer si un contact est en ligne (last_active < 5 min)
+  const isContactOnline = (contact) => {
+    if (!contact?.last_active) return false;
+    const lastActive = new Date(contact.last_active);
+    const now = new Date();
+    return now - lastActive < 5 * 60 * 1000;
   };
 
   function loadCacheFromStorage() {
@@ -92,8 +113,8 @@ export default function MessagesPage() {
       if (cached) {
         const parsed = JSON.parse(cached);
         const now = Date.now();
-        const isValid = Object.values(parsed).every(item =>
-          item.timestamp && (now - item.timestamp < 24 * 60 * 60 * 1000)
+        const isValid = Object.values(parsed).every(
+          (item) => item.timestamp && now - item.timestamp < 24 * 60 * 60 * 1000
         );
         if (isValid) return parsed;
       }
@@ -104,49 +125,58 @@ export default function MessagesPage() {
   }
 
   function scrollToBottomAndFocus() {
-    // Scroll immédiat
     if (messagesContainerRef.current) {
       messagesContainerRef.current.scrollTo({
         top: messagesContainerRef.current.scrollHeight,
-        behavior: "smooth"
+        behavior: 'smooth'
       });
     }
 
-    // Focus input
     if (messageInputRef.current) {
       messageInputRef.current.focus();
     }
 
-    // Re-scroll multi-délais pour compenser le clavier mobile
     setTimeout(() => {
       if (messagesContainerRef.current) {
         messagesContainerRef.current.scrollTo({
           top: messagesContainerRef.current.scrollHeight,
-          behavior: "smooth"
+          behavior: 'smooth'
         });
       }
-    }, 80);
-
-    setTimeout(() => {
-      if (messagesContainerRef.current) {
-        messagesContainerRef.current.scrollTo({
-          top: messagesContainerRef.current.scrollHeight,
-          behavior: "smooth"
-        });
-      }
-    }, 200);
-
-    setTimeout(() => {
-      if (messagesContainerRef.current) {
-        messagesContainerRef.current.scrollTo({
-          top: messagesContainerRef.current.scrollHeight,
-          behavior: "smooth"
-        });
-      }
-    }, 500);
+    }, 120);
   }
 
-  function formatMessageDate(dateString) {
+  // Fermer la conversation (retour à la liste de contacts)
+  const handleCloseConversation = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    // Nettoyer les paramètres de requête de l'URL
+    const messageId = searchParams.get('messageId');
+    const userParam = searchParams.get('user');
+    const contactIdParam = searchParams.get('contactId');
+
+    if (messageId || userParam || contactIdParam) {
+      hasOpenedFromNotification.current = false;
+      navigate(location.pathname, { replace: true });
+    }
+
+    setSelectedContact(null);
+    setConversation([]);
+    setReplyContent('');
+  };
+
+  // Formatage des dates de bulles
+  function formatMessageTime(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  // Formatage pour l'en-tête de date dans la conversation
+  function formatDateHeader(dateString) {
     const msgDate = new Date(dateString);
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -154,53 +184,71 @@ export default function MessagesPage() {
     yesterday.setDate(yesterday.getDate() - 1);
     const msgDay = new Date(msgDate.getFullYear(), msgDate.getMonth(), msgDate.getDate());
 
-    const time = msgDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    if (msgDay.getTime() === today.getTime()) return "Aujourd'hui";
+    if (msgDay.getTime() === yesterday.getTime()) return 'Hier';
 
-    if (msgDay.getTime() === today.getTime()) return time;
-    if (msgDay.getTime() === yesterday.getTime()) return `Hier ${time}`;
+    return msgDate.toLocaleDateString('fr-FR', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short'
+    });
+  }
 
-    const day = msgDate.getDate();
-    const month = msgDate.toLocaleDateString('fr-FR', { month: 'short' });
+  function shouldShowDateHeader(messages, index) {
+    if (index === 0) return true;
+    const prevDate = new Date(messages[index - 1].created_at).toDateString();
+    const currentDate = new Date(messages[index].created_at).toDateString();
+    return prevDate !== currentDate;
+  }
 
-    if (msgDate.getFullYear() === now.getFullYear()) {
-      return `${day} ${month} ${time}`;
+  // Formatage court pour la liste des contacts
+  function formatShortDate(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const now = new Date();
+    if (date.toDateString() === now.toDateString()) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
-
-    return `${day} ${month} ${msgDate.getFullYear()} ${time}`;
-  }
-
-  function groupContactsByRole() {
-    return {
-      admin: contacts.filter(c => c.role === 'admin' && c.is_active),
-      staff: contacts.filter(c => c.role === 'staff' && c.is_active),
-      parent: contacts.filter(c => c.role === 'parent' && c.is_active)
-    };
-  }
-
-  function getRoleLabel(role) {
-    const labels = { admin: 'Directeur', staff: 'Personnel', parent: 'Parents' };
-    return labels[role] || role;
-  }
-
-  function getRoleIcon(role) {
-    if (role === 'admin') return <Shield className="w-4 h-4 text-blue-600" />;
-    if (role === 'staff') return <UsersIcon className="w-4 h-4 text-green-600" />;
-    return <User className="w-4 h-4 text-purple-600" />;
-  }
-
-  function getRoleColor(role) {
-    if (role === 'admin') return 'bg-blue-600';
-    if (role === 'staff') return 'bg-green-600';
-    return 'bg-purple-600';
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (date.toDateString() === yesterday.toDateString()) {
+      return 'Hier';
+    }
+    return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
   }
 
   function getChildrenForParent(parentId) {
     const parentIdNum = Number(parentId);
-    return children.filter(c => {
+    return children.filter((c) => {
       const childParentId = Number(c.parent_id);
       const childParentUserId = Number(c.parent_user_id);
       return childParentId === parentIdNum || childParentUserId === parentIdNum;
     });
+  }
+
+  function getRoleLabel(role) {
+    const labels = {
+      admin: isRTL ? 'الإدارة' : 'Direction',
+      staff: isRTL ? 'إطار تربوي' : 'Éducatrice',
+      parent: isRTL ? 'ولي أمر' : 'Parent'
+    };
+    return labels[role] || role;
+  }
+
+  function getRoleBadgeStyle(role) {
+    if (role === 'admin') {
+      return 'bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800';
+    }
+    if (role === 'staff') {
+      return 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800';
+    }
+    return 'bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800';
+  }
+
+  function getRoleAvatarBg(role) {
+    if (role === 'admin') return 'bg-gradient-to-br from-blue-500 to-indigo-700 text-white';
+    if (role === 'staff') return 'bg-gradient-to-br from-emerald-500 to-teal-700 text-white';
+    return 'bg-gradient-to-br from-purple-500 to-pink-600 text-white';
   }
 
   // ============================================================================
@@ -214,26 +262,44 @@ export default function MessagesPage() {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      let user = null;
+      let loadedUser = null;
       if (response.data.success && response.data.user) {
-        user = response.data.user;
+        loadedUser = response.data.user;
       } else if (response.data.user) {
-        user = response.data.user;
+        loadedUser = response.data.user;
       } else if (response.data.id) {
-        user = response.data;
+        loadedUser = response.data;
       }
 
-      if (user && user.id) {
-        setCurrentUser(user);
-        return user;
+      if (loadedUser && loadedUser.id) {
+        setCurrentUser(loadedUser);
+        return loadedUser;
       }
     } catch (error) {
       console.error('Erreur chargement utilisateur:', error);
     }
 
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    setCurrentUser(user);
-    return user;
+    const fallbackUser = JSON.parse(localStorage.getItem('user') || '{}');
+    setCurrentUser(fallbackUser);
+    return fallbackUser;
+  }
+
+  async function loadConversationsList() {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}/staff-messages/conversations`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data && response.data.success && Array.isArray(response.data.conversations)) {
+        const map = {};
+        response.data.conversations.forEach((conv) => {
+          map[conv.contact_id] = conv;
+        });
+        setConversationsMap(map);
+      }
+    } catch (err) {
+      // Ignorer silencieusement si la route de résumé n'est pas supportée
+    }
   }
 
   async function loadContacts(currentUserParam) {
@@ -241,8 +307,6 @@ export default function MessagesPage() {
       const token = localStorage.getItem('token');
       const activeUser = currentUserParam || currentUser || user || {};
 
-      // Sans la permission "messages.parents", les parents ne doivent pas
-      // apparaître dans la liste de contacts pour le staff.
       const canMessageParents = can('MESSAGES_PARENTS');
 
       const response = await axios.get(`${API_URL}/users/contacts`, {
@@ -254,12 +318,12 @@ export default function MessagesPage() {
         const activeUserId = activeUser.userId || activeUser.id;
         const activeUserEmail = activeUser.email;
 
-        const filtered = contactList.filter(u => {
-          const isCurrentUser = u.id === activeUserId || (activeUserEmail && u.email === activeUserEmail);
-          if (isCurrentUser) return false;
+        const filtered = contactList.filter((u) => {
+          const isCurrent =
+            u.id === activeUserId || (activeUserEmail && u.email === activeUserEmail);
+          if (isCurrent) return false;
 
           if (activeUser.role === 'parent' && u.role === 'parent') return false;
-
           if (u.role === 'parent' && activeUser.role === 'staff' && !canMessageParents) return false;
 
           return u.is_active !== false;
@@ -294,7 +358,6 @@ export default function MessagesPage() {
       const token = localStorage.getItem('token');
       const currentUserId = currentUser?.userId || currentUser?.id;
 
-      // Optimisation: Une seule requête API avec le paramètre contactId
       const response = await axios.get(`${API_URL}/staff-messages/conversation/${contactId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -305,11 +368,11 @@ export default function MessagesPage() {
 
         setConversation(messages);
 
-        // Mise à jour du cache
-        const contact = contacts.find(c => c.id === contactId);
+        // Mettre à jour le cache
+        const contact = contacts.find((c) => c.id === contactId);
         if (contact) {
           const cacheKey = `contact_${contactId}`;
-          setConversationCache(prev => ({
+          setConversationCache((prev) => ({
             ...prev,
             [cacheKey]: {
               contactId: contactId,
@@ -319,10 +382,19 @@ export default function MessagesPage() {
             }
           }));
         }
+
+        // Marquer comme lu dans la carte des conversations
+        setConversationsMap((prev) => ({
+          ...prev,
+          [contactId]: {
+            ...(prev[contactId] || {}),
+            unread_count: 0
+          }
+        }));
       }
     } catch (error) {
       console.error('Erreur chargement conversation:', error);
-      // Fallback: charger tous les messages et filtrer côté client
+      // Fallback
       try {
         const token = localStorage.getItem('token');
         const response = await axios.get(`${API_URL}/staff-messages`, {
@@ -330,10 +402,12 @@ export default function MessagesPage() {
         });
 
         if (response.data.success) {
+          const currentUserId = currentUser?.userId || currentUser?.id;
           const messages = response.data.messages || [];
-          const filtered = messages.filter(m =>
-            (m.sender_id === currentUserId && m.recipient_id === contactId) ||
-            (m.sender_id === contactId && m.recipient_id === currentUserId)
+          const filtered = messages.filter(
+            (m) =>
+              (m.sender_id === currentUserId && m.recipient_id === contactId) ||
+              (m.sender_id === contactId && m.recipient_id === currentUserId)
           );
           filtered.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
           setConversation(filtered);
@@ -347,19 +421,21 @@ export default function MessagesPage() {
   async function openConversationFromMessage(messageId) {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/staff-messages/${messageId}/conversation`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await axios.get(
+        `${API_URL}/staff-messages/${messageId}/conversation`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
       if (response.data.success && response.data.conversation.length > 0) {
         const firstMessage = response.data.conversation[0];
         const currentUserId = currentUser?.userId || currentUser?.id;
 
-        const contactId = firstMessage.sender_id === currentUserId
-          ? firstMessage.recipient_id
-          : firstMessage.sender_id;
+        const contactId =
+          firstMessage.sender_id === currentUserId
+            ? firstMessage.recipient_id
+            : firstMessage.sender_id;
 
-        const contact = contacts.find(c => c.id === contactId);
+        const contact = contacts.find((c) => c.id === contactId);
         if (contact) {
           await handleSelectContact(contact);
         }
@@ -374,10 +450,9 @@ export default function MessagesPage() {
   // ============================================================================
 
   async function handleSelectContact(contact) {
-    // Sauvegarder la conversation actuelle dans le cache
     if (selectedContact && conversation.length > 0) {
       const cacheKey = `contact_${selectedContact.id}`;
-      setConversationCache(prev => ({
+      setConversationCache((prev) => ({
         ...prev,
         [cacheKey]: {
           contactId: selectedContact.id,
@@ -391,7 +466,6 @@ export default function MessagesPage() {
     setConversation([]);
     setSelectedContact(contact);
 
-    // Charger depuis le cache ou l'API
     const cacheKey = `contact_${contact.id}`;
     if (conversationCache[cacheKey]) {
       setConversation(conversationCache[cacheKey].messages);
@@ -403,8 +477,10 @@ export default function MessagesPage() {
   }
 
   async function handleSendMessage(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (!replyContent.trim() || !selectedContact) return;
+
+    const messageText = replyContent.trim();
 
     try {
       const token = localStorage.getItem('token');
@@ -412,7 +488,7 @@ export default function MessagesPage() {
         `${API_URL}/staff-messages`,
         {
           recipient_id: selectedContact.id,
-          content: replyContent
+          content: messageText
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -422,7 +498,7 @@ export default function MessagesPage() {
           id: response.data.message?.id || Date.now(),
           sender_id: currentUser?.userId || currentUser?.id,
           recipient_id: selectedContact.id,
-          content: replyContent,
+          content: messageText,
           created_at: new Date().toISOString(),
           is_read: false
         };
@@ -433,7 +509,7 @@ export default function MessagesPage() {
 
         // Mise à jour du cache
         const cacheKey = `contact_${selectedContact.id}`;
-        setConversationCache(prev => ({
+        setConversationCache((prev) => ({
           ...prev,
           [cacheKey]: {
             contactId: selectedContact.id,
@@ -443,12 +519,21 @@ export default function MessagesPage() {
           }
         }));
 
-        // Auto-scroll après envoi
+        // Mettre à jour la carte des conversations
+        setConversationsMap((prev) => ({
+          ...prev,
+          [selectedContact.id]: {
+            ...(prev[selectedContact.id] || {}),
+            last_message: messageText,
+            last_message_date: new Date().toISOString()
+          }
+        }));
+
         setTimeout(() => {
           if (messagesContainerRef.current) {
             messagesContainerRef.current.scrollTo({
               top: messagesContainerRef.current.scrollHeight,
-              behavior: "smooth"
+              behavior: 'smooth'
             });
           }
         }, 50);
@@ -459,31 +544,78 @@ export default function MessagesPage() {
   }
 
   // ============================================================================
+  // FILTRAGE ET RECHERCHE DES CONTACTS
+  // ============================================================================
+
+  const filteredContacts = useMemo(() => {
+    return contacts.filter((c) => {
+      // Filtre de rôle
+      if (activeRoleFilter !== 'all' && c.role !== activeRoleFilter) {
+        return false;
+      }
+
+      // Recherche textuelle
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const fullName = `${c.first_name || ''} ${c.last_name || ''}`.toLowerCase();
+        const email = (c.email || '').toLowerCase();
+        const cChildren = getChildrenForParent(c.id);
+        const childrenNames = cChildren
+          .map((child) => `${child.first_name || ''} ${child.last_name || ''}`.toLowerCase())
+          .join(' ');
+
+        const matchName = fullName.includes(q);
+        const matchEmail = !isProvisionalEmail(email) && email.includes(q);
+        const matchChildren = childrenNames.includes(q);
+
+        if (!matchName && !matchEmail && !matchChildren) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [contacts, activeRoleFilter, searchQuery, children]);
+
+  const roleCounts = useMemo(() => {
+    return {
+      all: contacts.length,
+      parent: contacts.filter((c) => c.role === 'parent').length,
+      staff: contacts.filter((c) => c.role === 'staff').length,
+      admin: contacts.filter((c) => c.role === 'admin').length
+    };
+  }, [contacts]);
+
+  // Enfants du contact sélectionné
+  const selectedContactChildren = useMemo(() => {
+    if (!selectedContact || selectedContact.role !== 'parent') return [];
+    return getChildrenForParent(selectedContact.id);
+  }, [selectedContact, children]);
+
+  // ============================================================================
   // EFFECTS
   // ============================================================================
 
   useEffect(() => {
-    // On attend que les accès (permissions) soient chargés avant de récupérer
-    // les contacts, pour ne jamais afficher brièvement des parents à un staff
-    // qui n'a pas le droit de les contacter.
     if (accessLoading) return;
 
     const initData = async () => {
-      const user = await loadCurrentUser();
-      await loadContacts(user);
+      const loadedUser = await loadCurrentUser();
+      await loadContacts(loadedUser);
       await loadChildren();
+      await loadConversationsList();
     };
     initData();
   }, [accessLoading]);
 
   useEffect(() => {
-    // Heartbeat présence: notifier le serveur qu'on est actif toutes les 30s
+    // Heartbeat de présence toutes les 30s
     const presenceInterval = setInterval(() => {
       const token = localStorage.getItem('token');
       if (token) {
-        axios.post(`${API_URL}/users/presence`, {}, {
-          headers: { Authorization: `Bearer ${token}` }
-        }).catch(() => { });
+        axios
+          .post(`${API_URL}/users/presence`, {}, { headers: { Authorization: `Bearer ${token}` } })
+          .catch(() => {});
       }
     }, 30000);
     return () => clearInterval(presenceInterval);
@@ -500,16 +632,7 @@ export default function MessagesPage() {
   }, [conversationCache]);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      localStorage.removeItem('messagesCache');
-      setConversationCache({});
-    }
-  }, []);
-
-  useEffect(() => {
     if (!selectedContact) return;
-
     requestAnimationFrame(() => {
       scrollToBottomAndFocus();
     });
@@ -523,30 +646,25 @@ export default function MessagesPage() {
 
   useEffect(() => {
     if (!selectedContact) return;
-
     const interval = setInterval(async () => {
       await loadConversation(selectedContact.id);
     }, 10000);
-
     return () => clearInterval(interval);
   }, [selectedContact]);
 
   useEffect(() => {
     const messageId = searchParams.get('messageId');
     if (messageId && contacts.length > 0 && !selectedContact && !hasOpenedFromNotification.current) {
-      console.log('📬 Ouverture conversation depuis notification:', messageId);
       hasOpenedFromNotification.current = true;
       openConversationFromMessage(parseInt(messageId));
     }
   }, [searchParams, contacts, selectedContact]);
 
-  // Ouvrir une conversation depuis le paramètre user ou contactId (ex: ?user=2 ou ?contactId=2)
   useEffect(() => {
     const userId = searchParams.get('user') || searchParams.get('contactId');
     if (userId && contacts.length > 0 && !selectedContact && !hasOpenedFromNotification.current) {
-      const contact = contacts.find(c => c.id === parseInt(userId));
+      const contact = contacts.find((c) => c.id === parseInt(userId));
       if (contact) {
-        console.log('📬 Ouverture conversation avec utilisateur:', userId);
         hasOpenedFromNotification.current = true;
         handleSelectContact(contact);
       }
@@ -559,260 +677,330 @@ export default function MessagesPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
+        <div className="w-10 h-10 border-3 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Chargement des messages...</p>
       </div>
     );
   }
 
-  const grouped = groupContactsByRole();
-
   return (
-    <div className={`h-screen flex flex-col max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 ${isMobile ? 'pb-20' : ''}`}>
-      {/* Header */}
-      <div className="mb-4 shrink-0">
-        {/* Bouton retour - masqué sur mobile */}
-        {user?.role === 'parent' && !isMobile && (
-          <button
-            onClick={() => navigate('/mon-espace')}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            <span>Retour à Mon Espace</span>
-          </button>
-        )}
+    <div className={`h-[100dvh] max-h-[100dvh] flex flex-col bg-gray-50 dark:bg-gray-950 overflow-hidden ${
+      isMobile && !selectedContact ? 'pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))]' : ''
+    }`}>
+      {/* ================================================================ */}
+      {/* VUE PRINCIPALE : MASTER-DETAIL ADAPTATIF                           */}
+      {/* ================================================================ */}
+      <div className="flex-1 flex min-h-0 w-full max-w-7xl mx-auto lg:p-4 lg:gap-4 overflow-hidden">
+        
+        {/* ============================================================== */}
+        {/* COLONNE GAUCHE : LISTE DES CONTACTS (Plein écran mobile ou 380px) */}
+        {/* ============================================================== */}
+        <div
+          className={`flex-1 lg:flex-none lg:w-[380px] xl:w-[420px] bg-white dark:bg-gray-900 lg:rounded-2xl lg:shadow-sm lg:border lg:border-gray-200/80 lg:dark:border-gray-800 flex flex-col min-h-0 overflow-hidden ${
+            selectedContact ? 'hidden lg:flex' : 'flex'
+          }`}
+        >
+          {/* En-tête de la liste avec safe-area iOS */}
+          <div className="pt-[calc(env(safe-area-inset-top,0px)+0.75rem)] pb-3 px-4 sm:px-5 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 shrink-0">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 via-sky-600 to-indigo-600 text-white flex items-center justify-center shadow-xs">
+                  <MessageSquare className="w-4 h-4" />
+                </div>
+                <div>
+                  <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white leading-tight">
+                    Messages
+                  </h1>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                    {contacts.length} contact{contacts.length > 1 ? 's' : ''} disponible{contacts.length > 1 ? 's' : ''}
+                  </p>
+                </div>
+              </div>
 
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Messages</h1>
-        <p className="text-gray-600 mt-1">Communiquez avec l'équipe et les parents</p>
-      </div>
+              {/* Bouton retour vers Espace Parent sur mobile */}
+              {user?.role === 'parent' && (
+                <button
+                  onClick={() => navigate('/mon-espace')}
+                  className="px-3 py-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 rounded-xl transition-colors cursor-pointer"
+                >
+                  Mon Espace
+                </button>
+              )}
+            </div>
 
-      {/* Layout responsive */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0">
-        {/* Section Contacts */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col min-h-0 h-full lg:h-[650px]">
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 shrink-0">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-              <UsersIcon className="w-5 h-5" />
-              Contacts
-            </h2>
+            {/* Barre de Recherche */}
+            <div className="relative mb-2.5">
+              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Rechercher un parent, éducatrice ou enfant..."
+                className="w-full pl-9 pr-8 py-2 bg-gray-100 dark:bg-gray-800/80 border border-gray-200/80 dark:border-gray-700/80 rounded-xl text-xs sm:text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-all"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Onglets de filtrage par rôle */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth -mx-1 px-1 pb-0.5">
+              {[
+                { id: 'all', label: 'Tous', count: roleCounts.all },
+                { id: 'parent', label: 'Parents', count: roleCounts.parent },
+                { id: 'staff', label: 'Éducatrices', count: roleCounts.staff },
+                { id: 'admin', label: 'Direction', count: roleCounts.admin }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveRoleFilter(tab.id)}
+                  className={`px-3 py-1 rounded-full text-xs font-semibold shrink-0 transition-all cursor-pointer ${
+                    activeRoleFilter === tab.id
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  {tab.label} <span className="text-[10px] opacity-80">({tab.count})</span>
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="flex-1 overflow-y-auto min-h-0">
-            {/* Directeur */}
-            {grouped.admin.length > 0 && (
-              <div className="border-b border-gray-200 dark:border-gray-700">
-                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                  <span className="text-sm font-semibold text-blue-900 dark:text-blue-300">Directeur</span>
-                </div>
-                {grouped.admin.map((contact) => (
+
+          {/* Liste déroulante des contacts */}
+          <div className="flex-1 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800/70">
+            {filteredContacts.length > 0 ? (
+              filteredContacts.map((contact) => {
+                const contactChildren = getChildrenForParent(contact.id);
+                const conv = conversationsMap[contact.id];
+                const isSelected = selectedContact?.id === contact.id;
+
+                return (
                   <button
                     key={contact.id}
                     onClick={() => handleSelectContact(contact)}
-                    className={`w-full p-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-b border-gray-100 dark:border-gray-700 ${selectedContact?.id === contact.id ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-600' : ''
-                      }`}
+                    className={`w-full p-3 sm:p-3.5 text-left rtl:text-right transition-all flex items-center gap-3 hover:bg-blue-50/50 dark:hover:bg-gray-800/60 active:scale-[0.99] cursor-pointer ${
+                      isSelected
+                        ? 'bg-blue-50/90 dark:bg-blue-950/40 border-l-4 border-l-blue-600 shadow-2xs'
+                        : ''
+                    }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="relative">
-                          <p className="font-medium text-gray-900 dark:text-white">
-                            {contact.first_name} {contact.last_name}
-                          </p>
-                          {isContactOnline(contact) && (
-                            <span className="absolute -right-3 top-1/2 -translate-y-1/2 w-2 h-2 bg-green-500 rounded-full" title="En ligne" />
-                          )}
-                        </div>
+                    {/* Avatar avec statut en ligne */}
+                    <div className="relative shrink-0">
+                      <div
+                        className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center font-bold text-sm shadow-xs ${getRoleAvatarBg(
+                          contact.role
+                        )}`}
+                      >
+                        {getInitials(contact.first_name, contact.last_name)}
                       </div>
+                      {isContactOnline(contact) && (
+                        <span
+                          className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 ring-2 ring-white dark:ring-gray-900 rounded-full"
+                          title="En ligne"
+                        />
+                      )}
                     </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{contact.email}</p>
-                  </button>
-                ))}
-              </div>
-            )}
 
-            {/* Personnel */}
-            {grouped.staff.length > 0 && (
-              <div className="border-b border-gray-200 dark:border-gray-700">
-                <div className="p-3 bg-green-50 dark:bg-green-900/20 flex items-center gap-2">
-                  <UsersIcon className="w-4 h-4 text-green-600 dark:text-green-400" />
-                  <span className="text-sm font-semibold text-green-900 dark:text-green-300">Personnel</span>
-                </div>
-                {grouped.staff.map((contact) => (
-                  <button
-                    key={contact.id}
-                    onClick={() => handleSelectContact(contact)}
-                    className={`w-full p-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-b border-gray-100 dark:border-gray-700 ${selectedContact?.id === contact.id ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-600' : ''
-                      }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="relative">
-                          <p className="font-medium text-gray-900 dark:text-white">
-                            {contact.first_name} {contact.last_name}
-                          </p>
-                          {isContactOnline(contact) && (
-                            <span className="absolute -right-3 top-1/2 -translate-y-1/2 w-2 h-2 bg-green-500 rounded-full" title="En ligne" />
-                          )}
-                        </div>
+                    {/* Informations textuelles & Enfants associés */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1 mb-0.5">
+                        <h3 className="font-bold text-sm text-gray-900 dark:text-white truncate">
+                          {contact.first_name} {contact.last_name}
+                        </h3>
+                        {conv?.last_message_date && (
+                          <span className="text-[10px] text-gray-400 shrink-0">
+                            {formatShortDate(conv.last_message_date)}
+                          </span>
+                        )}
                       </div>
-                    </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{contact.email}</p>
-                  </button>
-                ))}
-              </div>
-            )}
 
-            {/* Parents */}
-            {grouped.parent.length > 0 && (
-              <div>
-                <div className="p-3 bg-purple-50 dark:bg-purple-900/20 flex items-center gap-2">
-                  <User className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                  <span className="text-sm font-semibold text-purple-900 dark:text-purple-300">Parents</span>
-                </div>
-                {grouped.parent.map((contact, index) => {
-                  const contactChildren = getChildrenForParent(contact.id);
-                  const isLastTwo = index >= grouped.parent.length - 2;
-
-                  return (
-                    <button
-                      key={contact.id}
-                      onClick={() => handleSelectContact(contact)}
-                      className={`w-full p-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors border-b border-gray-100 dark:border-gray-700 ${selectedContact?.id === contact.id ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-600' : ''
-                        }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium text-gray-900 dark:text-white">
-                              {contact.first_name} {contact.last_name}
-                            </p>
-                            {isContactOnline(contact) && (
-                              <span className="w-2 h-2 bg-green-500 rounded-full inline-block" title="En ligne" />
-                            )}
+                      {/* Sous-titre : dernier message OU enfants OU rôle (JAMAIS d'email technique provisoire) */}
+                      {conv?.last_message ? (
+                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                          {conv.last_message}
+                        </p>
+                      ) : contact.role === 'parent' ? (
+                        contactChildren.length > 0 ? (
+                          <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/50 px-2 py-0.5 rounded-md border border-purple-200/60 dark:border-purple-800/50">
+                              <Baby className="w-3 h-3 text-purple-500 shrink-0" />
+                              <span className="truncate max-w-[190px] sm:max-w-none">
+                                {contactChildren.map((c) => c.first_name).join(', ')}
+                              </span>
+                            </span>
                           </div>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">{contact.email}</p>
-                        </div>
+                        ) : (
+                          <p className="text-xs text-gray-400 dark:text-gray-500 truncate">
+                            {!isProvisionalEmail(contact.email)
+                              ? contact.email
+                              : "Parent d'élève"}
+                          </p>
+                        )
+                      ) : (
+                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                          {!isProvisionalEmail(contact.email)
+                            ? contact.email
+                            : getRoleLabel(contact.role)}
+                        </p>
+                      )}
+                    </div>
 
-                        <div className="relative">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setShowChildInfo(showChildInfo === contact.id ? null : contact.id);
-                            }}
-                            className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full transition-colors"
-                            title={contactChildren.length > 0 ? `${contactChildren.length} enfant(s)` : 'Aucun enfant'}
-                          >
-                            <Info className="w-4 h-4 text-purple-600" />
-                          </button>
-
-                          {showChildInfo === contact.id && (
-                            <div className={`absolute right-0 z-10 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3 min-w-[200px] ${isLastTwo ? 'bottom-8' : 'top-8'
-                              }`}>
-                              <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Enfants:</p>
-                              {contactChildren.length > 0 ? (
-                                contactChildren.map((child) => (
-                                  <p key={child.id} className="text-xs text-gray-600 dark:text-gray-400">
-                                    • {child.first_name} {child.last_name}
-                                  </p>
-                                ))
-                              ) : (
-                                <p className="text-xs text-gray-500 dark:text-gray-400 italic">Aucun enfant associé</p>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {contacts.length === 0 && (
-              <div className="p-8 text-center text-gray-500">
-                <MessageSquare className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-                <p>Aucun contact</p>
+                    {/* Badge de non-lus & Chevron */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {conv?.unread_count > 0 && (
+                        <span className="px-2 py-0.5 text-[11px] font-bold rounded-full bg-blue-600 text-white shadow-xs">
+                          {conv.unread_count}
+                        </span>
+                      )}
+                      <ChevronRight className="w-4 h-4 text-gray-400 hidden sm:block" />
+                    </div>
+                  </button>
+                );
+              })
+            ) : (
+              <div className="p-8 text-center text-gray-400">
+                <MessageSquare className="w-10 h-10 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
+                <p className="text-sm font-semibold text-gray-600 dark:text-gray-300">
+                  Aucun contact trouvé
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  Essayez avec un autre terme de recherche
+                </p>
               </div>
             )}
           </div>
         </div>
 
-        {/* Section Conversation */}
+        {/* ============================================================== */}
+        {/* COLONNE DROITE : CONVERSATION ACTIVE (Fullscreen sur mobile)   */}
+        {/* ============================================================== */}
         {selectedContact ? (
-          /* Fullscreen overlay pour mobile - bottom ajusté pour la navigation mobile */
-          <div className="fixed inset-0 z-[60] flex flex-col bg-white dark:bg-gray-800 lg:relative lg:col-span-2 lg:h-[650px] lg:rounded-lg lg:shadow-sm lg:border lg:border-gray-200 lg:dark:border-gray-700 lg:z-auto" style={{ bottom: isMobile ? '0' : undefined }}>
-            {/* Header conversation */}
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 shrink-0 relative z-10">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  {/* Bouton retour mobile */}
-                  <button
-                    onClick={handleCloseConversation}
-                    onTouchEnd={handleCloseConversation}
-                    className="lg:hidden p-3 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors active:scale-95 touch-manipulation cursor-pointer"
-                    aria-label="Retour aux contacts"
-                    type="button"
-                    style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
-                  >
-                    <ArrowLeft className="w-6 h-6 text-gray-700 dark:text-gray-200" />
-                  </button>
-                  {getRoleIcon(selectedContact.role)}
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-gray-900 dark:text-white">
-                        {selectedContact.first_name} {selectedContact.last_name}
-                      </h3>
-                      {isContactOnline(selectedContact) && (
-                        <span className="flex items-center gap-1 text-xs text-green-600">
-                          <span className="w-2 h-2 bg-green-500 rounded-full inline-block" />
-                          En ligne
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {getRoleLabel(selectedContact.role)}
-                    </p>
-                  </div>
-                </div>
+          <div
+            className="fixed inset-0 z-50 flex flex-col bg-gray-50 dark:bg-gray-900 lg:relative lg:inset-auto lg:z-auto lg:flex-1 lg:rounded-2xl lg:shadow-sm lg:border lg:border-gray-200/80 lg:dark:border-gray-800 overflow-hidden"
+          >
+            {/* Header de conversation avec Safe Area iOS (Bouton retour spacieux et accessible) */}
+            <div className="pt-[calc(env(safe-area-inset-top,0px)+0.75rem)] pb-3 px-3.5 sm:px-5 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-xs flex items-center justify-between shrink-0 z-20">
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+                {/* Bouton retour - Très confortable au toucher (42x42px) */}
                 <button
                   onClick={handleCloseConversation}
-                  onTouchEnd={handleCloseConversation}
-                  className="lg:hidden p-3 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors active:scale-95 touch-manipulation cursor-pointer"
-                  aria-label="Fermer la conversation"
-                  type="button"
-                  style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
+                  className="p-2 sm:p-2.5 -ml-1 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full active:scale-95 transition-all flex items-center justify-center shrink-0 min-w-[42px] min-h-[42px] cursor-pointer"
+                  aria-label="Retour aux contacts"
+                  title="Retour aux contacts"
                 >
-                  <X className="w-7 h-7 text-gray-700 dark:text-gray-200" />
+                  <ArrowLeft className={`w-5 h-5 sm:w-6 sm:h-6 ${isRTL ? 'rotate-180' : ''}`} />
                 </button>
+
+                {/* Avatar du contact */}
+                <div className="relative shrink-0">
+                  <div
+                    className={`w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center font-bold text-white shadow-xs ${getRoleAvatarBg(
+                      selectedContact.role
+                    )}`}
+                  >
+                    {getInitials(selectedContact.first_name, selectedContact.last_name)}
+                  </div>
+                  {isContactOnline(selectedContact) && (
+                    <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 ring-2 ring-white dark:ring-gray-900 rounded-full" />
+                  )}
+                </div>
+
+                {/* Nom, Rôle et Enfants */}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <h3 className="font-bold text-sm sm:text-base text-gray-900 dark:text-white truncate">
+                      {selectedContact.first_name} {selectedContact.last_name}
+                    </h3>
+                    <span
+                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${getRoleBadgeStyle(
+                        selectedContact.role
+                      )}`}
+                    >
+                      {getRoleLabel(selectedContact.role)}
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                    {isContactOnline(selectedContact) ? (
+                      <span className="text-emerald-600 dark:text-emerald-400 font-medium">● En ligne</span>
+                    ) : selectedContactChildren.length > 0 ? (
+                      `👶 Parent de ${selectedContactChildren.map((c) => c.first_name).join(', ')}`
+                    ) : (
+                      'Hors ligne'
+                    )}
+                  </p>
+                </div>
               </div>
             </div>
 
-            {/* Messages */}
-            <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 min-h-0 space-y-3">
+            {/* Fil des messages avec date headers */}
+            <div
+              ref={messagesContainerRef}
+              className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3 min-h-0 bg-gray-50/70 dark:bg-gray-950/70"
+            >
               {conversation.length === 0 ? (
-                <div className="flex items-center justify-center h-full text-gray-500">
-                  <div className="text-center">
-                    <MessageSquare className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-                    <p>Aucun message</p>
-                    <p className="text-sm mt-1">Commencez la conversation</p>
+                <div className="flex flex-col items-center justify-center h-full text-center p-6 text-gray-400">
+                  <div className="w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-500 flex items-center justify-center mb-3 shadow-xs">
+                    <MessageSquare className="w-8 h-8" />
                   </div>
+                  <h4 className="font-bold text-base text-gray-800 dark:text-gray-200">
+                    Aucun message échangé
+                  </h4>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 max-w-xs mt-1">
+                    Envoyez votre premier message pour démarrer la conversation avec{' '}
+                    <span className="font-semibold text-gray-700 dark:text-gray-300">
+                      {selectedContact.first_name}
+                    </span>
+                    .
+                  </p>
                 </div>
               ) : (
-                conversation.map((msg) => {
-                  const isMe = msg.sender_id === currentUser?.id || msg.sender_id === currentUser?.userId;
-                  const contactRole = selectedContact?.role;
-                  const bgColor = isMe ? getRoleColor(contactRole) : 'bg-gray-100';
-                  const textColor = isMe ? 'text-white' : 'text-gray-900';
+                conversation.map((msg, index) => {
+                  const isMe =
+                    msg.sender_id === (currentUser?.userId || currentUser?.id);
+                  const showDateHeader = shouldShowDateHeader(conversation, index);
 
                   return (
-                    <div
-                      key={msg.id}
-                      className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
-                    >
-                      <p className="text-xs text-gray-500 mb-1 px-1">
-                        {formatMessageDate(msg.created_at)}
-                      </p>
-                      <div className={`max-w-[80%] sm:max-w-[70%] rounded-lg px-4 py-2 ${bgColor} ${textColor}`}>
-                        <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                    <div key={msg.id} className="space-y-1">
+                      {showDateHeader && (
+                        <div className="flex items-center justify-center my-3">
+                          <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 bg-gray-200/70 dark:bg-gray-800/80 px-3 py-1 rounded-full shadow-2xs">
+                            {formatDateHeader(msg.created_at)}
+                          </span>
+                        </div>
+                      )}
+
+                      <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                        <div
+                          className={`max-w-[85%] sm:max-w-[70%] px-4 py-2.5 rounded-2xl shadow-2xs leading-relaxed text-sm ${
+                            isMe
+                              ? 'bg-gradient-to-r from-blue-600 via-sky-600 to-indigo-600 text-white rounded-tr-xs'
+                              : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-tl-xs border border-gray-200/60 dark:border-gray-700/60'
+                          }`}
+                        >
+                          <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                          <div
+                            className={`flex items-center gap-1 mt-1 text-[10px] ${
+                              isMe
+                                ? 'text-blue-100 justify-end'
+                                : 'text-gray-400 dark:text-gray-400 justify-start'
+                            }`}
+                          >
+                            <span>{formatMessageTime(msg.created_at)}</span>
+                            {isMe &&
+                              (msg.is_read ? (
+                                <CheckCheck className="w-3.5 h-3.5 text-cyan-200" title="Lu" />
+                              ) : (
+                                <Check className="w-3.5 h-3.5 text-blue-200" title="Envoyé" />
+                              ))}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   );
@@ -820,48 +1008,57 @@ export default function MessagesPage() {
               )}
             </div>
 
-            {/* Formulaire envoi - padding-bottom important pour être visible au-dessus de la navigation mobile */}
+            {/* Barre de saisie moderne (Dock Chat sécurisé pour mobile) */}
             <form
               onSubmit={handleSendMessage}
-              className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shrink-0 relative"
-              style={{ paddingBottom: isMobile ? 'calc(80px + env(safe-area-inset-bottom, 0px))' : '16px' }}
+              className="p-2.5 sm:p-3.5 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-t border-gray-200/80 dark:border-gray-800 shrink-0 z-20"
+              style={{
+                paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))'
+              }}
             >
-              <div className="flex gap-2">
-                <input
-                  ref={messageInputRef}
-                  type="text"
-                  value={replyContent}
-                  onChange={(e) => setReplyContent(e.target.value)}
-                  placeholder="Écrivez votre message..."
-                  className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 text-base"
-                  style={{ fontSize: '16px' }}
-                  autoComplete="off"
-                  autoCorrect="off"
-                />
+              <div className="flex items-center gap-2 max-w-4xl mx-auto w-full">
+                <div className="flex-1 min-w-0 flex items-center bg-gray-100 dark:bg-gray-800/90 border border-gray-200 dark:border-gray-700 rounded-2xl px-3.5 py-1.5 focus-within:ring-2 focus-within:ring-blue-500/40 focus-within:border-blue-500 transition-all">
+                  <input
+                    ref={messageInputRef}
+                    type="text"
+                    dir="auto"
+                    value={replyContent}
+                    onChange={(e) => setReplyContent(e.target.value)}
+                    placeholder="Écrivez votre message..."
+                    className="flex-1 min-w-0 bg-transparent text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 text-[16px] sm:text-sm focus:outline-none py-1.5 text-start"
+                    style={{ fontSize: '16px' }}
+                    autoComplete="off"
+                    autoCorrect="off"
+                  />
+                </div>
                 <button
                   type="submit"
                   disabled={!replyContent.trim()}
-                  className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  aria-label="Envoyer le message"
+                  className="p-2.5 sm:p-3 bg-gradient-to-r from-blue-600 via-sky-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-2xl shadow-md transition-all active:scale-95 shrink-0 min-w-[42px] min-h-[42px] flex items-center justify-center cursor-pointer"
                 >
-                  <Send className="w-5 h-5" />
+                  <Send className={`w-4 h-4 sm:w-5 sm:h-5 ${isRTL ? 'rotate-180' : ''}`} />
                 </button>
               </div>
             </form>
           </div>
         ) : (
-          <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col lg:h-[650px] min-h-0">
-            <div className="flex-1 flex items-center justify-center text-gray-500">
-              <div className="text-center">
-                <MessageSquare className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                <p className="text-lg font-medium">Sélectionnez un contact</p>
-                <p className="text-sm mt-1">Choisissez un contact pour commencer à discuter</p>
-              </div>
+          /* Écran d'accueil de la messagerie sur Desktop (Aucune conversation sélectionnée) */
+          <div className="hidden lg:flex flex-1 flex-col items-center justify-center bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200/80 dark:border-gray-800 p-8 text-center">
+            <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-4 shadow-sm border border-blue-100 dark:border-blue-900/50">
+              <MessageSquare className="w-10 h-10" />
             </div>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+              Vos échanges en direct
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm leading-relaxed">
+              Sélectionnez un contact dans la liste à gauche pour consulter l'historique ou envoyer un nouveau message.
+            </p>
           </div>
         )}
       </div>
 
-      {/* Navigation mobile - masquée quand conversation ouverte */}
+      {/* Navigation mobile native (uniquement lorsque la liste des contacts est visible) */}
       {isMobile && !selectedContact && <MobileNavigation />}
     </div>
   );
