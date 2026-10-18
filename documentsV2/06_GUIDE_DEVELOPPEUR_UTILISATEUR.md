@@ -24,7 +24,7 @@ Voir l'intégralité du [05_GUIDE_ADMINISTRATEUR.md](./05_GUIDE_ADMINISTRATEUR.m
 - Statistiques d'usage Cloudinary (quota, volume).
 - Navigation dans l'arborescence des dossiers de fichiers stockés (enfants, inscriptions, archives).
 - Recherche de ressources, déplacement/copie/renommage de fichiers ou dossiers, suppression.
-- **Point de vigilance** : côté API, ce module est accessible à `admin` **et** `developer` (`requireRole('admin', 'developer')` dans `cloudinaryExplorer.js`) ; c'est uniquement la **page** du tableau de bord qui est masquée à un `admin` sans rôle `developer`. Un `admin` techniquement averti pourrait donc appeler ces endpoints directement — point à clarifier avec l'équipe produit si cette asymétrie est volontaire.
+- **Accès** : réservé à `developer` aux deux niveaux — page masquée aux autres rôles **et** API restreinte (`requireRole('developer')` dans `cloudinaryExplorer.js`, correction #64). Un compte `admin` ne peut plus appeler ces endpoints directement.
 
 ## 4. Ce qui reste interdit même au développeur
 - Aucune action destructive supplémentaire n'est débloquée par le rôle `developer` au-delà de ce que permet déjà `admin` (pas de suppression de base de données, pas d'accès direct au serveur depuis l'interface).

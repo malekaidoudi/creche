@@ -1,2 +1,2 @@
 export { default as HelpSystem } from './HelpSystem';
-export { helpData, chatBotResponses } from './HelpData';
+export { helpData, chatBotResponses, glossaryData, workflowData, getContextualHelp, getTimeAwareSuggestion, getProactiveAdvice } from './HelpData';

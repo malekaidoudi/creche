@@ -44,7 +44,7 @@ Quatre rôles existent au niveau de la contrainte de base de données (`CHECK (r
 | `parent` | Parent | Rôle attribué automatiquement à toute inscription publique (`backend/routes_postgres/auth.js` ligne 105, commentaire « Sécurité SEC-03 ») |
 | `staff` | Personnel / éducatrice | Permissions « communes » accordées automatiquement à la création (`backend/services/permissionsService.js`) |
 | `admin` | Direction | Possède implicitement **toutes** les permissions granulaires (`permissionsService.getUserPermissionCodes`, lignes 290-296) |
-| `developer` | Développeur | Traité comme un alias d'`admin` dans la majorité des contrôles (`auth.requireRole`, `permissionsService.resolveEffectiveRole`), mais dispose aussi de pages **exclusives** côté frontend (ex. `/dashboard/activity-logs`, `/dashboard/storage`) où `admin` seul n'est pas autorisé — voir [11_AUTORISATION_ET_PERMISSIONS.md](./11_AUTORISATION_ET_PERMISSIONS.md) |
+| `developer` | Développeur | Super admin technique : traité comme un alias d'`admin` dans la majorité des contrôles (`auth.requireRole`, `permissionsService.resolveEffectiveRole`) **et** seul titulaire des outils techniques (`/dashboard/activity-logs`, `/dashboard/storage` — pages **et** API réservées à `developer`, correction #64) — voir [11_AUTORISATION_ET_PERMISSIONS.md](./11_AUTORISATION_ET_PERMISSIONS.md) |
 
 Aucune inscription publique ne permet de créer un compte `staff`, `admin` ou `developer` : seule la création par un administrateur (page `AddUserPage.jsx`, route `/dashboard/add-user`) le permet. **À vérifier** : le détail exact des contrôles serveur sur la route de création d'utilisateur est traité en §11.
 

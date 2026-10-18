@@ -37,7 +37,7 @@ Sources : `frontend/.env`, `frontend/.env.production`, `frontend/src/config/api.
 
 | Variable | Fonction | Obligatoire ? |
 |---|---|---|
-| `VITE_API_URL` | URL de base de l'API backend. Si absente, `config/api.js` déduit automatiquement l'URL selon le contexte (localhost, IP LAN de développement, ou URL de production **codée en dur** `https://creche-lx4u.onrender.com`) | Non (mais recommandé en production pour éviter de dépendre de l'URL codée en dur) |
+| `VITE_API_URL` | URL de base de l'API backend. Si absente en build de production, `config/api.js` utilise un repli codé en dur **et logue un `console.error` explicite** (correction #76) | **Recommandé en production** — ⚠️ `.env.production` pointe `creche-backend-prod.onrender.com` alors que le repli est `creche-lx4u.onrender.com` : divergence à réconcilier |
 | `VITE_APP_NAME`, `VITE_APP_VERSION` | Métadonnées d'affichage | Non |
 | `VITE_BASE_URL` | Base URL pour le déploiement Vercel | Non |
 | `VITE_ENABLE_DEVTOOLS`, `VITE_LOG_LEVEL` | Comportement de debug | Non |
@@ -49,7 +49,7 @@ Sources : `frontend/.env`, `frontend/.env.production`, `frontend/src/config/api.
 ## 4. Configuration de déploiement (non des variables d'env, mais liée)
 - `backend/render.yaml` : déclare le service Render, lie la base `neon-postgres`, génère automatiquement `JWT_SECRET` (`generateValue: true`) si déployé via ce fichier — **à vérifier** si c'est la méthode de déploiement réellement utilisée ou si le secret est positionné manuellement dans le tableau de bord Render.
 - `frontend/vercel.json` / `vercel.json` (racine) : configuration de build Vite pour Vercel, avec réécritures SPA.
-- `.github/workflows/deploy-frontend.yml` : déploiement automatique vers GitHub Pages à chaque push sur `main`.
+- `.github/workflows/ci.yml` : pipeline CI (tests backend + build/tests frontend) à chaque push/PR sur `main` (correction #73). Le déploiement frontend est assuré par Vercel ; l'ancien workflow GitHub Pages a été supprimé (correction #75).
 
 ## 5. Comment configurer un environnement local (déduit du code, non testé dans cet audit)
 1. Copier `backend/.env.example` vers `backend/.env` et renseigner au minimum : `DB_HOST/PORT/USER/PASSWORD/NAME`, `JWT_SECRET` (valeur aléatoire longue), et soit `RESEND_API_KEY` soit `SMTP_*` pour les e-mails.

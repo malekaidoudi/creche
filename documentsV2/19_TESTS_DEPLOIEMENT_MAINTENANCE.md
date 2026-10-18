@@ -42,12 +42,12 @@ Configuration Jest (`backend/package.json`) : couverture collectée sur `utils/`
 Le dossier `tests/` à la racine contient une collection Postman (`Creche_API.postman_collection.json`), un script de test de responsivité Playwright/Puppeteer (`responsive-test.js`) et de nombreux comptes-rendus manuels au format Markdown (`BUGS_CORRIGES.md`, `CORRECTIONS_*.md`...) qui documentent un historique de sessions de test manuelles, mais ne constituent pas des tests automatisés exécutables en CI. `backend/create_test_users.js` et plusieurs scripts `scripts/create_test_staff.js`/`reset_test_users.js` créent des comptes de test pour une vérification manuelle.
 
 ## 3. Intégration continue
-Un seul workflow GitHub Actions a été trouvé : `.github/workflows/deploy-frontend.yml`, qui **build et déploie** le frontend vers GitHub Pages à chaque push sur `main` — **il n'exécute aucun test** avant déploiement (pas d'étape `npm test` ou `npm run lint` dans ce workflow). **Aucun pipeline CI dédié aux tests backend n'a été trouvé.**
+Depuis les corrections #73/#75 : `.github/workflows/ci.yml` exécute les **tests backend** (`node -c` + `npm test`) et **frontend** (`npm run build` + `vitest --run`) à chaque push/PR sur `main`. Le déploiement frontend est assuré par **Vercel** (`vercel.json`) — l'ancien workflow GitHub Pages `deploy-frontend.yml` a été supprimé.
 
 ## 4. Déploiement (constaté, voir aussi [01_PRESENTATION_PROJET.md](./01_PRESENTATION_PROJET.md) §5 et [18_CONFIGURATION_ENVIRONNEMENT.md](./18_CONFIGURATION_ENVIRONNEMENT.md))
 - **Backend** : Render (`backend/render.yaml`), build `npm install`, démarrage `npm start`. Un fichier `backend/.render-deploy-trigger` existe, probablement utilisé pour forcer un redéploiement (vide ou contenant un horodatage — **à vérifier**).
 - **Base de données** : Neon Postgres, migrations exécutées automatiquement au démarrage du serveur (`migrations/runner.js`), pattern baseline décrit en [12_MODELE_DONNEES.md](./12_MODELE_DONNEES.md).
-- **Frontend** : GitHub Pages (workflow Actions) et/ou Vercel (`vercel.json`) — double configuration présente, cible active non confirmée avec certitude (voir [01_PRESENTATION_PROJET.md](./01_PRESENTATION_PROJET.md)).
+- **Frontend** : **Vercel** (cible confirmée — `frontend/vercel.json`, `vercel.json`). La configuration GitHub Pages a été retirée (correction #75).
 - **Dockerfile** : `backend/Dockerfile` existe, suggérant une capacité de conteneurisation du backend — **non audité en détail dans ce document**, et son usage réel (Render utilise `buildCommand`/`startCommand` Node natifs, pas explicitement Docker dans `render.yaml`) est à vérifier.
 
 ## 5. Sauvegardes et restauration

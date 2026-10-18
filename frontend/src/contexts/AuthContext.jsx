@@ -124,34 +124,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Fonction d'inscription
-  const register = async (userData) => {
-    dispatch({ type: 'LOGIN_START' });
-
-    try {
-      const response = await authService.register(userData);
-
-      // Sauvegarder le token
-      localStorage.setItem('token', response.token);
-
-      dispatch({
-        type: 'LOGIN_SUCCESS',
-        payload: {
-          user: response.user,
-          token: response.token
-        }
-      });
-
-      return response;
-    } catch (error) {
-      const errorMessage = error.response?.data?.error || 'Erreur lors de l\'inscription';
-      dispatch({
-        type: 'LOGIN_ERROR',
-        payload: errorMessage
-      });
-      throw error;
-    }
-  };
 
   // Fonction de déconnexion
   const logout = async () => {
@@ -221,7 +193,7 @@ export const AuthProvider = ({ children }) => {
   const value = {
     ...state,
     login,
-    register,
+
     logout,
     updateUser,
     clearError,

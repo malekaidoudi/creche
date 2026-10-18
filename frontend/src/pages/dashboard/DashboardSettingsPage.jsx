@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Save,
@@ -35,6 +36,7 @@ import HolidayPoliciesManager from '../../components/HolidayPoliciesManager';
 import API_CONFIG from '../../config/api';
 
 const DashboardSettingsPage = () => {
+  const location = useLocation();
   const { isRTL, currentLanguage, toggleLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
   const { user } = useAuth();
@@ -43,6 +45,24 @@ const DashboardSettingsPage = () => {
   const [menuType, setMenuType] = useState(() => {
     return localStorage.getItem('menuType') || 'side';
   });
+
+  // Défilement automatique vers la section Jours Fériés si ancre URL présente
+  useEffect(() => {
+    if (location.hash === '#section-holidays' || location.hash === '#holidays-section') {
+      const timer = setTimeout(() => {
+        const target = document.getElementById('section-holidays') || document.getElementById('holidays-section');
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          target.classList.add('ring-4', 'ring-blue-500/60', 'ring-offset-4', 'dark:ring-offset-gray-900');
+          setTimeout(() => {
+            target.classList.remove('ring-4', 'ring-blue-500/60', 'ring-offset-4', 'dark:ring-offset-gray-900');
+          }, 2500);
+        }
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [location.hash]);
+
   const [staffList, setStaffList] = useState([]);
   const [loadingStaff, setLoadingStaff] = useState(false);
 
@@ -1518,11 +1538,13 @@ const DashboardSettingsPage = () => {
 
         {/* Gestion des jours fériés - sur toute la largeur */}
         <motion.div
+          id="section-holidays"
+          className="scroll-mt-8"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.6 }}
         >
-          <Card>
+          <Card id="holidays-section" className="transition-all duration-500 rounded-xl">
             <CardHeader>
               <CardTitle className="flex items-center text-base sm:text-lg">
                 <Calendar className="w-5 h-5 mr-2 rtl:mr-0 rtl:ml-2 flex-shrink-0" />

@@ -758,7 +758,7 @@ router.put('/:id/deactivate-parent', auth.authenticateToken, auth.requireRole('a
 });
 
 // PUT /api/children/:id/suspend - Mettre un enfant en pause (suspendu)
-router.put('/:id/suspend', auth.authenticateToken, auth.requireRole('admin', 'developer', 'director'), async (req, res) => {
+router.put('/:id/suspend', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => {
   try {
     const { id } = req.params;
     const { reason, expected_return_date } = req.body;
@@ -793,7 +793,7 @@ router.put('/:id/suspend', auth.authenticateToken, auth.requireRole('admin', 'de
 });
 
 // PUT /api/children/:id/reactivate - Réactiver un enfant suspendu
-router.put('/:id/reactivate', auth.authenticateToken, auth.requireRole('admin', 'developer', 'director'), async (req, res) => {
+router.put('/:id/reactivate', auth.authenticateToken, auth.requireRole('admin', 'developer'), async (req, res) => {
   try {
     const { id } = req.params;
 

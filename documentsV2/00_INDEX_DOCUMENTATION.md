@@ -35,6 +35,7 @@ Documentation d'audit du projet **Mima Elghalia**, produite à partir du code so
 | [22 — État des fonctionnalités](./22_ETAT_DES_FONCTIONNALITES.md) | Synthèse de maturité par fonctionnalité |
 | [23 — Anomalies et recommandations](./23_ANOMALIES_ET_RECOMMANDATIONS.md) | Incohérences identifiées, recommandations, questions ouvertes |
 | [24 — Références code](./24_REFERENCES_CODE.md) | Index rapide sujet → fichier |
+| [25 — Dictionnaire des routes et navigation](./25_DICTIONNAIRE_DES_ROUTES_ET_NAVIGATION.md) | Référentiel canonique des routes frontend, résolution des alias et règles IA |
 
 ## Diagrammes (`diagrams/`)
 - [architecture-globale.mmd](./diagrams/architecture-globale.mmd)

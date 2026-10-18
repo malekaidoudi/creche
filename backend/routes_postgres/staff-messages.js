@@ -29,9 +29,22 @@ const canContactRecipient = async (senderUser, recipientId) => {
 };
 
 /**
+ * Middleware : un utilisateur `staff` doit détenir la permission
+ * `messages.parents` pour utiliser ce module — c'est exactement la permission
+ * que le frontend exige pour afficher la messagerie (FEATURES.MESSAGES_PARENTS).
+ * `admin`/`developer` (permissions implicites) et `parent` (destinataire)
+ * passent librement. Appliqué à toutes les routes, lecture comprise.
+ */
+const requireMessagesParentsIfStaff = (req, res, next) => {
+  const role = req.user?.role === 'developer' ? 'admin' : req.user?.role;
+  if (role !== 'staff') return next();
+  return auth.requirePermission('messages.parents')(req, res, next);
+};
+
+/**
  * POST /api/staff-messages - Envoyer un message
  */
-router.post('/', auth.authenticateToken, auth.requireRole('staff', 'admin', 'parent'), async (req, res) => {
+router.post('/', auth.authenticateToken, auth.requireRole('staff', 'admin', 'parent'), requireMessagesParentsIfStaff, async (req, res) => {
   try {
     const allowed = await canContactRecipient(req.user, req.body.recipient_id);
     if (!allowed) {
@@ -62,7 +75,7 @@ router.post('/', auth.authenticateToken, auth.requireRole('staff', 'admin', 'par
 /**
  * GET /api/staff-messages - Récupérer mes messages
  */
-router.get('/', auth.authenticateToken, auth.requireRole('staff', 'admin', 'parent'), async (req, res) => {
+router.get('/', auth.authenticateToken, auth.requireRole('staff', 'admin', 'parent'), requireMessagesParentsIfStaff, async (req, res) => {
   try {
     const result = await staffMessageService.getUserMessages(req.user.userId);
 
@@ -80,7 +93,7 @@ router.get('/', auth.authenticateToken, auth.requireRole('staff', 'admin', 'pare
 /**
  * GET /api/staff-messages/unread - Récupérer messages non lus
  */
-router.get('/unread', auth.authenticateToken, auth.requireRole('staff', 'admin', 'parent'), async (req, res) => {
+router.get('/unread', auth.authenticateToken, auth.requireRole('staff', 'admin', 'parent'), requireMessagesParentsIfStaff, async (req, res) => {
   try {
     const result = await staffMessageService.getUnreadMessages(req.user.userId);
 
@@ -98,7 +111,7 @@ router.get('/unread', auth.authenticateToken, auth.requireRole('staff', 'admin',
 /**
  * GET /api/staff-messages/conversations - Récupérer toutes les conversations groupées par contact
  */
-router.get('/conversations', auth.authenticateToken, auth.requireRole('staff', 'admin', 'parent'), async (req, res) => {
+router.get('/conversations', auth.authenticateToken, auth.requireRole('staff', 'admin', 'parent'), requireMessagesParentsIfStaff, async (req, res) => {
   try {
     const userId = req.user.userId || req.user.id;
 
@@ -118,7 +131,7 @@ router.get('/conversations', auth.authenticateToken, auth.requireRole('staff', '
 /**
  * GET /api/staff-messages/conversation/:contactId - Récupérer une conversation avec un contact
  */
-router.get('/conversation/:contactId', auth.authenticateToken, auth.requireRole('staff', 'admin', 'parent'), async (req, res) => {
+router.get('/conversation/:contactId', auth.authenticateToken, auth.requireRole('staff', 'admin', 'parent'), requireMessagesParentsIfStaff, async (req, res) => {
   try {
     const contactId = parseInt(req.params.contactId);
     const userId = req.user.userId || req.user.id;
@@ -139,7 +152,7 @@ router.get('/conversation/:contactId', auth.authenticateToken, auth.requireRole(
 /**
  * GET /api/staff-messages/:id/conversation - Récupérer une conversation
  */
-router.get('/:id/conversation', auth.authenticateToken, auth.requireRole('staff', 'admin', 'parent'), async (req, res) => {
+router.get('/:id/conversation', auth.authenticateToken, auth.requireRole('staff', 'admin', 'parent'), requireMessagesParentsIfStaff, async (req, res) => {
   try {
     const result = await staffMessageService.getConversation(
       parseInt(req.params.id),
@@ -160,7 +173,7 @@ router.get('/:id/conversation', auth.authenticateToken, auth.requireRole('staff'
 /**
  * PATCH /api/staff-messages/:id/read - Marquer comme lu
  */
-router.patch('/:id/read', auth.authenticateToken, auth.requireRole('staff', 'admin', 'parent'), async (req, res) => {
+router.patch('/:id/read', auth.authenticateToken, auth.requireRole('staff', 'admin', 'parent'), requireMessagesParentsIfStaff, async (req, res) => {
   try {
     const result = await staffMessageService.markAsRead(
       parseInt(req.params.id),

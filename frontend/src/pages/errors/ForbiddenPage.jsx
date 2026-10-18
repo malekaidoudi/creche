@@ -82,12 +82,11 @@ const ForbiddenPage = () => {
                         >
                             <span>{isRTL ? 'متصل كـ:' : 'Connecté en tant que:'}</span>
                             <span className="font-semibold text-gray-800 dark:text-white">{user.first_name} {user.last_name}</span>
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${user.role === 'admin' ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' :
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${(user.role === 'admin' || user.role === 'developer') ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' :
                                     user.role === 'staff' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' :
-                                        user.role === 'developer' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300' :
-                                            'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                                        'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
                                 }`}>
-                                {user.role}
+                                {user.role === 'developer' ? 'admin' : user.role}
                             </span>
                         </motion.div>
                     )}

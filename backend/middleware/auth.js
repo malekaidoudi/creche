@@ -338,7 +338,7 @@ const auth = {
 
 // Middlewares prédéfinis pour faciliter l'utilisation
 auth.requireAdmin = auth.requireRole('admin', 'developer');
-auth.requireDeveloper = auth.requireRole('developer');
+auth.requireDeveloper = auth.requireRole('admin', 'developer');
 auth.requireStaff = auth.requireRole('admin', 'developer', 'staff');
 auth.requireParent = auth.requireRole('admin', 'developer', 'staff', 'parent');
 

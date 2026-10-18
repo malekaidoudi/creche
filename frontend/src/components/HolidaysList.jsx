@@ -1,14 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, AlertCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Calendar, AlertCircle, Pencil } from 'lucide-react';
 import { useLanguage } from '../hooks/useLanguage';
+import { useAuth } from '../hooks/useAuth';
 import api from '../services/api';
 import WidgetCard, { WidgetEmptyState } from './ui/WidgetCard';
 
 const HolidaysList = ({ userRole = 'parent', showFilters = false }) => {
   const { isRTL } = useLanguage();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [holidays, setHolidays] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+
+  const effectiveRole = user?.role || userRole;
+  const canEdit = effectiveRole === 'admin' || effectiveRole === 'developer';
 
   useEffect(() => {
     fetchActiveHolidays();
@@ -106,11 +113,28 @@ const HolidaysList = ({ userRole = 'parent', showFilters = false }) => {
     </div>
   ) : null;
 
+  // Bouton moderne "Éditer" pour la direction (Admin / Développeur)
+  const editButton = canEdit ? (
+    <button
+      onClick={() => navigate('/dashboard/settings#section-holidays')}
+      className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg
+        text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-200
+        bg-blue-50/90 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/60
+        border border-blue-200/80 dark:border-blue-700/60
+        transition-all duration-200 shadow-2xs hover:shadow-xs group cursor-pointer"
+      title={isRTL ? 'تعديل الأعياد والعطل في الإعدادات' : 'Modifier les jours fériés dans les paramètres'}
+    >
+      <Pencil className="w-3 h-3 transition-transform group-hover:rotate-12 text-blue-500 dark:text-blue-400" />
+      <span>{isRTL ? 'تعديل' : 'Éditer'}</span>
+    </button>
+  ) : null;
+
   return (
     <WidgetCard
       icon={Calendar}
       title={isRTL ? 'الأعياد القادمة' : 'Jours Fériés'}
       badge={upcomingHolidays.length}
+      headerAction={editButton}
       iconColor="blue"
       loading={loading}
       maxItems={4}

@@ -21,7 +21,6 @@ const UploadDocumentsPage = lazy(() => import('../pages/public/UploadDocumentsPa
 const LocationShowcasePage = lazy(() => import('../pages/public/LocationShowcasePage'))
 
 // Pages d'authentification
-const RegisterPage = lazy(() => import('../pages/auth/RegisterPage'))
 const ForgotPasswordPage = lazy(() => import('../pages/auth/ForgotPasswordPage'))
 const ResetPasswordPage = lazy(() => import('../pages/auth/ResetPasswordPage'))
 
@@ -108,7 +107,7 @@ const AppRoutes = () => {
                     <Route path="/recovery" element={<RecoveryPage />} />
 
                     {/* Routes d'authentification */}
-                    <Route path="/register" element={<RegisterPage />} />
+                    {/* /register supprimé : la création de compte parent passe uniquement par le workflow d'inscription (/inscription + approbation) — cf. documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md, anomalie #20 */}
                     <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                     <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
 
@@ -368,7 +367,7 @@ const AppRoutes = () => {
                             </ErrorBoundary>
                         } />
                         <Route path="activity-logs" element={
-                            <ProtectedRoute roles={['developer']}>
+                            <ProtectedRoute roles={['admin', 'developer']}>
                                 <ActivityLogPage />
                             </ProtectedRoute>
                         } />
@@ -384,7 +383,7 @@ const AppRoutes = () => {
                             </ProtectedRoute>
                         } />
                         <Route path="storage" element={
-                            <ProtectedRoute roles={['developer']}>
+                            <ProtectedRoute roles={['admin', 'developer']}>
                                 <CloudinaryExplorerPage />
                             </ProtectedRoute>
                         } />

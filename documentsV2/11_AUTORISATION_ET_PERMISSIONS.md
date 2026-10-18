@@ -26,9 +26,9 @@ Le commentaire de tête de `permissionsService.js` est explicite : **la seule fo
 
 **Point notable vérifié dans le code** (`frontend/src/routes/AppRoutes.jsx` lignes 360-364 et 376-380) : les routes `/dashboard/activity-logs` (journal d'activité technique) et `/dashboard/storage` (explorateur Cloudinary) utilisent `roles={['developer']}` **sans `'admin'`** — un compte `admin` n'ayant pas le rôle technique `developer` ne peut donc **pas** accéder à ces deux pages précises depuis le menu, bien qu'il ait toutes les permissions applicatives. C'est une exception volontaire à la règle « developer = admin + rien de plus » habituellement appliquée ailleurs.
 
-Côté backend, ces deux domaines sont protégés de façon moins stricte : `backend/routes_postgres/activityLogs.js` utilise `requireDeveloper` pour la majorité des endpoints (dashboard, stats, alertes, rapports) mais `auth.requireRole('admin')` pour `archive`, `cleanup`, `create` ; `backend/routes_postgres/cloudinaryExplorer.js` utilise `auth.requireRole('admin', 'developer')` sur tous ses endpoints (donc **plus permissif côté API que côté UI** pour le stockage : un `admin` pourrait appeler l'API Cloudinary Explorer directement même si la page lui est masquée). **Incohérence confirmée**, documentée aussi en [23_ANOMALIES_ET_RECOMMANDATIONS.md](./23_ANOMALIES_ET_RECOMMANDATIONS.md).
+Côté backend, ces deux domaines ont été **alignés sur le frontend** (correction #64) : `backend/routes_postgres/cloudinaryExplorer.js` exige désormais `requireRole('developer')` sur ses 12 endpoints, et `backend/routes_postgres/activityLogs.js` exige `requireDeveloper` sur **tous** ses endpoints (les 4 routes autrefois `admin` — `archive` ×2, `cleanup`, `create` — ont été reclassées). Modèle validé : `developer` = super admin technique, `admin` = direction métier sans accès aux outils techniques (stockage brut, journaux, archives). Voir [23_ANOMALIES_ET_RECOMMANDATIONS.md](./23_ANOMALIES_ET_RECOMMANDATIONS.md).
 
-Un rôle `director` apparaît ponctuellement dans `backend/routes_postgres/children.js` (`auth.requireRole('admin', 'developer', 'director')`, lignes 757 et 792) alors qu'il **n'existe pas** dans la contrainte `CHECK` de la table `users` (seuls `admin|staff|parent|developer` sont autorisés en base). Ce rôle ne peut donc jamais être atteint en pratique : code mort / résidu, sans impact de sécurité mais à nettoyer. Voir [23_ANOMALIES_ET_RECOMMANDATIONS.md](./23_ANOMALIES_ET_RECOMMANDATIONS.md).
+Le rôle `director` a été retiré des contrôles d'accès de `backend/routes_postgres/children.js` (`/suspend`, `/reactivate`, correction #63) car il n'existe pas dans la contrainte `CHECK` de la table `users` (seuls `admin|staff|parent|developer` sont autorisés en base). `director` demeure une valeur valide du **poste** `staff_position` (cf. `userWorkflow.js`), ce qui correspond au sens métier : le directeur est un membre du personnel titulaire du rôle `admin`. Voir [23_ANOMALIES_ET_RECOMMANDATIONS.md](./23_ANOMALIES_ET_RECOMMANDATIONS.md).
 
 ## 3. Middlewares d'autorisation backend (`backend/middleware/auth.js`)
 
@@ -105,7 +105,7 @@ Voir `documentsV2/diagrams/controle-acces.mmd`.
 - Incohérence `admin` vs `developer` entre frontend et backend sur le module Cloudinary Explorer (§2).
 - Rôle `director` mort dans le code (`children.js`), sans risque direct mais source de confusion.
 - Valeur par défaut de `JWT_SECRET` codée en dur si la variable d'environnement est absente (voir §10 et §20).
-- `GET /api/auth/me` ne vérifie pas la révocation de jeton contrairement à `authenticateToken` (voir §10).
+- ~~`GET /api/auth/me` ne vérifie pas la révocation de jeton~~ → corrigé (correction #66) : `/me` passe désormais par `authenticateToken`.
 
 ## 9. Limites et points à vérifier
 - Composant `frontend/src/access/Can.jsx` : comportement exact pendant le chargement des permissions (affichage par défaut masqué/visible) non vérifié ligne à ligne.

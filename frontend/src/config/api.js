@@ -23,7 +23,14 @@ const getBaseUrl = () => {
     } else if (isDev && (hostname === 'localhost' || hostname === '127.0.0.1')) {
       url = 'http://localhost:3003';
     } else {
+      // Repli de production : conservé pour compatibilité avec les builds
+      // existants, mais VITE_API_URL doit toujours être définie explicitement
+      // dans la configuration Vercel (cf. documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md, anomalie #19).
       url = 'https://creche-lx4u.onrender.com';
+      console.error(
+        '⚠️ [CONFIG] VITE_API_URL non définie — repli sur l\'URL de production codée en dur. ' +
+        'Définissez VITE_API_URL dans les variables d\'environnement Vercel.'
+      );
     }
   }
 
@@ -41,7 +48,6 @@ const API_CONFIG = {
     // Authentification
     AUTH: '/api/auth',
     AUTH_LOGIN: '/api/auth/login',
-    AUTH_REGISTER: '/api/auth/register',
     AUTH_ME: '/api/auth/me',
 
     // Utilisateurs

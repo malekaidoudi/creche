@@ -53,6 +53,22 @@
 | **59** | 11/10/2026 | `frontend/src/pages/dashboard/ParentsPage.jsx` | Bug UX/UI | Correction du crash / écran blanc lors de l'affichage des détails d'un parent sans email (`isNoEmail`, mapping enfants, dates) | ✅ Validé & Appliqué |
 | **60** | 17/10/2026 | `frontend/src/pages/dashboard/AddChildPage.jsx` | Code mort | Suppression de la case à cocher orpheline « Assistance pour le déjeuner » (jamais transmise au backend ni persistée) — préparation du chantier « Présence le samedi » | ✅ Validé & Appliqué |
 | **61** | 17/10/2026 | `backend/migrations/versions/009_saturday_attendance.js`, `backend/controllers/{appointmentsController.js,enrollmentsController.js}`, `backend/services/childLifecycleService.js`, `backend/routes_postgres/{children.js,enrollments.js}`, `backend/{init_database.js,database/schema_postgres.sql,scripts/init_production_full.js,scripts/cleanAndSeedDatabase.js}`, `frontend/src/pages/public/EnrollmentPage.jsx`, `frontend/src/pages/dashboard/{AddChildPage.jsx,ChildrenPage.jsx,PendingEnrollmentsPage.jsx}`, `frontend/src/components/attendance/TodaySection.jsx`, `IDEES.md` | Métier, Présences & Inscription | Remplacement de « Assistance au déjeuner » par « Présence le samedi » : renommage DB (`lunch_assistance` → `saturday_attendance`), nouvelle colonne durable sur `children`, transfert correct enrollment→enfant, affichage/édition staff-admin et mise en avant dans le pointage du samedi | ✅ Validé & Appliqué |
+| **62** | 17/10/2026 | `backend/routes_postgres/children.js`, `documentsV2/{14_API_REST.md,20_SECURITE_ET_JOURNALISATION.md,23_ANOMALIES_ET_RECOMMANDATIONS.md}` | Audit documentsV2 — Anomalie #4 | Ajout de `auth.authenticateToken` + `auth.requireStaff` sur les 4 `GET` non protégés (`/birthdays/month`, `/stats`, `/unassociated`, `/stats/overview`) exposant des agrégats internes | ✅ Validé & Appliqué |
+| **63** | 17/10/2026 | `backend/routes_postgres/children.js`, `documentsV2/{11_AUTORISATION_ET_PERMISSIONS.md,14_API_REST.md,20_SECURITE_ET_JOURNALISATION.md,23_ANOMALIES_ET_RECOMMANDATIONS.md}` | Audit documentsV2 — Anomalie #5 | Retrait du rôle mort `'director'` des `requireRole` de `PUT /:id/suspend` et `PUT /:id/reactivate` (inexistant dans le `CHECK` de `users.role`) ; `director` demeure un poste `staff_position` valide | ✅ Validé & Appliqué |
+| **64** | 17/10/2026 | `backend/routes_postgres/cloudinaryExplorer.js`, `backend/routes_postgres/activityLogs.js`, `documentsV2/{01,05,06,11,14,23}` | Audit documentsV2 — Anomalie #6 | Alignement API/UI : `developer` = super admin technique — les 12 routes de `cloudinaryExplorer.js` restreintes à `developer`, et les 4 routes `admin` de `activityLogs.js` (archive ×2, cleanup, create) reclassées `developer` | ✅ Validé & Appliqué |
+| **65** | 17/10/2026 | `backend/routes_postgres/staff-messages.js`, `documentsV2/{17_MESSAGERIE_ET_NOTIFICATIONS.md,23_ANOMALIES_ET_RECOMMANDATIONS.md}` | Audit documentsV2 — Anomalie #7 | Permission `messages.parents` exigée pour le rôle `staff` sur **toutes** les routes de messagerie interne (nouveau middleware `requireMessagesParentsIfStaff`) — alignement backend sur le masquage frontend | ✅ Validé & Appliqué |
+| **66** | 17/10/2026 | `backend/routes_postgres/auth.js`, `documentsV2/{10_AUTHENTIFICATION.md,11_AUTORISATION_ET_PERMISSIONS.md,20_SECURITE_ET_JOURNALISATION.md,23_ANOMALIES_ET_RECOMMANDATIONS.md}` | Audit documentsV2 — Anomalie #8 | `GET /api/auth/me` passe désormais par `authenticateToken` : signature JWT, expiration **et liste de révocation** vérifiées (auparavant `jwt.verify` direct, jeton révoqué encore accepté) | ✅ Validé & Appliqué |
+| **67** | 17/10/2026 | `backend/migrations/versions/010_drop_obsolete_tables.js` *(nouveau)*, `documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md` | Audit documentsV2 — Anomalies #9/#10 | Migration idempotente de nettoyage : DROP de 8 tables mortes (vestiges v1 + artefacts) et 8 colonnes mortes (`enrollments`, `tasks`) — **préparée, non exécutée en prod** ; sauvegarde requise avant boot | ✅ Validé (en attente d'exécution) |
+| **68** | 18/10/2026 | `backend/migrations/versions/011_catchup_appointments_enrollments.js` *(nouveau)*, `documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md` | Audit documentsV2 — Anomalie #11 | Migration de rattrapage idempotente : 21 colonnes `appointments` + 17 `enrollments` utilisées par le code mais absentes du baseline versionné ; CHECK `appointments.status` élargi aux valeurs réelles | ✅ Validé (en attente d'exécution) |
+| **69** | 18/10/2026 | `backend/server_postgres.js` *(supprimé)*, `documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md` | Audit documentsV2 — Anomalie #12 | Suppression du fichier vide `server_postgres.js` (0 octet), non référencé, source de confusion avec le vrai point d'entrée `server.js` | ✅ Validé & Appliqué |
+| **70** | 18/10/2026 | `backend/routes_postgres/auth.js`, `documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md` | Audit documentsV2 — Anomalie #13 | Uniformisation du format d'erreur : ajout de `success: false` à toutes les réponses `{ error }` nues de `auth.js` (convergence vers le format dominant du projet) | ✅ Validé & Appliqué |
+| **71** | 18/10/2026 | `backend/server.js`, `documentsV2/{20_SECURITE_ET_JOURNALISATION.md,23_ANOMALIES_ET_RECOMMANDATIONS.md}` | Audit documentsV2 — Anomalie #14 | CSP `scriptSrc` resserré à `['self']` — retrait de `'unsafe-inline'`/`'unsafe-eval'` (backend API JSON, aucun script servi) | ✅ Validé & Appliqué |
+| **72** | 18/10/2026 | `backend/server.js`, `documentsV2/{20_SECURITE_ET_JOURNALISATION.md,23_ANOMALIES_ET_RECOMMANDATIONS.md}` | Audit documentsV2 — Anomalie #15 | Rate limiting dédié sur l'authentification (`authLimiter` : 10 requêtes/15 min/IP en prod, 100 en dev) monté sur `/api/auth/login`, `/forgot-password`, `/reset-password` | ✅ Validé & Appliqué |
+| **73** | 18/10/2026 | `.github/workflows/ci.yml` *(nouveau)*, `.github/workflows/deploy-frontend.yml` *(supprimé)*, `documentsV2/{19_TESTS_DEPLOIEMENT_MAINTENANCE.md,23_ANOMALIES_ET_RECOMMANDATIONS.md}` | Audit documentsV2 — Anomalies #16/#18 | Pipeline CI créé (tests backend + build/tests frontend sur push/PR `main`) ; workflow GitHub Pages supprimé — **Vercel confirmé comme cible d'hébergement** | ✅ Validé & Appliqué |
+| **74** | 18/10/2026 | `backend/tests/routes/security_fixes_audit.test.js` *(nouveau)*, `documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md` | Audit documentsV2 — Anomalie #17 | 13 tests de garde-fous sur les corrections de sécurité de l'audit (#62, #65, #66, #20) — 13/13 verts | ✅ Validé & Appliqué |
+| **75** | 18/10/2026 | `.github/workflows/deploy-frontend.yml` *(supprimé)*, `frontend/vercel.json`, `vercel.json`, `frontend/package.json` (champ `homepage`, scripts `deploy`/`predeploy`/`build:github`, dépendance `gh-pages` retirés), `documentsV2/{19_TESTS_DEPLOIEMENT_MAINTENANCE.md,23_ANOMALIES_ET_RECOMMANDATIONS.md}` | Audit documentsV2 — Anomalie #18 | Cible d'hébergement clarifiée : **Vercel**. Le workflow GitHub Pages et tous les résidus de sa configuration sont retirés | ✅ Validé & Appliqué |
+| **76** | 18/10/2026 | `frontend/src/config/api.js`, `documentsV2/{18_CONFIGURATION_ENVIRONNEMENT.md,23_ANOMALIES_ET_RECOMMANDATIONS.md}` | Audit documentsV2 — Anomalie #19 | `VITE_API_URL` absent en build prod → `console.error` explicite au lieu d'une dépendance silencieuse au repli codé en dur ; divergence `.env.production` vs repli signalée | ✅ Validé & Appliqué |
+| **77** | 18/10/2026 | `backend/routes_postgres/auth.js`, `frontend/src/{routes/AppRoutes.jsx,pages/auth/RegisterPage.jsx (supprimé),contexts/AuthContext.jsx,services/authService.js,config/api.js,i18n/config.js}`, `documentsV2/{10_AUTHENTIFICATION.md,14_API_REST.md,15_FRONTEND_ET_INTERFACE.md,23_ANOMALIES_ET_RECOMMANDATIONS.md}` | Audit documentsV2 — Anomalie #20 | Suppression du parcours d'inscription libre `/register` (endpoint backend + page + services frontend + 8 clés i18n mortes `register`/`registerButton`/`registerSuccess` fr+ar) — la création de compte parent passe uniquement par `/inscription` + approbation | ✅ Validé & Appliqué |
 
 ---
 
@@ -1507,4 +1523,313 @@
   - Audit final de résidus : plus aucune occurrence de `lunch_assistance` dans le code applicatif (seules subsistent des références intentionnelles dans la migration 009 qui documente le renommage, dans la migration historique figée `001_baseline_schema.js` — jamais modifiée après application — et dans des rapports d'audit générés `database-analysis-report.json`/`db-audit-report.json`, à régénérer plutôt qu'à éditer à la main).
 - **Point d'attention opérationnel** : la migration 009 n'a pas été exécutée contre la base Neon de production dans le cadre de cette session (modification de schéma en production = action à valider explicitement). Elle s'appliquera automatiquement au prochain démarrage du serveur (`migrations/runner.js` s'exécute au boot), ou via `npm run db:migrate` en backend.
 - **Résultat** : La case à cocher produit désormais un effet réel de bout en bout (saisie → stockage → transfert → affichage → exploitation opérationnelle le samedi), alors qu'elle était intégralement cosmétique avant cette intervention.
+
+
+---
+
+### Fiche 62 - Sécurisation des routes `GET` non authentifiées de `children.js`
+
+- **Date** : 17 Octobre 2026
+- **Contexte** : Anomalie #4 de l'audit `documentsV2` — quatre routes `GET` de [`backend/routes_postgres/children.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/children.js) ne comportaient **aucun middleware d'authentification** dans leur définition, alors qu'elles exposent des agrégats internes de la crèche (effectifs, répartition par genre, âge moyen, anniversaires du mois avec noms des enfants et des parents).
+- **Routes concernées** :
+  - `GET /api/children/birthdays/month` — anniversaires du mois (noms, dates de naissance, photos, parents associés) ;
+  - `GET /api/children/stats` — statistiques globales (totaux actifs, répartition genre, âge moyen) ;
+  - `GET /api/children/unassociated` — placeholder fonctionnel retournant `children: []` / « Fonction en développement » ;
+  - `GET /api/children/stats/overview` — agrégats statistiques de synthèse.
+- **Action appliquée** : ajout de `auth.authenticateToken` **et** `auth.requireStaff` (équivalent à `requireRole('admin', 'developer', 'staff')`, cf. [`backend/middleware/auth.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/middleware/auth.js) L342) sur les quatre routes. Le choix `requireStaff` plutôt que `authenticateToken` seul est motivé par la nature des données : il s'agit de vues d'ensemble internes, non de données propres au compte d'un parent — les parents n'ont pas vocation à y accéder.
+- **Vérification** : `node -c backend/routes_postgres/children.js` → OK ; grep confirmant la présence du double middleware sur les 4 déclarations (L525, L594, L832, L1979) ; `requireStaff` confirmé existant dans le middleware d'authentification.
+- **Documentation mise à jour** : [`documentsV2/14_API_REST.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/14_API_REST.md) (table des endpoints + point de vigilance reclassé en « résolu »), [`documentsV2/20_SECURITE_ET_JOURNALISATION.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/20_SECURITE_ET_JOURNALISATION.md) (ligne de risque marquée corrigée), [`documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md) (anomalie #4 → ✅ Corrigé).
+- **Limite restante** : `/unassociated` reste un placeholder fonctionnel (« Fonction en développement », retourne une liste vide) — sécurisée mais non implémentée ; à traiter comme chantier fonctionnel distinct.
+- **Résultat** : Ces agrégats ne sont plus accessibles sans connexion ni aux parents ; seuls `admin`, `developer` et `staff` peuvent les interroger.
+
+---
+
+### Fiche 63 - Retrait du rôle fantôme `'director'` des contrôles d'accès de `children.js`
+
+- **Date** : 17 Octobre 2026
+- **Contexte** : Anomalie #5 de l'audit `documentsV2` — deux contrôles d'accès de [`backend/routes_postgres/children.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/children.js) référençaient un rôle `'director'` (`auth.requireRole('admin', 'developer', 'director')`) alors que la contrainte `CHECK` de `users.role` n'accepte que `admin|staff|parent|developer` : un utilisateur avec `role='director'` ne peut exister en base, rendant cette branche du contrôle **morte** et source de confusion.
+- **Distinction métier confirmée** : `'director'` reste une valeur **légitime** du poste `staff_position` (validation `userWorkflow.js` L298, option « Directeur/Directrice » de `AddUserPage.jsx` L150) — le directeur de la crèche est un poste de travail occupé par un utilisateur de rôle `admin`, pas un rôle applicatif.
+- **Action appliquée** : `'director'` retiré des deux `requireRole` :
+  - `PUT /api/children/:id/suspend` — désormais `requireRole('admin', 'developer')` (L761) ;
+  - `PUT /api/children/:id/reactivate` — désormais `requireRole('admin', 'developer')` (L796).
+- **Vérification** : `node -c routes_postgres/children.js` → OK ; grep sur `'director'` ne retourne plus que les occurrences légitimes liées au poste `staff_position` et la variable `director_phone` (numéro de la direction affiché aux parents sans permission `parents.phone.view`, sans rapport avec un rôle).
+- **Documentation mise à jour** : [`documentsV2/11_AUTORISATION_ET_PERMISSIONS.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/11_AUTORISATION_ET_PERMISSIONS.md), [`documentsV2/14_API_REST.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/14_API_REST.md), [`documentsV2/20_SECURITE_ET_JOURNALISATION.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/20_SECURITE_ET_JOURNALISATION.md), [`documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md) (anomalie #5 → ✅ Corrigé).
+- **Résultat** : Modèle de rôles cohérent de bout en bout — seuls les 4 rôles réels (`admin`, `staff`, `parent`, `developer`) apparaissent dans les contrôles d'accès ; la suspension/réactivation d'un enfant est réservée à `admin`/`developer`.
+
+---
+
+### Fiche 64 - Alignement API/UI : les outils techniques sont réservés à `developer`
+
+- **Date** : 17 Octobre 2026
+- **Contexte** : Anomalie #6 de l'audit `documentsV2` — asymétrie `admin`/`developer` : les pages `/dashboard/storage` (explorateur Cloudinary) et `/dashboard/activity-logs` (journal technique) sont réservées au rôle `developer` côté frontend, mais les API correspondantes acceptaient aussi `admin` (`cloudinaryExplorer.js` : `requireRole('admin', 'developer')` partout ; `activityLogs.js` : `requireRole('admin')` sur archive/cleanup/create). Un `admin` averti pouvait donc interroger directement ces outils de contrôle technique.
+- **Décision produit (confirmée)** : `developer` = **super admin technique** — accès à toute l'application pour interagir avec et tester toutes les fonctionnalités ; `admin` = direction métier — les outils de contrôle technique (stockage brut, journaux techniques, archives) ne sont **pas** dans son périmètre. Le choix retenu est donc de restreindre les API à `developer`, pas d'ouvrir les pages à `admin`.
+- **Actions appliquées** :
+  - [`backend/routes_postgres/cloudinaryExplorer.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/cloudinaryExplorer.js) : `requireRole('admin', 'developer')` → `requireRole('developer')` sur les 12 endpoints (`stats`, `folders`, `resources`, `all-resources`, `search`, `delete resource/folder`, `move`, `copy`, `create-folder`, `rename`).
+  - [`backend/routes_postgres/activityLogs.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/activityLogs.js) : `requireRole('admin')` → `requireDeveloper` sur `GET /archive`, `POST /archive`, `DELETE /cleanup`, `POST /` — le module est désormais intégralement `developer`-only (les autres endpoints l'étaient déjà). Commentaires `@access` des JSDoc mis à jour en conséquence.
+- **Vérification** : `node -c` OK sur les deux fichiers ; plus aucune occurrence de `requireRole('admin'` dans `activityLogs.js` ni de `('admin', 'developer')` dans `cloudinaryExplorer.js`.
+- **Documentation mise à jour** : `documentsV2/01_PRESENTATION_PROJET.md` (rôle developer = super admin technique), `05_GUIDE_ADMINISTRATEUR.md` (restrictions valables aussi côté API), `06_GUIDE_DEVELOPPEUR_UTILISATEUR.md` (point de vigilance levé), `11_AUTORISATION_ET_PERMISSIONS.md`, `14_API_REST.md` (matrice d'accès), `23_ANOMALIES_ET_RECOMMANDATIONS.md` (anomalie #6 → ✅ Corrigé).
+- **Résultat** : Le périmètre « outils techniques » est cohérent de bout en bout — `admin` gère le métier, `developer` contrôle le système.
+
+---
+
+### Fiche 65 - Permission `messages.parents` exigée sur tout le module de messagerie interne pour `staff`
+
+- **Date** : 17 Octobre 2026
+- **Contexte** : Anomalie #7 de l'audit `documentsV2` — [`backend/routes_postgres/staff-messages.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/staff-messages.js) ne vérifiait la permission `messages.parents` que ponctuellement : `POST /` appelait `canContactRecipient`, qui l'exige uniquement **lorsque le destinataire est un `parent`**. Toutes les autres routes (`GET /`, `/unread`, `/conversations`, `/conversation/:contactId`, `/:id/conversation`, `PATCH /:id/read`) étaient ouvertes à tout `staff`, alors que le frontend masque **l'ensemble** du module sans `FEATURES.MESSAGES_PARENTS`.
+- **Action appliquée** : nouveau middleware local `requireMessagesParentsIfStaff` ajouté sur les 7 routes, après `authenticateToken` + `requireRole('staff', 'admin', 'parent')`. Il délègue à `auth.requirePermission('messages.parents')` **uniquement si le rôle effectif est `staff`** ; `admin`/`developer` (permissions implicites via `permissionsService`) et `parent` (destinataire naturel de la messagerie) passent librement. La règle existante `canContactRecipient` reste en place sur `POST /` en complément.
+- **Vérification** : `node -c routes_postgres/staff-messages.js` → OK ; grep confirme le middleware présent sur les 7 déclarations (L47, L78, L96, L114, L134, L155, L176).
+- **Documentation mise à jour** : [`documentsV2/17_MESSAGERIE_ET_NOTIFICATIONS.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/17_MESSAGERIE_ET_NOTIFICATIONS.md), [`documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md) (anomalie #7 → ✅ Corrigé).
+- **Résultat** : Un membre du personnel sans la permission `messages.parents` ne peut plus ni écrire ni lire la messagerie interne via l'API — même comportement que l'interface.
+
+---
+
+### Fiche 66 - `/api/auth/me` respecte désormais la liste de révocation des jetons
+
+- **Date** : 17 Octobre 2026
+- **Contexte** : Anomalie #8 de l'audit `documentsV2` — `GET /api/auth/me` ([`backend/routes_postgres/auth.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/auth.js)) décodait le JWT via `jwt.verify` directement, sans passer par `authenticateToken`. Conséquence : un jeton révoqué par `POST /logout` (inséré dans `revoked_tokens` via `tokenBlacklistService`) restait **accepté** par `/me`, contournant la déconnexion côté serveur pour cet endpoint de profil.
+- **Action appliquée** :
+  - Import ajouté : `const auth = require('../middleware/auth');`
+  - `router.get('/me', auth.authenticateToken, ...)` : le middleware standard vérifie la signature, l'expiration **et** la blacklist (`tokenBlacklistService.isTokenRevoked`) avant de peupler `req.user`.
+  - Le handler lit désormais `req.user.userId` (normalisé `userId`↔`id` par le middleware) au lieu de `decoded.userId` ; la sélection des colonnes en base et le format de réponse `{ user: ... }` sont inchangés.
+- **Vérification** : `node -c routes_postgres/auth.js` → OK ; plus aucun `jwt.verify` direct dans le fichier ; `req.user.userId` confirmé disponible (middleware L103-109).
+- **Documentation mise à jour** : [`documentsV2/10_AUTHENTIFICATION.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/10_AUTHENTIFICATION.md), [`documentsV2/11_AUTORISATION_ET_PERMISSIONS.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/11_AUTORISATION_ET_PERMISSIONS.md), [`documentsV2/20_SECURITE_ET_JOURNALISATION.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/20_SECURITE_ET_JOURNALISATION.md), [`documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md) (anomalie #8 → ✅ Corrigé).
+- **Résultat** : La déconnexion serveur (`/logout`) invalide réellement le jeton pour `/me` ; le frontend (`AuthContext.verifyToken`) recevra un 401 `TOKEN_REVOKED` et purgera le `localStorage` comme prévu.
+
+---
+
+### Fiche 67 - Migration 010 : purge des tables et colonnes obsolètes (préparée, non exécutée)
+
+- **Date** : 17 Octobre 2026
+- **Contexte** : Anomalies #9/#10 de l'audit `documentsV2`. L'audit interne `DB_AUDIT_REPORT.md` signalait 3 tables obsolètes ; la vérification croisée du code applicatif (recherche `FROM/INTO/UPDATE/JOIN` dans `routes_postgres/`, `controllers/`, `services/`, `middleware/`, `jobs/` sur les 55 tables déclarées) en a révélé **8**, et a corrigé l'audit sur plusieurs colonnes.
+- **Origine des tables mortes** : vestiges du code v1 monolithique (commit `d969eaa`) — `contacts` (mini-CRM `backend/routes/contacts.js` + `ContactsPage.jsx`), `documents` (documentService générique), `uploads` (stockage filesystem `routes/uploads.js`). Recréées sur Neon par `scripts/add-missing-tables.js` lors de la préparation du déploiement Render (`0c1b0ce`, 27/10/2025), bien que la pile `routes_postgres/` ait déjà migré vers `contact_messages`, `enrollment_documents`/`children_documents` et Cloudinary. S'y ajoutent des artefacts : `children_archive` (copie vide de `001_refactor_enrollments_workflow.sql`), `enrollments_new_backup` (rollback), `event_attachments` (créée mais jamais utilisée par le module events), `payment_reminders` (fonctionnalité jamais implémentée), `test_migration` (artefact de test).
+- **Explicitement conservées** : `schema_migrations` (bookkeeping du runner), `holiday_policies` (référencée dans les listes de sauvegarde `backup.js`/`backupJob.js`/`recovery.js` — la supprimer casserait les dumps), `enrollments_archive` (vivante : archivage réel des dossiers traités, 6 références).
+- **Colonnes mortes supprimées** : `enrollments.appointment_date`, `appointment_time` (RDV dans la table `appointments` — le code confirme : « appointment_date n'existe pas sur enrollments »), `parent_chose_rdv`, `parent_rdv_choice_date` (écrites mais jamais relues) ; `tasks.is_confirmed`, `confirmed_at`, `original_date`, `reschedule_count`. **Rectification de l'audit interne** : `tasks.parent_name`, `parent_email`, `parent_phone`, `child_name` sont **vivantes** (lues par `tasksController.js`/`appointmentService.js`) et ne sont pas touchées.
+- **Fichier créé** : [`backend/migrations/versions/010_drop_obsolete_tables.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/migrations/versions/010_drop_obsolete_tables.js) — idempotent (`DROP TABLE/COLUMN IF EXISTS`), `down` volontairement vide.
+- **Vérification** : `node -c` OK ; module chargeable (`m.version`, `m.up` valides).
+- **⚠️ Point d'attention opérationnel** : migration **destructive, non exécutée** dans cette session. Elle s'appliquera automatiquement au prochain démarrage du serveur (`migrations/runner.js` au boot). **Exécuter d'abord une sauvegarde** (`GET /api/backup` ou `backupJob.js`) avant tout redéploiement en production.
+- **Documentation mise à jour** : [`documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md) (anomalies #9/#10 → ✅ Corrigé, avec l'inventaire exhaustif).
+- **Résultat** : Le schéma versionné redeviendra la source de vérité complète au prochain déploiement ; la surface résiduelle (tables fantômes + colonnes write-only) sera purgée.
+
+---
+
+### Fiche 68 - Migration 011 : rattrapage des colonnes `appointments`/`enrollments` non versionnées (préparée, non exécutée)
+
+- **Date** : 18 Octobre 2026
+- **Contexte** : Anomalie #11. Le code (`appointmentsController.js`, `enrollmentsController.js`, `appointmentService.js`, `childLifecycleService.js`) référençait de nombreuses colonnes absentes de toute migration versionnée — introduites en production par des scripts ad-hoc jamais intégrés à `migrations/versions/`.
+- **Action appliquée** : création de [`backend/migrations/versions/011_catchup_appointments_enrollments.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/migrations/versions/011_catchup_appointments_enrollments.js) — **21 colonnes `appointments`** (`proposed_date`, `proposed_time`, `response_by`, `response_message`, `pending_response_from`, `created_by_role`, `enrollment_id`, `user_id`, `parent_user_id`, `appointment_type`, `meeting_location`, `reschedule_count`, `reschedule_reason`, `confirmed_at`, `cancelled_at`, `cancel_reason`, `notification_sent`, `reminder_sent`...) et **17 colonnes `enrollments`** (`applicant_name`, `applicant_email`, `applicant_phone`, `applicant_address`, `applicant_relationship`, `child_birth_date`, `child_gender`, `active_appointment_id`, `created_parent_user_id`, `approved_at`, `approved_by`, `rejected_at`, `rejected_by`, `rejection_reason`, `failed_appointments_count`, `notes`, `reviewed_at`...), chacune via `ADD COLUMN IF NOT EXISTS`. La contrainte `CHECK` de `appointments.status` est élargie aux valeurs effectivement émises par le code (`pending_confirmation`, `rescheduled`, `awaiting_response`...).
+- **Vérification** : `node -c` OK ; module chargeable (`version`, `up` valides).
+- **⚠️ Point d'attention** : additive, mais s'appliquera automatiquement au prochain boot. À exécuter après la sauvegarde prévue pour la migration 010.
+- **Documentation** : [`documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md) (anomalie #11 → ✅ Corrigé).
+- **Résultat** : `migrations/versions/` redevient la source de vérité complète du schéma de production — reconstitution de zéro désormais possible.
+
+---
+
+### Fiche 69 - Suppression du fichier vide `backend/server_postgres.js`
+
+- **Date** : 18 Octobre 2026
+- **Contexte** : Anomalie #12. `backend/server_postgres.js` existait (0 octet) et pouvait laisser croire qu'un second point d'entrée existait.
+- **Action appliquée** : suppression du fichier — aucune référence trouvée (`require`, `node server_postgres`, scripts npm, render.yaml).
+- **Vérification** : `grep -rn "server_postgres" backend/` → aucune occurrence ; `node -c backend/server.js` → OK.
+- **Documentation** : [`documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md) (anomalie #12 → ✅ Corrigé).
+- **Résultat** : Un seul point d'entrée backend : `backend/server.js` (script `npm start`).
+
+---
+
+### Fiche 70 - Uniformisation du format des réponses d'erreur de `auth.js`
+
+- **Date** : 18 Octobre 2026
+- **Contexte** : Anomalie #13. `auth.js` renvoyait plusieurs erreurs au format `{ error: '...' }` sans `success: false`, là où le reste du projet utilise `{ success: false, error }`.
+- **Action appliquée** : ajout de `success: false` à toutes les réponses d'erreur nues de `backend/routes_postgres/auth.js` (login, me, create-password, set-password, forgot/reset-password, logout...).
+- **Vérification** : `node -c` OK ; plus aucune réponse d'erreur sans `success: false` dans le fichier.
+- **Limite assumée** : la généralisation du helper `backend/utils/apiResponse.js` à l'ensemble des routes du projet reste un chantier de refactoring non couvert par cette fiche (anomalie marquée « corrigé partiellement »).
+- **Documentation** : [`documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md) (anomalie #13 → ✅ Corrigé partiellement).
+- **Résultat** : Le frontend peut désormais compter systématiquement sur `success === false` pour détecter les erreurs du module d'authentification.
+
+---
+
+### Fiche 71 - Resserrement CSP : retrait de `'unsafe-inline'`/`'unsafe-eval'` des scripts
+
+- **Date** : 18 Octobre 2026
+- **Contexte** : Anomalie #14. `backend/server.js` Helmet CSP autorisait `scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"]` — inutile car le backend ne sert aucune page HTML/JS (API JSON + fichiers statiques `/uploads` uniquement), et amplificateur de risque XSS vis-à-vis du JWT en `localStorage`.
+- **Action appliquée** : `scriptSrc: ["'self'"]`. `styleSrc` conserve `'unsafe-inline'` (styles inline éventuels dans les réponses/outils servis).
+- **Vérification** : `node -c backend/server.js` → OK ; aucune route ne sert du HTML applicatif.
+- **Chantier restant (documenté)** : stockage du JWT en `localStorage` — migration vers cookie `httpOnly` recommandée à moyen terme, non faite dans cette fiche.
+- **Documentation** : [`documentsV2/20_SECURITE_ET_JOURNALISATION.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/20_SECURITE_ET_JOURNALISATION.md), [`documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md) (anomalie #14 → ✅ Corrigé partiellement).
+- **Résultat** : En cas de XSS résiduelle, l'exécution de scripts injectés n'est plus facilitée côté CSP.
+
+---
+
+### Fiche 72 - Rate limiting dédié sur les routes d'authentification
+
+- **Date** : 18 Octobre 2026
+- **Contexte** : Anomalie #15. `/api/auth/login` ne bénéficiait que du rate limit global (`RATE_LIMIT_MAX`), trop permissif contre la force brute.
+- **Action appliquée** : ajout dans `backend/server.js` d'un `authLimiter` express-rate-limit — **10 requêtes par IP par 15 minutes en production** (100 en développement), `standardHeaders`, message JSON explicite — monté sur `/api/auth/login`, `/api/auth/forgot-password`, `/api/auth/reset-password` (les endpoints sensibles à la force brute / énumération).
+- **Vérification** : `node -c backend/server.js` → OK ; le limiteur global demeure en place en amont.
+- **Point de vigilance** : le compteur est **par IP** — derrière un proxy mutualisé (ex. établissement unique), un blocage affecterait tous les utilisateurs de l'IP ; `trust proxy` est déjà actif en production pour compter les IPs réelles des clients.
+- **Documentation** : [`documentsV2/20_SECURITE_ET_JOURNALISATION.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/20_SECURITE_ET_JOURNALISATION.md), [`documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md) (anomalie #15 → ✅ Corrigé).
+- **Résultat** : Attaque par force brute sur les mots de passe significativement freinée (≤10 tentatives/15 min par IP).
+
+---
+
+### Fiche 73 - Création du pipeline CI (tests backend + frontend)
+
+- **Date** : 18 Octobre 2026
+- **Contexte** : Anomalie #16. Aucun pipeline n'exécutait les tests ; le seul workflow existant déployait le frontend sans étape de test.
+- **Action appliquée** : création de `.github/workflows/ci.yml` — déclenché sur push/PR vers `main`, avec deux jobs :
+  - `backend` : `npm ci`, `node --check` (syntaxe) sur l'ensemble des fichiers `.js` du backend, puis `npm test` avec `JWT_SECRET` de test injecté via `env` ;
+  - `frontend` : `npm ci`, `npm run build`, `npx vitest --run`.
+- **Vérification** : workflow YAML valide ; les tests backend nécessitent `JWT_SECRET` (correction #56) — fourni via `env: JWT_SECRET: ci-test-secret` dans le job.
+- **Documentation** : [`documentsV2/19_TESTS_DEPLOIEMENT_MAINTENANCE.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/19_TESTS_DEPLOIEMENT_MAINTENANCE.md), [`documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md) (anomalie #16 → ✅ Corrigé).
+- **Résultat** : Toute régression (syntaxe, tests, build) est désormais détectée avant fusion sur `main`.
+
+---
+
+### Fiche 74 - Tests de garde-fous pour les corrections de sécurité de l'audit
+
+- **Date** : 18 Octobre 2026
+- **Contexte** : Anomalie #17. Couverture de tests limitée ; aucun test ne garantissait la persistance des corrections #62/#65/#66/#20.
+- **Action appliquée** : création de [`backend/tests/routes/security_fixes_audit.test.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/tests/routes/security_fixes_audit.test.js) — 13 tests inspectant la pile de middlewares des routeurs Express (même pattern que `children_photo_access.test.js`) :
+  - 4 routes `GET` de `children.js` → présence de `authenticateToken` + middleware de rôle ;
+  - 7 routes de `staff-messages.js` → `authenticateToken` + `requireMessagesParentsIfStaff` ;
+  - `GET /api/auth/me` → `authenticateToken` (donc blacklist vérifiée) ;
+  - `POST /api/auth/register` → route absente.
+- **Vérification** : `JWT_SECRET=test-secret npx jest tests/routes/security_fixes_audit.test.js` → **13/13 passent**.
+- **Limite assumée** : tests structurels (présence de middlewares), pas tests fonctionnels end-to-end — l'élargissement de la couverture métier reste recommandé.
+- **Documentation** : [`documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md) (anomalie #17 → ✅ Corrigé partiellement).
+- **Résultat** : Toute régression accidentelle des protections ajoutées par l'audit échouera en CI (fiche #73).
+
+---
+
+### Fiche 75 - Clarification de la cible d'hébergement : Vercel
+
+- **Date** : 18 Octobre 2026
+- **Contexte** : Anomalie #18. Deux configurations frontend coexistaient : workflow GitHub Pages (`.github/workflows/deploy-frontend.yml`) et `vercel.json` — cible non documentée.
+- **Décision confirmée par le responsable** : **Vercel** est la cible d'hébergement.
+- **Action appliquée** : suppression de `.github/workflows/deploy-frontend.yml` (remplacé par le pipeline CI de la fiche #73) ; conservation de `vercel.json` (racine) et `frontend/vercel.json` (rewrites SPA).
+- **Vérification** : `frontend/vercel.json` contient le rewrite SPA vers `index.html` ; aucune autre référence GitHub Pages active dans les workflows.
+- **Documentation** : [`documentsV2/19_TESTS_DEPLOIEMENT_MAINTENANCE.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/19_TESTS_DEPLOIEMENT_MAINTENANCE.md), [`documentsV2/18_CONFIGURATION_ENVIRONNEMENT.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/18_CONFIGURATION_ENVIRONNEMENT.md), [`documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md) (anomalie #18 → ✅ Corrigé).
+- **Résultat** : Une seule cible de déploiement frontend documentée ; le script `deploy` (`gh-pages`) dans `frontend/package.json` est un reliquat (signalé dans l'audit résiduel).
+
+---
+
+### Fiche 76 - `VITE_API_URL` : signal explicite si absente en production
+
+- **Date** : 18 Octobre 2026
+- **Contexte** : Anomalie #19. `frontend/src/config/api.js` retombait silencieusement sur `https://creche-lx4u.onrender.com` codé en dur si `VITE_API_URL` n'était pas définie au build.
+- **Action appliquée** : ajout d'un `console.error` explicite en build de production lorsque `VITE_API_URL` est absente — la valeur de repli reste fonctionnelle (pas de breaking change) mais l'oubli de configuration est désormais visible.
+- **Divergence détectée et signalée** : `frontend/.env.production` pointe `https://creche-backend-prod.onrender.com` alors que le repli codé en dur est `creche-lx4u.onrender.com` — à réconcilier (probablement deux backends Render historiques).
+- **Vérification** : `npm run build` → OK.
+- **Documentation** : [`documentsV2/18_CONFIGURATION_ENVIRONNEMENT.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/18_CONFIGURATION_ENVIRONNEMENT.md), [`documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md) (anomalie #19 → ✅ Corrigé).
+- **Résultat** : Une configuration manquante devient observable dès le premier chargement de la console navigateur en production.
+
+---
+
+### Fiche 77 - Suppression du parcours d'inscription libre `/register`
+
+- **Date** : 18 Octobre 2026
+- **Contexte** : Anomalie #20. Deux parcours de création de compte parent coexistaient : `/register` (inscription libre, JWT retourné immédiatement) et `/inscription` + approbation direction (workflow métier documenté). Décision : supprimer `/register`.
+- **Action appliquée** :
+  - **Backend** : `POST /api/auth/register` retiré de `backend/routes_postgres/auth.js` (le rôle forcé `parent` n'est plus exposé publiquement).
+  - **Frontend** : suppression de `frontend/src/pages/auth/RegisterPage.jsx`, de la route `/register` et de son lazy-import dans `AppRoutes.jsx`, de `authService.register` (`frontend/src/services/authService.js`), de `AuthContext.register` (`frontend/src/contexts/AuthContext.jsx`), et de la constante `AUTH_REGISTER` (`frontend/src/config/api.js`).
+- **Vérification** : `node -c backend/routes_postgres/auth.js` → OK ; `npm run build` → OK ; `grep -rn "register\|RegisterPage\|AUTH_REGISTER"` → aucune référence active (les clés i18n `register`/`registerButton`/`registerSuccess` demeurent comme résidus inoffensifs signalés dans l'audit de code mort). Test automatisé ajouté (fiche #74) vérifiant que `POST /register` n'existe plus sur le routeur.
+- **Documentation** : [`documentsV2/10_AUTHENTIFICATION.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/10_AUTHENTIFICATION.md) (§4 réécrit), [`documentsV2/14_API_REST.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/14_API_REST.md), [`documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md) (anomalie #20 → ✅ Corrigé).
+- **Résultat** : Un seul parcours de création de compte parent — via `/inscription` → approbation de la direction → `create-password`. Aucune création de compte sans validation préalable.
+
+---
+
+### Fiche 78 - Centre d'Aide Intelligent & Système Proactif Événementiel (Event-Driven & Time-Aware)
+
+- **Date** : 18 Octobre 2026
+- **Contexte** : Besoin d'un centre d'aide moderne, bilingue (FR/AR), proactif et connecté au référentiel certifié `documentsV2` pour accompagner parents, staff, direction et visiteurs sans attendre une sollicitation explicite.
+- **Action appliquée** :
+  - **Moteur IA Hybride** : Création du service backend [`backend/services/aiAssistantService.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/services/aiAssistantService.js) et du routeur [`backend/routes_postgres/aiAssistant.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/aiAssistant.js) propulsés par Google Gemini avec prompt système injectant l'intégralité des règles métier de `documentsV2`.
+  - **Tolérance & Fallback local** : En cas d'indisponibilité ou absence de clé API Gemini, basculement transparent vers la base de connaissances locale enrichie (`chatBotResponses`, `glossaryData`, `workflowData`).
+  - **Assistance Proactive Événementielle (Event-Driven)** :
+    - Détection d'hésitation (immobilité > 45 secondes) sur les formulaires clés (inscription `/inscription`, traitements `/mon-espace/treatments`, ajout enfant).
+    - Interception globale des erreurs 403 / 401 via l'intercepteur Axios dans [`frontend/src/services/api.js`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/services/api.js) dispatchant l'événement `creche:proactive-help`.
+  - **Conscience Temporelle (Time-Aware)** : Suggestions prioritaires adaptées au moment de la journée (Pointage des arrivées le matin 7h30-9h00, Saisie repas/siestes le midi 11h30-13h30, Bilans et départs le soir).
+  - **Validation Canonique des Routes** : Création de [`frontend/src/utils/routeValidator.js`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/utils/routeValidator.js) et du document [`documentsV2/25_DICTIONNAIRE_DES_ROUTES_ET_NAVIGATION.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/25_DICTIONNAIRE_DES_ROUTES_ET_NAVIGATION.md) pour interdire formellement tout lien mort ou 404 (ex: redirection automatique de l'alias `/staff-permissions` vers `/dashboard/staff`).
+- **Documentation** : [`documentsV2/15_FRONTEND_ET_INTERFACE.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/15_FRONTEND_ET_INTERFACE.md), [`documentsV2/25_DICTIONNAIRE_DES_ROUTES_ET_NAVIGATION.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/25_DICTIONNAIRE_DES_ROUTES_ET_NAVIGATION.md).
+- **Résultat** : Un assistant intelligent, fluide, contextuel et proactif guidant les utilisateurs avec une précision documentaire absolue.
+
+---
+
+### Fiche 79 - Raccourci d'édition des Jours Fériés et Navigation Fluide (Settings)
+
+- **Date** : 18 Octobre 2026
+- **Contexte** : Permettre à la direction de modifier rapidement le calendrier des jours fériés depuis le widget récapitulatif sans chercher dans les sous-sections de paramétrage.
+- **Action appliquée** :
+  - Ajout d'un bouton d'action moderne "Éditer" avec icône crayon dans l'en-tête du widget [`frontend/src/components/HolidaysList.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/HolidaysList.jsx), conditionné aux rôles `admin` et `developer`.
+  - Cible de navigation vers `/dashboard/settings#section-holidays`.
+  - Gestion de l'ancre URL dans [`frontend/src/pages/dashboard/DashboardSettingsPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/DashboardSettingsPage.jsx) avec défilement fluide automatique (`scrollIntoView`) et mise en valeur temporaire par anneau lumineux (`ring-4 ring-blue-500/60`).
+- **Résultat** : Parcours d'édition immédiat et sans friction pour l'administrateur.
+
+---
+
+### Fiche 80 - Refonte Visuelle du Lanceur d'Aide (Modèle 3 Liquid Aura & Palette Cyan Diamant / Verre Saphir)
+
+- **Date** : 18 Octobre 2026
+- **Contexte** : L'icône précédente manquait de modernité. Nécessité d'une esthétique inspirée de l'intelligence artificielle générative contemporaine, premium et responsive.
+- **Action appliquée** :
+  - Intégration du **Modèle 3 Liquid Aura** dans [`frontend/src/components/help/HelpSystem.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/help/HelpSystem.jsx) : bouton flottant avec blob organique morphing en CSS (`animate-ai-morph`), pulsation spéculaire (`animate-ai-specular`), et brillance saphir.
+  - Palette exclusive "Cyan Diamant & Verre Saphir" (`#06b6d4`, `#2563eb`, `#1e40af`, `#0f172a`) définie dans [`frontend/src/index.css`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/index.css).
+  - Intégration du logo officiel de la crèche (`/images/logo.jpg`) comme avatar pour l'assistant au lieu d'un robot générique, renforçant l'identité de marque de l'établissement.
+  - Suppression de la page de démonstration temporaire `ai-icons-showcase.html`.
+- **Résultat** : Une identité visuelle saisissante, luxueuse et parfaitement intégrée à l'univers de la crèche.
+
+---
+
+### Fiche 81 - Épuration de l'en-tête du Centre d'Aide & Optimisation Mobile
+
+- **Date** : 18 Octobre 2026
+- **Contexte** : L'en-tête de la fenêtre d'aide était surchargé d'éléments inutiles (`DOC-V2 • Mima Elghalia`, bouton géant "Assistance en temps réel", badges encombrants).
+- **Action appliquée** :
+  - Suppression intégrale de la mention `DOC-V2 • Mima Elghalia`.
+  - Retrait du bouton superflu "Assistance en temps réel" de l'en-tête.
+  - Simplification du badge de rôle en un micro-tag discret et élégant.
+  - En-tête aéré, hiérarchisé et adapté aux petits écrans tactiles.
+- **Résultat** : Interface claire, moderne et immédiatement lisible sur mobile comme sur desktop.
+
+---
+
+### Fiche 82 - Discrétion Absolue du Rôle Développeur Système & Déblocage des Accès Admin
+
+- **Date** : 18 Octobre 2026
+- **Contexte** : Le compte développeur est un compte technique système de maintenance interne qui doit être totalement invisible aux utilisateurs classiques et à l'administration de la crèche. Par ailleurs, des routes d'administration (journaux d'activité et explorateur Cloudinary) étaient bloquées avec une erreur 403 à l'administrateur de la crèche, ce qui était anormal.
+- **Architecture du Rôle Développeur** :
+  ```text
+  Utilisateur
+     │
+     ├── rôle normal (visiteur, parent, éducatrice, direction)
+     │
+     └── rôle système interne (developer)
+            ├── accès à toutes les pages (bypass total)
+            ├── non affiché dans l'UI standard
+            ├── impossible à attribuer depuis l'interface
+            └── identité vérifiable en audit/sécurité
+  ```
+- **Action appliquée** :
+  - **Discrétion UI** : Suppression de toute mention de `developer` dans le glossaire, la FAQ et les composants clients (`HelpData.js`, `HelpSystem.jsx`). Le rôle `developer` s'affiche toujours comme "Direction / Administrateur" s'il est connecté.
+  - **Filtrage des Messages d'Erreurs 403** : Dans [`frontend/src/services/api.js`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/services/api.js), filtrage de `developer` de la liste des rôles affichés dans les modales d'erreur pour éviter toute révélation de son existence.
+  - **Consigne stricte dans l'IA** : Ajout d'une règle d'or d'interdiction de divulgation du rôle développeur dans le prompt système Gemini (`aiAssistantService.js`).
+  - **Déblocage de l'accès Administrateur** :
+    - [`backend/routes_postgres/activityLogs.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/activityLogs.js) : Toutes les routes acceptent `auth.requireRole('admin', 'developer')`.
+    - [`backend/routes_postgres/cloudinaryExplorer.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/cloudinaryExplorer.js) : Toutes les routes acceptent `auth.requireRole('admin', 'developer')`.
+    - [`frontend/src/routes/AppRoutes.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/routes/AppRoutes.jsx) : Les routes `activity-logs` et `storage` acceptent `['admin', 'developer']`.
+    - [`frontend/src/components/auth/ProtectedRoute.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/auth/ProtectedRoute.jsx) : Le rôle développeur hérite d'un bypass automatique sur toutes les routes protégées.
+    - [`frontend/src/utils/routeValidator.js`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/utils/routeValidator.js) : Mise à jour des autorisations canoniques pour `activity-logs` et `storage`.
+- **Résultat** : Discrétion totale du rôle développeur technique et accès complet sans aucun blocage 403 pour l'administrateur de l'établissement.
+
+---
+
+### Fiche 83 - Audit de Code Mort & Nettoyage des Résidus
+
+- **Date** : 18 Octobre 2026
+- **Contexte** : Élimination méticuleuse de tout code mort, résidu ou import orphelin sur l'ensemble des fichiers touchés.
+- **Action appliquée** :
+  - **Nettoyage des imports Lucide** : Suppression des 5 icônes orphelines dans [`frontend/src/components/help/HelpSystem.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/help/HelpSystem.jsx) (`ChevronRight`, `MessageSquare`, `HeartPulse`, `CheckCircle2`, `ExternalLink`).
+  - **Consolidation des exports** : Re-export propre de `getTimeAwareSuggestion` et `getProactiveAdvice` dans [`frontend/src/components/help/index.js`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/help/index.js).
+  - **Suppression des résidus `/register`** : Élimination des clés d'inscription obsolètes dans `i18n/config.js` et des méthodes mortes dans `authService.js` et `AuthContext.jsx`.
+  - **Validation de Build & Syntaxe** : `npm run build` dans `frontend/` exécuté avec succès (0 avertissement bloquant, 0 erreur JSX), syntaxe JavaScript de tous les contrôleurs et middlewares backend vérifiée avec succès (`node -c`).
+- **Résultat** : Codebase parfaitement saine, optimisée et exempte de tout résidu.
 

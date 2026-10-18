@@ -2,12 +2,10 @@
   "name": "creche-frontend",
   "version": "1.0.0",
   "type": "module",
-  "homepage": "https://malekaidoudi.github.io/creche",
   "description": "Frontend React pour le système de gestion de crèche",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:github": "NODE_ENV=production vite build",
     "preview": "vite preview",
     "test": "vitest",
     "test:ui": "vitest --ui",
@@ -15,9 +13,7 @@
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "lint:fix": "eslint . --ext js,jsx --fix",
     "format": "prettier --write .",
-    "type-check": "tsc --noEmit",
-    "deploy": "npm run build:github && gh-pages -d dist",
-    "predeploy": "npm run build:github"
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@fullcalendar/core": "^6.1.19",
@@ -70,7 +66,6 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.4",
-    "gh-pages": "^6.3.0",
     "jsdom": "^23.0.1",
     "playwright": "^1.60.0",
     "postcss": "^8.4.32",

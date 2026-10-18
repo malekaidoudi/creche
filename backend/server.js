@@ -88,6 +88,7 @@ const activityFeedRoutes = require('./routes_postgres/activityFeed');
 const testimonialsRoutes = require('./routes_postgres/testimonials');
 const treatmentsRoutes = require('./routes_postgres/treatments');
 const staffPermissionsRoutes = require('./routes_postgres/staffPermissions');
+const aiAssistantRoutes = require('./routes_postgres/aiAssistant');
 console.log('✅ Routes chargées\n');
 
 const app = express();
@@ -109,7 +110,7 @@ app.use(helmet({
       defaultSrc: ["'self'"],
       imgSrc: ["'self'", "data:", "blob:", "*"],
       styleSrc: ["'self'", "'unsafe-inline'", "https:"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      scriptSrc: ["'self'"],
       connectSrc: ["'self'", "https:", "wss:"],
       fontSrc: ["'self'", "https:", "data:"],
       objectSrc: ["'none'"],
@@ -253,8 +254,25 @@ console.log('📁 Fichiers statiques: /uploads, /public');
 
 console.log('\n🔗 Montage des routes API...');
 
+// Limite de débit dédiée aux endpoints d'authentification (anti force brute).
+// Bien plus stricte que le limiteur global : les identifiants sont un point
+// d'attaque classique, et 10 tentatives/15 min/IP suffisent largement à un
+// usage légitime (cf. documentsV2/23_ANOMALIES_ET_RECOMMANDATIONS.md, anomalie #15).
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: process.env.NODE_ENV === 'production' ? 10 : 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  trustProxy: true,
+  validate: { trustProxy: false },
+  message: { success: false, error: 'Trop de tentatives de connexion. Réessayez dans 15 minutes.' }
+});
+
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/forgot-password', authLimiter);
+app.use('/api/auth/reset-password', authLimiter);
 app.use('/api/auth', authRoutes);
-console.log('  ✓ /api/auth');
+console.log('  ✓ /api/auth (rate limit anti force brute: 10 tentatives/15min en prod)');
 
 app.use('/api/users', userRoutes);
 console.log('  ✓ /api/users');
@@ -382,6 +400,10 @@ console.log('  ✓ /api/treatments (traitements médicaux) 💊');
 
 app.use('/api/staff-permissions', staffPermissionsRoutes);
 console.log('  ✓ /api/staff-permissions (gestion accès par éducatrice) 🔐');
+
+app.use('/api/ai', aiAssistantRoutes);
+app.use('/ai', aiAssistantRoutes); // Alias de tolérance
+console.log('  ✓ /api/ai & /ai (assistant intelligent Google Gemini) 🤖');
 
 console.log('\n✅ Toutes les routes montées avec succès\n');
 

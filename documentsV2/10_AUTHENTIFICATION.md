@@ -36,15 +36,9 @@ Fichier : `backend/routes_postgres/auth.js` lignes 18-85.
 5. Vérification du mot de passe avec `bcrypt.compare` (hash stocké en base, colonne `users.password`).
 6. Si valide : génération du JWT, journalisation de la connexion réussie (`logLoginSuccess`, `backend/middleware/activityLogger.js`), renvoi de `{ message, token, user }` (le mot de passe est retiré de l'objet `user` renvoyé).
 
-## 4. Inscription publique (`POST /api/auth/register`)
+## 4. Inscription publique — **supprimée** (correction #77)
 
-Fichier : `backend/routes_postgres/auth.js` lignes 88-147.
-- Champs requis : email valide, mot de passe ≥ 6 caractères, prénom, nom (téléphone optionnel).
-- **Le rôle est forcé à `'parent'`** côté serveur, quel que soit ce qui est envoyé par le client (commentaire explicite dans le code : « Sécurité SEC-03 : Forcer strictement le rôle 'parent' pour toute inscription publique », ligne 105). Il est donc **impossible de créer un compte `staff`/`admin`/`developer` via cette route publique**, même en modifiant la requête côté client.
-- Hash du mot de passe avec `bcrypt` (10 rounds).
-- Retourne directement un JWT (connexion automatique après inscription).
-
-**Remarque fonctionnelle** : cette route de création de compte « libre » coexiste avec un second parcours de création de compte piloté par la direction après approbation d'une demande d'inscription d'enfant (`POST /api/auth/create-password`, voir §5 et [21_FLUX_METIER.md](./21_FLUX_METIER.md)). Les deux parcours sont actifs dans le code ; **à vérifier côté produit** lequel est réellement exposé/utilisé dans le parcours public actuel (la page `RegisterPage.jsx` existe dans les routes frontend : `/register`).
+Le parcours d'inscription libre (`POST /api/auth/register` + page `/register` + `RegisterPage.jsx` + `authService.register` + `AuthContext.register` + endpoint `AUTH_REGISTER`) a été **entièrement retiré** de l'application (décision produit : anomalie #20). La création d'un compte parent passe **exclusivement** par le workflow d'inscription d'enfant (`/inscription` → approbation direction → `POST /api/auth/create-password`, §5), ce qui garantit qu'aucun compte ne puisse être créé sans validation préalable de la crèche.
 
 ## 5. Création de mot de passe après approbation (`POST /api/auth/create-password`)
 
@@ -69,7 +63,7 @@ Fichiers : `backend/routes_postgres/auth.js` lignes 372-580.
 
 Côté frontend, `AuthContext.jsx` (`useEffect`, lignes 68-96) relit le `token` du `localStorage` au montage de l'application et appelle `authService.verifyToken(token)` (probablement `GET /api/auth/me`). En cas d'échec, le jeton est supprimé et l'utilisateur est considéré déconnecté.
 
-Côté backend, `GET /api/auth/me` (`backend/routes_postgres/auth.js` lignes 150-180) décode le jeton directement avec `jwt.verify` (sans passer par `authenticateToken`, donc **sans vérifier la liste de révocation** — incohérence potentielle : un jeton révoqué via `/logout` resterait accepté par `/api/auth/me` ; voir [23_ANOMALIES_ET_RECOMMANDATIONS.md](./23_ANOMALIES_ET_RECOMMANDATIONS.md)) puis recharge l'utilisateur en base.
+Côté backend, `GET /api/auth/me` (`backend/routes_postgres/auth.js` L162+) passe désormais par `auth.authenticateToken` (signature JWT + expiration + **liste de révocation** `tokenBlacklistService`, correction #66) puis recharge l'utilisateur en base via `req.user.userId`. Un jeton révoqué via `/logout` est donc rejeté par cet endpoint comme partout ailleurs.
 
 ## 9. Différences notables entre frontend et backend
 - Le frontend ne décode jamais le JWT lui-même : il fait confiance à l'objet `user` renvoyé par le backend à la connexion/vérification, stocké dans le state React (`AuthContext`). Aucune logique de rôle n'est déduite du contenu du token côté client.
@@ -82,4 +76,4 @@ Voir `documentsV2/diagrams/authentification.mmd`.
 ## 11. Limites et points à vérifier
 - Contenu exact de `tokenBlacklistService.js` (purge des jetons expirés de `revoked_tokens`, fréquence) — non lu intégralement.
 - Vérification de l'ancien mot de passe dans `PUT /api/users/change-password` — à confirmer.
-- Usage réel de la page `/register` (inscription libre `parent`) par rapport au parcours d'inscription d'enfant (`/inscription`) qui crée lui aussi un compte parent après approbation : à clarifier avec le responsable produit, car les deux routes de création de compte parent coexistent.
+- ~~Usage de `/register` vs `/inscription`~~ → tranché : `/register` supprimé (correction #77), `/inscription` est l'unique parcours de création de compte parent.

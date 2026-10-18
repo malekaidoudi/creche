@@ -60,7 +60,6 @@ Voir le détail complet en [10_AUTHENTIFICATION.md](./10_AUTHENTIFICATION.md).
 | Méthode | Chemin | Auth |
 |---|---|---|
 | POST | `/login` | public |
-| POST | `/register` | public (rôle forcé `parent`) |
 | GET | `/me` | jeton requis (vérifié manuellement, hors `authenticateToken`) |
 | POST | `/logout` | jeton optionnel (révocation si présent) |
 | POST | `/create-password` | public (jeton métier dans le corps) |
@@ -88,18 +87,19 @@ Voir le détail complet en [10_AUTHENTIFICATION.md](./10_AUTHENTIFICATION.md).
 ## Enfants (`/api/children`)
 | Méthode | Chemin | Auth |
 |---|---|---|
-| GET | `/simple`, `/my-count`, `/parent/:parentId`, `/birthdays/month`, `/stats`, `/unassociated`, `/`, `/stats/overview` | authentifié ou public selon la ligne (voir fichier ; `/birthdays/month`, `/stats`, `/unassociated`, `/stats/overview` observés sans middleware d'authentification) |
+| GET | `/birthdays/month`, `/stats`, `/unassociated`, `/stats/overview` | `authenticateToken` + `requireStaff` (admin/developer/staff) — ajoutés par correction #62 |
+| GET | `/simple`, `/my-count`, `/parent/:parentId`, `/` | authentifié ou public selon la ligne (voir fichier) |
 | GET | `/available`, `/orphans` | `requireStaff` |
 | GET | `/:id` | `requireChildAccess` (propriétaire ou staff/admin) |
 | GET | `/:id/medical`, `/:id/emergency-contacts` | `requireChildAccess` |
 | POST | `/` | validation, authentifié |
 | PUT | `/:id`, `/:id/medical`, `/:id/emergency-contacts` | `requireChildAccess` |
 | PUT | `/:id/associate-parent`, `/:id/deactivate-parent` | `admin` |
-| PUT | `/:id/suspend`, `/:id/reactivate` | `admin`, `developer` (+ `director`, rôle inexistant en base, voir §11) |
+| PUT | `/:id/suspend`, `/:id/reactivate` | `admin`, `developer` |
 | DELETE | `/:id` | `admin` |
 | POST/DELETE | `/:id/photo` | `requireChildPhotoAccess` (admin/developer libres, staff avec permission `children.photos.manage`, parent propriétaire) |
 
-**Point de vigilance confirmé** : plusieurs routes `GET` de `children.js` (`/birthdays/month`, `/stats`, `/unassociated`, `/stats/overview`) n'ont **aucun middleware d'authentification** dans la définition de route observée. Cela signifie que ces agrégats (nombre d'enfants, anniversaires du mois...) seraient accessibles sans connexion si l'API est appelée directement. Voir [23_ANOMALIES_ET_RECOMMANDATIONS.md](./23_ANOMALIES_ET_RECOMMANDATIONS.md).
+**Point résolu (correction #62)** : les routes `GET` `/birthdays/month`, `/stats`, `/unassociated` et `/stats/overview` de `children.js` exigent désormais `auth.authenticateToken` + `auth.requireStaff` (rôles `admin`, `developer`, `staff`). Elles ne sont plus accessibles sans connexion ni aux parents. Voir [23_ANOMALIES_ET_RECOMMANDATIONS.md](./23_ANOMALIES_ET_RECOMMANDATIONS.md).
 
 ## Inscriptions (`/api/enrollments`)
 Voir détail du workflow en [21_FLUX_METIER.md](./21_FLUX_METIER.md).
@@ -185,9 +185,9 @@ Lecture authentifiée ; création avec validation (upload média, cf. `routes_po
 | Sauvegardes (`/api/backup`) | `admin`, `developer` | `backup.js` |
 | Récupération d'urgence (`/api/recovery`) | clé de récupération dédiée (`verifyRecoveryKey`), pas un rôle applicatif | `recovery.js` |
 | Diagnostic inscriptions (`/api/debug`) | `admin` | `debugEnrollments.js` |
-| Explorateur Cloudinary (`/api/cloudinary-explorer`) | `admin`, `developer` | `cloudinaryExplorer.js` |
+| Explorateur Cloudinary (`/api/cloudinary-explorer`) | `developer` uniquement | `cloudinaryExplorer.js` |
 | Upload direct Cloudinary (`/api/cloudinary`) | authentifié | `cloudinary.js` |
-| Journal technique (`/api/activity-logs`) | `developer` (majorité), `admin` (archivage/nettoyage/création) | `activityLogs.js` |
+| Journal technique (`/api/activity-logs`) | `developer` uniquement (y compris archivage/nettoyage/création — correction #64) | `activityLogs.js` |
 | Fil d'activité agrégé (`/api/activity-feed`) | `admin`/`developer` (`requireAdmin`) | `activityFeed.js` |
 | Statistiques tableau de bord (`/api/dashboard`) | authentifié | `dashboardStats.js` |
 | Messages de contact — vue admin (`/api/admin/contact-messages`) | authentifié (rôle non systématiquement re-vérifié par route — à confirmer) | `contactMessages.js` |

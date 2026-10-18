@@ -37,7 +37,7 @@ Depuis les paramètres (gestionnaire de sauvegarde) : déclencher une sauvegarde
 - Accéder au **journal d'activité technique** (`/dashboard/activity-logs`) : traçabilité détaillée, alertes de sécurité, rapports périodiques.
 - Accéder à l'**explorateur de stockage Cloudinary** (`/dashboard/storage`).
 
-Ces deux restrictions sont une particularité confirmée du système : même en tant qu'administrateur, ces deux pages précises vous resteront inaccessibles si votre compte n'a pas le rôle technique `developer` (voir [11_AUTORISATION_ET_PERMISSIONS.md](./11_AUTORISATION_ET_PERMISSIONS.md)).
+Ces deux restrictions sont confirmées et désormais appliquées **aussi côté API** (correction #64) : même en tant qu'administrateur, les pages et les endpoints correspondants vous restent inaccessibles si votre compte n'a pas le rôle technique `developer` (voir [11_AUTORISATION_ET_PERMISSIONS.md](./11_AUTORISATION_ET_PERMISSIONS.md)).
 
 ## 8. Restrictions sur les données
 Vous avez accès à l'ensemble des données de tous les enfants et parents (pas de restriction de propriété comme pour un parent). Cet accès large doit être exercé avec discernement : toute action de modification/suppression est tracée dans le journal d'activité technique.

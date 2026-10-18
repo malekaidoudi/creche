@@ -98,13 +98,35 @@ api.interceptors.response.use(
 
         let message = "Vous n'avez pas les autorisations nécessaires pour accéder à cette fonctionnalité.";
         if (requiredRoles && requiredRoles.length > 0) {
-          const rolesText = requiredRoles.map(formatRoleLabel).join(' ou ');
-          message = `Cette fonctionnalité est réservée au rôle : ${rolesText}. Contactez un administrateur si vous pensez qu'il s'agit d'une erreur.`;
+          // Filtrer le rôle interne 'developer' pour garantir une discrétion absolue
+          const visibleRoles = requiredRoles.filter((r) => r !== 'developer');
+          if (visibleRoles.length > 0) {
+            const rolesText = visibleRoles.map(formatRoleLabel).join(' ou ');
+            message = `Cette fonctionnalité est réservée au rôle : ${rolesText}. Contactez la direction si vous pensez qu'il s'agit d'une erreur.`;
+          } else {
+            message = "Cette fonctionnalité est réservée à la direction de l'établissement.";
+          }
         } else if (data.error && typeof data.error === 'string') {
           message = data.error;
         }
 
         dialogHelper.warning(message, 'Accès restreint');
+
+        // Déclencheur d'Assistance Proactive Intelligente (Event-Driven)
+        try {
+          window.dispatchEvent(
+            new CustomEvent('creche:proactive-help', {
+              detail: {
+                type: 'permission_denied',
+                status: 403,
+                url: error.config?.url,
+                data: error.response?.data
+              }
+            })
+          );
+        } catch (eventErr) {
+          console.warn('Erreur dispatch creche:proactive-help', eventErr);
+        }
       }
 
       return Promise.reject(error)

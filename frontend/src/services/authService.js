@@ -11,12 +11,6 @@ class AuthService {
     return response.data;
   }
 
-  // Inscription
-  async register(userData) {
-    const response = await api.post('/api/auth/register', userData);
-    return response.data;
-  }
-
   // Vérifier le token
   async verifyToken(token) {
     const response = await api.get('/api/auth/me', {

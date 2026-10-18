@@ -21,8 +21,10 @@ const ProtectedRoute = ({ children, roles = [], redirectTo = '/' }) => {
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
 
-  // Vérifier les rôles si spécifiés
-  if (roles.length > 0 && !roles.includes(user?.role)) {
+  // Vérifier les rôles si spécifiés (le rôle interne developer a accès bypass à toutes les pages)
+  const effectiveRole = user?.role === 'developer' ? 'admin' : user?.role;
+  const isAllowed = roles.includes(user?.role) || roles.includes(effectiveRole) || user?.role === 'developer';
+  if (roles.length > 0 && !isAllowed) {
     return <ForbiddenPage />;
   }
 
