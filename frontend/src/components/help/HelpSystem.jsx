@@ -23,6 +23,102 @@ import {
 } from './HelpData';
 import { filterValidActions, resolveValidRoute } from '../../utils/routeValidator';
 
+/**
+ * Détection précise des caractères arabes dans un texte
+ * Couvre tous les blocs Unicode de l'arabe standard et étendu
+ */
+const isArabicText = (text) => {
+  if (!text || typeof text !== 'string') return false;
+  return /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(text);
+};
+
+/**
+ * Formateur dynamique pour les messages du chat :
+ * - Rendu natif du markdown : **gras** et *italique*
+ * - Rendu élégant des listes à puces (•, -, *)
+ * - Nettoyage des astérisques résiduels non fermés
+ * - Alignement bidirectionnel fluide (RTL / LTR) basé sur la langue réelle du contenu
+ */
+const renderFormattedMessage = (rawText, isMsgArabic) => {
+  if (!rawText) return null;
+  const lines = String(rawText).split('\n');
+
+  return (
+    <div
+      dir={isMsgArabic ? 'rtl' : 'ltr'}
+      className={`space-y-1.5 ${isMsgArabic ? 'text-right font-sans' : 'text-left'}`}
+    >
+      {lines.map((line, lineIdx) => {
+        const trimmed = line.trim();
+        if (!trimmed) {
+          return <div key={`empty-${lineIdx}`} className="h-1.5" />;
+        }
+
+        const isBullet = trimmed.startsWith('•') || trimmed.startsWith('- ') || (trimmed.startsWith('* ') && !trimmed.startsWith('**'));
+        const content = isBullet ? trimmed.replace(/^[•\-*]\s*/, '') : line;
+
+        // Parse inline bold (**bold**) and italic (*italic*)
+        const elements = [];
+        const regex = /(\*\*.*?\*\*|\*.*?\*)/g;
+        let lastIndex = 0;
+        let match;
+        let elemIdx = 0;
+
+        while ((match = regex.exec(content)) !== null) {
+          if (match.index > lastIndex) {
+            const textPart = content.substring(lastIndex, match.index).replace(/\*\*/g, '');
+            if (textPart) {
+              elements.push(<span key={`txt-${elemIdx++}`}>{textPart}</span>);
+            }
+          }
+          const token = match[0];
+          if (token.startsWith('**') && token.endsWith('**') && token.length >= 4) {
+            elements.push(
+              <strong key={`bold-${elemIdx++}`} className="font-bold underline-offset-2">
+                {token.slice(2, -2)}
+              </strong>
+            );
+          } else if (token.startsWith('*') && token.endsWith('*') && token.length >= 2) {
+            elements.push(
+              <em key={`italic-${elemIdx++}`} className="italic">
+                {token.slice(1, -1)}
+              </em>
+            );
+          }
+          lastIndex = regex.lastIndex;
+        }
+
+        if (lastIndex < content.length) {
+          const tailPart = content.substring(lastIndex).replace(/\*\*/g, '');
+          if (tailPart) {
+            elements.push(<span key={`txt-${elemIdx++}`}>{tailPart}</span>);
+          }
+        }
+
+        const renderedLineContent = elements.length > 0 ? elements : content.replace(/\*\*/g, '');
+
+        if (isBullet) {
+          return (
+            <div
+              key={`line-${lineIdx}`}
+              className="flex items-start gap-2 my-0.5"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 mt-1.5 shrink-0" />
+              <span className="flex-1 leading-relaxed">{renderedLineContent}</span>
+            </div>
+          );
+        }
+
+        return (
+          <div key={`line-${lineIdx}`} className="leading-relaxed">
+            {renderedLineContent}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 const HelpSystem = () => {
   const { isRTL, language } = useLanguage();
   const { user } = useAuth();
@@ -261,11 +357,14 @@ const HelpSystem = () => {
 
     try {
       // 1. Appel en temps réel à l'Assistant IA Gemini
+      const isInputArabic = isArabicText(userText);
+      const queryLanguage = isInputArabic ? 'ar' : (language === 'ar' ? 'ar' : 'fr');
+
       const response = await api.post('/api/ai/chat', {
         message: userText,
         role: user?.role,
         pathname: location?.pathname,
-        language
+        language: queryLanguage
       });
 
       if (response.data && response.data.success && response.data.answer) {
@@ -291,7 +390,7 @@ const HelpSystem = () => {
 
     // 2. Fallback de secours : moteur de règles local certifié
     const lowerInput = userText.toLowerCase();
-    const isArabicScript = /[\u0600-\u06FF]/.test(userText);
+    const isArabicScript = isArabicText(userText);
     const activeResponses = isArabicScript
       ? [...(chatBotResponses.ar || []), ...(chatBotResponses.fr || [])]
       : (language === 'ar' ? [...(chatBotResponses.ar || []), ...(chatBotResponses.fr || [])] : [...(chatBotResponses.fr || []), ...(chatBotResponses.ar || [])]);
@@ -673,13 +772,14 @@ const HelpSystem = () => {
                     <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-3 sm:space-y-4">
                       {chatMessages.map((msg) => {
                         const isBot = msg.type === 'bot';
+                        const isMsgArabic = isArabicText(msg.text);
+
                         return (
                           <motion.div
                             key={msg.id}
                             initial={{ opacity: 0, y: 8 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className={`flex gap-2.5 sm:gap-3 ${!isBot ? (isRTL ? 'flex-row-reverse' : 'flex-row-reverse') : ''
-                              }`}
+                            className={`flex gap-2.5 sm:gap-3 ${!isBot ? 'flex-row-reverse' : 'flex-row'}`}
                           >
                             {/* Avatar */}
                             {isBot ? (
@@ -696,78 +796,102 @@ const HelpSystem = () => {
                               </div>
                             )}
 
-                            {/* Message Bubble */}
+                            {/* Message Bubble Container */}
                             <div className="relative group max-w-[88%] sm:max-w-[82%]">
                               {isBot && (
-                                <div className="flex items-center gap-1.5 mb-1 px-1">
+                                <div
+                                  dir={isMsgArabic ? 'rtl' : 'ltr'}
+                                  className="flex items-center gap-1.5 mb-1 px-1"
+                                >
                                   <span className="text-[10px] font-bold text-cyan-800 dark:text-cyan-300">
                                     {msg.source === 'gemini'
-                                      ? (isRTL ? 'المساعد الذكي (Gemini) ✨' : 'Assistant IA (Gemini) ✨')
-                                      : (isRTL ? 'مساعد الروضة (Documents) 📚' : 'Assistant Mima (Documents) 📚')}
+                                      ? (isMsgArabic ? 'المساعد الذكي (Gemini) ✨' : 'Assistant IA (Gemini) ✨')
+                                      : (isMsgArabic ? 'مساعد الروضة (Documents) 📚' : 'Assistant Mima (Documents) 📚')}
                                   </span>
                                   <span className="px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-cyan-100 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800">
-                                    Certifié
+                                    {isMsgArabic ? 'معتمد' : 'Certifié'}
                                   </span>
                                 </div>
                               )}
 
                               <div
-                                className={`p-3 sm:p-4 rounded-2xl text-xs sm:text-sm leading-relaxed whitespace-pre-line shadow-xs border
-                                  ${isBot
+                                dir={isMsgArabic ? 'rtl' : 'ltr'}
+                                className={`p-3 sm:p-4 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-xs border ${
+                                  isMsgArabic ? 'text-right' : 'text-left'
+                                } ${
+                                  isBot
                                     ? 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 border-gray-200/80 dark:border-gray-700/80 rounded-tl-sm'
                                     : 'bg-gradient-to-r from-cyan-600 via-sky-600 to-blue-600 text-white border-cyan-400/30 rounded-tr-sm shadow-md'
-                                  }`}
+                                }`}
                               >
-                                {msg.text}
+                                {renderFormattedMessage(msg.text, isMsgArabic)}
 
                                 {/* Action Buttons - Navigation Directe */}
                                 {msg.suggestedActions && msg.suggestedActions.length > 0 && (
-                                  <div className="mt-2.5 pt-2 border-t border-gray-100 dark:border-gray-700/60 flex flex-wrap gap-1.5 sm:gap-2">
-                                    {msg.suggestedActions.map((act, idx) => (
-                                      <button
-                                        key={idx}
-                                        onClick={() => {
-                                          const validPath = resolveValidRoute(act.path, user?.role);
-                                          if (validPath) {
-                                            setIsOpen(false);
-                                            navigate(validPath);
-                                          }
-                                        }}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold
-                                          bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-cyan-950/70 dark:to-blue-950/50 
-                                          text-cyan-800 dark:text-cyan-200 border border-cyan-300/80 dark:border-cyan-700
-                                          hover:from-cyan-600 hover:to-blue-600 hover:text-white dark:hover:from-cyan-600 dark:hover:to-blue-600 dark:hover:text-white
-                                          transition-all duration-200 shadow-2xs hover:shadow active:scale-95 cursor-pointer max-w-full"
-                                      >
-                                        <span className="truncate">{act.label}</span>
-                                        <ArrowRight className={`w-3.5 h-3.5 shrink-0 ${isRTL ? 'rotate-180' : ''}`} />
-                                      </button>
-                                    ))}
+                                  <div
+                                    dir={isMsgArabic ? 'rtl' : 'ltr'}
+                                    className="mt-2.5 pt-2 border-t border-gray-100 dark:border-gray-700/60 flex flex-wrap gap-1.5 sm:gap-2"
+                                  >
+                                    {msg.suggestedActions.map((act, idx) => {
+                                      const isActArabic = isArabicText(act.label) || isMsgArabic;
+                                      return (
+                                        <button
+                                          key={idx}
+                                          dir={isActArabic ? 'rtl' : 'ltr'}
+                                          onClick={() => {
+                                            const validPath = resolveValidRoute(act.path, user?.role);
+                                            if (validPath) {
+                                              setIsOpen(false);
+                                              navigate(validPath);
+                                            }
+                                          }}
+                                          className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold
+                                            bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-cyan-950/70 dark:to-blue-950/50 
+                                            text-cyan-800 dark:text-cyan-200 border border-cyan-300/80 dark:border-cyan-700
+                                            hover:from-cyan-600 hover:to-blue-600 hover:text-white dark:hover:from-cyan-600 dark:hover:to-blue-600 dark:hover:text-white
+                                            transition-all duration-200 shadow-2xs hover:shadow active:scale-95 cursor-pointer max-w-full"
+                                        >
+                                          <span className="truncate">{act.label}</span>
+                                          <ArrowRight className={`w-3.5 h-3.5 shrink-0 ${isActArabic ? 'rotate-180' : ''}`} />
+                                        </button>
+                                      );
+                                    })}
                                   </div>
                                 )}
                               </div>
 
                               {/* Follow-up Question Chips */}
                               {msg.suggestedFollowUps && msg.suggestedFollowUps.length > 0 && (
-                                <div className="flex flex-wrap gap-1.5 mt-2 px-1">
-                                  {msg.suggestedFollowUps.map((fu, idx) => (
-                                    <button
-                                      key={idx}
-                                      onClick={() => handleQuickQuestion(fu)}
-                                      className="text-[11px] px-2.5 py-1 rounded-full bg-white dark:bg-gray-800 text-gray-600 
-                                        dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:border-cyan-400 
-                                        hover:text-cyan-600 dark:hover:text-cyan-300 hover:bg-cyan-50/50 transition-colors shadow-2xs text-left rtl:text-right cursor-pointer"
-                                    >
-                                      💬 {fu}
-                                    </button>
-                                  ))}
+                                <div
+                                  dir={isMsgArabic ? 'rtl' : 'ltr'}
+                                  className="flex flex-wrap gap-1.5 mt-2 px-1"
+                                >
+                                  {msg.suggestedFollowUps.map((fu, idx) => {
+                                    const isFuArabic = isArabicText(fu);
+                                    return (
+                                      <button
+                                        key={idx}
+                                        dir={isFuArabic ? 'rtl' : 'ltr'}
+                                        onClick={() => handleQuickQuestion(fu)}
+                                        className={`text-[11px] px-2.5 py-1 rounded-full bg-white dark:bg-gray-800 text-gray-600 
+                                          dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:border-cyan-400 
+                                          hover:text-cyan-600 dark:hover:text-cyan-300 hover:bg-cyan-50/50 transition-colors shadow-2xs cursor-pointer ${
+                                            isFuArabic ? 'text-right' : 'text-left'
+                                          }`}
+                                      >
+                                        💬 {fu}
+                                      </button>
+                                    );
+                                  })}
                                 </div>
                               )}
 
                               {/* Time & Copy action */}
                               <div
-                                className={`flex items-center gap-2 mt-1 text-[10px] text-gray-400 dark:text-gray-500 px-1
-                                  ${!isBot ? 'justify-end' : 'justify-start'}`}
+                                dir={isMsgArabic ? 'rtl' : 'ltr'}
+                                className={`flex items-center gap-2 mt-1 text-[10px] text-gray-400 dark:text-gray-500 px-1 ${
+                                  !isBot ? 'justify-end' : 'justify-start'
+                                }`}
                               >
                                 <span>
                                   {new Date(msg.time).toLocaleTimeString([], {
@@ -779,17 +903,19 @@ const HelpSystem = () => {
                                   <button
                                     onClick={() => handleCopyText(msg.id, msg.text)}
                                     className="opacity-0 group-hover:opacity-100 hover:text-cyan-600 dark:hover:text-cyan-400 transition-opacity flex items-center gap-1 cursor-pointer"
-                                    title="Copier la réponse"
+                                    title={isMsgArabic ? 'نسخ الإجابة' : 'Copier la réponse'}
                                   >
                                     {copiedId === msg.id ? (
                                       <>
                                         <Check className="w-3 h-3 text-cyan-500" />
-                                        <span className="text-cyan-500">{data.chat.copySuccess}</span>
+                                        <span className="text-cyan-500">
+                                          {isMsgArabic ? 'تم النسخ' : (data.chat?.copySuccess || 'Copié')}
+                                        </span>
                                       </>
                                     ) : (
                                       <>
                                         <Copy className="w-3 h-3" />
-                                        <span>Copier</span>
+                                        <span>{isMsgArabic ? 'نسخ' : 'Copier'}</span>
                                       </>
                                     )}
                                   </button>
@@ -842,11 +968,14 @@ const HelpSystem = () => {
                           {/* Time-Aware Priority Prompt (Matin / Midi / Soir) */}
                           {timeSuggestion && timeSuggestion.quickPrompt && (
                             <button
+                              dir={isArabicText(timeSuggestion.quickPrompt) ? 'rtl' : 'ltr'}
                               onClick={() => handleQuickQuestion(timeSuggestion.quickPrompt)}
-                              className="text-[11px] sm:text-xs px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-gradient-to-r from-amber-50 to-orange-50 
+                              className={`text-[11px] sm:text-xs px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-gradient-to-r from-amber-50 to-orange-50 
                                 dark:from-amber-950/50 dark:to-orange-950/40 text-amber-900 dark:text-amber-200
                                 border border-amber-300 dark:border-amber-700/70 hover:border-amber-500 
-                                hover:text-amber-700 dark:hover:text-amber-100 transition-all text-left rtl:text-right shadow-2xs font-semibold flex items-center gap-1.5 shrink-0 cursor-pointer whitespace-nowrap"
+                                hover:text-amber-700 dark:hover:text-amber-100 transition-all shadow-2xs font-semibold flex items-center gap-1.5 shrink-0 cursor-pointer whitespace-nowrap ${
+                                  isArabicText(timeSuggestion.quickPrompt) ? 'text-right' : 'text-left'
+                                }`}
                             >
                               {timeSuggestion.period === 'morning' && <Sunrise className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />}
                               {timeSuggestion.period === 'noon' && <Sun className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />}
@@ -859,17 +988,23 @@ const HelpSystem = () => {
                           {(contextualInfo.suggestions && contextualInfo.suggestions.length > 0
                             ? contextualInfo.suggestions
                             : data.chat.quickQuestions
-                          ).map((q, i) => (
-                            <button
-                              key={i}
-                              onClick={() => handleQuickQuestion(q)}
-                              className="text-[11px] sm:text-xs px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-white dark:bg-gray-800 text-cyan-900 dark:text-cyan-100
-                                border border-cyan-200 dark:border-cyan-700/70 hover:border-cyan-500 hover:text-cyan-600 
-                                dark:hover:text-cyan-300 hover:bg-cyan-50/70 dark:hover:bg-cyan-950/40 transition-all text-left rtl:text-right shadow-2xs shrink-0 whitespace-nowrap cursor-pointer"
-                            >
-                              {q}
-                            </button>
-                          ))}
+                          ).map((q, i) => {
+                            const isQArabic = isArabicText(q);
+                            return (
+                              <button
+                                key={i}
+                                dir={isQArabic ? 'rtl' : 'ltr'}
+                                onClick={() => handleQuickQuestion(q)}
+                                className={`text-[11px] sm:text-xs px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-white dark:bg-gray-800 text-cyan-900 dark:text-cyan-100
+                                  border border-cyan-200 dark:border-cyan-700/70 hover:border-cyan-500 hover:text-cyan-600 
+                                  dark:hover:text-cyan-300 hover:bg-cyan-50/70 dark:hover:bg-cyan-950/40 transition-all shadow-2xs shrink-0 whitespace-nowrap cursor-pointer ${
+                                    isQArabic ? 'text-right' : 'text-left'
+                                  }`}
+                              >
+                                {q}
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
@@ -879,13 +1014,14 @@ const HelpSystem = () => {
                       <div className="flex items-center gap-2">
                         <input
                           type="text"
+                          dir="auto"
                           value={chatInput}
                           onChange={(e) => setChatInput(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                           placeholder={data.chat.placeholder}
                           className="flex-1 px-3 sm:px-4 py-2 sm:py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 
                             rounded-xl text-[14px] sm:text-sm text-gray-800 dark:text-gray-100 placeholder-gray-400 
-                            focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500 transition-all"
+                            focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500 transition-all text-start"
                         />
                         <button
                           onClick={handleSendMessage}
@@ -894,7 +1030,7 @@ const HelpSystem = () => {
                           className="p-2 sm:p-2.5 bg-gradient-to-r from-cyan-600 via-sky-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 
                             disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl shadow-md transition-all duration-200 active:scale-95 shrink-0 min-w-[38px] min-h-[38px] flex items-center justify-center cursor-pointer"
                         >
-                          <Send className={`w-4 h-4 ${isRTL ? 'rotate-180' : ''}`} />
+                          <Send className={`w-4 h-4 ${isArabicText(chatInput) || (isRTL && !chatInput) ? 'rotate-180' : ''}`} />
                         </button>
                       </div>
                     </div>

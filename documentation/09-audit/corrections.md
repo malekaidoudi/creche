@@ -1865,4 +1865,37 @@
 - **Documentation** : [`documentsV2/15_FRONTEND_ET_INTERFACE.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/15_FRONTEND_ET_INTERFACE.md).
 - **Résultat** : Expérience mobile native, fluide, ergonomique et visuellement somptueuse sur tous les appareils mobiles et tablettes.
 
+---
+
+### Fiche 85 - Alignement Bidirectionnel Dynamique (RTL / LTR) & Rendu Markdown Natif du Centre d'Aide
+
+- **Date** : 18 Octobre 2026
+- **Contexte** : 
+  - Lorsque l'interface globale de l'application est en français mais que l'utilisateur pose une question en arabe (ou vice-versa : interface en arabe et question en français), les réponses textuelles du centre d'aide souffraient de désalignements visuels critiques :
+    1. L'arabe s'affichait dans un conteneur LTR, inversant la ponctuation neutre (les deux-points `:`, points d'exclamation `!`, points finaux et listes à puces se retrouvaient à gauche du texte ou au mauvais bout de phrase).
+    2. Le markdown brut produit par l'IA Gemini (ex: `**مرحباً بك...**`, listes `•`) était affiché sous forme de texte brut avec astérisques visibles au lieu de balises typographiques élégantes.
+    3. Les flèches de navigation des boutons d'actions suggérées pointaient vers la droite (`→`) en arabe au lieu de la direction naturelle d'avancement vers la gauche (`←`).
+    4. Le champ de saisie (`<input>`) forçait l'alignement selon la langue de l'interface au lieu de s'adapter dynamiquement à la langue saisie par l'utilisateur.
+- **Action appliquée** :
+  - **Détection Linguistique Granulaire par Message (`isArabicText`)** :
+    - Implémentation d'un utilitaire d'inspection Unicode couvrant l'ensemble des blocs arabes standard et étendus (`[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]`).
+    - L'alignement et la direction (`dir="rtl"` vs `dir="ltr"`, `text-right` vs `text-left`) sont désormais résolus **au niveau de chaque bulle de message** indépendamment de la langue globale de l'interface.
+  - **Moteur de Rendu Markdown Natif (`renderFormattedMessage`)** :
+    - Parsing automatique et sécurisé du gras (`**texte**`), de l'italique (`*texte*`) et des puces de listes (`•`, `- `, `* `).
+    - Nettoyage des astérisques résiduels non fermés pour un affichage irréprochable.
+    - Puces stylisées avec points d'accentuation cyan alignés sur le sens de lecture naturel.
+  - **Boutons d'Actions Suggérées et Puces de Suivi Bidirectionnels** :
+    - Direction `dir` explicite sur chaque bouton et rotation automatique de l'icône de navigation (`rotate-180` sur `ArrowRight` pour pointer vers la gauche en RTL).
+    - Alignement bilingue dynamique du badge de certification et de l'intitulé de l'assistant (`المساعد الذكي (Gemini) ✨ / معتمد` vs `Assistant IA (Gemini) ✨ / Certifié`).
+  - **Saisie Utilisateur Intelligente (`dir="auto"`)** :
+    - Attribut `dir="auto"` sur l'élément `<input>` : le curseur et la direction du texte basculent instantanément à droite dès le premier caractère arabe tapé, et à gauche pour les caractères latins.
+    - Rotation dynamique de l'icône d'envoi (`Send`) selon la langue saisie.
+  - **Consigne Système Backend Prioritaire (`aiAssistantService.js`)** :
+    - Détection proactive de la langue de la question dans le prompt système Gemini pour imposer une réponse strictement dans la langue de l'échange (`userLanguage`), quelle que soit la langue de l'interface.
+- **Fichiers modifiés** :
+  - [`frontend/src/components/help/HelpSystem.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/help/HelpSystem.jsx)
+  - [`backend/services/aiAssistantService.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/services/aiAssistantService.js)
+- **Résultat** : Typographie parfaite, ponctuation et listes impeccablement ancrées, flèches d'orientation cohérentes et confort de lecture bilingue absolu, que l'interface soit en français ou en arabe.
+
+
 

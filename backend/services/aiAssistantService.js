@@ -153,10 +153,19 @@ N'invente JAMAIS d'autres routes ! Utilise STRICTEMENT l'une des routes ci-desso
       return null;
     }
 
+    const isArabicQuestion = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(message || '');
+    const userLanguage = isArabicQuestion ? 'Arabe' : (language === 'ar' ? 'Arabe' : 'Français');
+
     const contextPrompt = `CONTEXTE UTILISATEUR :
 - Rôle de l'utilisateur : ${role}
 - Page actuelle dans l'application : ${pathname}
-- Langue préférée : ${language === 'ar' ? 'Arabe' : 'Français'}
+- Langue de l'interface : ${language === 'ar' ? 'Arabe' : 'Français'}
+- Langue de la question posée : ${isArabicQuestion ? 'Arabe' : 'Français / Latin'}
+
+RÈGLE LINGUISTIQUE PRIORITAIRE :
+Réponds impérativement dans la langue de la question posée par l'utilisateur (${userLanguage}) :
+- Si la question est posée en arabe, toute la réponse (champ "answer", libellés des boutons "suggestedActions", questions de suivi "suggestedFollowUps") DOIT être rédigée en arabe soigné et naturel.
+- Si la question est posée en français, toute la réponse DOIT être rédigée en français clair et professionnel.
 
 QUESTION DE L'UTILISATEUR :
 "${message}"`;
