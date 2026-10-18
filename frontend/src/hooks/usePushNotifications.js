@@ -114,5 +114,15 @@ export function usePushNotifications() {
     }
   }, [isSupported]);
 
-  return { isSupported, needsInstall, needsSafari, permission, isSubscribed, loading, subscribe, unsubscribe };
+  const sendTestNotification = useCallback(async () => {
+    try {
+      const { data } = await api.post('/api/push/test');
+      return data?.success || false;
+    } catch (error) {
+      console.error('❌ Erreur envoi test notification:', error);
+      return false;
+    }
+  }, []);
+
+  return { isSupported, needsInstall, needsSafari, permission, isSubscribed, loading, subscribe, unsubscribe, sendTestNotification };
 }

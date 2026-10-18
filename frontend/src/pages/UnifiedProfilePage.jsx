@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Button } from '../components/ui/Button';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import MobileNavigation from '../components/mobile/MobileNavigation';
+import PushNotificationCard from '../components/notifications/PushNotificationCard';
 
 const UnifiedProfilePage = () => {
   const { user, updateUser } = useAuth();
@@ -523,6 +524,11 @@ const UnifiedProfilePage = () => {
                 </form>
               </CardContent>
             </Card>
+
+            {/* Notifications sur cet appareil */}
+            <div className="mt-6">
+              <PushNotificationCard />
+            </div>
           </div>
         </div>
       </div>

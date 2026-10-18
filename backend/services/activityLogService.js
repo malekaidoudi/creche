@@ -182,21 +182,51 @@ const activityLogService = {
             "SELECT id FROM users WHERE role = 'developer' AND is_active = true"
         );
         const developerIds = developers.rows.map(r => r.id);
-        if (developerIds.length === 0) return;
+        if (developerIds.length === 0) {
+            console.log('ℹ️ [DEV NOTIF] Aucun compte actif avec role = "developer" trouvé en base.');
+            return;
+        }
 
         const title = isLoginEvent
             ? (log.action === 'login_success' ? '🔐 Connexion réussie' : '🔐 Échec de connexion')
             : '🔴 Erreur critique';
         const message = log.description || log.title;
 
-        const insertSql = `
-            INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
-            VALUES ${developerIds.map((_, i) => `($${i * 4 + 1}, $${i * 4 + 2}, $${i * 4 + 3}, 'dev_alert', $${i * 4 + 4}, false)`).join(', ')}
-        `;
-        const params = developerIds.flatMap(id => [id, title, message, log.id]);
+        // 1. Insertion en base avec fallback sécurisé
+        try {
+            const insertSql = `
+                INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
+                VALUES ${developerIds.map((_, i) => `($${i * 4 + 1}, $${i * 4 + 2}, $${i * 4 + 3}, 'dev_alert', $${i * 4 + 4}, false)`).join(', ')}
+            `;
+            const params = developerIds.flatMap(id => [id, title, message, log.id]);
+            await db.query(insertSql, params);
+        } catch (dbErr) {
+            console.error('⚠️ [DEV NOTIF] Erreur insertion notification (contrainte possible):', dbErr.message);
+            // Fallback si la contrainte CHECK bloque encore 'dev_alert'
+            try {
+                const fallbackSql = `
+                    INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
+                    VALUES ${developerIds.map((_, i) => `($${i * 4 + 1}, $${i * 4 + 2}, $${i * 4 + 3}, 'warning', $${i * 4 + 4}, false)`).join(', ')}
+                `;
+                const params = developerIds.flatMap(id => [id, title, message, log.id]);
+                await db.query(fallbackSql, params);
+            } catch (fallbackErr) {
+                console.error('❌ [DEV NOTIF] Erreur insertion fallback:', fallbackErr.message);
+            }
+        }
 
-        await db.query(insertSql, params);
-        await pushNotificationService.sendPushToMany(developerIds, { title, message, url: '/dashboard/activity-logs' });
+        // 2. Envoi du Push Web (même si la DB a eu un souci)
+        try {
+            await pushNotificationService.sendPushToMany(developerIds, {
+                title,
+                message,
+                url: '/dashboard/activity-logs',
+                tag: 'dev-alert'
+            });
+            console.log(`✅ [DEV NOTIF] Notification push Web envoyée à ${developerIds.length} développeur(s): "${title}"`);
+        } catch (pushErr) {
+            console.error('❌ [DEV NOTIF] Erreur envoi push Web:', pushErr.message);
+        }
     },
 
     /**

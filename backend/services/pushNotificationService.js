@@ -60,10 +60,33 @@ async function removeSubscriptionByEndpoint(endpoint) {
 }
 
 /**
+ * Helper interne pour envoyer une notification à une liste d'enregistrements d'abonnements
+ */
+async function sendToSubscriptions(rows, payload) {
+    await Promise.all(rows.map(async (row) => {
+        const subscription = {
+            endpoint: row.endpoint,
+            keys: { p256dh: row.p256dh, auth: row.auth }
+        };
+
+        try {
+            await webpush.sendNotification(subscription, payload);
+        } catch (error) {
+            // 404/410 = abonnement expiré ou révoqué côté navigateur : on le supprime
+            if (error.statusCode === 404 || error.statusCode === 410) {
+                await removeSubscriptionByEndpoint(row.endpoint);
+            } else {
+                console.error('❌ Erreur envoi push:', error.statusCode, error.body || error.message);
+            }
+        }
+    }));
+}
+
+/**
  * Envoyer une notification push à TOUS les abonnements d'un utilisateur
  */
-async function sendPushToUser(userId, { title, message, url = '/', metadata = null }) {
-    if (!isConfigured) return;
+async function sendPushToUser(userId, { title, message, url = '/', metadata = null, tag = null }) {
+    if (!isConfigured || !userId) return;
 
     try {
         const result = await pool.query(
@@ -73,36 +96,35 @@ async function sendPushToUser(userId, { title, message, url = '/', metadata = nu
 
         if (result.rows.length === 0) return;
 
-        const payload = JSON.stringify({ title, message, url, metadata });
-
-        await Promise.all(result.rows.map(async (row) => {
-            const subscription = {
-                endpoint: row.endpoint,
-                keys: { p256dh: row.p256dh, auth: row.auth }
-            };
-
-            try {
-                await webpush.sendNotification(subscription, payload);
-            } catch (error) {
-                // 404/410 = abonnement expiré ou révoqué côté navigateur : on le supprime
-                if (error.statusCode === 404 || error.statusCode === 410) {
-                    await removeSubscriptionByEndpoint(row.endpoint);
-                } else {
-                    console.error('❌ Erreur envoi push:', error.statusCode, error.body || error.message);
-                }
-            }
-        }));
+        const payload = JSON.stringify({ title, message, url, metadata, tag });
+        await sendToSubscriptions(result.rows, payload);
     } catch (error) {
         console.error('❌ Erreur sendPushToUser:', error.message);
     }
 }
 
 /**
- * Envoyer une notification push à plusieurs utilisateurs
+ * Envoyer une notification push à plusieurs utilisateurs (optimisé en 1 seule requête SQL)
  */
-async function sendPushToMany(userIds, notificationData) {
+async function sendPushToMany(userIds, { title, message, url = '/', metadata = null, tag = null }) {
     if (!isConfigured || !userIds?.length) return;
-    await Promise.all(userIds.map(userId => sendPushToUser(userId, notificationData)));
+
+    try {
+        const uniqueIds = Array.from(new Set(userIds.filter(Boolean)));
+        if (uniqueIds.length === 0) return;
+
+        const result = await pool.query(
+            'SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = ANY($1::int[])',
+            [uniqueIds]
+        );
+
+        if (result.rows.length === 0) return;
+
+        const payload = JSON.stringify({ title, message, url, metadata, tag });
+        await sendToSubscriptions(result.rows, payload);
+    } catch (error) {
+        console.error('❌ Erreur sendPushToMany:', error.message);
+    }
 }
 
 module.exports = {

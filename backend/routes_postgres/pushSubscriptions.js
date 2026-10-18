@@ -83,4 +83,25 @@ router.delete('/unsubscribe', auth.authenticateToken, [
   }
 });
 
+// POST /api/push/test - Envoyer une notification push test à l'utilisateur connecté
+router.post('/test', auth.authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    await pushNotificationService.sendPushToUser(userId, {
+      title: 'Crèche Mima El Ghalia',
+      message: '🎉 Vos notifications push sont correctement configurées et actives !',
+      url: '/profile',
+      tag: 'test-push'
+    });
+
+    res.json({ success: true, message: 'Notification de test envoyée avec succès' });
+  } catch (error) {
+    console.error('❌ Erreur envoi test push:', error.message);
+    res.status(500).json({
+      success: false,
+      error: "Erreur lors de l'envoi de la notification test"
+    });
+  }
+});
+
 module.exports = router;

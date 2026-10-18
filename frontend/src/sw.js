@@ -22,15 +22,23 @@ self.addEventListener('push', (event) => {
     payload = { title: 'Mima El Ghalia', message: event.data.text() };
   }
 
-  const { title = 'Mima El Ghalia', message = '', url = '/', metadata = null } = payload;
+  const { title = 'Mima El Ghalia', message = '', url = '/', metadata = null, tag = null } = payload;
+
+  const notificationOptions = {
+    body: message,
+    icon: '/images/icon-192.png',
+    badge: '/images/icon-192.png',
+    vibrate: [100, 50, 100],
+    data: { url, metadata },
+  };
+
+  if (tag) {
+    notificationOptions.tag = tag;
+    notificationOptions.renotify = true;
+  }
 
   event.waitUntil(
-    self.registration.showNotification(title, {
-      body: message,
-      icon: '/images/icon-192.png',
-      badge: '/images/icon-192.png',
-      data: { url, metadata },
-    })
+    self.registration.showNotification(title, notificationOptions)
   );
 });
 

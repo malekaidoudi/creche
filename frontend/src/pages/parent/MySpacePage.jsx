@@ -38,6 +38,7 @@ import NewsWidget from '../../components/NewsWidget';
 import HolidaysList from '../../components/HolidaysList';
 import TestimonialForm from '../../components/testimonials/TestimonialForm';
 import { getEmergencyContactDisplay } from '../../utils/emergencyContacts';
+import PushNotificationCard from '../../components/notifications/PushNotificationCard';
 
 const MySpacePage = () => {
   const { user } = useAuth();
@@ -477,6 +478,16 @@ const MySpacePage = () => {
               <HolidaysList userRole="parent" />
             </motion.div>
           </div>
+
+          {/* Notifications sur cet appareil */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="mb-8"
+          >
+            <PushNotificationCard />
+          </motion.div>
 
         </div>
 

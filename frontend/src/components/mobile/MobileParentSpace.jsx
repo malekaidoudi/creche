@@ -40,6 +40,7 @@ import MobileStatCard from './MobileStatCard';
 import api from '../../services/api';
 import API_CONFIG from '../../config/api';
 import { getEmergencyContactDisplay } from '../../utils/emergencyContacts';
+import PushNotificationCard from '../notifications/PushNotificationCard';
 
 // Fonction pour construire l'URL complète de la photo
 const getChildPhotoUrl = (photoUrl) => {
@@ -582,6 +583,11 @@ const MobileParentSpace = ({
                             <ChevronRight className="w-5 h-5 text-gray-400" />
                         </button>
                     </div>
+                </motion.div>
+
+                {/* Notifications Push sur mobile */}
+                <motion.div variants={itemVariants}>
+                    <PushNotificationCard />
                 </motion.div>
 
             </motion.div>

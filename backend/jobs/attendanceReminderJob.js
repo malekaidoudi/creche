@@ -63,19 +63,19 @@ async function checkAttendanceRecorded() {
     }
 
     const attendanceResult = await db.query(`
-      SELECT 1 FROM attendance WHERE date = $1 AND check_in_time IS NOT NULL LIMIT 1
+      SELECT 1 FROM attendance WHERE date = $1 AND (check_in_time IS NOT NULL OR status = 'absent') LIMIT 1
     `, [todayStr]);
 
     if (attendanceResult.rows.length > 0) {
-      return; // Au moins une présence déjà enregistrée
+      return; // Au moins une présence ou absence déjà enregistrée
     }
 
     // Garde-fou anti-doublon : ne pas renvoyer l'alerte plusieurs fois le même jour
     const alreadySent = await db.query(`
       SELECT 1 FROM notifications
-      WHERE type = 'attendance_not_recorded' AND created_at::date = CURRENT_DATE
+      WHERE type = 'attendance_not_recorded' AND created_at::date = $1::date
       LIMIT 1
-    `);
+    `, [todayStr]);
     if (alreadySent.rows.length > 0) return;
 
     const staffResult = await db.query(`
@@ -87,16 +87,28 @@ async function checkAttendanceRecorded() {
     const title = '⚠️ Aucune présence enregistrée';
     const message = "Aucune présence n'a encore été enregistrée aujourd'hui (8h30). Pensez à pointer les arrivées des enfants.";
 
-    const insertSql = `
-      INSERT INTO notifications (user_id, title, message, type, is_read)
-      VALUES ${staffIds.map((_, i) => `($${i * 3 + 1}, $${i * 3 + 2}, $${i * 3 + 3}, 'attendance_not_recorded', false)`).join(', ')}
-    `;
-    const params = staffIds.flatMap(id => [id, title, message]);
+    try {
+      const insertSql = `
+        INSERT INTO notifications (user_id, title, message, type, is_read)
+        VALUES ${staffIds.map((_, i) => `($${i * 3 + 1}, $${i * 3 + 2}, $${i * 3 + 3}, 'attendance_not_recorded', false)`).join(', ')}
+      `;
+      const params = staffIds.flatMap(id => [id, title, message]);
+      await db.query(insertSql, params);
+    } catch (dbErr) {
+      console.error('⚠️ [CRON PRÉSENCE 8H30] Erreur insertion notification DB:', dbErr.message);
+    }
 
-    await db.query(insertSql, params);
-    await pushNotificationService.sendPushToMany(staffIds, { title, message, url: '/dashboard/attendance' });
-
-    console.log(`⚠️ [CRON PRÉSENCE 8H30] Alerte envoyée à ${staffIds.length} admin(s)/staff (aucune présence enregistrée)`);
+    try {
+      await pushNotificationService.sendPushToMany(staffIds, {
+        title,
+        message,
+        url: '/dashboard/attendance',
+        tag: 'attendance-reminder'
+      });
+      console.log(`⚠️ [CRON PRÉSENCE 8H30] Alerte Web Push envoyée à ${staffIds.length} admin(s)/staff`);
+    } catch (pushErr) {
+      console.error('❌ [CRON PRÉSENCE 8H30] Erreur envoi Web Push:', pushErr.message);
+    }
   } catch (error) {
     console.error('❌ [CRON PRÉSENCE 8H30] Erreur vérification présences:', error.message);
   }
