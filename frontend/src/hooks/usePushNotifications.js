@@ -53,7 +53,20 @@ export function usePushNotifications() {
     if (supported) {
       navigator.serviceWorker.ready
         .then((registration) => registration.pushManager.getSubscription())
-        .then((subscription) => setIsSubscribed(Boolean(subscription)))
+        .then((subscription) => {
+          setIsSubscribed(Boolean(subscription));
+
+          // Un abonnement push est lié à l'appareil/navigateur (endpoint FCM/APNs),
+          // pas au compte applicatif connecté. Si cet appareil a déjà un abonnement
+          // actif (ex: créé précédemment par un autre utilisateur sur ce même
+          // navigateur), on le re-synchronise silencieusement pour le rattacher
+          // à l'utilisateur ACTUELLEMENT connecté (upsert idempotent côté backend
+          // sur l'endpoint). Sans ça, le toggle apparaît "activé" sans jamais
+          // notifier le compte réellement connecté.
+          if (subscription) {
+            api.post('/api/push/subscribe', { subscription: subscription.toJSON() }).catch(() => {});
+          }
+        })
         .catch(() => setIsSubscribed(false));
     }
   }, []);
