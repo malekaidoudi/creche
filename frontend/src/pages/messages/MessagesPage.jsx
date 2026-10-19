@@ -70,6 +70,15 @@ const getInitials = (firstName, lastName) => {
   return (f + l).toUpperCase() || '?';
 };
 
+/**
+ * Détecte si un texte contient des caractères arabes
+ */
+const isArabicText = (text) => {
+  if (!text) return false;
+  const arabicRegex = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/;
+  return arabicRegex.test(text);
+};
+
 export default function MessagesPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -105,6 +114,19 @@ export default function MessagesPage() {
     const lastActive = new Date(contact.last_active);
     const now = new Date();
     return now - lastActive < 5 * 60 * 1000;
+  };
+
+  // Évite que Safari iOS déplace le scroll de fenêtre et détache le curseur du champ
+  const handleInputFocus = () => {
+    setTimeout(() => {
+      if (messagesContainerRef.current) {
+        messagesContainerRef.current.scrollTo({
+          top: messagesContainerRef.current.scrollHeight,
+          behavior: 'smooth'
+        });
+      }
+      window.scrollTo(0, 0);
+    }, 250);
   };
 
   function loadCacheFromStorage() {
@@ -685,9 +707,7 @@ export default function MessagesPage() {
   }
 
   return (
-    <div className={`h-[100dvh] max-h-[100dvh] flex flex-col bg-gray-50 dark:bg-gray-950 overflow-hidden ${
-      isMobile && !selectedContact ? 'pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))]' : ''
-    }`}>
+    <div className="fixed inset-0 z-30 lg:static lg:z-auto lg:h-[calc(100vh-4rem)] flex flex-col bg-white dark:bg-gray-900 overflow-hidden">
       {/* ================================================================ */}
       {/* VUE PRINCIPALE : MASTER-DETAIL ADAPTATIF                           */}
       {/* ================================================================ */}
@@ -773,7 +793,7 @@ export default function MessagesPage() {
           </div>
 
           {/* Liste déroulante des contacts */}
-          <div className="flex-1 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800/70">
+          <div className="flex-1 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800/70 pb-24 lg:pb-0">
             {filteredContacts.length > 0 ? (
               filteredContacts.map((contact) => {
                 const contactChildren = getChildrenForParent(contact.id);
@@ -882,7 +902,7 @@ export default function MessagesPage() {
         {/* ============================================================== */}
         {selectedContact ? (
           <div
-            className="fixed inset-0 z-50 flex flex-col bg-gray-50 dark:bg-gray-900 lg:relative lg:inset-auto lg:z-auto lg:flex-1 lg:rounded-2xl lg:shadow-sm lg:border lg:border-gray-200/80 lg:dark:border-gray-800 overflow-hidden"
+            className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-gray-900 lg:relative lg:inset-auto lg:z-auto lg:flex-1 lg:rounded-2xl lg:shadow-sm lg:border lg:border-gray-200/80 lg:dark:border-gray-800 overflow-hidden"
           >
             {/* Header de conversation avec Safe Area iOS (Bouton retour spacieux et accessible) */}
             <div className="pt-[calc(env(safe-area-inset-top,0px)+0.75rem)] pb-3 px-3.5 sm:px-5 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-xs flex items-center justify-between shrink-0 z-20">
@@ -1011,22 +1031,29 @@ export default function MessagesPage() {
             {/* Barre de saisie moderne (Dock Chat sécurisé pour mobile) */}
             <form
               onSubmit={handleSendMessage}
-              className="p-2.5 sm:p-3.5 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-t border-gray-200/80 dark:border-gray-800 shrink-0 z-20"
+              className="p-2 sm:p-3 bg-white dark:bg-gray-900 border-t border-gray-200/80 dark:border-gray-800 shrink-0 z-20 w-full"
               style={{
                 paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))'
               }}
             >
               <div className="flex items-center gap-2 max-w-4xl mx-auto w-full">
-                <div className="flex-1 min-w-0 flex items-center bg-gray-100 dark:bg-gray-800/90 border border-gray-200 dark:border-gray-700 rounded-2xl px-3.5 py-1.5 focus-within:ring-2 focus-within:ring-blue-500/40 focus-within:border-blue-500 transition-all">
+                <div className="flex-1 min-w-0 relative flex items-center bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700/80 rounded-2xl px-3 sm:px-4 h-11 sm:h-12 focus-within:ring-2 focus-within:ring-blue-500/40 focus-within:border-blue-500 transition-all overflow-hidden">
                   <input
                     ref={messageInputRef}
                     type="text"
-                    dir="auto"
+                    dir={isArabicText(replyContent) || (isRTL && !replyContent) ? 'rtl' : 'ltr'}
                     value={replyContent}
                     onChange={(e) => setReplyContent(e.target.value)}
-                    placeholder="Écrivez votre message..."
-                    className="flex-1 min-w-0 bg-transparent text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 text-[16px] sm:text-sm focus:outline-none py-1.5 text-start"
-                    style={{ fontSize: '16px' }}
+                    onFocus={handleInputFocus}
+                    placeholder={isRTL ? 'اكتب رسالتك...' : 'Écrivez votre message...'}
+                    className="w-full h-full bg-transparent text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 text-[16px] sm:text-sm border-0 border-none outline-none ring-0 focus:ring-0 focus:outline-none focus:border-0 shadow-none appearance-none leading-normal"
+                    style={{
+                      fontSize: '16px',
+                      outline: 'none',
+                      border: 'none',
+                      boxShadow: 'none',
+                      WebkitAppearance: 'none'
+                    }}
                     autoComplete="off"
                     autoCorrect="off"
                   />
@@ -1035,9 +1062,9 @@ export default function MessagesPage() {
                   type="submit"
                   disabled={!replyContent.trim()}
                   aria-label="Envoyer le message"
-                  className="p-2.5 sm:p-3 bg-gradient-to-r from-blue-600 via-sky-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-2xl shadow-md transition-all active:scale-95 shrink-0 min-w-[42px] min-h-[42px] flex items-center justify-center cursor-pointer"
+                  className="p-2.5 sm:p-3 bg-gradient-to-r from-blue-600 via-sky-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-2xl shadow-md transition-all active:scale-95 shrink-0 min-w-[44px] min-h-[44px] h-11 sm:h-12 w-11 sm:w-12 flex items-center justify-center cursor-pointer"
                 >
-                  <Send className={`w-4 h-4 sm:w-5 sm:h-5 ${isRTL ? 'rotate-180' : ''}`} />
+                  <Send className={`w-4 h-4 sm:w-5 sm:h-5 ${isArabicText(replyContent) || (isRTL && !replyContent) ? 'rotate-180' : ''}`} />
                 </button>
               </div>
             </form>
@@ -1059,7 +1086,11 @@ export default function MessagesPage() {
       </div>
 
       {/* Navigation mobile native (uniquement lorsque la liste des contacts est visible) */}
-      {isMobile && !selectedContact && <MobileNavigation />}
+      {isMobile && !selectedContact && (
+        <div className="contents pointer-events-none [&>nav]:pointer-events-auto">
+          <MobileNavigation hideSpacer={true} />
+        </div>
+      )}
     </div>
   );
 }

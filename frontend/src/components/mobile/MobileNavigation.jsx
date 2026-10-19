@@ -37,7 +37,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useProfileImage } from '../../hooks/useProfileImage';
 import { useAccess } from '../../access';
 
-const MobileNavigation = () => {
+const MobileNavigation = ({ hideSpacer = false }) => {
     const { isRTL } = useLanguage();
     const { user, logout } = useAuth();
     const { getImageUrl, hasImage } = useProfileImage();
@@ -374,7 +374,7 @@ const MobileNavigation = () => {
             </AnimatePresence>
 
             {/* Spacer pour éviter que le contenu soit caché sous la nav */}
-            <div className="lg:hidden h-16" />
+            {!hideSpacer && <div className="lg:hidden h-16" />}
         </>
     );
 };

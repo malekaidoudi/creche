@@ -1958,3 +1958,35 @@
 - **Fichiers modifiés** :
   - [`frontend/src/pages/messages/MessagesPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/messages/MessagesPage.jsx)
 - **Résultat** : Interface de messagerie mobile digne des meilleures applications natives (WhatsApp / iMessage), lisibilité immédiate des parents et de leurs enfants sans scroll horizontal, boutons de navigation 100% accessibles sous l'encoche iOS, et zone de frappe parfaitement ergonomique.
+
+---
+
+### Fiche 88 - Résolution du Rectangle Noir en Bas des Contacts & Rectification du Cadre et Curseur Déplacé (Zone de Saisie iOS)
+
+- **Date** : 19 Octobre 2026
+- **Contexte** :
+  1. **Rectangle noir en fin de liste des contacts sur mobile (Photo 1)** : Un bandeau noir opaque (`dark:bg-gray-950`) tronquait le bas de la liste des contacts juste au-dessus de la barre de navigation mobile (`Accueil | Présences | ...`), coupant la dernière fiche contact en deux.
+  2. **Rectangle blanc parasite & Curseur projeté hors de l'input (Photo 2)** : Lors de la saisie d'un message sur smartphone (notamment lors du basculement vers le clavier arabe virtuel iOS), un cadre blanc rectangulaire à angles droits s'affichait à l'intérieur de la zone arrondie, et le curseur clignotant bleu (`caret`) se retrouvait projeté complètement à l'extérieur, sous la zone de saisie.
+- **Causes identifiées** :
+  1. **Conflit de spacers et de conteneur d'application** : `MessagesPage` utilisait un conteneur racine avec fond noir `dark:bg-gray-950` et un `pb-[calc(4.5rem+...)]`. De plus, `<MobileNavigation />` insérait son propre espacement en flux de document `<div className="lg:hidden h-16" />`. Dans le conteneur flex parent, cette boîte vide de 64px exposait le fond noir `#030712`, formant un rectangle sombre de plus de 150px masquant le bas des contacts.
+  2. **Bordure par défaut WebKit & Décalage du Viewport iOS** :
+     - En Tailwind, la règle globale `* { @apply border-border; }` appliquait une bordure de 1px sur l'élément `<input>` interne car `border-none` / `outline-none` / `ring-0` n'étaient pas spécifiés au repos. Sur iOS Safari en mode sombre, cette bordure s'affichait comme un cadre rectangulaire blanc rigide.
+     - L'élément `<input>` imbriqué dans un conteneur flex avec double padding vertical (`py-1.5`) sans hauteur explicite (`h-11`) déstabilisait le calcul du baseline du texte et du curseur sous WebKit lors de l'ouverture du clavier virtuel, en particulier en saisie RTL/arabe (`dir="auto"`).
+     - Le redimensionnement du viewport visuel par iOS Safari décalait le scroll de la fenêtre (`window.scrollY`), détachant le curseur du repère visuel de l'input.
+- **Action appliquée** :
+  - **Élimination intégrale du rectangle noir & Continuité graphique parfaite** :
+    - Remplacement du fond du conteneur racine par `bg-white dark:bg-gray-900` pour une harmonie chromatique totale avec les fiches de contact.
+    - Ancrage plein écran propre sur smartphone via `fixed inset-0 z-30 lg:static lg:z-auto lg:h-[calc(100vh-4rem)]` immunisant la page contre les marges extérieures indésirables de `DashboardLayout`.
+    - Ajout du support de `hideSpacer={true}` dans [`MobileNavigation.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/mobile/MobileNavigation.jsx) pour neutraliser le `<div className="h-16" />` dans les mises en page applicatives flex.
+    - Déplacement du padding de défilement directement dans la liste défilante (`pb-24 lg:pb-0`) garantissant que le dernier contact défile avec fluidité au-dessus de la barre de navigation.
+  - **Suppression du cadre blanc & Alignement parfait du curseur** :
+    - Suppression stricte de toutes les bordures, anneaux et contours natifs sur l'input (`border-0 border-none outline-none ring-0 focus:ring-0 focus:outline-none focus:border-0 shadow-none appearance-none`) en Tailwind et inline style (`WebkitAppearance: 'none'`).
+    - Calibrage d'une hauteur fixe explicite `h-11 sm:h-12` et `leading-normal` sur le conteneur et l'input avec `overflow-hidden`.
+    - Implémentation du handler `handleInputFocus` réinitialisant tout micro-décalage de scroll iOS Safari (`window.scrollTo(0, 0)`), forçant le curseur à rester ancré au millimètre près dans le champ.
+    - Détection intelligente de la direction du texte `dir={isArabicText(replyContent) || (isRTL && !replyContent) ? 'rtl' : 'ltr'}` et rotation synchronisée de l'icône d'envoi.
+    - Ajout de `interactive-widget=resizes-content` dans la balise `<meta name="viewport">` de [`index.html`](file:///Volumes/Data/Works/Windsurf/creche/frontend/index.html) pour une synchronisation fluide avec le clavier iOS/Android.
+- **Fichiers modifiés** :
+  - [`frontend/index.html`](file:///Volumes/Data/Works/Windsurf/creche/frontend/index.html)
+  - [`frontend/src/components/mobile/MobileNavigation.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/mobile/MobileNavigation.jsx)
+  - [`frontend/src/pages/messages/MessagesPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/messages/MessagesPage.jsx)
+- **Résultat** : Suppression définitive du bloc noir en bas des contacts, continuité visuelle parfaite, disparition du cadre blanc parasite et curseur de saisie parfaitement aligné à l'intérieur du champ sur smartphone.
