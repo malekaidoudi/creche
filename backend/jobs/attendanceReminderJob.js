@@ -62,8 +62,11 @@ async function checkAttendanceRecorded() {
       return;
     }
 
+    // La table `attendance` n'a pas de colonne `status` : une absence n'est
+    // jamais persistée, seule l'arrivée (`check_in_time`) l'est. On considère
+    // donc qu'"au moins une présence a été pointée" dès qu'une ligne a un check-in.
     const attendanceResult = await db.query(`
-      SELECT 1 FROM attendance WHERE date = $1 AND (check_in_time IS NOT NULL OR status = 'absent') LIMIT 1
+      SELECT 1 FROM attendance WHERE date = $1 AND check_in_time IS NOT NULL LIMIT 1
     `, [todayStr]);
 
     if (attendanceResult.rows.length > 0) {
