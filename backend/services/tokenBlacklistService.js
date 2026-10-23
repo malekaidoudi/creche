@@ -88,14 +88,14 @@ const isTokenRevoked = async (token) => {
   return inMemoryBlacklist.has(token);
 };
 
-// Initialiser automatiquement au démarrage du module
+// Initialiser automatiquement au démarrage du module (une seule fois)
 init();
 
-// Synchronisation d'arrière-plan toutes les 60 secondes (non-bloquante, purge expirés & resynchronise)
-const syncInterval = setInterval(init, 60_000);
-if (syncInterval.unref) {
-  syncInterval.unref();
-}
+// Purge quotidienne des jetons expirés (03:00 Tunis).
+// Remplace l'ancien setInterval de 60s qui maintenait Neon éveillé 24h/24
+// (la révocation écrit déjà en RAM + DB, une seule instance backend).
+const cron = require('node-cron');
+cron.schedule('0 3 * * *', init, { timezone: 'Africa/Tunis' });
 
 module.exports = {
   revokeToken,
