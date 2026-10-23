@@ -56,7 +56,7 @@ const MobileSettingsView = ({ onSwitchToDesktopView }) => {
     const fetchPrefs = async () => {
       try {
         setLoading(true);
-        const res = await api.get('/notifications/preferences');
+        const res = await api.get('/api/notifications/preferences');
         if (res.data?.success && res.data.preferences) {
           const p = res.data.preferences;
           setAttendanceReminderEnabled(Boolean(p.attendance_reminder_enabled));
@@ -77,15 +77,23 @@ const MobileSettingsView = ({ onSwitchToDesktopView }) => {
   }, []);
 
   // Sauvegarder les préférences
-  const handleSavePreferences = async () => {
+  const handleSavePreferences = async (overrides = {}) => {
     try {
       setSaving(true);
-      await api.put('/notifications/preferences', {
-        attendance_reminder_enabled: attendanceReminderEnabled,
-        attendance_reminder_time: attendanceReminderTime,
-        attendance_reminder_days: attendanceReminderDays,
-        email_notifications: emailNotifications
-      });
+      const payload = {
+        attendance_reminder_enabled:
+          overrides.attendance_reminder_enabled !== undefined
+            ? overrides.attendance_reminder_enabled
+            : attendanceReminderEnabled,
+        attendance_reminder_time: overrides.attendance_reminder_time || attendanceReminderTime,
+        attendance_reminder_days: overrides.attendance_reminder_days || attendanceReminderDays,
+        email_notifications:
+          overrides.email_notifications !== undefined
+            ? overrides.email_notifications
+            : emailNotifications
+      };
+
+      await api.put('/api/notifications/preferences', payload);
 
       dialog.success(
         isRTL
@@ -93,6 +101,7 @@ const MobileSettingsView = ({ onSwitchToDesktopView }) => {
           : 'Préférences de rappel enregistrées avec succès !'
       );
     } catch (err) {
+      console.error('Erreur sauvegarde préférences:', err);
       dialog.error(
         isRTL
           ? 'تعذر حفظ التفضيلات'
@@ -101,6 +110,12 @@ const MobileSettingsView = ({ onSwitchToDesktopView }) => {
     } finally {
       setSaving(false);
     }
+  };
+
+  // Toggle activation avec sauvegarde automatique
+  const handleToggleAttendance = async (val) => {
+    setAttendanceReminderEnabled(val);
+    await handleSavePreferences({ attendance_reminder_enabled: val });
   };
 
   // Toggle un jour de la semaine
@@ -259,25 +274,38 @@ const MobileSettingsView = ({ onSwitchToDesktopView }) => {
         transition={{ delay: 0.1 }}
         className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700/60 space-y-4"
       >
-        <div className="flex items-start justify-between">
-          <div className="flex items-center space-x-3 rtl:space-x-reverse">
-            <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center space-x-3 rtl:space-x-reverse min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-100 dark:border-emerald-800/40">
               <Clock className="w-5 h-5" />
             </div>
-            <div>
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-                {isRTL ? 'تنبيه تسجيل الحضور' : 'Alerte de présence programmée'}
-              </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+            <div className="min-w-0">
+              <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                  {isRTL ? 'تنبيه تسجيل الحضور' : 'Alerte de présence'}
+                </h3>
+                <span
+                  className={`px-2 py-0.5 text-[10px] font-semibold rounded-full ${
+                    attendanceReminderEnabled
+                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400'
+                      : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+                  }`}
+                >
+                  {attendanceReminderEnabled
+                    ? isRTL ? 'مفعل' : 'Actif'
+                    : isRTL ? 'معطل' : 'Inactif'}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                 {isRTL
-                  ? 'تنبيه إذا لم يتم تسجيل أي حضور حتى هذا الوقت'
+                  ? 'إشعار إذا لم تسجل أي حضور حتى الوقت المحدد'
                   : "Notification si aucune présence n'a été saisie"}
               </p>
             </div>
           </div>
           <ToggleSwitch
             checked={attendanceReminderEnabled}
-            onChange={(val) => setAttendanceReminderEnabled(val)}
+            onChange={handleToggleAttendance}
             ariaLabel={isRTL ? 'تفعيل تنبيه الحضور' : 'Alerte présence'}
           />
         </div>
@@ -286,62 +314,123 @@ const MobileSettingsView = ({ onSwitchToDesktopView }) => {
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
-            className="space-y-3 pt-2 border-t border-gray-100 dark:border-gray-700/60"
+            className="space-y-3.5 pt-3 border-t border-gray-100 dark:border-gray-700/60"
           >
-            {/* Heure du rappel */}
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                {isRTL ? 'وقت التنبيه (صباحاً)' : 'Heure du rappel (matin)'}
-              </label>
-              <input
-                type="time"
-                value={attendanceReminderTime}
-                onChange={(e) => setAttendanceReminderTime(e.target.value)}
-                className="px-2.5 py-1 text-sm font-semibold rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
-              />
-            </div>
+            {/* Boîte de réglage au design moderne */}
+            <div className="bg-gray-50/80 dark:bg-gray-900/50 rounded-xl p-3.5 border border-gray-100 dark:border-gray-700/40 space-y-3.5">
+              {/* Heure du rappel */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                    {isRTL ? 'ساعة التنبيه (صباحاً)' : 'Heure du rappel (matin)'}
+                  </label>
+                  <input
+                    type="time"
+                    value={attendanceReminderTime}
+                    onChange={(e) => setAttendanceReminderTime(e.target.value)}
+                    className="px-3 py-1.5 text-sm font-bold tracking-wider rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-emerald-400 shadow-xs focus:ring-2 focus:ring-emerald-500 outline-none cursor-pointer"
+                  />
+                </div>
 
-            {/* Jours actifs */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                {isRTL ? 'أيام التنبيه' : 'Jours de rappel'}
-              </label>
-              <div className="grid grid-cols-6 gap-1">
-                {DAYS_OF_WEEK.map((d) => {
-                  const isSelected = attendanceReminderDays.includes(d.id);
-                  return (
+                {/* Suggestions rapides */}
+                <div className="flex items-center gap-1.5 pt-0.5">
+                  <span className="text-[11px] text-gray-400 dark:text-gray-500 mr-1 rtl:ml-1 rtl:mr-0">
+                    {isRTL ? 'سريع :' : 'Rapide :'}
+                  </span>
+                  {['08:00', '08:30', '09:00', '09:30'].map((preset) => {
+                    const isCurrent = attendanceReminderTime === preset;
+                    return (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => setAttendanceReminderTime(preset)}
+                        className={`px-2 py-0.5 text-[11px] font-medium rounded-lg transition-all ${
+                          isCurrent
+                            ? 'bg-emerald-500 text-white shadow-xs font-semibold'
+                            : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:border-emerald-300 dark:hover:border-emerald-600'
+                        }`}
+                      >
+                        {preset}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Jours actifs */}
+              <div className="pt-2.5 border-t border-gray-200/60 dark:border-gray-700/40">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                    {isRTL ? 'أيام التنبيه' : 'Jours de rappel'}
+                  </label>
+                  <div className="flex items-center space-x-1 rtl:space-x-reverse text-[11px]">
                     <button
-                      key={d.id}
                       type="button"
-                      onClick={() => toggleDay(d.id)}
-                      className={`py-1.5 text-xs font-semibold rounded-lg transition-all ${
-                        isSelected
-                          ? 'bg-primary-600 text-white shadow-sm'
-                          : 'bg-gray-100 dark:bg-gray-700/60 text-gray-500 dark:text-gray-400 hover:bg-gray-200'
+                      onClick={() => setAttendanceReminderDays([1, 2, 3, 4, 5])}
+                      className={`px-2 py-0.5 rounded transition-colors ${
+                        attendanceReminderDays.length === 5 && !attendanceReminderDays.includes(6)
+                          ? 'text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-50 dark:bg-emerald-950/40'
+                          : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
                       }`}
                     >
-                      {currentLanguage === 'ar' ? d.labelAr : d.labelFr}
+                      {isRTL ? 'إثن - جمع' : 'Lun - Ven'}
                     </button>
-                  );
-                })}
+                    <span className="text-gray-300 dark:text-gray-600">•</span>
+                    <button
+                      type="button"
+                      onClick={() => setAttendanceReminderDays([1, 2, 3, 4, 5, 6])}
+                      className={`px-2 py-0.5 rounded transition-colors ${
+                        attendanceReminderDays.length === 6
+                          ? 'text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-50 dark:bg-emerald-950/40'
+                          : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+                      }`}
+                    >
+                      {isRTL ? 'الكل' : 'Tous'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-6 gap-1.5">
+                  {DAYS_OF_WEEK.map((d) => {
+                    const isSelected = attendanceReminderDays.includes(d.id);
+                    return (
+                      <button
+                        key={d.id}
+                        type="button"
+                        onClick={() => toggleDay(d.id)}
+                        className={`py-2 text-xs font-semibold rounded-xl transition-all flex flex-col items-center justify-center space-y-0.5 ${
+                          isSelected
+                            ? 'bg-emerald-500 text-white shadow-xs dark:bg-emerald-500 scale-[1.02]'
+                            : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700/80 hover:border-gray-300 dark:hover:border-gray-600'
+                        }`}
+                      >
+                        <span>{currentLanguage === 'ar' ? d.labelAr : d.labelFr}</span>
+                        <span
+                          className={`w-1 h-1 rounded-full ${
+                            isSelected ? 'bg-white' : 'bg-transparent'
+                          }`}
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
-            {/* Bouton Sauvegarder */}
-            <div className="pt-2">
-              <Button
-                onClick={handleSavePreferences}
-                disabled={saving}
-                className="w-full flex items-center justify-center space-x-1.5 rtl:space-x-reverse py-2 text-xs font-medium rounded-xl"
-              >
-                <Save className="w-3.5 h-3.5" />
-                <span>
-                  {saving
-                    ? isRTL ? 'جاري الحفظ...' : 'Enregistrement...'
-                    : isRTL ? 'حفظ إعدادات التنبيه' : "Enregistrer l'horaire"}
-                </span>
-              </Button>
-            </div>
+            {/* Bouton Sauvegarder élégant */}
+            <button
+              type="button"
+              onClick={() => handleSavePreferences()}
+              disabled={saving}
+              className="w-full flex items-center justify-center space-x-2 rtl:space-x-reverse py-2.5 px-4 rounded-xl text-xs sm:text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] transition-all shadow-sm shadow-emerald-600/20 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+            >
+              <Save className="w-4 h-4" />
+              <span>
+                {saving
+                  ? isRTL ? 'جاري الحفظ...' : 'Enregistrement...'
+                  : isRTL ? 'حفظ إعدادات التنبيه' : "Enregistrer l'horaire"}
+              </span>
+            </button>
           </motion.div>
         )}
       </motion.div>
