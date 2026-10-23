@@ -55,11 +55,28 @@ const initTreatmentsTables = async () => {
                 end_date DATE NOT NULL,
                 duration_days INTEGER NOT NULL,
                 
-                -- État
+                -- État et validation
                 status VARCHAR(20) DEFAULT 'active',
+                approval_status VARCHAR(20) DEFAULT 'approved',
+                assigned_staff_id INTEGER REFERENCES users(id),
+                approved_by INTEGER REFERENCES users(id),
+                approved_at TIMESTAMP,
+                rejection_reason TEXT,
+                document_url VARCHAR(500),
+
                 created_at TIMESTAMP DEFAULT NOW(),
                 updated_at TIMESTAMP DEFAULT NOW()
             )
+        `);
+
+        // Migration progressive : ajouter les colonnes d'approbation et assignation si elles manquent
+        await db.query(`
+            ALTER TABLE child_treatments ADD COLUMN IF NOT EXISTS assigned_staff_id INTEGER REFERENCES users(id);
+            ALTER TABLE child_treatments ADD COLUMN IF NOT EXISTS approval_status VARCHAR(20) DEFAULT 'approved';
+            ALTER TABLE child_treatments ADD COLUMN IF NOT EXISTS approved_by INTEGER REFERENCES users(id);
+            ALTER TABLE child_treatments ADD COLUMN IF NOT EXISTS approved_at TIMESTAMP;
+            ALTER TABLE child_treatments ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
+            ALTER TABLE child_treatments ADD COLUMN IF NOT EXISTS document_url VARCHAR(500);
         `);
 
         // Table des administrations
@@ -79,12 +96,14 @@ const initTreatmentsTables = async () => {
         await db.query(`
             CREATE INDEX IF NOT EXISTS idx_treatments_child_id ON child_treatments(child_id);
             CREATE INDEX IF NOT EXISTS idx_treatments_status ON child_treatments(status);
+            CREATE INDEX IF NOT EXISTS idx_treatments_approval ON child_treatments(approval_status);
+            CREATE INDEX IF NOT EXISTS idx_treatments_assigned_staff ON child_treatments(assigned_staff_id);
             CREATE INDEX IF NOT EXISTS idx_treatments_dates ON child_treatments(start_date, end_date);
             CREATE INDEX IF NOT EXISTS idx_administrations_treatment ON treatment_administrations(treatment_id);
             CREATE INDEX IF NOT EXISTS idx_administrations_date ON treatment_administrations(administered_at);
         `);
 
-        console.log('✅ Tables traitements médicaux initialisées');
+        console.log('✅ Tables traitements médicaux et workflow d\'assignation initialisés');
         return true;
     } catch (error) {
         console.error('❌ Erreur initialisation tables traitements:', error);
@@ -148,24 +167,69 @@ const createTreatment = async (req, res) => {
         const end = new Date(end_date);
         const duration_days = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1);
 
+        // Déterminer le statut initial selon le rôle
+        const isAdmin = role === 'admin';
+        const initialStatus = isAdmin ? 'active' : 'pending';
+        const initialApproval = isAdmin ? 'approved' : 'pending_approval';
+        const assignedStaffId = isAdmin ? (req.body.assigned_staff_id || null) : null;
+
         // Insérer le traitement
         const result = await db.query(`
             INSERT INTO child_treatments (
                 child_id, parent_id, medication_name, dose, notes,
                 timing_type, interval_hours, specific_times,
-                start_date, end_date, duration_days, status
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'active')
+                start_date, end_date, duration_days, status,
+                approval_status, assigned_staff_id, approved_by, approved_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
             RETURNING *
         `, [
             child_id, parentId, medication_name, dose, notes || null,
             timing_type, interval_hours, JSON.stringify(specific_times),
-            start_date, end_date, duration_days
+            start_date, end_date, duration_days, initialStatus,
+            initialApproval, assignedStaffId,
+            isAdmin ? parentId : null,
+            isAdmin ? new Date() : null
         ]);
+
+        const newTreatment = result.rows[0];
+
+        // Si créé par un parent, notifier la direction/admin pour validation le matin
+        if (!isAdmin) {
+            try {
+                const childInfo = await db.query('SELECT first_name, last_name FROM children WHERE id = $1', [child_id]);
+                const childName = childInfo.rows[0] ? `${childInfo.rows[0].first_name} ${childInfo.rows[0].last_name}` : 'Enfant';
+                
+                const admins = await db.query("SELECT id FROM users WHERE role IN ('admin', 'developer') AND is_active = true");
+                const adminIds = admins.rows.map(a => a.id);
+                
+                if (adminIds.length > 0) {
+                    const title = '📋 Demande de médicament';
+                    const message = `Nouvelle demande pour ${childName} : ${medication_name} (${dose}) en attente de validation.`;
+                    
+                    for (const adminId of adminIds) {
+                        await db.query(`
+                            INSERT INTO notifications (user_id, title, message, type, is_read)
+                            VALUES ($1, $2, $3, 'treatment', false)
+                        `, [adminId, title, message]);
+                    }
+
+                    pushNotificationService.sendPushToMany(adminIds, {
+                        title,
+                        message,
+                        url: '/dashboard/treatments'
+                    });
+                }
+            } catch (notifErr) {
+                console.error('Erreur notification admin nouvelle demande médicament:', notifErr.message);
+            }
+        }
 
         res.status(201).json({
             success: true,
-            message: 'Traitement créé avec succès',
-            treatment: result.rows[0]
+            message: isAdmin 
+                ? 'Traitement créé et validé avec succès' 
+                : 'Demande de traitement transmise à la direction pour validation',
+            treatment: newTreatment
         });
 
         notifyTreatmentChange();
@@ -176,6 +240,206 @@ const createTreatment = async (req, res) => {
             success: false,
             message: 'Erreur lors de la création du traitement'
         });
+    }
+};
+
+/**
+ * Récupérer les demandes de traitement en attente de validation (pour l'admin)
+ * GET /api/treatments/pending
+ */
+const getPendingTreatments = async (req, res) => {
+    try {
+        const result = await db.query(`
+            SELECT 
+                ct.*,
+                c.first_name as child_first_name,
+                c.last_name as child_last_name,
+                c.photo_url as child_photo,
+                u.first_name as parent_first_name,
+                u.last_name as parent_last_name,
+                u.phone as parent_phone
+            FROM child_treatments ct
+            JOIN children c ON ct.child_id = c.id
+            JOIN users u ON ct.parent_id = u.id
+            WHERE ct.approval_status = 'pending_approval'
+            ORDER BY ct.created_at DESC
+        `);
+
+        res.json({
+            success: true,
+            pending_treatments: result.rows
+        });
+    } catch (error) {
+        console.error('Erreur getPendingTreatments:', error);
+        res.status(500).json({ success: false, message: 'Erreur serveur' });
+    }
+};
+
+/**
+ * Valider une demande de traitement et assigner à un membre du staff
+ * PUT /api/treatments/:id/approve
+ */
+const approveTreatment = async (req, res) => {
+    try {
+        const treatmentId = req.params.id;
+        const approverId = req.user.id || req.user.userId;
+        const { assigned_staff_id } = req.body;
+
+        if (!assigned_staff_id) {
+            return res.status(400).json({
+                success: false,
+                message: 'Veuillez assigner un membre du personnel pour ce traitement'
+            });
+        }
+
+        // Vérifier que le traitement existe
+        const current = await db.query(`
+            SELECT ct.*, c.first_name as child_first_name, c.last_name as child_last_name
+            FROM child_treatments ct
+            JOIN children c ON ct.child_id = c.id
+            WHERE ct.id = $1
+        `, [treatmentId]);
+
+        if (current.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Traitement non trouvé' });
+        }
+
+        const treatment = current.rows[0];
+
+        // Mettre à jour le traitement
+        const updateResult = await db.query(`
+            UPDATE child_treatments
+            SET approval_status = 'approved',
+                status = 'active',
+                assigned_staff_id = $1,
+                approved_by = $2,
+                approved_at = NOW(),
+                updated_at = NOW()
+            WHERE id = $3
+            RETURNING *
+        `, [assigned_staff_id, approverId, treatmentId]);
+
+        const updated = updateResult.rows[0];
+
+        // 1. Notifier le staff assigné
+        try {
+            const staffTitle = '💊 Traitement médical assigné';
+            const staffMessage = `Vous êtes assigné(e) pour administrer ${treatment.medication_name} (${treatment.dose}) à ${treatment.child_first_name} ${treatment.child_last_name}.`;
+            
+            await db.query(`
+                INSERT INTO notifications (user_id, title, message, type, is_read)
+                VALUES ($1, $2, $3, 'treatment', false)
+            `, [assigned_staff_id, staffTitle, staffMessage]);
+
+            pushNotificationService.sendPushToUser(assigned_staff_id, {
+                title: staffTitle,
+                message: staffMessage,
+                url: '/dashboard/treatments'
+            });
+        } catch (e) {
+            console.error('Erreur notif staff assigné:', e.message);
+        }
+
+        // 2. Notifier le parent que la demande est validée
+        if (treatment.parent_id) {
+            try {
+                const parentTitle = '✅ Traitement médical validé';
+                const parentMessage = `Le traitement (${treatment.medication_name}) pour ${treatment.child_first_name} a été validé et pris en charge par l'équipe.`;
+                
+                await db.query(`
+                    INSERT INTO notifications (user_id, title, message, type, is_read)
+                    VALUES ($1, $2, $3, 'treatment', false)
+                `, [treatment.parent_id, parentTitle, parentMessage]);
+
+                pushNotificationService.sendPushToUser(treatment.parent_id, {
+                    title: parentTitle,
+                    message: parentMessage,
+                    url: '/mon-espace/treatments'
+                });
+            } catch (e) {
+                console.error('Erreur notif parent traitement validé:', e.message);
+            }
+        }
+
+        notifyTreatmentChange();
+
+        res.json({
+            success: true,
+            message: 'Traitement approuvé et assigné avec succès',
+            treatment: updated
+        });
+
+    } catch (error) {
+        console.error('Erreur approveTreatment:', error);
+        res.status(500).json({ success: false, message: 'Erreur serveur lors de la validation' });
+    }
+};
+
+/**
+ * Refuser une demande de traitement
+ * PUT /api/treatments/:id/reject
+ */
+const rejectTreatment = async (req, res) => {
+    try {
+        const treatmentId = req.params.id;
+        const approverId = req.user.id || req.user.userId;
+        const { rejection_reason } = req.body;
+
+        const current = await db.query(`
+            SELECT ct.*, c.first_name as child_first_name, c.last_name as child_last_name
+            FROM child_treatments ct
+            JOIN children c ON ct.child_id = c.id
+            WHERE ct.id = $1
+        `, [treatmentId]);
+
+        if (current.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Traitement non trouvé' });
+        }
+
+        const treatment = current.rows[0];
+
+        await db.query(`
+            UPDATE child_treatments
+            SET approval_status = 'rejected',
+                status = 'cancelled',
+                rejection_reason = $1,
+                approved_by = $2,
+                approved_at = NOW(),
+                updated_at = NOW()
+            WHERE id = $3
+        `, [rejection_reason || 'Demande non conforme', approverId, treatmentId]);
+
+        // Notifier le parent
+        if (treatment.parent_id) {
+            try {
+                const parentTitle = '❌ Demande de traitement non validée';
+                const parentMessage = `Le traitement (${treatment.medication_name}) pour ${treatment.child_first_name} n'a pas pu être validé. Motif : ${rejection_reason || 'Non précisé'}`;
+                
+                await db.query(`
+                    INSERT INTO notifications (user_id, title, message, type, is_read)
+                    VALUES ($1, $2, $3, 'treatment', false)
+                `, [treatment.parent_id, parentTitle, parentMessage]);
+
+                pushNotificationService.sendPushToUser(treatment.parent_id, {
+                    title: parentTitle,
+                    message: parentMessage,
+                    url: '/mon-espace/treatments'
+                });
+            } catch (e) {
+                console.error('Erreur notif refus traitement:', e.message);
+            }
+        }
+
+        notifyTreatmentChange();
+
+        res.json({
+            success: true,
+            message: 'Demande de traitement refusée'
+        });
+
+    } catch (error) {
+        console.error('Erreur rejectTreatment:', error);
+        res.status(500).json({ success: false, message: 'Erreur serveur lors du refus' });
     }
 };
 
@@ -597,6 +861,7 @@ const checkAndNotifyTreatments = async () => {
             JOIN children c ON ct.child_id = c.id
             JOIN attendance a ON c.id = a.child_id AND a.date = $1
             WHERE ct.status = 'active'
+            AND (ct.approval_status = 'approved' OR ct.approval_status IS NULL)
             AND $1 BETWEEN ct.start_date AND ct.end_date
             AND a.check_in_time IS NOT NULL
             AND a.check_out_time IS NULL
@@ -612,7 +877,8 @@ const checkAndNotifyTreatments = async () => {
                     treatment_id: treatment.id,
                     child_name: `${treatment.child_first_name} ${treatment.child_last_name}`,
                     medication: treatment.medication_name,
-                    dose: treatment.dose
+                    dose: treatment.dose,
+                    assigned_staff_id: treatment.assigned_staff_id
                 });
             }
         }
@@ -722,48 +988,55 @@ const hasBeenAdministeredRecently = (treatment, withinMinutes) => {
 };
 
 /**
- * Envoyer les notifications au staff
+ * Envoyer les notifications au staff (ciblé sur le staff assigné en priorité)
  */
 const sendStaffNotifications = async (notifications) => {
     try {
-        // Récupérer le staff/admin/direction actif pour le push (en plus de l'INSERT en masse ci-dessous)
-        const staffUsers = await db.query(`
-            SELECT id FROM users WHERE role IN ('staff', 'admin', 'direction') AND is_active = true
+        const admins = await db.query(`
+            SELECT id FROM users WHERE role IN ('admin', 'developer', 'direction') AND is_active = true
         `);
+        const adminIds = admins.rows.map(u => u.id);
 
-        if (staffUsers.rows.length === 0) {
-            console.log('⚠️ Aucun membre du staff trouvé pour les notifications de traitement');
-            return;
-        }
-
-        // Créer les notifications en base
         for (const notif of notifications) {
-            const title = '💊 Traitement à donner';
-            const message = `${notif.child_name} - ${notif.medication} ${notif.dose}`;
+            const title = '💊 Traitement à administrer maintenant';
+            const message = `${notif.child_name} - ${notif.medication} (${notif.dose})`;
 
-            await db.query(`
-                INSERT INTO notifications (
-                    user_id, title, message, type, data, created_at
-                )
-                SELECT id, $1, $2, 'treatment', $3, NOW()
-                FROM users 
-                WHERE role IN ('staff', 'admin', 'direction')
-            `, [
+            const targetUserIds = new Set();
+
+            if (notif.assigned_staff_id) {
+                targetUserIds.add(notif.assigned_staff_id);
+            } else {
+                // Si pas de staff assigné, envoyer à tous les staff/admin
+                const allStaff = await db.query(`
+                    SELECT id FROM users WHERE role IN ('staff', 'admin') AND is_active = true
+                `);
+                allStaff.rows.forEach(u => targetUserIds.add(u.id));
+            }
+
+            // Toujours mettre une copie aux admins pour traçabilité
+            adminIds.forEach(id => targetUserIds.add(id));
+
+            const userIdsArray = Array.from(targetUserIds);
+
+            for (const uid of userIdsArray) {
+                await db.query(`
+                    INSERT INTO notifications (user_id, title, message, type, is_read, created_at)
+                    VALUES ($1, $2, $3, 'treatment', false, NOW())
+                `, [uid, title, message]);
+            }
+
+            pushNotificationService.sendPushToMany(userIdsArray, {
                 title,
                 message,
-                JSON.stringify({ treatment_id: notif.treatment_id })
-            ]);
-
-            pushNotificationService.sendPushToMany(
-                staffUsers.rows.map(u => u.id),
-                { title, message, url: '/dashboard/treatments' }
-            );
+                url: '/dashboard/treatments',
+                tag: `treatment-${notif.treatment_id}`
+            });
         }
 
-        console.log(`✅ ${notifications.length} notifications envoyées au staff`);
+        console.log(`✅ ${notifications.length} rappels de médicaments envoyés`);
 
     } catch (error) {
-        console.error('❌ Erreur envoi notifications:', error);
+        console.error('❌ Erreur envoi notifications de traitement:', error);
     }
 };
 
@@ -851,6 +1124,9 @@ module.exports = {
     updateTreatment,
     cancelTreatment,
     getTodayTreatments,
+    getPendingTreatments,
+    approveTreatment,
+    rejectTreatment,
     administerTreatment,
     getTreatmentHistory,
     getChildTodayTreatments,

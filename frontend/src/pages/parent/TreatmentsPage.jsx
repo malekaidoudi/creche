@@ -94,19 +94,37 @@ const TreatmentsPage = () => {
         }
     };
 
-    const getStatusBadge = (status) => {
+    const getStatusBadge = (status, approvalStatus, staffName, rejectionReason) => {
+        if (approvalStatus === 'pending_approval') {
+            return (
+                <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-700 flex items-center gap-1">
+                    <span>⏳</span>
+                    <span>{isRTL ? 'قيد المراجعة من الإدارة' : 'En attente de validation'}</span>
+                </span>
+            );
+        }
+
+        if (approvalStatus === 'rejected') {
+            return (
+                <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 border border-red-200 dark:border-red-700 flex items-center gap-1">
+                    <span>❌</span>
+                    <span>{isRTL ? 'مرفوض من الإدارة' : 'Non validé'}</span>
+                </span>
+            );
+        }
+
         const styles = {
-            active: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+            active: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800',
             completed: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
             cancelled: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
         };
         const labels = {
-            active: isRTL ? 'نشط' : 'Actif',
+            active: isRTL ? 'مقبول ونشط' : 'Validé & Actif',
             completed: isRTL ? 'مكتمل' : 'Terminé',
             cancelled: isRTL ? 'ملغى' : 'Annulé',
         };
         return (
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${styles[status] || styles.active}`}>
+            <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${styles[status] || styles.active}`}>
                 {labels[status] || status}
             </span>
         );
@@ -209,10 +227,23 @@ const TreatmentsPage = () => {
                                                     </p>
                                                 </div>
                                             </div>
-                                            {getStatusBadge(treatment.status)}
+                                            {getStatusBadge(treatment.status, treatment.approval_status, treatment.assigned_staff_name, treatment.rejection_reason)}
                                         </div>
 
-                                        {/* Détails */}
+                                        {treatment.approval_status === 'rejected' && treatment.rejection_reason && (
+                                            <div className="mb-3 p-2.5 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-xs text-red-700 dark:text-red-300">
+                                                <span className="font-semibold">{isRTL ? 'سبب الرفض: ' : 'Motif : '}</span>
+                                                {treatment.rejection_reason}
+                                            </div>
+                                        )}
+
+                                        {treatment.approval_status === 'pending_approval' && (
+                                            <div className="mb-3 p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-200">
+                                                ⚠️ {isRTL
+                                                    ? 'في انتظار قبول الإدارة صباحاً وتعيين مربية. لن يتمكن طفلك من تناول الدواء حتى تتم الموافقة.'
+                                                    : 'En attente de validation par la direction ce matin. Votre enfant ne pourra pas recevoir son médicament sans approbation.'}
+                                            </div>
+                                        )}
                                         <div className={`p-3 rounded-lg mb-3 ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}>
                                             <div className="grid grid-cols-2 gap-3 text-sm">
                                                 <div>

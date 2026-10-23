@@ -51,44 +51,63 @@ async function isWorkingDay(dateStr) {
 }
 
 /**
- * Vérifie si aucune présence n'a encore été enregistrée aujourd'hui et alerte admin/staff
+ * Vérifie les alertes présences programmées pour la minute courante
  */
 async function checkAttendanceRecorded() {
   try {
     const now = new Date();
     const todayStr = new Intl.DateTimeFormat('fr-CA', { timeZone: TIMEZONE }).format(now);
+    const timeParts = new Intl.DateTimeFormat('fr-FR', {
+      timeZone: TIMEZONE,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }).format(now); // ex: "08:30"
+    
+    // Jour de la semaine en Tunis (1 = Lundi, 6 = Samedi, 0 = Dimanche)
+    const dayOfWeek = new Date(`${todayStr}T12:00:00`).getDay();
+    if (dayOfWeek === 0) return; // Fermé le dimanche
 
     if (!(await isWorkingDay(todayStr))) {
       return;
     }
 
-    // La table `attendance` n'a pas de colonne `status` : une absence n'est
-    // jamais persistée, seule l'arrivée (`check_in_time`) l'est. On considère
-    // donc qu'"au moins une présence a été pointée" dès qu'une ligne a un check-in.
+    // Vérifier si des présences ont déjà été pointées aujourd'hui
     const attendanceResult = await db.query(`
       SELECT 1 FROM attendance WHERE date = $1 AND check_in_time IS NOT NULL LIMIT 1
     `, [todayStr]);
 
     if (attendanceResult.rows.length > 0) {
-      return; // Au moins une présence ou absence déjà enregistrée
+      return; // Présences déjà commencées
     }
 
-    // Garde-fou anti-doublon : ne pas renvoyer l'alerte plusieurs fois le même jour
-    const alreadySent = await db.query(`
-      SELECT 1 FROM notifications
-      WHERE type = 'attendance_not_recorded' AND created_at::date = $1::date
-      LIMIT 1
-    `, [todayStr]);
-    if (alreadySent.rows.length > 0) return;
+    // Récupérer les utilisateurs (admin/staff) devant recevoir un rappel à CETTE minute
+    // et qui n'ont pas encore été notifiés aujourd'hui
+    const usersToNotify = await db.query(`
+      SELECT u.id, u.first_name, COALESCE(p.attendance_reminder_time, '08:30') as scheduled_time
+      FROM users u
+      LEFT JOIN user_notification_preferences p ON u.id = p.user_id
+      WHERE u.role IN ('admin', 'staff', 'developer')
+        AND u.is_active = true
+        AND COALESCE(p.attendance_reminder_enabled, true) = true
+        AND (
+          p.attendance_reminder_days IS NULL 
+          OR $1 = ANY(p.attendance_reminder_days)
+        )
+        AND COALESCE(p.attendance_reminder_time, '08:30') = $2
+        AND NOT EXISTS (
+          SELECT 1 FROM notifications n
+          WHERE n.user_id = u.id
+            AND n.type = 'attendance_not_recorded'
+            AND n.created_at::date = $3::date
+        )
+    `, [dayOfWeek, timeParts, todayStr]);
 
-    const staffResult = await db.query(`
-      SELECT id FROM users WHERE role IN ('admin', 'staff') AND is_active = true
-    `);
-    const staffIds = staffResult.rows.map(r => r.id);
+    const staffIds = usersToNotify.rows.map(r => r.id);
     if (staffIds.length === 0) return;
 
     const title = '⚠️ Aucune présence enregistrée';
-    const message = "Aucune présence n'a encore été enregistrée aujourd'hui (8h30). Pensez à pointer les arrivées des enfants.";
+    const message = `Aucune présence n'a encore été enregistrée aujourd'hui (${timeParts}). Pensez à pointer les arrivées des enfants.`;
 
     try {
       const insertSql = `
@@ -98,7 +117,7 @@ async function checkAttendanceRecorded() {
       const params = staffIds.flatMap(id => [id, title, message]);
       await db.query(insertSql, params);
     } catch (dbErr) {
-      console.error('⚠️ [CRON PRÉSENCE 8H30] Erreur insertion notification DB:', dbErr.message);
+      console.error('⚠️ [CRON PRÉSENCE] Erreur insertion notification DB:', dbErr.message);
     }
 
     try {
@@ -108,12 +127,12 @@ async function checkAttendanceRecorded() {
         url: '/dashboard/attendance',
         tag: 'attendance-reminder'
       });
-      console.log(`⚠️ [CRON PRÉSENCE 8H30] Alerte Web Push envoyée à ${staffIds.length} admin(s)/staff`);
+      console.log(`⚠️ [CRON PRÉSENCE ${timeParts}] Alerte Web Push envoyée à ${staffIds.length} utilisateur(s)`);
     } catch (pushErr) {
-      console.error('❌ [CRON PRÉSENCE 8H30] Erreur envoi Web Push:', pushErr.message);
+      console.error('❌ [CRON PRÉSENCE] Erreur envoi Web Push:', pushErr.message);
     }
   } catch (error) {
-    console.error('❌ [CRON PRÉSENCE 8H30] Erreur vérification présences:', error.message);
+    console.error('❌ [CRON PRÉSENCE] Erreur vérification présences:', error.message);
   }
 }
 
@@ -121,17 +140,16 @@ let attendanceReminderJob = null;
 
 const startAttendanceReminderJob = () => {
   try {
-    // Du lundi au samedi à 8h30 (le dimanche est exclu nativement, le samedi
-    // fermé est filtré dynamiquement par isWorkingDay())
-    attendanceReminderJob = cron.schedule('30 8 * * 1-6', () => {
-      console.log('⏰ [CRON PRÉSENCE 8H30] Vérification des présences du jour...');
+    // S'exécute chaque minute entre 06h00 et 11h59 du lundi au samedi
+    // pour distribuer les alertes personnalisées selon l'heure choisie par chaque staff/admin
+    attendanceReminderJob = cron.schedule('* 6-11 * * 1-6', () => {
       checkAttendanceRecorded();
     }, {
       scheduled: true,
       timezone: TIMEZONE
     });
 
-    console.log('⚠️ [CRON PRÉSENCE 8H30] Job d\'alerte présences non enregistrées initialisé ✅');
+    console.log('⏰ [CRON PRÉSENCE] Job d\'alerte présences programmables initialisé (06h-12h, /min) ✅');
     return true;
   } catch (error) {
     console.error('❌ Erreur démarrage job alerte présences:', error.message);

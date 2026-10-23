@@ -15,8 +15,11 @@ import { useAuth } from '../../hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { useDialogContext } from '../../contexts/DialogContext';
 import ToggleSwitch from '../../components/ui/ToggleSwitch';
+import useIsMobile from '../../hooks/useIsMobile';
+import MobileSettingsView from '../../components/mobile/MobileSettingsView';
 
 const StaffSettingsPage = () => {
+    const isMobile = useIsMobile();
     const { isRTL, currentLanguage, toggleLanguage } = useLanguage();
     const { theme, toggleTheme } = useTheme();
     const { user } = useAuth();
@@ -45,6 +48,14 @@ const StaffSettingsPage = () => {
         }));
         dialog.success(isRTL ? 'تم حفظ الإعدادات' : 'Paramètres enregistrés');
     };
+
+    if (isMobile) {
+        return (
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+                <MobileSettingsView />
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6">

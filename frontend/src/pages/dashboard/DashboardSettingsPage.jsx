@@ -35,9 +35,13 @@ import { convertToISO, convertFromISO } from '../../utils/dateUtils';
 import ToggleSwitch from '../../components/ui/ToggleSwitch';
 import HolidayPoliciesManager from '../../components/HolidayPoliciesManager';
 import API_CONFIG from '../../config/api';
+import useIsMobile from '../../hooks/useIsMobile';
+import MobileSettingsView from '../../components/mobile/MobileSettingsView';
 
 const DashboardSettingsPage = () => {
   const location = useLocation();
+  const isMobile = useIsMobile();
+  const [forceDesktopView, setForceDesktopView] = useState(false);
   const { isRTL, currentLanguage, toggleLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
   const { user } = useAuth();
@@ -910,9 +914,33 @@ const DashboardSettingsPage = () => {
     );
   }
 
+  // Vue Mobile épurée par défaut sur téléphone
+  const isTargetingHolidays = location.hash === '#section-holidays' || location.hash === '#holidays-section';
+  if (isMobile && !forceDesktopView && !isTargetingHolidays) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <MobileSettingsView onSwitchToDesktopView={() => setForceDesktopView(true)} />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6">
       <div className="max-w-7xl mx-auto space-y-6">
+        {/* Bandeau de retour au mode mobile si forcé */}
+        {isMobile && forceDesktopView && (
+          <div className="bg-primary-50 dark:bg-primary-950/40 border border-primary-200 dark:border-primary-800 rounded-xl p-3 flex items-center justify-between">
+            <span className="text-xs text-primary-800 dark:text-primary-200 font-medium">
+              {isRTL ? 'وضع الحاسوب الكامل مفعّل' : 'Mode configuration complète actif'}
+            </span>
+            <button
+              onClick={() => setForceDesktopView(false)}
+              className="text-xs font-semibold px-3 py-1 rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors"
+            >
+              {isRTL ? 'العودة للوضع المبسّط' : 'Vue mobile simplifiée'}
+            </button>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Informations générales */}

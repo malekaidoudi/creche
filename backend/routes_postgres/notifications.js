@@ -3,6 +3,13 @@ const { body, validationResult } = require('express-validator');
 const router = express.Router();
 const db = require('../config/db_postgres');
 const auth = require('../middleware/auth');
+const notificationPreferences = require('../controllers/notificationPreferencesController');
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PRÉFÉRENCES DE NOTIFICATIONS (Alerte présence programmée, etc.)
+// ═══════════════════════════════════════════════════════════════════════════
+router.get('/preferences', auth.authenticateToken, notificationPreferences.getPreferences);
+router.put('/preferences', auth.authenticateToken, notificationPreferences.updatePreferences);
 
 // GET /api/notifications - Récupérer les notifications de l'utilisateur connecté
 router.get('/', auth.authenticateToken, async (req, res) => {

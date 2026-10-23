@@ -26,6 +26,19 @@ router.put('/:id', authenticateToken, treatmentsController.updateTreatment);
 router.delete('/:id', authenticateToken, treatmentsController.cancelTreatment);
 
 // ═══════════════════════════════════════════════════════════════════════════
+// ROUTES DIRECTION / ADMIN (Approbation & Assignation)
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Récupérer les demandes en attente de validation
+router.get('/pending', authenticateToken, requireRole('admin', 'developer'), treatmentsController.getPendingTreatments);
+
+// Valider une demande et assigner à un membre du staff
+router.put('/:id/approve', authenticateToken, requireRole('admin', 'developer'), treatmentsController.approveTreatment);
+
+// Refuser une demande de traitement
+router.put('/:id/reject', authenticateToken, requireRole('admin', 'developer'), treatmentsController.rejectTreatment);
+
+// ═══════════════════════════════════════════════════════════════════════════
 // ROUTES STAFF
 // ═══════════════════════════════════════════════════════════════════════════
 

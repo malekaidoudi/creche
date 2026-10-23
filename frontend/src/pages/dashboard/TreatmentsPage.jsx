@@ -56,11 +56,21 @@ const TreatmentsPage = () => {
     };
 
     const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState('today'); // 'today' | 'pending'
     const [treatments, setTreatments] = useState([]);
+    const [pendingTreatments, setPendingTreatments] = useState([]);
+    const [staffMembers, setStaffMembers] = useState([]);
+    const [assignedStaffMap, setAssignedStaffMap] = useState({});
     const [administering, setAdministering] = useState(null);
+    const [approvingId, setApprovingId] = useState(null);
+    const [rejectingId, setRejectingId] = useState(null);
+    const [rejectReason, setRejectReason] = useState('');
+    const [showRejectModal, setShowRejectModal] = useState(false);
     const [notes, setNotes] = useState('');
     const [showNotesModal, setShowNotesModal] = useState(false);
     const [selectedTreatment, setSelectedTreatment] = useState(null);
+
+    const isAdmin = user?.role === 'admin' || user?.role === 'developer';
 
     const loadTreatments = useCallback(async () => {
         try {
@@ -77,11 +87,83 @@ const TreatmentsPage = () => {
         }
     }, []);
 
+    const loadPendingTreatments = useCallback(async () => {
+        if (!isAdmin) return;
+        try {
+            const res = await api.get('/api/treatments/pending');
+            if (res.data?.success) {
+                setPendingTreatments(res.data.pending_treatments || []);
+            }
+        } catch (err) {
+            console.error('Erreur chargement demandes en attente:', err);
+        }
+    }, [isAdmin]);
+
+    const loadStaffMembers = useCallback(async () => {
+        if (!isAdmin) return;
+        try {
+            const res = await api.get('/api/users?role=staff');
+            if (res.data?.success) {
+                const members = (res.data.users || []).filter(u => u.role === 'staff' || u.role === 'admin');
+                setStaffMembers(members);
+            }
+        } catch (err) {
+            console.error('Erreur chargement staff:', err);
+        }
+    }, [isAdmin]);
+
     useEffect(() => {
         loadTreatments();
-        const interval = setInterval(loadTreatments, 60000);
+        loadPendingTreatments();
+        loadStaffMembers();
+        const interval = setInterval(() => {
+            loadTreatments();
+            loadPendingTreatments();
+        }, 60000);
         return () => clearInterval(interval);
-    }, [loadTreatments]);
+    }, [loadTreatments, loadPendingTreatments, loadStaffMembers]);
+
+    const handleApprove = async (treatmentId) => {
+        const staffId = assignedStaffMap[treatmentId];
+        if (!staffId) {
+            toast.error(isRTL ? 'يرجى اختيار مربية من الفريق' : 'Veuillez sélectionner un membre du staff');
+            return;
+        }
+
+        try {
+            setApprovingId(treatmentId);
+            const res = await api.put(`/api/treatments/${treatmentId}/approve`, {
+                assigned_staff_id: staffId
+            });
+            if (res.data?.success) {
+                toast.success(isRTL ? 'تم قبول العلاج وتعيين المهمة بنجاح' : 'Traitement validé et assigné avec succès !');
+                loadPendingTreatments();
+                loadTreatments();
+            }
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Erreur lors de la validation');
+        } finally {
+            setApprovingId(null);
+        }
+    };
+
+    const handleReject = async () => {
+        if (!rejectingId) return;
+        try {
+            const res = await api.put(`/api/treatments/${rejectingId}/reject`, {
+                rejection_reason: rejectReason || (isRTL ? 'طلب غير مستوفي للشروط' : 'Demande non conforme')
+            });
+            if (res.data?.success) {
+                toast.success(isRTL ? 'تم رفض الطلب وإعلام الولي' : 'Demande refusée et parent notifié');
+                setShowRejectModal(false);
+                setRejectingId(null);
+                setRejectReason('');
+                loadPendingTreatments();
+            }
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Erreur lors du refus');
+        }
+    };
 
     const handleAdminister = async (treatmentId, scheduledTime = null) => {
         try {
@@ -154,16 +236,235 @@ const TreatmentsPage = () => {
                         <ArrowLeft size={24} color={dirColors.text} />
                     </button>
                     <span style={{ fontSize: 18, fontWeight: 600, color: dirColors.text }}>
-                        💊 Traitements du jour
+                        💊 Traitements Médicaux
                     </span>
-                    <button onClick={loadTreatments} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+                    <button onClick={() => { loadTreatments(); loadPendingTreatments(); }} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
                         <RefreshCw size={24} color={dirColors.text} />
                     </button>
                 </div>
 
+                {/* Onglets Direction / Staff */}
+                {isAdmin && (
+                    <div style={{ display: 'flex', padding: '8px 16px', gap: 8, backgroundColor: dirColors.card }}>
+                        <button
+                            onClick={() => setActiveTab('today')}
+                            style={{
+                                flex: 1,
+                                padding: '8px 12px',
+                                borderRadius: 10,
+                                border: 'none',
+                                fontSize: 13,
+                                fontWeight: 600,
+                                backgroundColor: activeTab === 'today' ? dirColors.primary : dirColors.cardLight,
+                                color: dirColors.text,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 6
+                            }}
+                        >
+                            <span>💊 Du jour</span>
+                            <span style={{ fontSize: 11, padding: '2px 6px', borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.2)' }}>
+                                {treatments.length}
+                            </span>
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('pending')}
+                            style={{
+                                flex: 1,
+                                padding: '8px 12px',
+                                borderRadius: 10,
+                                border: 'none',
+                                fontSize: 13,
+                                fontWeight: 600,
+                                backgroundColor: activeTab === 'pending' ? dirColors.warning : dirColors.cardLight,
+                                color: activeTab === 'pending' ? '#000' : dirColors.text,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 6
+                            }}
+                        >
+                            <span>📋 À valider</span>
+                            {pendingTreatments.length > 0 && (
+                                <span style={{
+                                    fontSize: 11,
+                                    padding: '2px 6px',
+                                    borderRadius: 8,
+                                    backgroundColor: activeTab === 'pending' ? '#000' : dirColors.warning,
+                                    color: activeTab === 'pending' ? '#fff' : '#000',
+                                    fontWeight: 700
+                                }}>
+                                    {pendingTreatments.length}
+                                </span>
+                            )}
+                        </button>
+                    </div>
+                )}
+
                 {/* Contenu */}
                 <div style={{ padding: 16, paddingBottom: 100 }}>
-                    {treatments.length === 0 ? (
+                    {activeTab === 'pending' ? (
+                        /* VUE DEMANDES EN ATTENTE (POUR L'ADMIN LE MATIN) */
+                        pendingTreatments.length === 0 ? (
+                            <div style={{ textAlign: 'center', paddingTop: 60, paddingBottom: 60 }}>
+                                <CheckCircle size={64} color={dirColors.success} style={{ margin: '0 auto' }} />
+                                <p style={{ fontSize: 18, fontWeight: 600, color: dirColors.text, marginTop: 16 }}>
+                                    Aucune demande en attente
+                                </p>
+                                <p style={{ fontSize: 14, color: dirColors.textSecondary, marginTop: 8 }}>
+                                    Toutes les demandes de médicaments des parents ont été traitées.
+                                </p>
+                            </div>
+                        ) : (
+                            pendingTreatments.map((t) => (
+                                <div
+                                    key={t.id}
+                                    style={{
+                                        backgroundColor: dirColors.card,
+                                        borderRadius: 16,
+                                        padding: 16,
+                                        marginBottom: 16,
+                                        border: `1px solid ${dirColors.warning}40`
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
+                                        <div style={{
+                                            width: 44,
+                                            height: 44,
+                                            borderRadius: 22,
+                                            backgroundColor: dirColors.warning + '25',
+                                            display: 'flex',
+                                            justifyContent: 'center',
+                                            alignItems: 'center',
+                                            marginRight: 10,
+                                        }}>
+                                            <Baby size={22} color={dirColors.warning} />
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <p style={{ fontSize: 16, fontWeight: 700, color: dirColors.text, margin: 0 }}>
+                                                {t.child_first_name} {t.child_last_name}
+                                            </p>
+                                            <p style={{ fontSize: 12, color: dirColors.textSecondary, margin: 0 }}>
+                                                Parent: {t.parent_first_name} {t.parent_last_name} {t.parent_phone ? `(${t.parent_phone})` : ''}
+                                            </p>
+                                        </div>
+                                        <span style={{
+                                            backgroundColor: dirColors.warning + '20',
+                                            color: dirColors.warning,
+                                            padding: '4px 8px',
+                                            borderRadius: 8,
+                                            fontSize: 11,
+                                            fontWeight: 600
+                                        }}>
+                                            En attente
+                                        </span>
+                                    </div>
+
+                                    {/* Infos médicament */}
+                                    <div style={{ backgroundColor: dirColors.cardLight, borderRadius: 10, padding: 12, marginBottom: 12 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                                            <span style={{ fontSize: 15, fontWeight: 700, color: dirColors.text }}>
+                                                💊 {t.medication_name}
+                                            </span>
+                                            <span style={{ fontSize: 14, fontWeight: 600, color: dirColors.primary }}>
+                                                {t.dose}
+                                            </span>
+                                        </div>
+                                        <p style={{ fontSize: 12, color: dirColors.textSecondary, margin: '2px 0' }}>
+                                            Période: {new Date(t.start_date).toLocaleDateString()} au {new Date(t.end_date).toLocaleDateString()} ({t.duration_days} jours)
+                                        </p>
+                                        {t.notes && (
+                                            <p style={{ fontSize: 12, color: '#CBD5E1', marginTop: 4, fontStyle: 'italic' }}>
+                                                Note parent: "{t.notes}"
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    {/* Sélecteur de staff */}
+                                    <div style={{ marginBottom: 12 }}>
+                                        <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: dirColors.textSecondary, marginBottom: 6 }}>
+                                            👩‍🏫 Assigner à une éducatrice :
+                                        </label>
+                                        <select
+                                            value={assignedStaffMap[t.id] || ''}
+                                            onChange={(e) => setAssignedStaffMap({ ...assignedStaffMap, [t.id]: e.target.value })}
+                                            style={{
+                                                width: '100%',
+                                                padding: '10px 12px',
+                                                borderRadius: 10,
+                                                backgroundColor: dirColors.cardLight,
+                                                color: dirColors.text,
+                                                border: `1px solid ${assignedStaffMap[t.id] ? dirColors.primary : '#475569'}`,
+                                                fontSize: 14,
+                                                outline: 'none'
+                                            }}
+                                        >
+                                            <option value="">-- Choisir un membre de l'équipe --</option>
+                                            {staffMembers.map((s) => (
+                                                <option key={s.id} value={s.id}>
+                                                    {s.first_name} {s.last_name} ({s.staff_position || (s.role === 'admin' ? 'Direction' : 'Éducatrice')})
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* Boutons d'action */}
+                                    <div style={{ display: 'flex', gap: 8 }}>
+                                        <button
+                                            onClick={() => {
+                                                setRejectingId(t.id);
+                                                setShowRejectModal(true);
+                                            }}
+                                            style={{
+                                                flex: 1,
+                                                padding: '10px',
+                                                borderRadius: 10,
+                                                border: 'none',
+                                                backgroundColor: '#EF444420',
+                                                color: '#EF4444',
+                                                fontWeight: 600,
+                                                fontSize: 13,
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            Refuser
+                                        </button>
+                                        <button
+                                            onClick={() => handleApprove(t.id)}
+                                            disabled={approvingId === t.id}
+                                            style={{
+                                                flex: 2,
+                                                padding: '10px',
+                                                borderRadius: 10,
+                                                border: 'none',
+                                                backgroundColor: dirColors.success,
+                                                color: '#fff',
+                                                fontWeight: 700,
+                                                fontSize: 13,
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                gap: 6
+                                            }}
+                                        >
+                                            {approvingId === t.id ? (
+                                                <LoadingSpinner size="sm" />
+                                            ) : (
+                                                <>
+                                                    <Check size={16} />
+                                                    Valider & Assigner
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            ))
+                        )
+                    ) : treatments.length === 0 ? (
                         <div style={{ textAlign: 'center', paddingTop: 60, paddingBottom: 60 }}>
                             <CheckCircle size={64} color={dirColors.success} style={{ margin: '0 auto' }} />
                             <p style={{ fontSize: 18, fontWeight: 600, color: dirColors.text, marginTop: 16 }}>
@@ -462,6 +763,99 @@ const TreatmentsPage = () => {
                                             Confirmer
                                         </>
                                     )}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+
+                {/* Modal refus - style mobile */}
+                {showRejectModal && (
+                    <div style={{
+                        position: 'fixed',
+                        inset: 0,
+                        backgroundColor: 'rgba(0,0,0,0.7)',
+                        display: 'flex',
+                        alignItems: 'flex-end',
+                        zIndex: 55,
+                    }}>
+                        <motion.div
+                            initial={{ y: '100%' }}
+                            animate={{ y: 0 }}
+                            style={{
+                                width: '100%',
+                                backgroundColor: dirColors.card,
+                                borderTopLeftRadius: 24,
+                                borderTopRightRadius: 24,
+                                padding: 20,
+                            }}
+                        >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                                <h3 style={{ fontSize: 18, fontWeight: 700, color: dirColors.danger, margin: 0 }}>
+                                    Refuser la demande de médicament
+                                </h3>
+                                <button
+                                    onClick={() => setShowRejectModal(false)}
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                                >
+                                    <X size={20} color={dirColors.textSecondary} />
+                                </button>
+                            </div>
+
+                            <p style={{ fontSize: 13, color: dirColors.textSecondary, marginBottom: 12 }}>
+                                Veuillez indiquer au parent le motif du refus (ex: ordonnance manquante, posologie non claire...) :
+                            </p>
+
+                            <textarea
+                                value={rejectReason}
+                                onChange={(e) => setRejectReason(e.target.value)}
+                                placeholder="Motif du refus..."
+                                rows={3}
+                                style={{
+                                    width: '100%',
+                                    backgroundColor: dirColors.cardLight,
+                                    border: `1px solid ${dirColors.cardLight}`,
+                                    borderRadius: 12,
+                                    padding: 12,
+                                    color: dirColors.text,
+                                    fontSize: 15,
+                                    resize: 'none',
+                                    marginBottom: 16
+                                }}
+                            />
+
+                            <div style={{ display: 'flex', gap: 12 }}>
+                                <button
+                                    onClick={() => setShowRejectModal(false)}
+                                    style={{
+                                        flex: 1,
+                                        backgroundColor: dirColors.cardLight,
+                                        color: dirColors.text,
+                                        padding: '14px',
+                                        borderRadius: 12,
+                                        border: 'none',
+                                        fontSize: 15,
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                    }}
+                                >
+                                    Annuler
+                                </button>
+                                <button
+                                    onClick={handleReject}
+                                    style={{
+                                        flex: 1,
+                                        backgroundColor: dirColors.danger,
+                                        color: 'white',
+                                        padding: '14px',
+                                        borderRadius: 12,
+                                        border: 'none',
+                                        fontSize: 15,
+                                        fontWeight: 700,
+                                        cursor: 'pointer',
+                                    }}
+                                >
+                                    Confirmer le refus
                                 </button>
                             </div>
                         </motion.div>

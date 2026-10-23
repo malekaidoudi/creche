@@ -571,12 +571,23 @@ const server = app.listen(PORT, () => {
     console.error('❌ Erreur démarrage job rappel jours fériés:', error.message);
   }
 
-  // Démarrer le job d'alerte présences non enregistrées (jours ouvrés, 8h30)
+  // Démarrer le job d'alerte présences non enregistrées (jours ouvrés, programmable)
   try {
+    const { initNotificationPreferencesTable } = require('./controllers/notificationPreferencesController');
+    initNotificationPreferencesTable().catch(e => console.error('Table prefs init error:', e.message));
+
     const { startAttendanceReminderJob } = require('./jobs/attendanceReminderJob');
     startAttendanceReminderJob();
   } catch (error) {
     console.error('❌ Erreur démarrage job alerte présences:', error.message);
+  }
+
+  // Démarrer le job de résumé du soir pour les parents (19h00)
+  try {
+    const { startDailyReportEveningJob } = require('./jobs/dailyReportEveningJob');
+    startDailyReportEveningJob();
+  } catch (error) {
+    console.error('❌ Erreur démarrage job résumé du soir:', error.message);
   }
 });
 
