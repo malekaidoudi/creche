@@ -10,6 +10,7 @@ const notificationPreferences = require('../controllers/notificationPreferencesC
 // ═══════════════════════════════════════════════════════════════════════════
 router.get('/preferences', auth.authenticateToken, notificationPreferences.getPreferences);
 router.put('/preferences', auth.authenticateToken, notificationPreferences.updatePreferences);
+router.post('/preferences/test', auth.authenticateToken, notificationPreferences.testReminder);
 
 // GET /api/notifications - Récupérer les notifications de l'utilisateur connecté
 router.get('/', auth.authenticateToken, async (req, res) => {

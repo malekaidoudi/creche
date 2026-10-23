@@ -78,32 +78,53 @@ async function checkAttendanceRecorded() {
     `, [todayStr]);
 
     if (attendanceResult.rows.length > 0) {
-      return; // Présences déjà commencées
+      // Présences déjà commencées pour aujourd'hui
+      return;
     }
 
-    // Récupérer les utilisateurs (admin/staff) devant recevoir un rappel à CETTE minute
-    // et qui n'ont pas encore été notifiés aujourd'hui
-    const usersToNotify = await db.query(`
-      SELECT u.id, u.first_name, COALESCE(p.attendance_reminder_time, '08:30') as scheduled_time
+    // Récupérer les utilisateurs (admin/staff/developer) devant être notifiés
+    const usersResult = await db.query(`
+      SELECT u.id, u.first_name, 
+             COALESCE(p.attendance_reminder_time, '08:30') as scheduled_time,
+             COALESCE(p.attendance_reminder_days, '{1,2,3,4,5,6}') as scheduled_days,
+             COALESCE(p.timezone, 'Africa/Tunis') as user_tz
       FROM users u
       LEFT JOIN user_notification_preferences p ON u.id = p.user_id
       WHERE u.role IN ('admin', 'staff', 'developer')
         AND u.is_active = true
         AND COALESCE(p.attendance_reminder_enabled, true) = true
-        AND (
-          p.attendance_reminder_days IS NULL 
-          OR $1 = ANY(p.attendance_reminder_days)
-        )
-        AND COALESCE(p.attendance_reminder_time, '08:30') = $2
         AND NOT EXISTS (
           SELECT 1 FROM notifications n
           WHERE n.user_id = u.id
             AND n.type = 'attendance_not_recorded'
-            AND n.created_at::date = $3::date
+            AND n.created_at::date = $1::date
         )
-    `, [dayOfWeek, timeParts, todayStr]);
+    `, [todayStr]);
 
-    const staffIds = usersToNotify.rows.map(r => r.id);
+    const staffIds = [];
+    for (const u of usersResult.rows) {
+      const tz = u.user_tz || TIMEZONE;
+      let userTime = '';
+      let userDay = dayOfWeek;
+      try {
+        userTime = new Intl.DateTimeFormat('fr-FR', {
+          timeZone: tz,
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        }).format(now);
+        const dayInTz = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short' }).format(now);
+        const dayMap = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+        userDay = dayMap[dayInTz] !== undefined ? dayMap[dayInTz] : dayOfWeek;
+      } catch (e) {
+        userTime = timeParts;
+      }
+
+      if (u.scheduled_time === userTime && Array.isArray(u.scheduled_days) && u.scheduled_days.includes(userDay)) {
+        staffIds.push(u.id);
+      }
+    }
+
     if (staffIds.length === 0) return;
 
     const title = '⚠️ Aucune présence enregistrée';
@@ -140,16 +161,15 @@ let attendanceReminderJob = null;
 
 const startAttendanceReminderJob = () => {
   try {
-    // S'exécute chaque minute entre 06h00 et 11h59 du lundi au samedi
-    // pour distribuer les alertes personnalisées selon l'heure choisie par chaque staff/admin
-    attendanceReminderJob = cron.schedule('* 6-11 * * 1-6', () => {
+    // S'exécute chaque minute pour distribuer les alertes selon l'heure personnalisée
+    attendanceReminderJob = cron.schedule('* * * * *', () => {
       checkAttendanceRecorded();
     }, {
       scheduled: true,
       timezone: TIMEZONE
     });
 
-    console.log('⏰ [CRON PRÉSENCE] Job d\'alerte présences programmables initialisé (06h-12h, /min) ✅');
+    console.log('⏰ [CRON PRÉSENCE] Job d\'alerte présences programmables initialisé (24/7, /min) ✅');
     return true;
   } catch (error) {
     console.error('❌ Erreur démarrage job alerte présences:', error.message);

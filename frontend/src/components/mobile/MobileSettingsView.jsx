@@ -46,6 +46,7 @@ const MobileSettingsView = ({ onSwitchToDesktopView }) => {
   // États des préférences notifications
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [testingNotif, setTestingNotif] = useState(false);
   const [attendanceReminderEnabled, setAttendanceReminderEnabled] = useState(true);
   const [attendanceReminderTime, setAttendanceReminderTime] = useState('08:30');
   const [attendanceReminderDays, setAttendanceReminderDays] = useState([1, 2, 3, 4, 5, 6]);
@@ -80,6 +81,7 @@ const MobileSettingsView = ({ onSwitchToDesktopView }) => {
   const handleSavePreferences = async (overrides = {}) => {
     try {
       setSaving(true);
+      const userTz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Africa/Tunis';
       const payload = {
         attendance_reminder_enabled:
           overrides.attendance_reminder_enabled !== undefined
@@ -90,7 +92,8 @@ const MobileSettingsView = ({ onSwitchToDesktopView }) => {
         email_notifications:
           overrides.email_notifications !== undefined
             ? overrides.email_notifications
-            : emailNotifications
+            : emailNotifications,
+        timezone: userTz
       };
 
       await api.put('/api/notifications/preferences', payload);
@@ -109,6 +112,29 @@ const MobileSettingsView = ({ onSwitchToDesktopView }) => {
       );
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Tester l'envoi immédiat de notification (In-app + Web Push)
+  const handleTestNotification = async () => {
+    try {
+      setTestingNotif(true);
+      const res = await api.post('/api/notifications/preferences/test');
+      if (res.data?.success) {
+        dialog.success(
+          res.data.message ||
+            (isRTL
+              ? 'تم إرسال إشعار تجريبي بنجاح!'
+              : 'Notification test envoyée avec succès !')
+        );
+      }
+    } catch (err) {
+      console.error('Erreur test notification:', err);
+      dialog.error(
+        isRTL ? 'تعذر إرسال الإشعار التجريبي' : "Erreur lors de l'envoi du test"
+      );
+    } finally {
+      setTestingNotif(false);
     }
   };
 
@@ -316,80 +342,26 @@ const MobileSettingsView = ({ onSwitchToDesktopView }) => {
             animate={{ opacity: 1, height: 'auto' }}
             className="space-y-3.5 pt-3 border-t border-gray-100 dark:border-gray-700/60"
           >
-            {/* Boîte de réglage au design moderne */}
+            {/* Boîte de réglage au design moderne et épuré */}
             <div className="bg-gray-50/80 dark:bg-gray-900/50 rounded-xl p-3.5 border border-gray-100 dark:border-gray-700/40 space-y-3.5">
               {/* Heure du rappel */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-                    {isRTL ? 'ساعة التنبيه (صباحاً)' : 'Heure du rappel (matin)'}
-                  </label>
-                  <input
-                    type="time"
-                    value={attendanceReminderTime}
-                    onChange={(e) => setAttendanceReminderTime(e.target.value)}
-                    className="px-3 py-1.5 text-sm font-bold tracking-wider rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-emerald-400 shadow-xs focus:ring-2 focus:ring-emerald-500 outline-none cursor-pointer"
-                  />
-                </div>
-
-                {/* Suggestions rapides */}
-                <div className="flex items-center gap-1.5 pt-0.5">
-                  <span className="text-[11px] text-gray-400 dark:text-gray-500 mr-1 rtl:ml-1 rtl:mr-0">
-                    {isRTL ? 'سريع :' : 'Rapide :'}
-                  </span>
-                  {['08:00', '08:30', '09:00', '09:30'].map((preset) => {
-                    const isCurrent = attendanceReminderTime === preset;
-                    return (
-                      <button
-                        key={preset}
-                        type="button"
-                        onClick={() => setAttendanceReminderTime(preset)}
-                        className={`px-2 py-0.5 text-[11px] font-medium rounded-lg transition-all ${
-                          isCurrent
-                            ? 'bg-emerald-500 text-white shadow-xs font-semibold'
-                            : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:border-emerald-300 dark:hover:border-emerald-600'
-                        }`}
-                      >
-                        {preset}
-                      </button>
-                    );
-                  })}
-                </div>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                  {isRTL ? 'ساعة التنبيه (صباحاً)' : 'Heure du rappel (matin)'}
+                </label>
+                <input
+                  type="time"
+                  value={attendanceReminderTime}
+                  onChange={(e) => setAttendanceReminderTime(e.target.value)}
+                  className="px-3 py-1.5 text-sm font-bold tracking-wider rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-emerald-400 shadow-xs focus:ring-2 focus:ring-emerald-500 outline-none cursor-pointer"
+                />
               </div>
 
               {/* Jours actifs */}
-              <div className="pt-2.5 border-t border-gray-200/60 dark:border-gray-700/40">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-                    {isRTL ? 'أيام التنبيه' : 'Jours de rappel'}
-                  </label>
-                  <div className="flex items-center space-x-1 rtl:space-x-reverse text-[11px]">
-                    <button
-                      type="button"
-                      onClick={() => setAttendanceReminderDays([1, 2, 3, 4, 5])}
-                      className={`px-2 py-0.5 rounded transition-colors ${
-                        attendanceReminderDays.length === 5 && !attendanceReminderDays.includes(6)
-                          ? 'text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-50 dark:bg-emerald-950/40'
-                          : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
-                      }`}
-                    >
-                      {isRTL ? 'إثن - جمع' : 'Lun - Ven'}
-                    </button>
-                    <span className="text-gray-300 dark:text-gray-600">•</span>
-                    <button
-                      type="button"
-                      onClick={() => setAttendanceReminderDays([1, 2, 3, 4, 5, 6])}
-                      className={`px-2 py-0.5 rounded transition-colors ${
-                        attendanceReminderDays.length === 6
-                          ? 'text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-50 dark:bg-emerald-950/40'
-                          : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
-                      }`}
-                    >
-                      {isRTL ? 'الكل' : 'Tous'}
-                    </button>
-                  </div>
-                </div>
-
+              <div className="pt-2.5 border-t border-gray-200/60 dark:border-gray-700/40 space-y-2">
+                <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                  {isRTL ? 'أيام التنبيه' : 'Jours de rappel'}
+                </label>
                 <div className="grid grid-cols-6 gap-1.5">
                   {DAYS_OF_WEEK.map((d) => {
                     const isSelected = attendanceReminderDays.includes(d.id);
@@ -417,20 +389,37 @@ const MobileSettingsView = ({ onSwitchToDesktopView }) => {
               </div>
             </div>
 
-            {/* Bouton Sauvegarder élégant */}
-            <button
-              type="button"
-              onClick={() => handleSavePreferences()}
-              disabled={saving}
-              className="w-full flex items-center justify-center space-x-2 rtl:space-x-reverse py-2.5 px-4 rounded-xl text-xs sm:text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] transition-all shadow-sm shadow-emerald-600/20 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
-            >
-              <Save className="w-4 h-4" />
-              <span>
-                {saving
-                  ? isRTL ? 'جاري الحفظ...' : 'Enregistrement...'
-                  : isRTL ? 'حفظ إعدادات التنبيه' : "Enregistrer l'horaire"}
-              </span>
-            </button>
+            <div className="space-y-2">
+              {/* Bouton Sauvegarder élégant */}
+              <button
+                type="button"
+                onClick={() => handleSavePreferences()}
+                disabled={saving}
+                className="w-full flex items-center justify-center space-x-2 rtl:space-x-reverse py-2.5 px-4 rounded-xl text-xs sm:text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] transition-all shadow-sm shadow-emerald-600/20 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+              >
+                <Save className="w-4 h-4" />
+                <span>
+                  {saving
+                    ? isRTL ? 'جاري الحفظ...' : 'Enregistrement...'
+                    : isRTL ? 'حفظ إعدادات التنبيه' : "Enregistrer l'horaire"}
+                </span>
+              </button>
+
+              {/* Bouton Tester la notification immédiatement */}
+              <button
+                type="button"
+                onClick={handleTestNotification}
+                disabled={testingNotif}
+                className="w-full flex items-center justify-center space-x-2 rtl:space-x-reverse py-2 px-3 rounded-xl text-xs font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 border border-emerald-200/70 dark:border-emerald-800/40 transition-colors cursor-pointer"
+              >
+                <Bell className="w-3.5 h-3.5" />
+                <span>
+                  {testingNotif
+                    ? isRTL ? 'جاري إرسال التنبيه...' : 'Envoi du test en cours...'
+                    : isRTL ? 'تجربة التنبيه فوراً' : 'Tester la notification maintenant'}
+                </span>
+              </button>
+            </div>
           </motion.div>
         )}
       </motion.div>

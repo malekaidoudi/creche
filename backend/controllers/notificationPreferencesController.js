@@ -86,13 +86,19 @@ const updatePreferences = async (req, res) => {
             daily_report_reminder_enabled = true,
             daily_report_reminder_time = '19:00',
             email_notifications = true,
-            push_notifications = true
+            push_notifications = true,
+            timezone = 'Africa/Tunis'
         } = req.body;
 
         // Validation format de l'heure HH:MM
         const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
         const safeAttendanceTime = timeRegex.test(attendance_reminder_time) ? attendance_reminder_time : '08:30';
         const safeReportTime = timeRegex.test(daily_report_reminder_time) ? daily_report_reminder_time : '19:00';
+
+        // Assurer que la colonne timezone existe si table déjà créée
+        try {
+            await db.query(`ALTER TABLE user_notification_preferences ADD COLUMN IF NOT EXISTS timezone VARCHAR(50) DEFAULT 'Africa/Tunis'`);
+        } catch (_) {}
 
         const result = await db.query(`
             INSERT INTO user_notification_preferences (
@@ -104,9 +110,10 @@ const updatePreferences = async (req, res) => {
                 daily_report_reminder_time,
                 email_notifications,
                 push_notifications,
+                timezone,
                 updated_at
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
             ON CONFLICT (user_id) DO UPDATE SET
                 attendance_reminder_enabled = EXCLUDED.attendance_reminder_enabled,
                 attendance_reminder_time = EXCLUDED.attendance_reminder_time,
@@ -115,6 +122,7 @@ const updatePreferences = async (req, res) => {
                 daily_report_reminder_time = EXCLUDED.daily_report_reminder_time,
                 email_notifications = EXCLUDED.email_notifications,
                 push_notifications = EXCLUDED.push_notifications,
+                timezone = EXCLUDED.timezone,
                 updated_at = NOW()
             RETURNING *
         `, [
@@ -125,7 +133,8 @@ const updatePreferences = async (req, res) => {
             Boolean(daily_report_reminder_enabled),
             safeReportTime,
             Boolean(email_notifications),
-            Boolean(push_notifications)
+            Boolean(push_notifications),
+            timezone || 'Africa/Tunis'
         ]);
 
         return res.json({
@@ -139,8 +148,56 @@ const updatePreferences = async (req, res) => {
     }
 };
 
+/**
+ * Tester l'envoi immédiat d'une alerte de rappel (In-App + Web Push)
+ */
+const testReminder = async (req, res) => {
+    try {
+        const userId = req.user.userId || req.user.id;
+        if (!userId) {
+            return res.status(401).json({ success: false, message: 'Utilisateur non authentifié' });
+        }
+
+        const pushNotificationService = require('../services/pushNotificationService');
+        const title = '⚠️ Alerte de présence (Test)';
+        const message = "Test réussi ! Votre alerte de présence est bien configurée et prête à vous notifier si aucune présence n'est saisie.";
+
+        // 1. Notification In-App
+        await db.query(`
+            INSERT INTO notifications (user_id, title, message, type, is_read)
+            VALUES ($1, $2, $3, 'attendance_not_recorded', false)
+        `, [userId, title, message]);
+
+        // 2. Web Push
+        let pushSent = false;
+        try {
+            const pushResult = await pushNotificationService.sendPushToUser(userId, {
+                title,
+                message,
+                url: '/dashboard/attendance',
+                tag: 'attendance-test'
+            });
+            pushSent = Boolean(pushResult?.success);
+        } catch (pushErr) {
+            console.warn('⚠️ Web Push non délivré:', pushErr.message);
+        }
+
+        return res.json({
+            success: true,
+            pushSent,
+            message: pushSent
+                ? 'Notification test envoyée avec succès sur votre téléphone !'
+                : 'Notification enregistrée dans l\'application ! (Pour recevoir l\'alerte sur votre écran verrouillé, vérifiez que les Notifications Push sont actives ci-dessous)'
+        });
+    } catch (error) {
+        console.error('❌ Erreur test notification:', error.message);
+        return res.status(500).json({ success: false, message: 'Erreur lors de l\'envoi du test' });
+    }
+};
+
 module.exports = {
     initNotificationPreferencesTable,
     getPreferences,
-    updatePreferences
+    updatePreferences,
+    testReminder
 };
