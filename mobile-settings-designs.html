@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Comparatif Design - Page Paramètres Mobile (Crèche)</title>
+  <title>Design A : iOS Inset Style (Sans Emerald) - Paramètres Mobile</title>
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -78,13 +78,13 @@
         </div>
         <div>
           <h1 class="text-sm sm:text-base font-bold text-white tracking-tight flex items-center gap-2">
-            Showcase Paramètres Mobile
-            <span class="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full bg-brand-500/15 text-brand-400 border border-brand-500/30">
-              4 Prototypes
+            Design A • "iOS Inset Style"
+            <span class="text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-brand-500/15 text-brand-400 border border-brand-500/30">
+              0% Emerald (Bleu Dashboard)
             </span>
           </h1>
           <p class="text-xs text-slate-400 hidden sm:block">
-            Palette officielle du Dashboard Mobile (Navy, Slate, Cyan, Emerald)
+            Palette officielle du Dashboard Mobile (Navy, Slate, Cyan, Sky Blue)
           </p>
         </div>
       </div>
@@ -95,10 +95,10 @@
         <!-- View mode: Phone frame vs Side-by-side -->
         <div class="bg-slate-800/80 p-0.5 rounded-xl border border-slate-700/60 flex items-center text-xs">
           <button id="btnViewSingle" onclick="setViewMode('single')" class="px-2.5 py-1.5 rounded-lg font-medium transition-all bg-brand-600 text-white shadow-sm">
-            📱 Vue Smartphone
+            📱 Smartphone
           </button>
           <button id="btnViewGrid" onclick="setViewMode('grid')" class="px-2.5 py-1.5 rounded-lg font-medium text-slate-400 hover:text-white transition-all">
-            📊 Comparer les 4
+            📊 Comparer les 4 Teintes
           </button>
         </div>
 
@@ -117,19 +117,24 @@
       </div>
     </div>
 
-    <!-- Sub-bar: Design Tabs (Visible in Single view) -->
-    <div id="designTabsContainer" class="max-w-7xl mx-auto mt-3 pt-2.5 border-t border-slate-800/60 flex items-center justify-center gap-1.5 overflow-x-auto pb-1 text-xs">
-      <button onclick="selectDesign('A')" class="design-tab px-3 py-1.5 rounded-xl font-semibold transition-all border active-tab bg-brand-500/20 text-brand-300 border-brand-500/40">
-        Design A • iOS Inset Style
+    <!-- Sub-bar: Palette Variants for Design A -->
+    <div id="paletteTabsContainer" class="max-w-7xl mx-auto mt-3 pt-2.5 border-t border-slate-800/60 flex items-center justify-center gap-2 overflow-x-auto pb-1 text-xs">
+      <span class="text-slate-400 font-medium mr-1 text-[11px] hidden sm:inline">Nuances sans vert :</span>
+      <button onclick="selectTheme('brand')" id="tab_brand" class="palette-tab px-3 py-1.5 rounded-xl font-semibold transition-all border flex items-center gap-1.5 bg-brand-500/20 text-brand-300 border-brand-500/50">
+        <span class="w-2.5 h-2.5 rounded-full bg-brand-500"></span>
+        <span>Bleu Dashboard Crèche</span>
       </button>
-      <button onclick="selectDesign('B')" class="design-tab px-3 py-1.5 rounded-xl font-semibold transition-all border text-slate-400 border-transparent hover:text-white hover:bg-slate-800/60">
-        Design B • Modern Glass & Cards
+      <button onclick="selectTheme('royal')" id="tab_royal" class="palette-tab px-3 py-1.5 rounded-xl font-semibold transition-all border flex items-center gap-1.5 text-slate-400 border-transparent hover:text-white hover:bg-slate-800/60">
+        <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+        <span>Bleu Royal iOS</span>
       </button>
-      <button onclick="selectDesign('C')" class="design-tab px-3 py-1.5 rounded-xl font-semibold transition-all border text-slate-400 border-transparent hover:text-white hover:bg-slate-800/60">
-        Design C • Minimaliste & Pur
+      <button onclick="selectTheme('indigo')" id="tab_indigo" class="palette-tab px-3 py-1.5 rounded-xl font-semibold transition-all border flex items-center gap-1.5 text-slate-400 border-transparent hover:text-white hover:bg-slate-800/60">
+        <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+        <span>Indigo Moderne</span>
       </button>
-      <button onclick="selectDesign('D')" class="design-tab px-3 py-1.5 rounded-xl font-semibold transition-all border text-slate-400 border-transparent hover:text-white hover:bg-slate-800/60">
-        Design D • Dashboard Pro Widgets
+      <button onclick="selectTheme('slate')" id="tab_slate" class="palette-tab px-3 py-1.5 rounded-xl font-semibold transition-all border flex items-center gap-1.5 text-slate-400 border-transparent hover:text-white hover:bg-slate-800/60">
+        <span class="w-2.5 h-2.5 rounded-full bg-slate-300"></span>
+        <span>Slate Monochromatique</span>
       </button>
     </div>
   </header>
@@ -137,24 +142,23 @@
   <!-- MAIN WRAPPER -->
   <main class="max-w-7xl mx-auto px-4 py-8">
 
-    <!-- BANNER: HOW TO CHOOSE -->
-    <div class="mb-8 p-4 rounded-2xl bg-gradient-to-r from-brand-950/60 via-slate-900/80 to-slate-900 border border-brand-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <!-- BANNER -->
+    <div class="mb-8 p-4 rounded-2xl bg-gradient-to-r from-brand-950/60 via-slate-900/80 to-slate-900 border border-brand-500/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
       <div class="flex items-start gap-3">
-        <span class="text-2xl">💡</span>
+        <span class="text-2xl">✨</span>
         <div>
-          <h2 class="text-sm font-bold text-white">Consignes d'évaluation</h2>
+          <h2 class="text-sm font-bold text-white">Design A retenu — Couleur Emerald 100% retirée</h2>
           <p class="text-xs text-slate-300 mt-0.5 leading-relaxed">
-            Testez les boutons, les jours et le bouton <strong>"Tester la notification"</strong> pour voir l'effet réel.<br class="hidden sm:inline">
-            Dites-moi simplement lequel vous préférez : <strong>Design A, B, C ou D</strong> (ou un mélange de deux) !
+            L'alerte et les sélections utilisent désormais le <strong>bleu officiel du dashboard mobile</strong> (sans aucun vert émeraude).<br class="hidden sm:inline">
+            Cliquez sur les 4 nuances ci-dessus pour comparer la nuance de bleu ou gris qui vous plaît le plus.
           </p>
         </div>
       </div>
-      <div class="flex items-center gap-2 self-end sm:self-auto shrink-0">
-        <span class="text-xs text-slate-400">Palette Crèche :</span>
-        <span class="w-4 h-4 rounded-full bg-[#0B1120] border border-slate-700" title="Dark Slate Background #0B1120"></span>
-        <span class="w-4 h-4 rounded-full bg-[#0284C7]" title="Primary Brand Blue #0284C7"></span>
-        <span class="w-4 h-4 rounded-full bg-[#10B981]" title="Emerald Green #10B981"></span>
-        <span class="w-4 h-4 rounded-full bg-[#F59E0B]" title="Amber Accent #F59E0B"></span>
+      <div class="flex items-center gap-2 shrink-0">
+        <span class="text-xs text-slate-400">Palette active :</span>
+        <span id="bannerColorBadge" class="px-2.5 py-1 rounded-xl text-xs font-bold bg-brand-500/20 text-brand-300 border border-brand-500/30">
+          Bleu Dashboard Crèche (#0284C7)
+        </span>
       </div>
     </div>
 
@@ -178,9 +182,9 @@
           </div>
 
           <!-- Simulated Push Notification Toast (Hidden by default) -->
-          <div id="pushToast" class="hidden absolute top-3 inset-x-3 z-40 bg-slate-900/95 backdrop-blur-md rounded-2xl p-3 border border-emerald-500/40 shadow-xl shadow-black/60 animate-slide-down">
+          <div id="pushToast" class="hidden absolute top-3 inset-x-3 z-40 bg-slate-900/95 backdrop-blur-md rounded-2xl p-3 border border-brand-500/40 shadow-xl shadow-black/60 animate-slide-down">
             <div class="flex items-start gap-3">
-              <div class="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 text-sm">
+              <div id="toastIconBox" class="w-8 h-8 rounded-xl bg-brand-500/20 text-brand-400 flex items-center justify-center shrink-0 text-sm">
                 ⏰
               </div>
               <div class="flex-1 min-w-0">
@@ -198,8 +202,8 @@
           <!-- Mobile App Header -->
           <div class="px-5 py-3 border-b border-slate-800/60 flex items-center justify-between">
             <div>
-              <h2 class="text-base font-bold text-white tracking-tight" data-i18n="settings_title">Paramètres</h2>
-              <p class="text-[11px] text-slate-400" data-i18n="settings_subtitle">Préférences de votre compte mobile</p>
+              <h2 class="text-base font-bold text-white tracking-tight">Paramètres</h2>
+              <p class="text-[11px] text-slate-400">Préférences de votre compte mobile</p>
             </div>
             <div class="w-8 h-8 rounded-full bg-slate-800/80 border border-slate-700 flex items-center justify-center text-xs font-bold text-brand-400">
               MG
@@ -234,80 +238,80 @@
         </div>
       </div>
 
-      <!-- Quick Explanation of Current Design -->
-      <div id="designDescriptionBox" class="mt-6 max-w-md text-center text-xs text-slate-400 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
+      <!-- Quick Explanation of Current Theme -->
+      <div id="themeDescriptionBox" class="mt-6 max-w-md text-center text-xs text-slate-400 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
         <!-- Rendered via JS -->
       </div>
 
     </div>
 
-    <!-- CONTAINER 2: GRID COMPARISON VIEW (Hidden by default) -->
+    <!-- CONTAINER 2: GRID COMPARISON VIEW (4 Shades side-by-side) -->
     <div id="gridViewWrapper" class="hidden grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
       
-      <!-- Card Design A -->
+      <!-- Card Theme 1 : Bleu Dashboard -->
       <div class="bg-slate-900 rounded-3xl border border-slate-800 p-4 shadow-xl flex flex-col">
         <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
           <div>
-            <h3 class="text-sm font-bold text-white">Design A • iOS Inset</h3>
-            <p class="text-[11px] text-slate-400">Groupes arrondis façon Réglages Apple</p>
+            <h3 class="text-sm font-bold text-white">1. Bleu Dashboard Crèche</h3>
+            <p class="text-[11px] text-brand-400 font-medium">#0284C7 • Cyan & Sky</p>
           </div>
-          <button onclick="selectDesign('A'); setViewMode('single');" class="px-2.5 py-1 rounded-lg bg-brand-600/30 text-brand-300 hover:bg-brand-600 hover:text-white text-[11px] font-semibold transition-all">
+          <button onclick="selectTheme('brand'); setViewMode('single');" class="px-2.5 py-1 rounded-lg bg-brand-600/30 text-brand-300 hover:bg-brand-600 hover:text-white text-[11px] font-semibold transition-all">
             Zoomer 🔍
           </button>
         </div>
-        <div class="flex-1 overflow-hidden" id="gridDesignA"></div>
+        <div class="flex-1 overflow-hidden" id="gridThemeBrand"></div>
       </div>
 
-      <!-- Card Design B -->
+      <!-- Card Theme 2 : Bleu Royal iOS -->
       <div class="bg-slate-900 rounded-3xl border border-slate-800 p-4 shadow-xl flex flex-col">
         <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
           <div>
-            <h3 class="text-sm font-bold text-white">Design B • Modern Glass</h3>
-            <p class="text-[11px] text-slate-400">Cartes flottantes avec dégradés légers</p>
+            <h3 class="text-sm font-bold text-white">2. Bleu Royal iOS</h3>
+            <p class="text-[11px] text-blue-400 font-medium">#2563EB • Style Apple Natif</p>
           </div>
-          <button onclick="selectDesign('B'); setViewMode('single');" class="px-2.5 py-1 rounded-lg bg-brand-600/30 text-brand-300 hover:bg-brand-600 hover:text-white text-[11px] font-semibold transition-all">
+          <button onclick="selectTheme('royal'); setViewMode('single');" class="px-2.5 py-1 rounded-lg bg-blue-600/30 text-blue-300 hover:bg-blue-600 hover:text-white text-[11px] font-semibold transition-all">
             Zoomer 🔍
           </button>
         </div>
-        <div class="flex-1 overflow-hidden" id="gridDesignB"></div>
+        <div class="flex-1 overflow-hidden" id="gridThemeRoyal"></div>
       </div>
 
-      <!-- Card Design C -->
+      <!-- Card Theme 3 : Indigo Tech -->
       <div class="bg-slate-900 rounded-3xl border border-slate-800 p-4 shadow-xl flex flex-col">
         <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
           <div>
-            <h3 class="text-sm font-bold text-white">Design C • Minimaliste</h3>
-            <p class="text-[11px] text-slate-400">Haute densité, lignes ultra fines</p>
+            <h3 class="text-sm font-bold text-white">3. Indigo Tech</h3>
+            <p class="text-[11px] text-indigo-400 font-medium">#6366F1 • Doux & Moderne</p>
           </div>
-          <button onclick="selectDesign('C'); setViewMode('single');" class="px-2.5 py-1 rounded-lg bg-brand-600/30 text-brand-300 hover:bg-brand-600 hover:text-white text-[11px] font-semibold transition-all">
+          <button onclick="selectTheme('indigo'); setViewMode('single');" class="px-2.5 py-1 rounded-lg bg-indigo-600/30 text-indigo-300 hover:bg-indigo-600 hover:text-white text-[11px] font-semibold transition-all">
             Zoomer 🔍
           </button>
         </div>
-        <div class="flex-1 overflow-hidden" id="gridDesignC"></div>
+        <div class="flex-1 overflow-hidden" id="gridThemeIndigo"></div>
       </div>
 
-      <!-- Card Design D -->
+      <!-- Card Theme 4 : Monochrome Slate -->
       <div class="bg-slate-900 rounded-3xl border border-slate-800 p-4 shadow-xl flex flex-col">
         <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
           <div>
-            <h3 class="text-sm font-bold text-white">Design D • Dashboard Pro</h3>
-            <p class="text-[11px] text-slate-400">Widgets interactifs façon dashboard</p>
+            <h3 class="text-sm font-bold text-white">4. Slate Monochromatique</h3>
+            <p class="text-[11px] text-slate-400 font-medium">Sans couleur vive • Épuré</p>
           </div>
-          <button onclick="selectDesign('D'); setViewMode('single');" class="px-2.5 py-1 rounded-lg bg-brand-600/30 text-brand-300 hover:bg-brand-600 hover:text-white text-[11px] font-semibold transition-all">
+          <button onclick="selectTheme('slate'); setViewMode('single');" class="px-2.5 py-1 rounded-lg bg-slate-700/50 text-slate-200 hover:bg-slate-700 hover:text-white text-[11px] font-semibold transition-all">
             Zoomer 🔍
           </button>
         </div>
-        <div class="flex-1 overflow-hidden" id="gridDesignD"></div>
+        <div class="flex-1 overflow-hidden" id="gridThemeSlate"></div>
       </div>
 
     </div>
 
   </main>
 
-  <!-- JAVASCRIPT LOGIC & TEMPLATES -->
+  <!-- JAVASCRIPT LOGIC & THEMES -->
   <script>
     // State
-    let currentDesign = 'A';
+    let currentThemeKey = 'brand';
     let isRTL = false;
     let isDark = true;
     let viewMode = 'single';
@@ -324,23 +328,67 @@
       { id: 6, fr: 'Sam', ar: 'سبت' },
     ];
 
-    // Design Descriptions
-    const DESCRIPTIONS = {
-      'A': {
-        title: 'Design A : Style "iOS Inset Grouped"',
-        points: 'Inspiré des réglages iOS modernes. Les options sont regroupées par catégories dans des blocs arrondis aux bordures discrètes. L\'alerte de présence s\'ouvre avec un sélecteur d\'heure digital et des pastilles rondes douces pour les jours. Très propre, lisible et familier pour les utilisateurs mobiles.'
+    // ZERO-EMERALD COLOR PALETTES
+    const COLOR_THEMES = {
+      'brand': {
+        name: 'Bleu Dashboard Crèche (#0284C7)',
+        desc: 'Couleur primaire exacte du tableau de bord de la crèche. Parfaite continuité avec le reste de l\'application mobile.',
+        badge: 'bg-brand-500/15 text-brand-400 border border-brand-500/30',
+        iconContainer: 'bg-brand-500/15 text-brand-400 border border-brand-500/20',
+        switchActive: 'bg-brand-600',
+        timeText: 'text-brand-300 font-bold',
+        timeInput: 'bg-slate-900 border-brand-500/40 text-brand-300 focus:ring-brand-500',
+        dayActive: 'bg-brand-600 text-white shadow-sm shadow-brand-600/30 font-bold',
+        btnPrimary: 'bg-brand-600 hover:bg-brand-500 text-white font-semibold text-xs transition-all shadow-sm shadow-brand-600/30',
+        dot: 'bg-brand-400',
+        ring: 'ring-brand-400/30',
+        toastBorder: 'border-brand-500/40',
+        toastIcon: 'bg-brand-500/20 text-brand-400'
       },
-      'B': {
-        title: 'Design B : Style "Modern Glass & Glowing Cards"',
-        points: 'Cartes flottantes aux angles très doux avec micro-bordures néon et dégradés subtils. La bannière profil est valorisée avec un fond en dégradé Crèche. L\'alerte présence dispose d\'un indicateur vert "Prêt" et d\'un bouton de test mis en valeur.'
+      'royal': {
+        name: 'Bleu Royal iOS (#2563EB)',
+        desc: 'Bleu système emblématique d\'iOS d\'Apple. Rend l\'interface très familière et soignée.',
+        badge: 'bg-blue-500/15 text-blue-400 border border-blue-500/30',
+        iconContainer: 'bg-blue-500/15 text-blue-400 border border-blue-500/20',
+        switchActive: 'bg-blue-600',
+        timeText: 'text-blue-300 font-bold',
+        timeInput: 'bg-slate-900 border-blue-500/40 text-blue-300 focus:ring-blue-500',
+        dayActive: 'bg-blue-600 text-white shadow-sm shadow-blue-600/30 font-bold',
+        btnPrimary: 'bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition-all shadow-sm shadow-blue-600/30',
+        dot: 'bg-blue-400',
+        ring: 'ring-blue-400/30',
+        toastBorder: 'border-blue-500/40',
+        toastIcon: 'bg-blue-500/20 text-blue-400'
       },
-      'C': {
-        title: 'Design C : Style "Minimaliste Épuré"',
-        points: 'Suppression maximale des bordures lourdes et des fonds multiples. L\'accent est mis sur la typographie et la simplicité absolue : lignes de séparation légères, heure en grand format digital, et boutons en pastilles monochromes.'
+      'indigo': {
+        name: 'Indigo Tech (#6366F1)',
+        desc: 'Nuance violine douce et moderne, très élégante sur les fonds foncés sans agresser la vue.',
+        badge: 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/30',
+        iconContainer: 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/20',
+        switchActive: 'bg-indigo-600',
+        timeText: 'text-indigo-300 font-bold',
+        timeInput: 'bg-slate-900 border-indigo-500/40 text-indigo-300 focus:ring-indigo-500',
+        dayActive: 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30 font-bold',
+        btnPrimary: 'bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-all shadow-sm shadow-indigo-600/30',
+        dot: 'bg-indigo-400',
+        ring: 'ring-indigo-400/30',
+        toastBorder: 'border-indigo-500/40',
+        toastIcon: 'bg-indigo-500/20 text-indigo-400'
       },
-      'D': {
-        title: 'Design D : Style "Dashboard Pro Widgets"',
-        points: 'Chaque bloc est un widget interactif cohérent avec le tableau de bord de la crèche. Présente un aperçu direct du statut ("Prochain déclenchement lundi à 08:30") et des actions tactiles expressives.'
+      'slate': {
+        name: 'Slate Monochromatique (#94A3B8)',
+        desc: 'Style sobre et neutre, aucun accent flashy : les éléments actifs adoptent un blanc/argent pur sur fond noir.',
+        badge: 'bg-slate-800 text-slate-300 border border-slate-700',
+        iconContainer: 'bg-slate-800 text-slate-300 border border-slate-700',
+        switchActive: 'bg-slate-600',
+        timeText: 'text-white font-bold',
+        timeInput: 'bg-slate-900 border-slate-700 text-white focus:ring-slate-500',
+        dayActive: 'bg-slate-200 text-slate-900 font-bold shadow-sm',
+        btnPrimary: 'bg-slate-200 hover:bg-white text-slate-900 font-bold text-xs transition-all shadow-sm',
+        dot: 'bg-slate-300',
+        ring: 'ring-slate-300/30',
+        toastBorder: 'border-slate-700',
+        toastIcon: 'bg-slate-800 text-slate-200'
       }
     };
 
@@ -377,7 +425,7 @@
       viewMode = mode;
       const single = document.getElementById('singleViewWrapper');
       const grid = document.getElementById('gridViewWrapper');
-      const tabs = document.getElementById('designTabsContainer');
+      const tabs = document.getElementById('paletteTabsContainer');
       const btnSingle = document.getElementById('btnViewSingle');
       const btnGrid = document.getElementById('btnViewGrid');
 
@@ -397,17 +445,26 @@
       render();
     }
 
-    // Select Design
-    function selectDesign(d) {
-      currentDesign = d;
-      document.querySelectorAll('.design-tab').forEach(tab => {
-        tab.className = "design-tab px-3 py-1.5 rounded-xl font-semibold transition-all border text-slate-400 border-transparent hover:text-white hover:bg-slate-800/60";
+    // Select Theme
+    function selectTheme(themeKey) {
+      currentThemeKey = themeKey;
+      document.querySelectorAll('.palette-tab').forEach(tab => {
+        tab.className = "palette-tab px-3 py-1.5 rounded-xl font-semibold transition-all border flex items-center gap-1.5 text-slate-400 border-transparent hover:text-white hover:bg-slate-800/60";
       });
-      event.target.className = "design-tab px-3 py-1.5 rounded-xl font-semibold transition-all border active-tab bg-brand-500/20 text-brand-300 border-brand-500/40";
+      document.getElementById('tab_' + themeKey).className = "palette-tab px-3 py-1.5 rounded-xl font-semibold transition-all border flex items-center gap-1.5 bg-brand-500/20 text-brand-300 border-brand-500/50";
+      
+      const theme = COLOR_THEMES[themeKey];
+      document.getElementById('bannerColorBadge').textContent = theme.name;
+      
+      // Update push toast colors
+      const toast = document.getElementById('pushToast');
+      toast.className = `hidden absolute top-3 inset-x-3 z-40 bg-slate-900/95 backdrop-blur-md rounded-2xl p-3 border ${theme.toastBorder} shadow-xl shadow-black/60 animate-slide-down`;
+      document.getElementById('toastIconBox').className = `w-8 h-8 rounded-xl ${theme.toastIcon} flex items-center justify-center shrink-0 text-sm`;
+
       render();
     }
 
-    // Toggle Theme
+    // Toggle Theme (Dark / Light)
     function toggleTheme() {
       isDark = !isDark;
       const root = document.documentElement;
@@ -451,29 +508,27 @@
     }
 
     /* ═══════════════════════════════════════════════════════════════════════
-       TEMPLATES DES 4 DESIGNS
+       GÉNÉRATEUR DE DESIGN A (iOS Inset Style - Sans Emerald)
        ═══════════════════════════════════════════════════════════════════════ */
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // DESIGN A : iOS Inset Grouped Style
-    // ─────────────────────────────────────────────────────────────────────────
-    function getDesignA() {
+    function generateDesignA(themeKey) {
       const rtl = isRTL;
+      const t = COLOR_THEMES[themeKey || currentThemeKey];
+
       return `
         <!-- Profile Inset -->
-        <div class="bg-slate-900/90 dark:bg-slate-900/90 rounded-2xl p-3.5 border border-slate-800/80 shadow-sm flex items-center gap-3">
+        <div class="bg-slate-900/90 rounded-2xl p-3.5 border border-slate-800/80 shadow-sm flex items-center gap-3">
           <div class="relative">
             <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-brand-600 to-cyan-400 p-0.5">
               <div class="w-full h-full rounded-full bg-slate-900 flex items-center justify-center font-bold text-white text-sm">
                 MA
               </div>
             </div>
-            <span class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 ring-2 ring-slate-900"></span>
+            <span class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full ${t.dot} ring-2 ring-slate-900"></span>
           </div>
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-1.5">
               <h3 class="text-sm font-bold text-white truncate">Malek Aidoudi</h3>
-              <span class="px-1.5 py-0.2 text-[10px] font-semibold rounded-md bg-brand-500/15 text-brand-400 border border-brand-500/25">
+              <span class="px-1.5 py-0.2 text-[10px] font-semibold rounded-md ${t.badge}">
                 ${rtl ? 'مدير' : 'Direction'}
               </span>
             </div>
@@ -481,7 +536,7 @@
           </div>
         </div>
 
-        <!-- Section 1 : Préférences d'Affichage (iOS Group) -->
+        <!-- Section 1 : Préférences d'Affichage (iOS Inset Group) -->
         <div class="bg-slate-900/90 rounded-2xl border border-slate-800/80 overflow-hidden shadow-sm divide-y divide-slate-800/60">
           <div class="p-3 flex items-center justify-between">
             <div class="flex items-center gap-2.5">
@@ -490,7 +545,7 @@
               </div>
               <span class="text-xs font-semibold text-slate-200">${rtl ? 'المظهر المظلم' : 'Mode sombre'}</span>
             </div>
-            <div onclick="toggleTheme()" class="switch-track w-11 h-6 ${isDark ? 'bg-brand-600' : 'bg-slate-700'} rounded-full p-0.5 cursor-pointer flex items-center">
+            <div onclick="toggleTheme()" class="switch-track w-11 h-6 ${isDark ? t.switchActive : 'bg-slate-700'} rounded-full p-0.5 cursor-pointer flex items-center">
               <div class="switch-thumb w-5 h-5 bg-white rounded-full shadow-md ${isDark ? 'translate-x-5' : 'translate-x-0'}"></div>
             </div>
           </div>
@@ -502,17 +557,17 @@
               </div>
               <span class="text-xs font-semibold text-slate-200">${rtl ? 'اللغة' : 'Langue'}</span>
             </div>
-            <button onclick="toggleLang()" class="px-2.5 py-1 rounded-lg bg-slate-800 text-[11px] font-semibold text-slate-300 border border-slate-700 hover:border-slate-600">
+            <button onclick="toggleLang()" class="px-2.5 py-1 rounded-lg bg-slate-800 text-[11px] font-semibold text-slate-300 border border-slate-700 hover:border-slate-600 transition-colors">
               ${rtl ? '🇹🇳 العربية' : '🇫🇷 Français'}
             </button>
           </div>
         </div>
 
-        <!-- Section 2 : Alerte Présence Programmée (Card Clé) -->
+        <!-- Section 2 : Alerte Présence Programmée (Card Clé iOS) -->
         <div class="bg-slate-900/90 rounded-2xl border border-slate-800/80 p-3.5 shadow-sm space-y-3">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2.5">
-              <div class="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-sm border border-emerald-500/20">
+              <div class="w-8 h-8 rounded-xl ${t.iconContainer} flex items-center justify-center text-sm">
                 ⏰
               </div>
               <div>
@@ -520,27 +575,27 @@
                 <p class="text-[10px] text-slate-400">${rtl ? 'إشعار صباحي إذا لم يسجل أي حضور' : 'Rappel si aucun pointage le matin'}</p>
               </div>
             </div>
-            <div onclick="toggleAttendance()" class="switch-track w-11 h-6 ${attendanceActive ? 'bg-emerald-600' : 'bg-slate-700'} rounded-full p-0.5 cursor-pointer flex items-center">
+            <div onclick="toggleAttendance()" class="switch-track w-11 h-6 ${attendanceActive ? t.switchActive : 'bg-slate-700'} rounded-full p-0.5 cursor-pointer flex items-center">
               <div class="switch-thumb w-5 h-5 bg-white rounded-full shadow-md ${attendanceActive ? 'translate-x-5' : 'translate-x-0'}"></div>
             </div>
           </div>
 
           ${attendanceActive ? `
             <div class="pt-3 border-t border-slate-800/70 space-y-3">
-              <!-- Heure -->
+              <!-- Heure (Capsule iOS) -->
               <div class="flex items-center justify-between bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/60">
                 <span class="text-xs text-slate-300 font-medium">${rtl ? 'وقت التنبيه' : 'Heure de notification'}</span>
-                <input type="time" value="${reminderTime}" onchange="reminderTime=this.value; render();" class="bg-slate-900 border border-slate-700 text-emerald-400 font-bold text-xs px-2 py-1 rounded-lg outline-none cursor-pointer">
+                <input type="time" value="${reminderTime}" onchange="reminderTime=this.value; render();" class="${t.timeInput} font-bold text-xs px-2.5 py-1 rounded-lg border outline-none cursor-pointer">
               </div>
 
-              <!-- Jours -->
+              <!-- Jours (Pilules douces sans vert) -->
               <div class="space-y-1.5">
                 <span class="text-[11px] text-slate-400 font-medium">${rtl ? 'أيام التفعيل' : 'Jours actifs'}</span>
                 <div class="grid grid-cols-6 gap-1.5">
                   ${DAYS.map(d => {
                     const sel = selectedDays.includes(d.id);
                     return `
-                      <button onclick="toggleDay(${d.id})" class="py-1.5 text-xs font-bold rounded-xl transition-all ${sel ? 'bg-emerald-500 text-white shadow-sm' : 'bg-slate-800 text-slate-500 border border-slate-700/60 hover:text-slate-300'}">
+                      <button onclick="toggleDay(${d.id})" class="py-1.5 text-xs font-bold rounded-xl transition-all ${sel ? t.dayActive : 'bg-slate-800 text-slate-500 border border-slate-700/60 hover:text-slate-300'}">
                         ${rtl ? d.ar : d.fr}
                       </button>
                     `;
@@ -548,9 +603,9 @@
                 </div>
               </div>
 
-              <!-- Actions -->
+              <!-- Actions (Enregistrer & Tester) -->
               <div class="pt-1 space-y-2">
-                <button class="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-all shadow-sm shadow-emerald-600/30">
+                <button class="w-full py-2.5 rounded-xl ${t.btnPrimary}">
                   ${rtl ? 'حفظ الإعدادات' : 'Enregistrer l\'horaire'}
                 </button>
                 <button onclick="triggerTestPush()" class="w-full py-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white font-medium text-[11px] border border-slate-700/80 transition-all flex items-center justify-center gap-1.5">
@@ -567,15 +622,24 @@
         <!-- Section 3 : Push Notification -->
         <div class="bg-slate-900/90 rounded-2xl border border-slate-800/80 p-3.5 shadow-sm flex items-center justify-between">
           <div class="flex items-center gap-2.5">
-            <div class="w-7 h-7 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center text-xs">
+            <div class="w-7 h-7 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center text-xs">
               🔔
             </div>
             <div>
               <p class="text-xs font-semibold text-slate-200">${rtl ? 'إشعارات الهاتف (Web Push)' : 'Notifications Push'}</p>
-              <p class="text-[10px] text-emerald-400">${rtl ? 'مفعلة على هذا الهاتف' : 'Actives sur ce téléphone'}</p>
+              <p class="text-[10px] text-slate-400">${rtl ? 'مفعلة على هذا الهاتف' : 'Actives sur ce téléphone'}</p>
             </div>
           </div>
-          <span class="w-2 h-2 rounded-full bg-emerald-500 ring-4 ring-emerald-500/20"></span>
+          <span class="w-2.5 h-2.5 rounded-full ${t.dot} ring-4 ${t.ring}"></span>
+        </div>
+
+        <!-- Section 4 : Configuration Complète (Lien PC) -->
+        <div class="bg-slate-900/60 rounded-2xl border border-slate-800/70 p-3 flex items-center justify-between text-xs text-slate-300">
+          <div class="flex items-center gap-2">
+            <span>💻</span>
+            <span>Configuration complète (PC)</span>
+          </div>
+          <span class="text-slate-400 font-bold">→</span>
         </div>
 
         <!-- Logout button -->
@@ -585,362 +649,30 @@
       `;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // DESIGN B : Modern Glass & Glowing Cards
-    // ─────────────────────────────────────────────────────────────────────────
-    function getDesignB() {
-      const rtl = isRTL;
-      return `
-        <!-- Profile Card with Gradient Header Banner -->
-        <div class="rounded-3xl bg-gradient-to-b from-slate-800/90 to-slate-900/90 border border-slate-700/60 shadow-lg overflow-hidden">
-          <div class="h-14 bg-gradient-to-r from-brand-700 via-cyan-600 to-emerald-600 relative">
-            <span class="absolute top-2.5 ${rtl ? 'left-3' : 'right-3'} px-2 py-0.5 rounded-full bg-black/40 backdrop-blur-md text-[10px] font-semibold text-white">
-              En ligne 🟢
-            </span>
-          </div>
-          <div class="px-4 pb-3.5 pt-0 -mt-7 flex items-end gap-3">
-            <div class="w-14 h-14 rounded-2xl bg-slate-900 p-1 border-2 border-slate-700/80 shadow-md shrink-0">
-              <div class="w-full h-full rounded-xl bg-gradient-to-tr from-brand-500 to-cyan-400 flex items-center justify-center text-white font-extrabold text-sm">
-                MA
-              </div>
-            </div>
-            <div class="min-w-0 pb-1">
-              <h3 class="text-sm font-bold text-white truncate">Malek Aidoudi</h3>
-              <p class="text-[11px] text-brand-300 font-medium">${rtl ? 'إدارة الروضة' : 'Direction • Crèche Mima'}</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Alerte Présence : Hero Card with Glowing Border -->
-        <div class="rounded-3xl bg-gradient-to-b from-slate-900 to-slate-950 border border-emerald-500/30 p-4 shadow-lg shadow-emerald-950/20 space-y-3 relative overflow-hidden">
-          <div class="absolute -right-8 -top-8 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
-
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <div class="w-9 h-9 rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-base border border-emerald-500/30 shadow-inner">
-                ⏰
-              </div>
-              <div>
-                <div class="flex items-center gap-1.5">
-                  <h4 class="text-xs font-bold text-white">${rtl ? 'تنبيه الحضور الصباحي' : 'Rappel présence matinal'}</h4>
-                  <span class="px-1.5 py-0.2 rounded-full text-[9px] font-extrabold uppercase tracking-wider ${attendanceActive ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-500'}">
-                    ${attendanceActive ? 'ACTIF' : 'OFF'}
-                  </span>
-                </div>
-                <p class="text-[10px] text-slate-400">${rtl ? 'تنبيه ذكي عند غياب أي تسجيل' : 'Détecte si aucune présence n\'est saisie'}</p>
-              </div>
-            </div>
-            <div onclick="toggleAttendance()" class="switch-track w-11 h-6 ${attendanceActive ? 'bg-emerald-500' : 'bg-slate-800'} rounded-full p-0.5 cursor-pointer flex items-center">
-              <div class="switch-thumb w-5 h-5 bg-white rounded-full shadow-md ${attendanceActive ? 'translate-x-5' : 'translate-x-0'}"></div>
-            </div>
-          </div>
-
-          ${attendanceActive ? `
-            <div class="pt-3 border-t border-slate-800/80 space-y-3">
-              <!-- Heure Capsule -->
-              <div class="flex items-center justify-between bg-slate-900/90 rounded-2xl p-2.5 border border-slate-800">
-                <div class="flex items-center gap-2 text-xs font-medium text-slate-300">
-                  <span>🌅</span>
-                  <span>${rtl ? 'الساعة المحددة' : 'Heure de déclenchement'}</span>
-                </div>
-                <input type="time" value="${reminderTime}" onchange="reminderTime=this.value; render();" class="bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 font-extrabold text-sm px-2.5 py-1 rounded-xl outline-none cursor-pointer shadow-inner">
-              </div>
-
-              <!-- Jours Pill Chips -->
-              <div class="space-y-1.5">
-                <span class="text-[11px] font-medium text-slate-400">${rtl ? 'أيام العمل المعنية' : 'Jours de surveillance'}</span>
-                <div class="flex justify-between gap-1">
-                  ${DAYS.map(d => {
-                    const sel = selectedDays.includes(d.id);
-                    return `
-                      <button onclick="toggleDay(${d.id})" class="flex-1 py-2 rounded-2xl text-[11px] font-bold transition-all flex flex-col items-center gap-0.5 ${sel ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20 scale-[1.02]' : 'bg-slate-900/80 text-slate-500 border border-slate-800 hover:border-slate-700'}">
-                        <span>${rtl ? d.ar : d.fr}</span>
-                        <span class="w-1 h-1 rounded-full ${sel ? 'bg-white' : 'bg-transparent'}"></span>
-                      </button>
-                    `;
-                  }).join('')}
-                </div>
-              </div>
-
-              <!-- Action buttons -->
-              <div class="pt-1 space-y-2">
-                <button class="w-full py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold transition-all shadow-lg shadow-emerald-900/30">
-                  ${rtl ? 'تأكيد وحفظ' : 'Enregistrer les paramètres'}
-                </button>
-                <button onclick="triggerTestPush()" class="w-full py-2 rounded-2xl bg-slate-900 hover:bg-slate-800 text-emerald-400 border border-emerald-500/20 text-xs font-semibold transition-all flex items-center justify-center gap-1.5">
-                  <span>🔔</span>
-                  <span>${rtl ? 'تجربة الإشعار الآن' : 'Tester la notification en direct'}</span>
-                </button>
-              </div>
-            </div>
-          ` : ''}
-        </div>
-
-        <!-- Quick Preferences Row (Theme + Langue in 2 small cards) -->
-        <div class="grid grid-cols-2 gap-3">
-          <div onclick="toggleTheme()" class="bg-slate-900/90 rounded-2xl p-3 border border-slate-800 flex items-center justify-between cursor-pointer hover:border-slate-700">
-            <div>
-              <span class="text-base">🌙</span>
-              <p class="text-xs font-bold text-white mt-1">${rtl ? 'الوضع المظلم' : 'Mode Sombre'}</p>
-            </div>
-            <span class="text-xs text-brand-400 font-semibold">${isDark ? 'ON' : 'OFF'}</span>
-          </div>
-
-          <div onclick="toggleLang()" class="bg-slate-900/90 rounded-2xl p-3 border border-slate-800 flex items-center justify-between cursor-pointer hover:border-slate-700">
-            <div>
-              <span class="text-base">🌐</span>
-              <p class="text-xs font-bold text-white mt-1">${rtl ? 'اللغة' : 'Langue'}</p>
-            </div>
-            <span class="text-xs text-slate-300 font-semibold">${rtl ? 'عربي' : 'FR'}</span>
-          </div>
-        </div>
-
-        <!-- Logout -->
-        <button class="w-full py-2.5 rounded-2xl bg-red-950/20 hover:bg-red-950/30 text-red-400 border border-red-900/30 text-xs font-semibold">
-          ${rtl ? 'تسجيل الخروج' : 'Déconnexion'}
-        </button>
-      `;
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // DESIGN C : Executive Minimal
-    // ─────────────────────────────────────────────────────────────────────────
-    function getDesignC() {
-      const rtl = isRTL;
-      return `
-        <!-- Minimal Profile -->
-        <div class="py-2 flex items-center justify-between border-b border-slate-800/80">
-          <div class="flex items-center gap-3">
-            <div class="w-11 h-11 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-sm font-bold text-brand-400">
-              MA
-            </div>
-            <div>
-              <h3 class="text-sm font-bold text-white">Malek Aidoudi</h3>
-              <p class="text-[11px] text-slate-400">Direction • Crèche</p>
-            </div>
-          </div>
-          <button class="text-xs text-brand-400 font-semibold hover:underline">
-            ${rtl ? 'تعديل' : 'Modifier'}
-          </button>
-        </div>
-
-        <!-- Section Title -->
-        <div class="pt-2">
-          <h4 class="text-[10px] font-bold uppercase tracking-wider text-slate-400">${rtl ? 'إعدادات التنبيهات' : 'RAPPELS & NOTIFICATIONS'}</h4>
-        </div>
-
-        <!-- Attendance Reminder Minimal Card -->
-        <div class="bg-slate-900/60 rounded-2xl p-3.5 border border-slate-800/80 space-y-3">
-          <div class="flex items-center justify-between">
-            <div>
-              <p class="text-xs font-bold text-white">${rtl ? 'تنبيه الحضور اليومي' : 'Alerte de présence'}</p>
-              <p class="text-[10px] text-slate-400">${rtl ? 'تذكير الصباح في حال عدم تسجيل الأطفال' : 'Notification à heure fixe en cas d\'absence de saisie'}</p>
-            </div>
-            <div onclick="toggleAttendance()" class="switch-track w-10 h-5 ${attendanceActive ? 'bg-brand-500' : 'bg-slate-700'} rounded-full p-0.5 cursor-pointer flex items-center">
-              <div class="switch-thumb w-4 h-4 bg-white rounded-full shadow-md ${attendanceActive ? 'translate-x-5' : 'translate-x-0'}"></div>
-            </div>
-          </div>
-
-          ${attendanceActive ? `
-            <div class="pt-2.5 border-t border-slate-800/80 space-y-3">
-              <div class="flex items-center justify-between">
-                <span class="text-xs text-slate-300">${rtl ? 'ساعة التنبيه' : 'Heure de rappel'}</span>
-                <input type="time" value="${reminderTime}" onchange="reminderTime=this.value; render();" class="bg-slate-800 text-white font-mono text-xs px-2.5 py-1 rounded-lg border border-slate-700 outline-none">
-              </div>
-
-              <div class="space-y-1">
-                <span class="text-[10px] text-slate-400">${rtl ? 'أيام التنبيه' : 'Jours'}</span>
-                <div class="grid grid-cols-6 gap-1">
-                  ${DAYS.map(d => {
-                    const sel = selectedDays.includes(d.id);
-                    return `
-                      <button onclick="toggleDay(${d.id})" class="py-1.5 text-xs font-semibold rounded-lg transition-all ${sel ? 'bg-brand-600 text-white font-bold' : 'bg-slate-800/60 text-slate-500 hover:text-slate-300'}">
-                        ${rtl ? d.ar : d.fr}
-                      </button>
-                    `;
-                  }).join('')}
-                </div>
-              </div>
-
-              <div class="pt-1 flex gap-2">
-                <button class="flex-1 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold transition-all">
-                  ${rtl ? 'حفظ' : 'Enregistrer'}
-                </button>
-                <button onclick="triggerTestPush()" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700">
-                  🔔 Test
-                </button>
-              </div>
-            </div>
-          ` : ''}
-        </div>
-
-        <!-- Display & Lang minimal rows -->
-        <div class="divide-y divide-slate-800/80 border-y border-slate-800/80 text-xs">
-          <div class="py-3 flex items-center justify-between">
-            <span class="text-slate-300">${rtl ? 'الوضع المظلم' : 'Mode Sombre'}</span>
-            <div onclick="toggleTheme()" class="switch-track w-10 h-5 ${isDark ? 'bg-brand-500' : 'bg-slate-700'} rounded-full p-0.5 cursor-pointer flex items-center">
-              <div class="switch-thumb w-4 h-4 bg-white rounded-full shadow-md ${isDark ? 'translate-x-5' : 'translate-x-0'}"></div>
-            </div>
-          </div>
-          <div class="py-3 flex items-center justify-between">
-            <span class="text-slate-300">${rtl ? 'اللغة' : 'Langue'}</span>
-            <button onclick="toggleLang()" class="font-bold text-brand-400">
-              ${rtl ? 'العربية' : 'Français'}
-            </button>
-          </div>
-          <div class="py-3 flex items-center justify-between">
-            <span class="text-slate-300">${rtl ? 'إشعارات الويب' : 'Web Push'}</span>
-            <span class="text-emerald-400 font-medium">Actif</span>
-          </div>
-        </div>
-
-        <!-- Logout -->
-        <div class="pt-2">
-          <button class="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-red-950/30 text-red-400 text-xs font-semibold transition-all">
-            ${rtl ? 'تسجيل الخروج' : 'Déconnexion du compte'}
-          </button>
-        </div>
-      `;
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // DESIGN D : Dashboard Pro Widgets
-    // ─────────────────────────────────────────────────────────────────────────
-    function getDesignD() {
-      const rtl = isRTL;
-      return `
-        <!-- Profile Widget -->
-        <div class="bg-slate-900 rounded-3xl p-4 border border-slate-800 shadow-sm flex items-center gap-3">
-          <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-500 to-indigo-600 flex items-center justify-center font-bold text-white text-base shadow-sm">
-            MA
-          </div>
-          <div class="flex-1 min-w-0">
-            <h3 class="text-sm font-bold text-white truncate">Malek Aidoudi</h3>
-            <p class="text-xs text-slate-400">Directeur Crèche Mima El Ghalia</p>
-          </div>
-          <span class="px-2 py-1 rounded-xl bg-emerald-500/15 text-emerald-400 text-[10px] font-bold border border-emerald-500/30">
-            Admin
-          </span>
-        </div>
-
-        <!-- Attendance Reminder Widget (Interactive Hero) -->
-        <div class="bg-slate-900 rounded-3xl p-4 border border-slate-800 shadow-sm space-y-3.5">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2.5">
-              <div class="w-8 h-8 rounded-xl bg-brand-500/15 text-brand-400 flex items-center justify-center text-sm font-bold">
-                ⏰
-              </div>
-              <h4 class="text-xs font-bold text-white">${rtl ? 'منبه الحضور الآلي' : 'Alerte de présence programmée'}</h4>
-            </div>
-            <div onclick="toggleAttendance()" class="switch-track w-11 h-6 ${attendanceActive ? 'bg-brand-500' : 'bg-slate-800'} rounded-full p-0.5 cursor-pointer flex items-center">
-              <div class="switch-thumb w-5 h-5 bg-white rounded-full shadow-md ${attendanceActive ? 'translate-x-5' : 'translate-x-0'}"></div>
-            </div>
-          </div>
-
-          ${attendanceActive ? `
-            <!-- Live Status Ribbon -->
-            <div class="bg-brand-950/40 rounded-2xl p-2.5 border border-brand-500/25 flex items-center gap-2 text-[11px] text-brand-300 font-medium">
-              <span>⚡</span>
-              <span>Prochain rappel prévu le <strong>Lundi à ${reminderTime}</strong></span>
-            </div>
-
-            <div class="space-y-3 pt-1">
-              <!-- Digital Clock Picker -->
-              <div class="flex items-center justify-between bg-slate-950/80 rounded-2xl p-3 border border-slate-800">
-                <div>
-                  <p class="text-xs font-bold text-white">${rtl ? 'وقت الإشعار الصباحي' : 'Heure matinale'}</p>
-                  <p class="text-[10px] text-slate-400">${rtl ? 'قبل بداية اليوم التربوي' : 'Avant le début des activités'}</p>
-                </div>
-                <input type="time" value="${reminderTime}" onchange="reminderTime=this.value; render();" class="bg-slate-900 border border-brand-500/40 text-brand-300 font-bold text-sm px-3 py-1.5 rounded-xl outline-none cursor-pointer">
-              </div>
-
-              <!-- Day selector pills -->
-              <div class="space-y-1.5">
-                <p class="text-[11px] font-semibold text-slate-400">${rtl ? 'أيام التنبيه' : 'Jours sélectionnés'}</p>
-                <div class="grid grid-cols-6 gap-1.5">
-                  ${DAYS.map(d => {
-                    const sel = selectedDays.includes(d.id);
-                    return `
-                      <button onclick="toggleDay(${d.id})" class="py-2 rounded-xl text-xs font-bold transition-all ${sel ? 'bg-brand-500 text-white shadow-sm shadow-brand-500/20' : 'bg-slate-950 text-slate-500 border border-slate-800 hover:text-slate-300'}">
-                        ${rtl ? d.ar : d.fr}
-                      </button>
-                    `;
-                  }).join('')}
-                </div>
-              </div>
-
-              <!-- Actions -->
-              <div class="pt-1 space-y-2">
-                <button class="w-full py-2.5 rounded-2xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs transition-all shadow-md shadow-brand-600/25">
-                  ${rtl ? 'تحديث الجدول' : 'Valider mon horaire'}
-                </button>
-                <button onclick="triggerTestPush()" class="w-full py-2 rounded-2xl bg-slate-800 hover:bg-slate-750 text-slate-200 text-xs font-semibold transition-all border border-slate-700/80 flex items-center justify-center gap-1.5">
-                  <span>🔔</span>
-                  <span>${rtl ? 'تجربة التنبيه فوراً' : 'Tester la notification'}</span>
-                </button>
-              </div>
-            </div>
-          ` : ''}
-        </div>
-
-        <!-- Fast Toggles Grid -->
-        <div class="grid grid-cols-2 gap-2.5">
-          <div onclick="toggleTheme()" class="bg-slate-900 rounded-2xl p-3 border border-slate-800 flex items-center justify-between cursor-pointer">
-            <span class="text-xs font-semibold text-slate-200">${rtl ? 'المظهر' : 'Thème'}</span>
-            <span class="text-xs font-bold text-brand-400">${isDark ? 'Sombre' : 'Clair'}</span>
-          </div>
-          <div onclick="toggleLang()" class="bg-slate-900 rounded-2xl p-3 border border-slate-800 flex items-center justify-between cursor-pointer">
-            <span class="text-xs font-semibold text-slate-200">${rtl ? 'اللغة' : 'Langue'}</span>
-            <span class="text-xs font-bold text-brand-400">${rtl ? 'عربي' : 'FR'}</span>
-          </div>
-        </div>
-
-        <!-- Full Desktop Settings Link -->
-        <div class="bg-slate-900/60 rounded-2xl p-3 border border-slate-800/80 flex items-center justify-between text-xs text-slate-300">
-          <div class="flex items-center gap-2">
-            <span>💻</span>
-            <span>Configuration complète (PC)</span>
-          </div>
-          <span class="text-brand-400 font-bold">→</span>
-        </div>
-
-        <!-- Logout -->
-        <button class="w-full py-2.5 rounded-2xl bg-red-950/20 hover:bg-red-950/30 text-red-400 border border-red-900/30 text-xs font-semibold">
-          ${rtl ? 'تسجيل الخروج' : 'Déconnexion'}
-        </button>
-      `;
-    }
-
     // Main render router
     function render() {
       // 1. Single View render
       const container = document.getElementById('activeDesignContainer');
-      const descBox = document.getElementById('designDescriptionBox');
+      const descBox = document.getElementById('themeDescriptionBox');
+      const t = COLOR_THEMES[currentThemeKey];
 
-      let html = '';
-      if (currentDesign === 'A') html = getDesignA();
-      else if (currentDesign === 'B') html = getDesignB();
-      else if (currentDesign === 'C') html = getDesignC();
-      else if (currentDesign === 'D') html = getDesignD();
+      container.innerHTML = generateDesignA(currentThemeKey);
 
-      container.innerHTML = html;
-
-      const desc = DESCRIPTIONS[currentDesign];
       descBox.innerHTML = `
-        <h4 class="font-bold text-white mb-1">${desc.title}</h4>
-        <p class="leading-relaxed text-slate-300">${desc.points}</p>
+        <h4 class="font-bold text-white mb-1">Teinte active : ${t.name}</h4>
+        <p class="leading-relaxed text-slate-300">${t.desc}</p>
         <div class="mt-3 pt-2.5 border-t border-slate-800 flex items-center justify-center gap-2">
-          <span class="text-brand-400 font-semibold">Votre avis ?</span>
-          <span class="text-slate-400">Répondez simplement avec la lettre ("Je préfère le ${currentDesign}")</span>
+          <span class="text-brand-400 font-semibold">Validation :</span>
+          <span class="text-slate-400">Si cette nuance vous convient, dites-moi simplement <strong>"Validé avec le ${t.name}"</strong> et je l'intègre directement dans le code !</span>
         </div>
       `;
 
-      // 2. Grid View render
+      // 2. Grid View render (4 themes side-by-side)
       if (viewMode === 'grid') {
-        document.getElementById('gridDesignA').innerHTML = `<div class="p-2 space-y-3">${getDesignA()}</div>`;
-        document.getElementById('gridDesignB').innerHTML = `<div class="p-2 space-y-3">${getDesignB()}</div>`;
-        document.getElementById('gridDesignC').innerHTML = `<div class="p-2 space-y-3">${getDesignC()}</div>`;
-        document.getElementById('gridDesignD').innerHTML = `<div class="p-2 space-y-3">${getDesignD()}</div>`;
+        document.getElementById('gridThemeBrand').innerHTML = `<div class="p-2 space-y-3">${generateDesignA('brand')}</div>`;
+        document.getElementById('gridThemeRoyal').innerHTML = `<div class="p-2 space-y-3">${generateDesignA('royal')}</div>`;
+        document.getElementById('gridThemeIndigo').innerHTML = `<div class="p-2 space-y-3">${generateDesignA('indigo')}</div>`;
+        document.getElementById('gridThemeSlate').innerHTML = `<div class="p-2 space-y-3">${generateDesignA('slate')}</div>`;
       }
     }
 
