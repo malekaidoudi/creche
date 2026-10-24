@@ -33,9 +33,9 @@ const startAttendanceJob = () => {
       timezone: 'Africa/Tunis'
     });
 
-    // 2. Filet de sécurité en fin de soirée (20h00)
-    eveningSafetyJob = cron.schedule('0 20 * * 1-6', async () => {
-      console.log('⏰ [CRON PRÉSENCE] Filet de sécurité de 20h00 : vérification des présences orphelines...');
+    // 2. Filet de sécurité en fin de soirée (18h00)
+    eveningSafetyJob = cron.schedule('0 18 * * 1-6', async () => {
+      console.log('⏰ [CRON PRÉSENCE] Filet de sécurité de 18h00 : vérification des présences orphelines...');
       const res = await autoCloseExpiredAttendances();
       if (res.totalClosed > 0) {
         console.log(`✅ [CRON PRÉSENCE] ${res.totalClosed} départ(s) clôturé(s) par le filet de sécurité`);

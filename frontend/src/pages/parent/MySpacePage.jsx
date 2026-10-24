@@ -40,6 +40,12 @@ import TestimonialForm from '../../components/testimonials/TestimonialForm';
 import { getEmergencyContactDisplay } from '../../utils/emergencyContacts';
 import PushNotificationCard from '../../components/notifications/PushNotificationCard';
 
+// Cache mémoire pour affichage instantané lors du retour à l'espace parent
+let cachedParentChildren = null;
+let cachedParentAppointments = null;
+let cachedParentUnreadCount = 0;
+let cachedCanAddChild = true;
+
 const MySpacePage = () => {
   const { user } = useAuth();
   const { isRTL } = useLanguage();
@@ -47,16 +53,16 @@ const MySpacePage = () => {
   const dialog = useDialogContext();
   const { getImageUrl, hasImage } = useProfileImage();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [children, setChildren] = useState([]);
-  const [appointments, setAppointments] = useState([]);
+  const [loading, setLoading] = useState(() => cachedParentChildren === null);
+  const [children, setChildren] = useState(() => cachedParentChildren || []);
+  const [appointments, setAppointments] = useState(() => cachedParentAppointments || []);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadCount, setUnreadCount] = useState(() => cachedParentUnreadCount);
   const [showAppointmentModal, setShowAppointmentModal] = useState(false);
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [appointmentKey, setAppointmentKey] = useState(0);
-  const [canAddChild, setCanAddChild] = useState(true);
+  const [canAddChild, setCanAddChild] = useState(() => cachedCanAddChild);
 
   const [showTestimonialForm, setShowTestimonialForm] = useState(false);
   const [selectedChildForModal, setSelectedChildForModal] = useState(null);
@@ -78,6 +84,7 @@ const MySpacePage = () => {
     try {
       const response = await api.get('/api/children/my-count');
       if (response.data?.success) {
+        cachedCanAddChild = response.data.canAddChild;
         setCanAddChild(response.data.canAddChild);
       }
     } catch (error) {
@@ -89,7 +96,9 @@ const MySpacePage = () => {
     try {
       const response = await api.get('/api/appointments/my');
       if (response.data?.success) {
-        setAppointments(response.data.appointments || []);
+        const list = response.data.appointments || [];
+        cachedParentAppointments = list;
+        setAppointments(list);
       }
     } catch (error) {
       console.error('Erreur chargement rendez-vous:', error);
@@ -98,11 +107,15 @@ const MySpacePage = () => {
 
   const loadChildren = async () => {
     try {
-      setLoading(true);
+      if (cachedParentChildren === null) {
+        setLoading(true);
+      }
       const response = await api.get('/api/user/children-summary');
       const result = response.data;
       if (result.success) {
-        setChildren(result.children || []);
+        const list = result.children || [];
+        cachedParentChildren = list;
+        setChildren(list);
       }
     } catch (error) {
       console.error('Erreur chargement enfants:', error);
@@ -116,7 +129,9 @@ const MySpacePage = () => {
     try {
       const response = await api.get('/api/notifications?is_read=false');
       if (response.data && response.data.success) {
-        setUnreadCount(response.data.notifications?.length || 0);
+        const count = response.data.notifications?.length || 0;
+        cachedParentUnreadCount = count;
+        setUnreadCount(count);
       }
     } catch (error) {
       console.error('Erreur chargement compteur notifications:', error);

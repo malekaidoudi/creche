@@ -38,6 +38,9 @@ import TodayAbsences from './TodayAbsences';
 import HolidaysList from '../HolidaysList';
 import SimpleNotificationCenter from './SimpleNotificationCenter';
 
+// Cache mémoire pour le nombre de messages non lus
+let cachedUnreadMessagesCount = 0;
+
 const MobileDashboardComplete = ({
     stats,
     recentActivities,
@@ -69,7 +72,7 @@ const MobileDashboardComplete = ({
     const [focusMode, setFocusMode] = useState(null);
 
     // État pour le nombre de messages non lus
-    const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+    const [unreadMessagesCount, setUnreadMessagesCount] = useState(() => cachedUnreadMessagesCount);
 
     // État pour le centre de notifications
     const [notificationOpen, setNotificationOpen] = useState(false);
@@ -85,6 +88,7 @@ const MobileDashboardComplete = ({
                 });
                 const data = await response.json();
                 if (data.success && data.messages) {
+                    cachedUnreadMessagesCount = data.messages.length;
                     setUnreadMessagesCount(data.messages.length);
                 }
             } catch (error) {
@@ -165,9 +169,7 @@ const MobileDashboardComplete = ({
     return (
         <>
             {/* Hero Section - Résumé Rapide */}
-            <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
+            <div
                 className="bg-gradient-to-br from-primary-500 via-primary-600 to-primary-700 rounded-2xl p-4 mb-4 shadow-lg"
             >
                 <div className="flex items-center justify-between mb-3">
@@ -221,13 +223,11 @@ const MobileDashboardComplete = ({
                         </motion.div>
                     ))}
                 </div>
-            </motion.div>
+            </div>
 
             {/* Actions Rapides */}
             {(isStaff() || isAdmin()) && (
-                <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
+                <div
                     className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm mb-4"
                 >
                     <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
@@ -312,7 +312,7 @@ const MobileDashboardComplete = ({
                             <span className="text-xs text-gray-700 dark:text-gray-300 text-center">{isRTL ? 'الأنشطة' : 'Activités'}</span>
                         </button>
                     </div>
-                </motion.div>
+                </div>
             )}
 
             {/* Sections Collapsibles */}
@@ -470,10 +470,7 @@ const CollapsibleCard = ({
     const { isRTL } = useLanguage();
 
     return (
-        <motion.div
-            layout
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+        <div
             className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden"
         >
             {/* Header */}
@@ -589,7 +586,7 @@ const CollapsibleCard = ({
                     </motion.div>
                 )}
             </AnimatePresence>
-        </motion.div>
+        </div>
     );
 };
 

@@ -11,18 +11,25 @@ import WidgetCard, { WidgetEmptyState } from '../ui/WidgetCard';
  * Widget affichant les rendez-vous d'aujourd'hui
  * Design compact et responsive
  */
+// Cache mémoire pour affichage instantané sans scintillement
+let cachedTodayAppointments = null;
+
 const TodayAppointmentsWidget = () => {
     const { isRTL } = useLanguage();
     const dialog = useDialogContext();
-    const [appointments, setAppointments] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [appointments, setAppointments] = useState(() => cachedTodayAppointments || []);
+    const [loading, setLoading] = useState(() => cachedTodayAppointments === null);
     const [refreshing, setRefreshing] = useState(false);
     const [selectedAppointment, setSelectedAppointment] = useState(null);
     const [showActionModal, setShowActionModal] = useState(false);
 
     const loadAppointments = async (showToast = false) => {
         try {
-            if (showToast) setRefreshing(true);
+            if (showToast) {
+                setRefreshing(true);
+            } else if (cachedTodayAppointments === null) {
+                setLoading(true);
+            }
 
             const response = await api.get('/api/appointments/today');
 
@@ -44,6 +51,7 @@ const TodayAppointmentsWidget = () => {
                     return timeA - timeB;
                 });
 
+                cachedTodayAppointments = todayAppts;
                 setAppointments(todayAppts);
             }
         } catch (error) {

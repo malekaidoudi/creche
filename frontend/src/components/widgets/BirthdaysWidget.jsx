@@ -5,12 +5,16 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import api from '../../services/api';
 import WidgetCard, { WidgetEmptyState } from '../ui/WidgetCard';
 
+// Cache mémoire pour affichage instantané des anniversaires et événements
+let cachedBirthdays = null;
+let cachedEvents = null;
+
 const EventsWidget = ({ isMobileView = false }) => {
   const { isRTL } = useLanguage();
   const navigate = useNavigate();
-  const [birthdays, setBirthdays] = useState([]);
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [birthdays, setBirthdays] = useState(() => cachedBirthdays || []);
+  const [events, setEvents] = useState(() => cachedEvents || []);
+  const [loading, setLoading] = useState(() => cachedBirthdays === null && cachedEvents === null);
   const [filter, setFilter] = useState('all'); // 'all', 'events', 'birthdays'
 
   useEffect(() => {
@@ -19,7 +23,9 @@ const EventsWidget = ({ isMobileView = false }) => {
 
   const loadData = async () => {
     try {
-      setLoading(true);
+      if (cachedBirthdays === null && cachedEvents === null) {
+        setLoading(true);
+      }
 
       // Anniversaires et événements du mois sont indépendants: on les charge
       // en parallèle plutôt qu'en cascade.
@@ -38,6 +44,7 @@ const EventsWidget = ({ isMobileView = false }) => {
           itemType: 'birthday',
           displayDate: b.start_date
         })).sort((a, b) => new Date(a.start_date).getDate() - new Date(b.start_date).getDate());
+        cachedBirthdays = sortedBirthdays;
         setBirthdays(sortedBirthdays);
       }
 
@@ -50,6 +57,7 @@ const EventsWidget = ({ isMobileView = false }) => {
             displayDate: e.start_date
           }))
           .sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+        cachedEvents = filteredEvents;
         setEvents(filteredEvents);
       }
     } catch (error) {

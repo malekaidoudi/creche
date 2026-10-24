@@ -58,7 +58,7 @@ const MobileNavigation = ({ hideSpacer = false }) => {
         {
             id: 'attendance',
             icon: ClipboardCheck,
-            label: isRTL ? 'الحضور' : 'Présences',
+            label: isRTL ? 'الحضور' : 'Appel',
             path: '/dashboard/attendance/today',
             roles: ['admin', 'staff'],
             feature: 'ATTENDANCE_TODAY'

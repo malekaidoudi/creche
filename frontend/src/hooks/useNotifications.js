@@ -2,32 +2,33 @@ import { useState, useEffect } from 'react';
 import { useAuth } from './useAuth';
 import api from '../services/api';
 
+// Cache mémoire pour éviter le flash du badge 0 -> N
+let cachedNotifications = [];
+let cachedUnreadCount = 0;
+
 export const useNotifications = () => {
   const { user } = useAuth();
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(() => cachedUnreadCount);
+  const [notifications, setNotifications] = useState(() => cachedNotifications);
   const [loading, setLoading] = useState(false);
 
   const loadNotifications = async () => {
     if (!user || (user.role !== 'admin' && user.role !== 'staff' && user.role !== 'developer')) {
-      console.log('🚫 Chargement notifications ignoré - utilisateur non autorisé:', user?.role);
       return;
     }
 
     try {
       setLoading(true);
-      console.log('📬 Chargement notifications pour:', user.email);
 
       const response = await api.get('/api/notifications');
 
-      console.log('📨 Réponse notifications:', response.data);
-
       if (response.data.success) {
-        setNotifications(response.data.notifications || []);
-        setUnreadCount(response.data.unread_count || 0);
-        console.log('✅ Notifications chargées:', response.data.notifications?.length || 0);
-      } else {
-        console.log('⚠️ Réponse notifications non réussie:', response.data);
+        const notifs = response.data.notifications || [];
+        const count = response.data.unread_count || 0;
+        cachedNotifications = notifs;
+        cachedUnreadCount = count;
+        setNotifications(notifs);
+        setUnreadCount(count);
       }
     } catch (error) {
       console.error('❌ Erreur chargement notifications:', error);

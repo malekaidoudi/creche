@@ -5,11 +5,14 @@ import { useLanguage } from '../../hooks/useLanguage';
 import WidgetCard, { WidgetEmptyState } from '../ui/WidgetCard';
 import api from '../../services/api';
 
+// Cache mémoire pour affichage instantané des absences sans scintillement
+let cachedTodayAbsences = null;
+
 const TodayAbsences = ({ isMobileView = false }) => {
   const { isRTL } = useLanguage();
   const navigate = useNavigate();
-  const [absences, setAbsences] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [absences, setAbsences] = useState(() => cachedTodayAbsences || []);
+  const [loading, setLoading] = useState(() => cachedTodayAbsences === null);
 
   useEffect(() => {
     loadTodayAbsences();
@@ -19,11 +22,16 @@ const TodayAbsences = ({ isMobileView = false }) => {
 
   const loadTodayAbsences = async () => {
     try {
+      if (cachedTodayAbsences === null) {
+        setLoading(true);
+      }
       const today = new Date().toISOString().split('T')[0];
       const response = await api.get(`/api/absence-requests/today?date=${today}`);
 
       if (response.data.success) {
-        setAbsences(response.data.absences || []);
+        const list = response.data.absences || [];
+        cachedTodayAbsences = list;
+        setAbsences(list);
       }
     } catch (error) {
       console.error('Erreur chargement absences du jour:', error);

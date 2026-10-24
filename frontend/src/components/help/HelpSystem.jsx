@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useAuth } from '../../contexts/AuthContext';
+import useIsMobile from '../../hooks/useIsMobile';
 import api from '../../services/api';
 import {
   helpData,
@@ -124,9 +125,19 @@ const HelpSystem = () => {
   const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
+
+  // Sur mobile, le bouton d'aide ne s'affiche QUE sur le tableau de bord (/dashboard ou /mon-espace)
+  const currentPath = (location?.pathname || '').replace(/\/+$/, '') || '/';
+  const isDashboardPage = currentPath === '/dashboard' || currentPath === '/mon-espace';
 
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('chat');
+
+  // Fermer le centre d'aide lors d'un changement de route
+  useEffect(() => {
+    setIsOpen(false);
+  }, [location?.pathname]);
 
   // Contextual Help based on active route and role
   const contextualInfo = useMemo(() => {
@@ -491,6 +502,11 @@ const HelpSystem = () => {
     return data.roleBadge.parent;
   }, [user, data]);
 
+  // Sur mobile, le bouton d'aide s'affiche UNIQUEMENT sur la page d'accueil du tableau de bord
+  if (isMobile && !isDashboardPage && !isOpen) {
+    return null;
+  }
+
   return (
     <>
       {/* ======================================================== */}
@@ -500,7 +516,7 @@ const HelpSystem = () => {
       {/* ======================================================== */}
       <div
         className={`fixed z-40 bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] sm:bottom-6 ${isRTL ? 'left-3 sm:left-6' : 'right-3 sm:right-6'
-          } ${isOpen ? 'hidden sm:block' : 'block'}`}
+          } ${isOpen ? 'hidden sm:block' : 'block'} ${!isDashboardPage ? 'hidden lg:block' : ''}`}
       >
         {/* Subtle breathing ambient glow (Cyan Diamant & Verre Saphir) */}
         {!isOpen && (
@@ -533,6 +549,7 @@ const HelpSystem = () => {
               transition={{ type: 'spring', damping: 24, stiffness: 320 }}
               className={`fixed bottom-20 sm:bottom-24 z-50 max-w-[calc(100vw-2rem)] sm:max-w-sm p-3.5 sm:p-4 rounded-2xl shadow-2xl border
                 ${isRTL ? 'left-3 sm:left-6' : 'right-3 sm:right-6'}
+                ${!isDashboardPage ? 'hidden lg:block' : ''}
                 ${proactiveNotice.type === 'permission_denied'
                   ? 'bg-gradient-to-br from-slate-950 via-amber-950 to-slate-950 text-white border-amber-500/50 shadow-amber-950/40 ring-1 ring-amber-400/30'
                   : 'bg-gradient-to-br from-slate-950 via-cyan-950 to-blue-950 text-white border-cyan-500/50 shadow-cyan-950/50 ring-1 ring-cyan-400/40'

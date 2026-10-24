@@ -125,11 +125,14 @@ const MobileTaskCard = ({ task, index, isRTL, onTaskClick, onValidate, onComplet
     );
 };
 
+// Cache mémoire pour affichage instantané sans scintillement lors du retour au tableau de bord
+let cachedTodayTasks = null;
+
 const TodayTasksWidgetMobile = () => {
     const { isRTL } = useLanguage();
     const dialog = useDialogContext();
-    const [tasks, setTasks] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [tasks, setTasks] = useState(() => cachedTodayTasks || []);
+    const [loading, setLoading] = useState(() => cachedTodayTasks === null);
     const [showDetailModal, setShowDetailModal] = useState(false);
     const [selectedTask, setSelectedTask] = useState(null);
     const [showActionModal, setShowActionModal] = useState(false);
@@ -151,7 +154,9 @@ const TodayTasksWidgetMobile = () => {
 
     const loadTodayTasks = async () => {
         try {
-            setLoading(true);
+            if (cachedTodayTasks === null) {
+                setLoading(true);
+            }
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
@@ -236,7 +241,9 @@ const TodayTasksWidgetMobile = () => {
                     return new Date(a.start_date) - new Date(b.start_date);
                 });
 
-                setTasks(combined.slice(0, 10));
+                const finalTasks = combined.slice(0, 10);
+                cachedTodayTasks = finalTasks;
+                setTasks(finalTasks);
             }
         } catch (error) {
             console.error('Erreur chargement tâches du jour:', error);
