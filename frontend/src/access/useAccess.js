@@ -14,12 +14,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
 import { useAuth } from '../hooks/useAuth';
-import { FEATURES } from './FEATURES';
+// Cache mémoire pour que les permissions soient immédiatement disponibles au rendu
+let cachedPermissionsCodes = null;
 
 export const useAccess = () => {
   const { user } = useAuth();
-  const [codes, setCodes] = useState(new Set());
-  const [loading, setLoading] = useState(true);
+  const [codes, setCodes] = useState(() => cachedPermissionsCodes || new Set());
+  const [loading, setLoading] = useState(() => cachedPermissionsCodes === null);
 
   useEffect(() => {
     let cancelled = false;
@@ -30,14 +31,22 @@ export const useAccess = () => {
         return;
       }
 
+      // Si l'utilisateur est admin ou developer, il a toutes les permissions immédiatement
+      if (user.role === 'admin' || user.role === 'developer') {
+        setLoading(false);
+        return;
+      }
+
       try {
         const response = await api.get('/api/staff-permissions/me');
         if (!cancelled && response.data?.success) {
-          setCodes(new Set(response.data.codes || []));
+          const newCodes = new Set(response.data.codes || []);
+          cachedPermissionsCodes = newCodes;
+          setCodes(newCodes);
         }
       } catch (error) {
         console.error('Erreur chargement des accès:', error);
-        if (!cancelled) setCodes(new Set()); // Par prudence: aucun accès en cas d'erreur
+        if (!cancelled && !cachedPermissionsCodes) setCodes(new Set());
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -52,6 +61,7 @@ export const useAccess = () => {
    */
   const can = useCallback((featureInput) => {
     if (!featureInput) return false;
+    if (user?.role === 'admin' || user?.role === 'developer') return true;
 
     let permissionCode = null;
 
@@ -74,7 +84,7 @@ export const useAccess = () => {
     }
 
     return codes.has(permissionCode);
-  }, [codes]);
+  }, [codes, user?.role]);
 
   return { can, loading };
 };

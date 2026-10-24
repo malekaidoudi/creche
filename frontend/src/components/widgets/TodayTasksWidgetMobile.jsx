@@ -39,11 +39,7 @@ const MobileTaskCard = ({ task, index, isRTL, onTaskClick, onValidate, onComplet
     const time = task.start_date ? new Date(task.start_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : null;
 
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2, delay: index * 0.03 }}
-        >
+        <div>
             <div
                 onClick={() => onTaskClick(task)}
                 className={`relative bg-white dark:bg-gray-800 border-l-4 ${config.border} rounded-lg p-3 shadow-sm active:scale-[0.98] transition-transform`}
@@ -121,7 +117,7 @@ const MobileTaskCard = ({ task, index, isRTL, onTaskClick, onValidate, onComplet
                     )}
                 </div>
             </div>
-        </motion.div>
+        </div>
     );
 };
 

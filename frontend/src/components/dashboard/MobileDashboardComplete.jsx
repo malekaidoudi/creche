@@ -38,8 +38,16 @@ import TodayAbsences from './TodayAbsences';
 import HolidaysList from '../HolidaysList';
 import SimpleNotificationCenter from './SimpleNotificationCenter';
 
-// Cache mémoire pour le nombre de messages non lus
-let cachedUnreadMessagesCount = 0;
+// Cache mémoire pour l'état des sections ouvertes/fermées
+let cachedExpandedSections = {
+    tasks: true, // Ouvert par défaut
+    appointments: false,
+    overdue: false,
+    birthdays: false,
+    activities: false,
+    absences: false,
+    holidays: false
+};
 
 const MobileDashboardComplete = ({
     stats,
@@ -57,16 +65,8 @@ const MobileDashboardComplete = ({
     const notificationsHook = useNotifications();
     const { unreadCount } = (user?.role === 'admin' || user?.role === 'staff') ? notificationsHook : { unreadCount: 0 };
 
-    // États pour les sections collapsibles
-    const [expandedSections, setExpandedSections] = useState({
-        tasks: true, // Ouvert par défaut
-        appointments: false,
-        overdue: false,
-        birthdays: false,
-        activities: false,
-        absences: false,
-        holidays: false
-    });
+    // États pour les sections collapsibles (mémorisés pour éviter le rechargement/fermeture-ouverture)
+    const [expandedSections, setExpandedSections] = useState(() => ({ ...cachedExpandedSections }));
 
     // État pour le mode focus (modal plein écran)
     const [focusMode, setFocusMode] = useState(null);
@@ -104,12 +104,16 @@ const MobileDashboardComplete = ({
         }
     }, [user]);
 
-    // Toggle collapse
+    // Toggle collapse (sauvegardé en mémoire)
     const toggleSection = (section) => {
-        setExpandedSections(prev => ({
-            ...prev,
-            [section]: !prev[section]
-        }));
+        setExpandedSections(prev => {
+            const next = {
+                ...prev,
+                [section]: !prev[section]
+            };
+            cachedExpandedSections = next;
+            return next;
+        });
     };
 
     // Ouvrir en mode focus
@@ -502,12 +506,7 @@ const CollapsibleCard = ({
                     >
                         <Maximize2 className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                     </button>
-                    <motion.div
-                        animate={{ rotate: isExpanded ? 180 : 0 }}
-                        transition={{ duration: 0.2 }}
-                    >
-                        <ChevronDown className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                    </motion.div>
+                    <ChevronDown className={`w-5 h-5 text-gray-600 dark:text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
                 </div>
             </div>
 
@@ -570,14 +569,14 @@ const CollapsibleCard = ({
                 </div>
             )}
 
-            {/* Content */}
-            <AnimatePresence>
+            {/* Content - initial={false} empêche l'animation de fermeture/ouverture au montage initial */}
+            <AnimatePresence initial={false}>
                 {isExpanded && (
                     <motion.div
-                        initial={{ height: 0, opacity: 0 }}
+                        initial={false}
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.3 }}
+                        transition={{ duration: 0.2 }}
                         className={scrollable ? 'overflow-x-auto' : ''}
                     >
                         <div className="border-t border-gray-100 dark:border-gray-700">

@@ -198,15 +198,19 @@ const MobileNavigation = ({ hideSpacer = false }) => {
     const navItems = effectiveRole === 'parent' ? parentNavItems : mainNavItems;
 
     // Filtrer les éléments selon le rôle et, si précisée, la fonctionnalité (FEATURES)
-    const filteredNavItems = navItems.filter(item =>
-        (item.roles.includes(effectiveRole) || item.roles.includes(user?.role)) &&
-        (!item.feature || can(item.feature))
-    );
+    const filteredNavItems = navItems.filter(item => {
+        const roleMatches = item.roles.includes(effectiveRole) || item.roles.includes(user?.role);
+        if (!roleMatches) return false;
+        if (!item.feature || effectiveRole === 'admin') return true;
+        return can(item.feature);
+    });
 
-    const filteredMoreItems = moreMenuItems.filter(item =>
-        (item.roles.includes(effectiveRole) || item.roles.includes(user?.role)) &&
-        (!item.feature || can(item.feature))
-    );
+    const filteredMoreItems = moreMenuItems.filter(item => {
+        const roleMatches = item.roles.includes(effectiveRole) || item.roles.includes(user?.role);
+        if (!roleMatches) return false;
+        if (!item.feature || effectiveRole === 'admin') return true;
+        return can(item.feature);
+    });
 
     const isActive = (path) => {
         if (path === '/dashboard' && location.pathname === '/dashboard') return true;
@@ -241,19 +245,18 @@ const MobileNavigation = ({ hideSpacer = false }) => {
                             <button
                                 key={item.id}
                                 onClick={() => handleNavClick(item)}
-                                className={`flex flex-col items-center justify-center w-full h-full px-2 transition-colors ${active
-                                    ? 'text-primary-600 dark:text-primary-400'
+                                className={`relative flex flex-col items-center justify-center w-full h-full px-1 select-none ${active
+                                    ? 'text-primary-600 dark:text-primary-400 font-semibold'
                                     : 'text-gray-500 dark:text-gray-400'
                                     }`}
                             >
-                                <Icon className={`w-6 h-6 ${active ? 'scale-110' : ''} transition-transform`} />
-                                <span className={`text-xs mt-1 font-medium truncate max-w-[60px] ${active ? 'font-semibold' : ''}`}>
+                                <Icon className="w-6 h-6" />
+                                <span className={`text-[11px] sm:text-xs mt-0.5 font-medium truncate max-w-[72px] text-center ${active ? 'font-semibold' : ''}`}>
                                     {item.label}
                                 </span>
                                 {active && (
-                                    <motion.div
-                                        layoutId="activeTab"
-                                        className="absolute bottom-0 w-12 h-0.5 bg-primary-600 dark:bg-primary-400 rounded-full"
+                                    <span
+                                        className="absolute bottom-1 w-8 h-0.5 bg-primary-600 dark:bg-primary-400 rounded-full"
                                     />
                                 )}
                             </button>
