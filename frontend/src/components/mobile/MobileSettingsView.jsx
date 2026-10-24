@@ -329,13 +329,15 @@ const MobileSettingsView = ({ onSwitchToDesktopView }) => {
                       key={d.id}
                       type="button"
                       onClick={() => toggleDay(d.id)}
-                      className={`py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+                      className={`h-11 w-full p-0 flex items-center justify-center text-center text-xs font-bold rounded-xl transition-all cursor-pointer select-none ${
                         isSelected
-                          ? 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-950/50 border border-cyan-400/40 scale-[1.02]'
+                          ? 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-950/50 border border-cyan-400/40'
                           : 'bg-gray-100 dark:bg-slate-800/80 text-gray-500 dark:text-slate-400 border border-gray-200 dark:border-slate-700/60 hover:text-gray-900 dark:hover:text-slate-200'
                       }`}
                     >
-                      {currentLanguage === 'ar' ? d.labelAr : d.labelFr}
+                      <span className="inline-flex items-center justify-center text-center leading-none">
+                        {currentLanguage === 'ar' ? d.labelAr : d.labelFr}
+                      </span>
                     </button>
                   );
                 })}

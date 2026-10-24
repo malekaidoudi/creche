@@ -189,7 +189,7 @@ const AddChildPage = () => {
     // Afficher le chargement pendant la vérification de la limite
     if (checkingLimit) {
         return (
-            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center pt-safe">
                 <LoadingSpinner />
             </div>
         )
@@ -198,7 +198,7 @@ const AddChildPage = () => {
     // Bloquer l'accès si limite atteinte
     if (!canAddChild) {
         return (
-            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center pt-safe">
                 <div className="text-center p-8">
                     <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
                     <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
@@ -216,7 +216,7 @@ const AddChildPage = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-8 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] md:py-8">
             <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
                 {/* Header */}
                 <div className="mb-6">

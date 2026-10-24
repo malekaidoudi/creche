@@ -431,7 +431,7 @@ const AddUserPage = () => {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 pt-[calc(env(safe-area-inset-top,0px)+0.75rem)] lg:pt-0">
             {/* En-tête */}
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
