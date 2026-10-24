@@ -38,7 +38,8 @@ import TodayAbsences from './TodayAbsences';
 import HolidaysList from '../HolidaysList';
 import SimpleNotificationCenter from './SimpleNotificationCenter';
 
-// Cache mémoire pour l'état des sections ouvertes/fermées
+// Cache mémoire pour le nombre de messages et l'état des sections
+let cachedUnreadMessagesCount = 0;
 let cachedExpandedSections = {
     tasks: true, // Ouvert par défaut
     appointments: false,
