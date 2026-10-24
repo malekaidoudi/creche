@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Comparatif Design - Page Paramètres Mobile (Crèche)</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            display: ['Outfit', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              200: '#bae6fd',
+              300: '#7dd3fc',
+              400: '#38bdf8',
+              500: '#0ea5e9',
+              600: '#0284c7',
+              700: '#0369a1',
+              800: '#075985',
+              900: '#0c4a6e',
+            },
+            darkbg: '#0B1120',
+            darkcard: '#111827',
+            darkcard2: '#1E293B',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.2); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.4); }
+
+    /* Interactive toggle switch animation */
+    .switch-track {
+      transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .switch-thumb {
+      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Push toast animation */
+    @keyframes slideDown {
+      from { transform: translateY(-100%); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .animate-slide-down {
+      animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans selection:bg-brand-500 selection:text-white">
+
+  <!-- TOP BAR COMMAND CENTER -->
+  <header class="sticky top-0 z-50 bg-slate-900/90 backdrop-blur-md border-b border-slate-800/80 px-4 py-3">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      
+      <!-- Brand & Title -->
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-600 to-cyan-400 flex items-center justify-center font-black text-white shadow-lg shadow-brand-500/20">
+          ⚙️
+        </div>
+        <div>
+          <h1 class="text-sm sm:text-base font-bold text-white tracking-tight flex items-center gap-2">
+            Showcase Paramètres Mobile
+            <span class="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full bg-brand-500/15 text-brand-400 border border-brand-500/30">
+              4 Prototypes
+            </span>
+          </h1>
+          <p class="text-xs text-slate-400 hidden sm:block">
+            Palette officielle du Dashboard Mobile (Navy, Slate, Cyan, Emerald)
+          </p>
+        </div>
+      </div>
+
+      <!-- Controls: Theme, Language, View mode -->
+      <div class="flex items-center gap-2 flex-wrap">
+        
+        <!-- View mode: Phone frame vs Side-by-side -->
+        <div class="bg-slate-800/80 p-0.5 rounded-xl border border-slate-700/60 flex items-center text-xs">
+          <button id="btnViewSingle" onclick="setViewMode('single')" class="px-2.5 py-1.5 rounded-lg font-medium transition-all bg-brand-600 text-white shadow-sm">
+            📱 Vue Smartphone
+          </button>
+          <button id="btnViewGrid" onclick="setViewMode('grid')" class="px-2.5 py-1.5 rounded-lg font-medium text-slate-400 hover:text-white transition-all">
+            📊 Comparer les 4
+          </button>
+        </div>
+
+        <!-- Language toggle (FR/AR) -->
+        <button onclick="toggleLang()" class="px-2.5 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 text-xs font-semibold text-slate-200 transition-all flex items-center gap-1.5">
+          <span id="langFlag">🇹🇳</span>
+          <span id="langLabel">Arabe (RTL)</span>
+        </button>
+
+        <!-- Dark/Light theme toggle -->
+        <button onclick="toggleTheme()" class="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700/60 text-slate-200 transition-all" title="Changer de thème">
+          <svg id="themeIconDark" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+          <svg id="themeIconLight" class="w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+        </button>
+
+      </div>
+    </div>
+
+    <!-- Sub-bar: Design Tabs (Visible in Single view) -->
+    <div id="designTabsContainer" class="max-w-7xl mx-auto mt-3 pt-2.5 border-t border-slate-800/60 flex items-center justify-center gap-1.5 overflow-x-auto pb-1 text-xs">
+      <button onclick="selectDesign('A')" class="design-tab px-3 py-1.5 rounded-xl font-semibold transition-all border active-tab bg-brand-500/20 text-brand-300 border-brand-500/40">
+        Design A • iOS Inset Style
+      </button>
+      <button onclick="selectDesign('B')" class="design-tab px-3 py-1.5 rounded-xl font-semibold transition-all border text-slate-400 border-transparent hover:text-white hover:bg-slate-800/60">
+        Design B • Modern Glass & Cards
+      </button>
+      <button onclick="selectDesign('C')" class="design-tab px-3 py-1.5 rounded-xl font-semibold transition-all border text-slate-400 border-transparent hover:text-white hover:bg-slate-800/60">
+        Design C • Minimaliste & Pur
+      </button>
+      <button onclick="selectDesign('D')" class="design-tab px-3 py-1.5 rounded-xl font-semibold transition-all border text-slate-400 border-transparent hover:text-white hover:bg-slate-800/60">
+        Design D • Dashboard Pro Widgets
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN WRAPPER -->
+  <main class="max-w-7xl mx-auto px-4 py-8">
+
+    <!-- BANNER: HOW TO CHOOSE -->
+    <div class="mb-8 p-4 rounded-2xl bg-gradient-to-r from-brand-950/60 via-slate-900/80 to-slate-900 border border-brand-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div class="flex items-start gap-3">
+        <span class="text-2xl">💡</span>
+        <div>
+          <h2 class="text-sm font-bold text-white">Consignes d'évaluation</h2>
+          <p class="text-xs text-slate-300 mt-0.5 leading-relaxed">
+            Testez les boutons, les jours et le bouton <strong>"Tester la notification"</strong> pour voir l'effet réel.<br class="hidden sm:inline">
+            Dites-moi simplement lequel vous préférez : <strong>Design A, B, C ou D</strong> (ou un mélange de deux) !
+          </p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 self-end sm:self-auto shrink-0">
+        <span class="text-xs text-slate-400">Palette Crèche :</span>
+        <span class="w-4 h-4 rounded-full bg-[#0B1120] border border-slate-700" title="Dark Slate Background #0B1120"></span>
+        <span class="w-4 h-4 rounded-full bg-[#0284C7]" title="Primary Brand Blue #0284C7"></span>
+        <span class="w-4 h-4 rounded-full bg-[#10B981]" title="Emerald Green #10B981"></span>
+        <span class="w-4 h-4 rounded-full bg-[#F59E0B]" title="Amber Accent #F59E0B"></span>
+      </div>
+    </div>
+
+    <!-- CONTAINER 1: SINGLE SMARTPHONE VIEW -->
+    <div id="singleViewWrapper" class="flex flex-col items-center justify-center">
+      
+      <!-- Phone Mockup Frame -->
+      <div class="relative w-full max-w-[390px] rounded-[44px] p-3 bg-gradient-to-b from-slate-700 via-slate-800 to-slate-900 shadow-2xl shadow-black/80 ring-1 ring-white/10">
+        
+        <!-- Screen Glass -->
+        <div id="phoneScreen" class="relative rounded-[36px] bg-slate-950 overflow-hidden min-h-[740px] flex flex-col border border-slate-800/80 transition-colors">
+          
+          <!-- Phone Status Bar -->
+          <div class="pt-3 px-6 pb-2 flex items-center justify-between text-[11px] font-semibold text-slate-400 select-none z-30">
+            <span>09:41</span>
+            <div class="w-20 h-4 bg-slate-900 rounded-full mx-auto"></div>
+            <div class="flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L4.35 19.4c-.39.39-.39 1.02 0 1.41.39.39 1.02.39 1.41 0l1.9-1.9C9.17 19.55 10.53 20 12 20c4.97 0 9-4.03 9-9s-4.03-9-9-9z"/></svg>
+              <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+            </div>
+          </div>
+
+          <!-- Simulated Push Notification Toast (Hidden by default) -->
+          <div id="pushToast" class="hidden absolute top-3 inset-x-3 z-40 bg-slate-900/95 backdrop-blur-md rounded-2xl p-3 border border-emerald-500/40 shadow-xl shadow-black/60 animate-slide-down">
+            <div class="flex items-start gap-3">
+              <div class="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 text-sm">
+                ⏰
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between">
+                  <h4 class="text-xs font-bold text-white">Alerte de présence</h4>
+                  <span class="text-[10px] text-slate-400">À l'instant</span>
+                </div>
+                <p class="text-[11px] text-slate-300 mt-0.5 leading-snug">
+                  Ceci est un test en direct : vos alertes fonctionnent parfaitement sur votre appareil !
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mobile App Header -->
+          <div class="px-5 py-3 border-b border-slate-800/60 flex items-center justify-between">
+            <div>
+              <h2 class="text-base font-bold text-white tracking-tight" data-i18n="settings_title">Paramètres</h2>
+              <p class="text-[11px] text-slate-400" data-i18n="settings_subtitle">Préférences de votre compte mobile</p>
+            </div>
+            <div class="w-8 h-8 rounded-full bg-slate-800/80 border border-slate-700 flex items-center justify-center text-xs font-bold text-brand-400">
+              MG
+            </div>
+          </div>
+
+          <!-- Dynamic Design Content Container -->
+          <div id="activeDesignContainer" class="flex-1 overflow-y-auto p-4 space-y-4">
+            <!-- Rendered via JS -->
+          </div>
+
+          <!-- Mobile Bottom Navigation Bar (Visual context) -->
+          <div class="mt-auto px-6 py-2.5 bg-slate-900/90 border-t border-slate-800/60 flex items-center justify-between text-slate-400 text-[10px] font-medium">
+            <div class="flex flex-col items-center gap-0.5">
+              <span>🏠</span>
+              <span>Accueil</span>
+            </div>
+            <div class="flex flex-col items-center gap-0.5">
+              <span>👶</span>
+              <span>Enfants</span>
+            </div>
+            <div class="flex flex-col items-center gap-0.5">
+              <span>📋</span>
+              <span>Présence</span>
+            </div>
+            <div class="flex flex-col items-center gap-0.5 text-brand-400">
+              <span>⚙️</span>
+              <span class="font-bold">Plus</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Quick Explanation of Current Design -->
+      <div id="designDescriptionBox" class="mt-6 max-w-md text-center text-xs text-slate-400 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
+        <!-- Rendered via JS -->
+      </div>
+
+    </div>
+
+    <!-- CONTAINER 2: GRID COMPARISON VIEW (Hidden by default) -->
+    <div id="gridViewWrapper" class="hidden grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+      
+      <!-- Card Design A -->
+      <div class="bg-slate-900 rounded-3xl border border-slate-800 p-4 shadow-xl flex flex-col">
+        <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
+          <div>
+            <h3 class="text-sm font-bold text-white">Design A • iOS Inset</h3>
+            <p class="text-[11px] text-slate-400">Groupes arrondis façon Réglages Apple</p>
+          </div>
+          <button onclick="selectDesign('A'); setViewMode('single');" class="px-2.5 py-1 rounded-lg bg-brand-600/30 text-brand-300 hover:bg-brand-600 hover:text-white text-[11px] font-semibold transition-all">
+            Zoomer 🔍
+          </button>
+        </div>
+        <div class="flex-1 overflow-hidden" id="gridDesignA"></div>
+      </div>
+
+      <!-- Card Design B -->
+      <div class="bg-slate-900 rounded-3xl border border-slate-800 p-4 shadow-xl flex flex-col">
+        <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
+          <div>
+            <h3 class="text-sm font-bold text-white">Design B • Modern Glass</h3>
+            <p class="text-[11px] text-slate-400">Cartes flottantes avec dégradés légers</p>
+          </div>
+          <button onclick="selectDesign('B'); setViewMode('single');" class="px-2.5 py-1 rounded-lg bg-brand-600/30 text-brand-300 hover:bg-brand-600 hover:text-white text-[11px] font-semibold transition-all">
+            Zoomer 🔍
+          </button>
+        </div>
+        <div class="flex-1 overflow-hidden" id="gridDesignB"></div>
+      </div>
+
+      <!-- Card Design C -->
+      <div class="bg-slate-900 rounded-3xl border border-slate-800 p-4 shadow-xl flex flex-col">
+        <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
+          <div>
+            <h3 class="text-sm font-bold text-white">Design C • Minimaliste</h3>
+            <p class="text-[11px] text-slate-400">Haute densité, lignes ultra fines</p>
+          </div>
+          <button onclick="selectDesign('C'); setViewMode('single');" class="px-2.5 py-1 rounded-lg bg-brand-600/30 text-brand-300 hover:bg-brand-600 hover:text-white text-[11px] font-semibold transition-all">
+            Zoomer 🔍
+          </button>
+        </div>
+        <div class="flex-1 overflow-hidden" id="gridDesignC"></div>
+      </div>
+
+      <!-- Card Design D -->
+      <div class="bg-slate-900 rounded-3xl border border-slate-800 p-4 shadow-xl flex flex-col">
+        <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
+          <div>
+            <h3 class="text-sm font-bold text-white">Design D • Dashboard Pro</h3>
+            <p class="text-[11px] text-slate-400">Widgets interactifs façon dashboard</p>
+          </div>
+          <button onclick="selectDesign('D'); setViewMode('single');" class="px-2.5 py-1 rounded-lg bg-brand-600/30 text-brand-300 hover:bg-brand-600 hover:text-white text-[11px] font-semibold transition-all">
+            Zoomer 🔍
+          </button>
+        </div>
+        <div class="flex-1 overflow-hidden" id="gridDesignD"></div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- JAVASCRIPT LOGIC & TEMPLATES -->
+  <script>
+    // State
+    let currentDesign = 'A';
+    let isRTL = false;
+    let isDark = true;
+    let viewMode = 'single';
+    let attendanceActive = true;
+    let selectedDays = [1, 2, 3, 4, 5, 6];
+    let reminderTime = '08:30';
+
+    const DAYS = [
+      { id: 1, fr: 'Lun', ar: 'إثن' },
+      { id: 2, fr: 'Mar', ar: 'ثلا' },
+      { id: 3, fr: 'Mer', ar: 'أرب' },
+      { id: 4, fr: 'Jeu', ar: 'خمي' },
+      { id: 5, fr: 'Ven', ar: 'جمع' },
+      { id: 6, fr: 'Sam', ar: 'سبت' },
+    ];
+
+    // Design Descriptions
+    const DESCRIPTIONS = {
+      'A': {
+        title: 'Design A : Style "iOS Inset Grouped"',
+        points: 'Inspiré des réglages iOS modernes. Les options sont regroupées par catégories dans des blocs arrondis aux bordures discrètes. L\'alerte de présence s\'ouvre avec un sélecteur d\'heure digital et des pastilles rondes douces pour les jours. Très propre, lisible et familier pour les utilisateurs mobiles.'
+      },
+      'B': {
+        title: 'Design B : Style "Modern Glass & Glowing Cards"',
+        points: 'Cartes flottantes aux angles très doux avec micro-bordures néon et dégradés subtils. La bannière profil est valorisée avec un fond en dégradé Crèche. L\'alerte présence dispose d\'un indicateur vert "Prêt" et d\'un bouton de test mis en valeur.'
+      },
+      'C': {
+        title: 'Design C : Style "Minimaliste Épuré"',
+        points: 'Suppression maximale des bordures lourdes et des fonds multiples. L\'accent est mis sur la typographie et la simplicité absolue : lignes de séparation légères, heure en grand format digital, et boutons en pastilles monochromes.'
+      },
+      'D': {
+        title: 'Design D : Style "Dashboard Pro Widgets"',
+        points: 'Chaque bloc est un widget interactif cohérent avec le tableau de bord de la crèche. Présente un aperçu direct du statut ("Prochain déclenchement lundi à 08:30") et des actions tactiles expressives.'
+      }
+    };
+
+    // Trigger fake push notification
+    function triggerTestPush() {
+      const toast = document.getElementById('pushToast');
+      toast.classList.remove('hidden');
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 3500);
+    }
+
+    // Toggle day selection
+    function toggleDay(dayId) {
+      if (selectedDays.includes(dayId)) {
+        if (selectedDays.length > 1) {
+          selectedDays = selectedDays.filter(d => d !== dayId);
+        }
+      } else {
+        selectedDays.push(dayId);
+        selectedDays.sort();
+      }
+      render();
+    }
+
+    // Toggle Attendance Enabled
+    function toggleAttendance() {
+      attendanceActive = !attendanceActive;
+      render();
+    }
+
+    // Set View Mode
+    function setViewMode(mode) {
+      viewMode = mode;
+      const single = document.getElementById('singleViewWrapper');
+      const grid = document.getElementById('gridViewWrapper');
+      const tabs = document.getElementById('designTabsContainer');
+      const btnSingle = document.getElementById('btnViewSingle');
+      const btnGrid = document.getElementById('btnViewGrid');
+
+      if (mode === 'single') {
+        single.classList.remove('hidden');
+        grid.classList.add('hidden');
+        tabs.classList.remove('hidden');
+        btnSingle.className = "px-2.5 py-1.5 rounded-lg font-medium transition-all bg-brand-600 text-white shadow-sm";
+        btnGrid.className = "px-2.5 py-1.5 rounded-lg font-medium text-slate-400 hover:text-white transition-all";
+      } else {
+        single.classList.add('hidden');
+        grid.classList.remove('hidden');
+        tabs.classList.add('hidden');
+        btnGrid.className = "px-2.5 py-1.5 rounded-lg font-medium transition-all bg-brand-600 text-white shadow-sm";
+        btnSingle.className = "px-2.5 py-1.5 rounded-lg font-medium text-slate-400 hover:text-white transition-all";
+      }
+      render();
+    }
+
+    // Select Design
+    function selectDesign(d) {
+      currentDesign = d;
+      document.querySelectorAll('.design-tab').forEach(tab => {
+        tab.className = "design-tab px-3 py-1.5 rounded-xl font-semibold transition-all border text-slate-400 border-transparent hover:text-white hover:bg-slate-800/60";
+      });
+      event.target.className = "design-tab px-3 py-1.5 rounded-xl font-semibold transition-all border active-tab bg-brand-500/20 text-brand-300 border-brand-500/40";
+      render();
+    }
+
+    // Toggle Theme
+    function toggleTheme() {
+      isDark = !isDark;
+      const root = document.documentElement;
+      const screen = document.getElementById('phoneScreen');
+      const iconDark = document.getElementById('themeIconDark');
+      const iconLight = document.getElementById('themeIconLight');
+
+      if (isDark) {
+        root.classList.add('dark');
+        screen.classList.remove('bg-slate-100', 'text-slate-900');
+        screen.classList.add('bg-slate-950', 'text-slate-100');
+        iconDark.classList.remove('hidden');
+        iconLight.classList.add('hidden');
+      } else {
+        root.classList.remove('dark');
+        screen.classList.remove('bg-slate-950', 'text-slate-100');
+        screen.classList.add('bg-slate-100', 'text-slate-900');
+        iconDark.classList.add('hidden');
+        iconLight.classList.remove('hidden');
+      }
+      render();
+    }
+
+    // Toggle Language (FR/AR)
+    function toggleLang() {
+      isRTL = !isRTL;
+      const flag = document.getElementById('langFlag');
+      const label = document.getElementById('langLabel');
+      const screen = document.getElementById('phoneScreen');
+
+      if (isRTL) {
+        flag.textContent = '🇫🇷';
+        label.textContent = 'Français (LTR)';
+        screen.setAttribute('dir', 'rtl');
+      } else {
+        flag.textContent = '🇹🇳';
+        label.textContent = 'Arabe (RTL)';
+        screen.removeAttribute('dir');
+      }
+      render();
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       TEMPLATES DES 4 DESIGNS
+       ═══════════════════════════════════════════════════════════════════════ */
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // DESIGN A : iOS Inset Grouped Style
+    // ─────────────────────────────────────────────────────────────────────────
+    function getDesignA() {
+      const rtl = isRTL;
+      return `
+        <!-- Profile Inset -->
+        <div class="bg-slate-900/90 dark:bg-slate-900/90 rounded-2xl p-3.5 border border-slate-800/80 shadow-sm flex items-center gap-3">
+          <div class="relative">
+            <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-brand-600 to-cyan-400 p-0.5">
+              <div class="w-full h-full rounded-full bg-slate-900 flex items-center justify-center font-bold text-white text-sm">
+                MA
+              </div>
+            </div>
+            <span class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 ring-2 ring-slate-900"></span>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-1.5">
+              <h3 class="text-sm font-bold text-white truncate">Malek Aidoudi</h3>
+              <span class="px-1.5 py-0.2 text-[10px] font-semibold rounded-md bg-brand-500/15 text-brand-400 border border-brand-500/25">
+                ${rtl ? 'مدير' : 'Direction'}
+              </span>
+            </div>
+            <p class="text-xs text-slate-400 truncate mt-0.5">admin@creche.tn</p>
+          </div>
+        </div>
+
+        <!-- Section 1 : Préférences d'Affichage (iOS Group) -->
+        <div class="bg-slate-900/90 rounded-2xl border border-slate-800/80 overflow-hidden shadow-sm divide-y divide-slate-800/60">
+          <div class="p-3 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <div class="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs">
+                🌙
+              </div>
+              <span class="text-xs font-semibold text-slate-200">${rtl ? 'المظهر المظلم' : 'Mode sombre'}</span>
+            </div>
+            <div onclick="toggleTheme()" class="switch-track w-11 h-6 ${isDark ? 'bg-brand-600' : 'bg-slate-700'} rounded-full p-0.5 cursor-pointer flex items-center">
+              <div class="switch-thumb w-5 h-5 bg-white rounded-full shadow-md ${isDark ? 'translate-x-5' : 'translate-x-0'}"></div>
+            </div>
+          </div>
+
+          <div class="p-3 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <div class="w-7 h-7 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center text-xs">
+                🌐
+              </div>
+              <span class="text-xs font-semibold text-slate-200">${rtl ? 'اللغة' : 'Langue'}</span>
+            </div>
+            <button onclick="toggleLang()" class="px-2.5 py-1 rounded-lg bg-slate-800 text-[11px] font-semibold text-slate-300 border border-slate-700 hover:border-slate-600">
+              ${rtl ? '🇹🇳 العربية' : '🇫🇷 Français'}
+            </button>
+          </div>
+        </div>
+
+        <!-- Section 2 : Alerte Présence Programmée (Card Clé) -->
+        <div class="bg-slate-900/90 rounded-2xl border border-slate-800/80 p-3.5 shadow-sm space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-sm border border-emerald-500/20">
+                ⏰
+              </div>
+              <div>
+                <h4 class="text-xs font-bold text-white">${rtl ? 'تنبيه تسجيل الحضور' : 'Alerte de présence programmée'}</h4>
+                <p class="text-[10px] text-slate-400">${rtl ? 'إشعار صباحي إذا لم يسجل أي حضور' : 'Rappel si aucun pointage le matin'}</p>
+              </div>
+            </div>
+            <div onclick="toggleAttendance()" class="switch-track w-11 h-6 ${attendanceActive ? 'bg-emerald-600' : 'bg-slate-700'} rounded-full p-0.5 cursor-pointer flex items-center">
+              <div class="switch-thumb w-5 h-5 bg-white rounded-full shadow-md ${attendanceActive ? 'translate-x-5' : 'translate-x-0'}"></div>
+            </div>
+          </div>
+
+          ${attendanceActive ? `
+            <div class="pt-3 border-t border-slate-800/70 space-y-3">
+              <!-- Heure -->
+              <div class="flex items-center justify-between bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/60">
+                <span class="text-xs text-slate-300 font-medium">${rtl ? 'وقت التنبيه' : 'Heure de notification'}</span>
+                <input type="time" value="${reminderTime}" onchange="reminderTime=this.value; render();" class="bg-slate-900 border border-slate-700 text-emerald-400 font-bold text-xs px-2 py-1 rounded-lg outline-none cursor-pointer">
+              </div>
+
+              <!-- Jours -->
+              <div class="space-y-1.5">
+                <span class="text-[11px] text-slate-400 font-medium">${rtl ? 'أيام التفعيل' : 'Jours actifs'}</span>
+                <div class="grid grid-cols-6 gap-1.5">
+                  ${DAYS.map(d => {
+                    const sel = selectedDays.includes(d.id);
+                    return `
+                      <button onclick="toggleDay(${d.id})" class="py-1.5 text-xs font-bold rounded-xl transition-all ${sel ? 'bg-emerald-500 text-white shadow-sm' : 'bg-slate-800 text-slate-500 border border-slate-700/60 hover:text-slate-300'}">
+                        ${rtl ? d.ar : d.fr}
+                      </button>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+
+              <!-- Actions -->
+              <div class="pt-1 space-y-2">
+                <button class="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-all shadow-sm shadow-emerald-600/30">
+                  ${rtl ? 'حفظ الإعدادات' : 'Enregistrer l\'horaire'}
+                </button>
+                <button onclick="triggerTestPush()" class="w-full py-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white font-medium text-[11px] border border-slate-700/80 transition-all flex items-center justify-center gap-1.5">
+                  <span>🔔</span>
+                  <span>${rtl ? 'تجربة التنبيه فوراً' : 'Tester la notification maintenant'}</span>
+                </button>
+              </div>
+            </div>
+          ` : `
+            <p class="text-[11px] text-slate-500 italic pt-1">${rtl ? 'التنبيه متوقف حالياً' : 'Le rappel matinal est actuellement désactivé.'}</p>
+          `}
+        </div>
+
+        <!-- Section 3 : Push Notification -->
+        <div class="bg-slate-900/90 rounded-2xl border border-slate-800/80 p-3.5 shadow-sm flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <div class="w-7 h-7 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center text-xs">
+              🔔
+            </div>
+            <div>
+              <p class="text-xs font-semibold text-slate-200">${rtl ? 'إشعارات الهاتف (Web Push)' : 'Notifications Push'}</p>
+              <p class="text-[10px] text-emerald-400">${rtl ? 'مفعلة على هذا الهاتف' : 'Actives sur ce téléphone'}</p>
+            </div>
+          </div>
+          <span class="w-2 h-2 rounded-full bg-emerald-500 ring-4 ring-emerald-500/20"></span>
+        </div>
+
+        <!-- Logout button -->
+        <button class="w-full py-2.5 rounded-2xl bg-red-950/25 hover:bg-red-950/40 text-red-400 border border-red-900/30 text-xs font-semibold transition-all">
+          ${rtl ? 'تسجيل الخروج' : 'Se déconnecter'}
+        </button>
+      `;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // DESIGN B : Modern Glass & Glowing Cards
+    // ─────────────────────────────────────────────────────────────────────────
+    function getDesignB() {
+      const rtl = isRTL;
+      return `
+        <!-- Profile Card with Gradient Header Banner -->
+        <div class="rounded-3xl bg-gradient-to-b from-slate-800/90 to-slate-900/90 border border-slate-700/60 shadow-lg overflow-hidden">
+          <div class="h-14 bg-gradient-to-r from-brand-700 via-cyan-600 to-emerald-600 relative">
+            <span class="absolute top-2.5 ${rtl ? 'left-3' : 'right-3'} px-2 py-0.5 rounded-full bg-black/40 backdrop-blur-md text-[10px] font-semibold text-white">
+              En ligne 🟢
+            </span>
+          </div>
+          <div class="px-4 pb-3.5 pt-0 -mt-7 flex items-end gap-3">
+            <div class="w-14 h-14 rounded-2xl bg-slate-900 p-1 border-2 border-slate-700/80 shadow-md shrink-0">
+              <div class="w-full h-full rounded-xl bg-gradient-to-tr from-brand-500 to-cyan-400 flex items-center justify-center text-white font-extrabold text-sm">
+                MA
+              </div>
+            </div>
+            <div class="min-w-0 pb-1">
+              <h3 class="text-sm font-bold text-white truncate">Malek Aidoudi</h3>
+              <p class="text-[11px] text-brand-300 font-medium">${rtl ? 'إدارة الروضة' : 'Direction • Crèche Mima'}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Alerte Présence : Hero Card with Glowing Border -->
+        <div class="rounded-3xl bg-gradient-to-b from-slate-900 to-slate-950 border border-emerald-500/30 p-4 shadow-lg shadow-emerald-950/20 space-y-3 relative overflow-hidden">
+          <div class="absolute -right-8 -top-8 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
+
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-base border border-emerald-500/30 shadow-inner">
+                ⏰
+              </div>
+              <div>
+                <div class="flex items-center gap-1.5">
+                  <h4 class="text-xs font-bold text-white">${rtl ? 'تنبيه الحضور الصباحي' : 'Rappel présence matinal'}</h4>
+                  <span class="px-1.5 py-0.2 rounded-full text-[9px] font-extrabold uppercase tracking-wider ${attendanceActive ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-500'}">
+                    ${attendanceActive ? 'ACTIF' : 'OFF'}
+                  </span>
+                </div>
+                <p class="text-[10px] text-slate-400">${rtl ? 'تنبيه ذكي عند غياب أي تسجيل' : 'Détecte si aucune présence n\'est saisie'}</p>
+              </div>
+            </div>
+            <div onclick="toggleAttendance()" class="switch-track w-11 h-6 ${attendanceActive ? 'bg-emerald-500' : 'bg-slate-800'} rounded-full p-0.5 cursor-pointer flex items-center">
+              <div class="switch-thumb w-5 h-5 bg-white rounded-full shadow-md ${attendanceActive ? 'translate-x-5' : 'translate-x-0'}"></div>
+            </div>
+          </div>
+
+          ${attendanceActive ? `
+            <div class="pt-3 border-t border-slate-800/80 space-y-3">
+              <!-- Heure Capsule -->
+              <div class="flex items-center justify-between bg-slate-900/90 rounded-2xl p-2.5 border border-slate-800">
+                <div class="flex items-center gap-2 text-xs font-medium text-slate-300">
+                  <span>🌅</span>
+                  <span>${rtl ? 'الساعة المحددة' : 'Heure de déclenchement'}</span>
+                </div>
+                <input type="time" value="${reminderTime}" onchange="reminderTime=this.value; render();" class="bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 font-extrabold text-sm px-2.5 py-1 rounded-xl outline-none cursor-pointer shadow-inner">
+              </div>
+
+              <!-- Jours Pill Chips -->
+              <div class="space-y-1.5">
+                <span class="text-[11px] font-medium text-slate-400">${rtl ? 'أيام العمل المعنية' : 'Jours de surveillance'}</span>
+                <div class="flex justify-between gap-1">
+                  ${DAYS.map(d => {
+                    const sel = selectedDays.includes(d.id);
+                    return `
+                      <button onclick="toggleDay(${d.id})" class="flex-1 py-2 rounded-2xl text-[11px] font-bold transition-all flex flex-col items-center gap-0.5 ${sel ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20 scale-[1.02]' : 'bg-slate-900/80 text-slate-500 border border-slate-800 hover:border-slate-700'}">
+                        <span>${rtl ? d.ar : d.fr}</span>
+                        <span class="w-1 h-1 rounded-full ${sel ? 'bg-white' : 'bg-transparent'}"></span>
+                      </button>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+
+              <!-- Action buttons -->
+              <div class="pt-1 space-y-2">
+                <button class="w-full py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold transition-all shadow-lg shadow-emerald-900/30">
+                  ${rtl ? 'تأكيد وحفظ' : 'Enregistrer les paramètres'}
+                </button>
+                <button onclick="triggerTestPush()" class="w-full py-2 rounded-2xl bg-slate-900 hover:bg-slate-800 text-emerald-400 border border-emerald-500/20 text-xs font-semibold transition-all flex items-center justify-center gap-1.5">
+                  <span>🔔</span>
+                  <span>${rtl ? 'تجربة الإشعار الآن' : 'Tester la notification en direct'}</span>
+                </button>
+              </div>
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- Quick Preferences Row (Theme + Langue in 2 small cards) -->
+        <div class="grid grid-cols-2 gap-3">
+          <div onclick="toggleTheme()" class="bg-slate-900/90 rounded-2xl p-3 border border-slate-800 flex items-center justify-between cursor-pointer hover:border-slate-700">
+            <div>
+              <span class="text-base">🌙</span>
+              <p class="text-xs font-bold text-white mt-1">${rtl ? 'الوضع المظلم' : 'Mode Sombre'}</p>
+            </div>
+            <span class="text-xs text-brand-400 font-semibold">${isDark ? 'ON' : 'OFF'}</span>
+          </div>
+
+          <div onclick="toggleLang()" class="bg-slate-900/90 rounded-2xl p-3 border border-slate-800 flex items-center justify-between cursor-pointer hover:border-slate-700">
+            <div>
+              <span class="text-base">🌐</span>
+              <p class="text-xs font-bold text-white mt-1">${rtl ? 'اللغة' : 'Langue'}</p>
+            </div>
+            <span class="text-xs text-slate-300 font-semibold">${rtl ? 'عربي' : 'FR'}</span>
+          </div>
+        </div>
+
+        <!-- Logout -->
+        <button class="w-full py-2.5 rounded-2xl bg-red-950/20 hover:bg-red-950/30 text-red-400 border border-red-900/30 text-xs font-semibold">
+          ${rtl ? 'تسجيل الخروج' : 'Déconnexion'}
+        </button>
+      `;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // DESIGN C : Executive Minimal
+    // ─────────────────────────────────────────────────────────────────────────
+    function getDesignC() {
+      const rtl = isRTL;
+      return `
+        <!-- Minimal Profile -->
+        <div class="py-2 flex items-center justify-between border-b border-slate-800/80">
+          <div class="flex items-center gap-3">
+            <div class="w-11 h-11 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-sm font-bold text-brand-400">
+              MA
+            </div>
+            <div>
+              <h3 class="text-sm font-bold text-white">Malek Aidoudi</h3>
+              <p class="text-[11px] text-slate-400">Direction • Crèche</p>
+            </div>
+          </div>
+          <button class="text-xs text-brand-400 font-semibold hover:underline">
+            ${rtl ? 'تعديل' : 'Modifier'}
+          </button>
+        </div>
+
+        <!-- Section Title -->
+        <div class="pt-2">
+          <h4 class="text-[10px] font-bold uppercase tracking-wider text-slate-400">${rtl ? 'إعدادات التنبيهات' : 'RAPPELS & NOTIFICATIONS'}</h4>
+        </div>
+
+        <!-- Attendance Reminder Minimal Card -->
+        <div class="bg-slate-900/60 rounded-2xl p-3.5 border border-slate-800/80 space-y-3">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-xs font-bold text-white">${rtl ? 'تنبيه الحضور اليومي' : 'Alerte de présence'}</p>
+              <p class="text-[10px] text-slate-400">${rtl ? 'تذكير الصباح في حال عدم تسجيل الأطفال' : 'Notification à heure fixe en cas d\'absence de saisie'}</p>
+            </div>
+            <div onclick="toggleAttendance()" class="switch-track w-10 h-5 ${attendanceActive ? 'bg-brand-500' : 'bg-slate-700'} rounded-full p-0.5 cursor-pointer flex items-center">
+              <div class="switch-thumb w-4 h-4 bg-white rounded-full shadow-md ${attendanceActive ? 'translate-x-5' : 'translate-x-0'}"></div>
+            </div>
+          </div>
+
+          ${attendanceActive ? `
+            <div class="pt-2.5 border-t border-slate-800/80 space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-slate-300">${rtl ? 'ساعة التنبيه' : 'Heure de rappel'}</span>
+                <input type="time" value="${reminderTime}" onchange="reminderTime=this.value; render();" class="bg-slate-800 text-white font-mono text-xs px-2.5 py-1 rounded-lg border border-slate-700 outline-none">
+              </div>
+
+              <div class="space-y-1">
+                <span class="text-[10px] text-slate-400">${rtl ? 'أيام التنبيه' : 'Jours'}</span>
+                <div class="grid grid-cols-6 gap-1">
+                  ${DAYS.map(d => {
+                    const sel = selectedDays.includes(d.id);
+                    return `
+                      <button onclick="toggleDay(${d.id})" class="py-1.5 text-xs font-semibold rounded-lg transition-all ${sel ? 'bg-brand-600 text-white font-bold' : 'bg-slate-800/60 text-slate-500 hover:text-slate-300'}">
+                        ${rtl ? d.ar : d.fr}
+                      </button>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+
+              <div class="pt-1 flex gap-2">
+                <button class="flex-1 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold transition-all">
+                  ${rtl ? 'حفظ' : 'Enregistrer'}
+                </button>
+                <button onclick="triggerTestPush()" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700">
+                  🔔 Test
+                </button>
+              </div>
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- Display & Lang minimal rows -->
+        <div class="divide-y divide-slate-800/80 border-y border-slate-800/80 text-xs">
+          <div class="py-3 flex items-center justify-between">
+            <span class="text-slate-300">${rtl ? 'الوضع المظلم' : 'Mode Sombre'}</span>
+            <div onclick="toggleTheme()" class="switch-track w-10 h-5 ${isDark ? 'bg-brand-500' : 'bg-slate-700'} rounded-full p-0.5 cursor-pointer flex items-center">
+              <div class="switch-thumb w-4 h-4 bg-white rounded-full shadow-md ${isDark ? 'translate-x-5' : 'translate-x-0'}"></div>
+            </div>
+          </div>
+          <div class="py-3 flex items-center justify-between">
+            <span class="text-slate-300">${rtl ? 'اللغة' : 'Langue'}</span>
+            <button onclick="toggleLang()" class="font-bold text-brand-400">
+              ${rtl ? 'العربية' : 'Français'}
+            </button>
+          </div>
+          <div class="py-3 flex items-center justify-between">
+            <span class="text-slate-300">${rtl ? 'إشعارات الويب' : 'Web Push'}</span>
+            <span class="text-emerald-400 font-medium">Actif</span>
+          </div>
+        </div>
+
+        <!-- Logout -->
+        <div class="pt-2">
+          <button class="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-red-950/30 text-red-400 text-xs font-semibold transition-all">
+            ${rtl ? 'تسجيل الخروج' : 'Déconnexion du compte'}
+          </button>
+        </div>
+      `;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // DESIGN D : Dashboard Pro Widgets
+    // ─────────────────────────────────────────────────────────────────────────
+    function getDesignD() {
+      const rtl = isRTL;
+      return `
+        <!-- Profile Widget -->
+        <div class="bg-slate-900 rounded-3xl p-4 border border-slate-800 shadow-sm flex items-center gap-3">
+          <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-500 to-indigo-600 flex items-center justify-center font-bold text-white text-base shadow-sm">
+            MA
+          </div>
+          <div class="flex-1 min-w-0">
+            <h3 class="text-sm font-bold text-white truncate">Malek Aidoudi</h3>
+            <p class="text-xs text-slate-400">Directeur Crèche Mima El Ghalia</p>
+          </div>
+          <span class="px-2 py-1 rounded-xl bg-emerald-500/15 text-emerald-400 text-[10px] font-bold border border-emerald-500/30">
+            Admin
+          </span>
+        </div>
+
+        <!-- Attendance Reminder Widget (Interactive Hero) -->
+        <div class="bg-slate-900 rounded-3xl p-4 border border-slate-800 shadow-sm space-y-3.5">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-xl bg-brand-500/15 text-brand-400 flex items-center justify-center text-sm font-bold">
+                ⏰
+              </div>
+              <h4 class="text-xs font-bold text-white">${rtl ? 'منبه الحضور الآلي' : 'Alerte de présence programmée'}</h4>
+            </div>
+            <div onclick="toggleAttendance()" class="switch-track w-11 h-6 ${attendanceActive ? 'bg-brand-500' : 'bg-slate-800'} rounded-full p-0.5 cursor-pointer flex items-center">
+              <div class="switch-thumb w-5 h-5 bg-white rounded-full shadow-md ${attendanceActive ? 'translate-x-5' : 'translate-x-0'}"></div>
+            </div>
+          </div>
+
+          ${attendanceActive ? `
+            <!-- Live Status Ribbon -->
+            <div class="bg-brand-950/40 rounded-2xl p-2.5 border border-brand-500/25 flex items-center gap-2 text-[11px] text-brand-300 font-medium">
+              <span>⚡</span>
+              <span>Prochain rappel prévu le <strong>Lundi à ${reminderTime}</strong></span>
+            </div>
+
+            <div class="space-y-3 pt-1">
+              <!-- Digital Clock Picker -->
+              <div class="flex items-center justify-between bg-slate-950/80 rounded-2xl p-3 border border-slate-800">
+                <div>
+                  <p class="text-xs font-bold text-white">${rtl ? 'وقت الإشعار الصباحي' : 'Heure matinale'}</p>
+                  <p class="text-[10px] text-slate-400">${rtl ? 'قبل بداية اليوم التربوي' : 'Avant le début des activités'}</p>
+                </div>
+                <input type="time" value="${reminderTime}" onchange="reminderTime=this.value; render();" class="bg-slate-900 border border-brand-500/40 text-brand-300 font-bold text-sm px-3 py-1.5 rounded-xl outline-none cursor-pointer">
+              </div>
+
+              <!-- Day selector pills -->
+              <div class="space-y-1.5">
+                <p class="text-[11px] font-semibold text-slate-400">${rtl ? 'أيام التنبيه' : 'Jours sélectionnés'}</p>
+                <div class="grid grid-cols-6 gap-1.5">
+                  ${DAYS.map(d => {
+                    const sel = selectedDays.includes(d.id);
+                    return `
+                      <button onclick="toggleDay(${d.id})" class="py-2 rounded-xl text-xs font-bold transition-all ${sel ? 'bg-brand-500 text-white shadow-sm shadow-brand-500/20' : 'bg-slate-950 text-slate-500 border border-slate-800 hover:text-slate-300'}">
+                        ${rtl ? d.ar : d.fr}
+                      </button>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+
+              <!-- Actions -->
+              <div class="pt-1 space-y-2">
+                <button class="w-full py-2.5 rounded-2xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs transition-all shadow-md shadow-brand-600/25">
+                  ${rtl ? 'تحديث الجدول' : 'Valider mon horaire'}
+                </button>
+                <button onclick="triggerTestPush()" class="w-full py-2 rounded-2xl bg-slate-800 hover:bg-slate-750 text-slate-200 text-xs font-semibold transition-all border border-slate-700/80 flex items-center justify-center gap-1.5">
+                  <span>🔔</span>
+                  <span>${rtl ? 'تجربة التنبيه فوراً' : 'Tester la notification'}</span>
+                </button>
+              </div>
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- Fast Toggles Grid -->
+        <div class="grid grid-cols-2 gap-2.5">
+          <div onclick="toggleTheme()" class="bg-slate-900 rounded-2xl p-3 border border-slate-800 flex items-center justify-between cursor-pointer">
+            <span class="text-xs font-semibold text-slate-200">${rtl ? 'المظهر' : 'Thème'}</span>
+            <span class="text-xs font-bold text-brand-400">${isDark ? 'Sombre' : 'Clair'}</span>
+          </div>
+          <div onclick="toggleLang()" class="bg-slate-900 rounded-2xl p-3 border border-slate-800 flex items-center justify-between cursor-pointer">
+            <span class="text-xs font-semibold text-slate-200">${rtl ? 'اللغة' : 'Langue'}</span>
+            <span class="text-xs font-bold text-brand-400">${rtl ? 'عربي' : 'FR'}</span>
+          </div>
+        </div>
+
+        <!-- Full Desktop Settings Link -->
+        <div class="bg-slate-900/60 rounded-2xl p-3 border border-slate-800/80 flex items-center justify-between text-xs text-slate-300">
+          <div class="flex items-center gap-2">
+            <span>💻</span>
+            <span>Configuration complète (PC)</span>
+          </div>
+          <span class="text-brand-400 font-bold">→</span>
+        </div>
+
+        <!-- Logout -->
+        <button class="w-full py-2.5 rounded-2xl bg-red-950/20 hover:bg-red-950/30 text-red-400 border border-red-900/30 text-xs font-semibold">
+          ${rtl ? 'تسجيل الخروج' : 'Déconnexion'}
+        </button>
+      `;
+    }
+
+    // Main render router
+    function render() {
+      // 1. Single View render
+      const container = document.getElementById('activeDesignContainer');
+      const descBox = document.getElementById('designDescriptionBox');
+
+      let html = '';
+      if (currentDesign === 'A') html = getDesignA();
+      else if (currentDesign === 'B') html = getDesignB();
+      else if (currentDesign === 'C') html = getDesignC();
+      else if (currentDesign === 'D') html = getDesignD();
+
+      container.innerHTML = html;
+
+      const desc = DESCRIPTIONS[currentDesign];
+      descBox.innerHTML = `
+        <h4 class="font-bold text-white mb-1">${desc.title}</h4>
+        <p class="leading-relaxed text-slate-300">${desc.points}</p>
+        <div class="mt-3 pt-2.5 border-t border-slate-800 flex items-center justify-center gap-2">
+          <span class="text-brand-400 font-semibold">Votre avis ?</span>
+          <span class="text-slate-400">Répondez simplement avec la lettre ("Je préfère le ${currentDesign}")</span>
+        </div>
+      `;
+
+      // 2. Grid View render
+      if (viewMode === 'grid') {
+        document.getElementById('gridDesignA').innerHTML = `<div class="p-2 space-y-3">${getDesignA()}</div>`;
+        document.getElementById('gridDesignB').innerHTML = `<div class="p-2 space-y-3">${getDesignB()}</div>`;
+        document.getElementById('gridDesignC').innerHTML = `<div class="p-2 space-y-3">${getDesignC()}</div>`;
+        document.getElementById('gridDesignD').innerHTML = `<div class="p-2 space-y-3">${getDesignD()}</div>`;
+      }
+    }
+
+    // Initial render
+    render();
+  </script>
+</body>
+</html>
