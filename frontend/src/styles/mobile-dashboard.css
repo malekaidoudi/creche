@@ -1,13 +1,12 @@
 /* Mobile Dashboard Optimizations */
 
-/* Fix scroll global - permettre le scroll vertical */
+/* Fix scroll global - permettre le scroll vertical sans bloquer position: sticky */
 html,
 body,
 #root {
     height: auto !important;
     min-height: 100vh;
-    overflow-y: auto !important;
-    overflow-x: hidden;
+    overflow-x: clip;
     -webkit-overflow-scrolling: touch;
 }
 

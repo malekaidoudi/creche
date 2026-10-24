@@ -155,8 +155,11 @@ const ActivitiesPage = () => {
       </AnimatePresence>
 
       {/* Header collant (fixe au défilement) */}
-      <div className="sticky top-0 z-30 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 text-white shadow-md backdrop-blur-md">
-        <div className="max-w-2xl mx-auto px-4 py-4 sm:py-6">
+      <div 
+        className="sticky top-0 z-30 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 text-white shadow-md backdrop-blur-md"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)' }}
+      >
+        <div className="max-w-2xl mx-auto px-4 pb-4 pt-1 sm:pb-6">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">{t.title}</h1>

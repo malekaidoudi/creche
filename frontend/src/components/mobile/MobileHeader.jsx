@@ -52,7 +52,10 @@ const MobileHeader = ({
     };
 
     return (
-        <header className="lg:hidden sticky top-0 z-40 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 safe-area-inset-top">
+        <header 
+            className="lg:hidden sticky top-0 z-40 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 shadow-xs relative"
+            style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.5rem)' }}
+        >
             <div className="flex items-center justify-between h-14 px-4">
                 {/* Left side */}
                 <div className="flex items-center gap-2">
@@ -138,17 +141,21 @@ const MobileHeader = ({
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        className="absolute top-0 left-0 right-0 bg-white dark:bg-gray-800 z-50 p-3"
+                        className="absolute inset-0 bg-white dark:bg-gray-800 z-50 flex items-center px-4"
+                        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.5rem)' }}
                     >
-                        <form onSubmit={handleSearch} className="flex items-center gap-2">
+                        <form onSubmit={handleSearch} className="flex items-center gap-2 w-full">
                             <div className="flex-1 relative">
                                 <Search className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                                 <input
                                     type="text"
                                     value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    onChange={(e) => {
+                                        setSearchQuery(e.target.value);
+                                        onSearch?.(e.target.value);
+                                    }}
                                     placeholder={searchPlaceholder || (isRTL ? 'بحث...' : 'Rechercher...')}
-                                    className="w-full pl-10 rtl:pl-4 rtl:pr-10 pr-4 py-2.5 bg-gray-100 dark:bg-gray-700 border-0 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-primary-500"
+                                    className="w-full pl-10 rtl:pl-4 rtl:pr-10 pr-4 py-2 bg-gray-100 dark:bg-gray-700 border-0 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-primary-500 text-sm"
                                     autoFocus
                                 />
                             </div>
@@ -157,6 +164,7 @@ const MobileHeader = ({
                                 onClick={() => {
                                     setSearchOpen(false);
                                     setSearchQuery('');
+                                    onSearch?.('');
                                 }}
                                 className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full"
                             >
