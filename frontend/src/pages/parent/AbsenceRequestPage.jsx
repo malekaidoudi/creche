@@ -48,15 +48,23 @@ const AbsenceRequestPage = () => {
   ];
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (user) {
+      loadData();
+    }
+  }, [user]);
 
   const loadData = async () => {
+    const userId = user?.id || user?.userId;
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
 
       // Charger les enfants du parent (seulement les approuvés)
-      const childrenResponse = await api.get(`/api/children/parent/${user.id}`);
+      const childrenResponse = await api.get(`/api/children/parent/${userId}`);
       console.log('👶 Réponse enfants:', childrenResponse.data);
 
       if (childrenResponse.data.success) {
@@ -69,7 +77,7 @@ const AbsenceRequestPage = () => {
 
       // Charger les demandes d'absence existantes
       try {
-        const absenceResponse = await api.get(`/api/absence-requests/parent/${user.id}`);
+        const absenceResponse = await api.get(`/api/absence-requests/parent/${userId}`);
         setAbsenceRequests(absenceResponse.data.requests || []);
       } catch (error) {
         console.error('Erreur chargement demandes d\'absence:', error);

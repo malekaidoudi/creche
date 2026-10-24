@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Calendar,
@@ -11,22 +11,27 @@ import {
   Filter,
   ChevronDown,
   BarChart3,
-  Lock
+  Lock,
+  ArrowLeft
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useAuth } from '../../hooks/useAuth';
+import useIsMobile from '../../hooks/useIsMobile';
 import { useAccess, FEATURES } from '../../access';
 import api from '../../services/api';
 import { useDialogContext } from '../../contexts/DialogContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
+import MobileNavigation from '../../components/mobile/MobileNavigation';
 
 const AbsenceManagementPage = () => {
   const { isRTL } = useLanguage();
   const { user } = useAuth();
   const { can, loading: accessLoading } = useAccess();
   const dialog = useDialogContext();
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [absenceRequests, setAbsenceRequests] = useState([]);
@@ -125,6 +130,10 @@ const AbsenceManagementPage = () => {
     return absenceRequests;
   };
 
+  const pendingCount = absenceRequests.filter(r => r.status === 'pending').length;
+  const acknowledgedCount = absenceRequests.filter(r => r.status === 'acknowledged').length;
+  const filteredRequests = getFilteredRequests();
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'pending':
@@ -164,7 +173,7 @@ const AbsenceManagementPage = () => {
                 : 'Cette section requiert l\'autorisation de gestion des signalements d\'absence des enfants (absences.manage).'}
             </p>
             <Button
-              onClick={() => window.location.href = '/dashboard'}
+              onClick={() => navigate('/dashboard')}
               variant="outline"
               className="w-full"
             >
@@ -177,21 +186,31 @@ const AbsenceManagementPage = () => {
   }
 
   return (
-    <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 p-4 ${isRTL ? 'rtl' : 'ltr'}`}>
-      <div className="max-w-6xl mx-auto">
-        {/* En-tête */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            {isRTL ? 'إدارة طلبات الغياب' : 'Gestion des demandes d\'absence'}
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            {isRTL ? 'عرض وتأكيد طلبات الغياب من الآباء' : 'Consulter et valider les demandes d\'absence des parents'}
-          </p>
-        </motion.div>
+    <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 ${isRTL ? 'rtl' : 'ltr'} ${isMobile ? 'pb-24' : 'pb-8'}`}>
+      {/* Header Sticky */}
+      <div className="sticky top-0 z-30 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-4 py-3 shadow-xs pt-[calc(env(safe-area-inset-top,0px)+0.75rem)]">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-colors"
+              title={isRTL ? 'العودة' : 'Retour'}
+            >
+              <ArrowLeft className="w-5 h-5 rtl:rotate-180" />
+            </button>
+            <div>
+              <h1 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white leading-tight">
+                {isRTL ? 'إدارة طلبات الغياب' : 'Gestion des absences'}
+              </h1>
+              <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
+                {isRTL ? 'عرض وتأكيد طلبات الغياب من الآباء' : 'Consulter et valider les demandes d\'absence des parents'}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto px-4 pt-4">
 
         {/* Statistiques - Version Desktop (md et plus) */}
         <div className="hidden md:grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -526,6 +545,7 @@ const AbsenceManagementPage = () => {
           </CardContent>
         </Card>
       </div>
+      {isMobile && <MobileNavigation />}
     </div>
   );
 };

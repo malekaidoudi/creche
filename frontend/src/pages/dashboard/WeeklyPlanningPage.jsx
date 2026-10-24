@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Calendar,
@@ -414,12 +415,12 @@ const WeeklyPlanningPage = () => {
                             ? 'يتطلب هذا القسم صلاحية الاطلاع على جدول عمل الفريق (staff.planning.view).'
                             : 'Cette section requiert l\'autorisation de consultation du planning d\'équipe (staff.planning.view).'}
                     </p>
-                    <a
-                        href="/dashboard"
+                    <Link
+                        to="/dashboard"
                         className="inline-block px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium transition-colors"
                     >
                         {isRTL ? 'العودة إلى لوحة التحكم' : 'Retour au tableau de bord'}
-                    </a>
+                    </Link>
                 </div>
             </div>
         );

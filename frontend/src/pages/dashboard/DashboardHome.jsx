@@ -36,16 +36,20 @@ import api from '../../services/api';
 import activityLogService from '../../services/activityLogService';
 import NewsWidget from '../../components/NewsWidget';
 
+// Cache en mémoire pour préserver l'état du tableau de bord lors de la navigation (évite le flash de chargement)
+let cachedDashboardStats = null;
+let cachedRecentActivities = [];
+
 const DashboardHome = () => {
   const { user, isAdmin, isStaff } = useAuth();
   const { isRTL } = useLanguage();
-  const [stats, setStats] = useState(null);
+  const [stats, setStats] = useState(() => cachedDashboardStats);
   const [showEventModal, setShowEventModal] = useState(false);
   const [showMemoModal, setShowMemoModal] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showAppointmentModal, setShowAppointmentModal] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [recentActivities, setRecentActivities] = useState([]);
+  const [loading, setLoading] = useState(() => !cachedDashboardStats);
+  const [recentActivities, setRecentActivities] = useState(() => cachedRecentActivities);
   const [activityStats, setActivityStats] = useState(null);
 
   // Fonction pour formater un log en activité affichable
@@ -140,6 +144,7 @@ const DashboardHome = () => {
 
         if (activityResponse.success && activityResponse.logs) {
           setRecentActivities(activityResponse.logs);
+          cachedRecentActivities = activityResponse.logs;
         }
         if (activityStatsResponse.success) {
           setActivityStats(activityStatsResponse.stats);
@@ -149,7 +154,9 @@ const DashboardHome = () => {
         try {
           const response = await api.get('/api/logs?limit=5');
           if (response.data.success) {
-            setRecentActivities(response.data.logs.map(formatLogToActivity));
+            const formatted = response.data.logs.map(formatLogToActivity);
+            setRecentActivities(formatted);
+            cachedRecentActivities = formatted;
           }
         } catch {
           setRecentActivities([]);
@@ -160,10 +167,12 @@ const DashboardHome = () => {
     const loadStats = async () => {
       try {
         const statsResponse = await api.get('/api/dashboard/stats');
-        setStats(statsResponse.data.success ? statsResponse.data.stats : defaultStats);
+        const fetchedStats = statsResponse.data.success ? statsResponse.data.stats : defaultStats;
+        setStats(fetchedStats);
+        cachedDashboardStats = fetchedStats;
       } catch (statsError) {
         console.log('📊 Erreur chargement stats, utilisation valeurs par défaut');
-        setStats(defaultStats);
+        if (!cachedDashboardStats) setStats(defaultStats);
       }
     };
 
