@@ -14,6 +14,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
 import { useAuth } from '../hooks/useAuth';
+import { FEATURES } from './FEATURES';
 // Cache mémoire pour que les permissions soient immédiatement disponibles au rendu
 let cachedPermissionsCodes = null;
 
