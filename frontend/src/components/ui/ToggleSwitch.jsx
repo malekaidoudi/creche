@@ -12,7 +12,8 @@ const ToggleSwitch = ({
   className = '',
   ariaLabel = '',
   activeColor = 'peer-checked:bg-primary-600',
-  inactiveColor = 'bg-gray-200 dark:bg-gray-700'
+  inactiveColor = 'bg-gray-200 dark:bg-gray-700',
+  checkColor = 'text-cyan-600'
 }) => {
   // Classes par taille avec RTL support
   const sizeConfig = {
@@ -68,7 +69,7 @@ const ToggleSwitch = ({
           `}
         >
           {checked ? (
-            <Check className={`${s.icon} text-green-600`} strokeWidth={3} />
+            <Check className={`${s.icon} ${checkColor}`} strokeWidth={3} />
           ) : (
             <X className={`${s.icon} text-gray-400`} strokeWidth={2.5} />
           )}

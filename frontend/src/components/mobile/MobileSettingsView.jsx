@@ -8,12 +8,7 @@ import {
   Languages,
   Bell,
   Clock,
-  Calendar,
-  Shield,
   LogOut,
-  ExternalLink,
-  CheckCircle2,
-  AlertCircle,
   Save,
   Laptop
 } from 'lucide-react';
@@ -24,7 +19,6 @@ import { usePushNotifications } from '../../hooks/usePushNotifications';
 import { useDialogContext } from '../../contexts/DialogContext';
 import api from '../../services/api';
 import ToggleSwitch from '../ui/ToggleSwitch';
-import { Button } from '../ui/Button';
 
 const DAYS_OF_WEEK = [
   { id: 1, labelFr: 'Lun', labelAr: 'إثن' },
@@ -46,7 +40,6 @@ const MobileSettingsView = ({ onSwitchToDesktopView }) => {
   // États des préférences notifications
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [testingNotif, setTestingNotif] = useState(false);
   const [attendanceReminderEnabled, setAttendanceReminderEnabled] = useState(true);
   const [attendanceReminderTime, setAttendanceReminderTime] = useState('08:30');
   const [attendanceReminderDays, setAttendanceReminderDays] = useState([1, 2, 3, 4, 5, 6]);
@@ -115,29 +108,6 @@ const MobileSettingsView = ({ onSwitchToDesktopView }) => {
     }
   };
 
-  // Tester l'envoi immédiat de notification (In-app + Web Push)
-  const handleTestNotification = async () => {
-    try {
-      setTestingNotif(true);
-      const res = await api.post('/api/notifications/preferences/test');
-      if (res.data?.success) {
-        dialog.success(
-          res.data.message ||
-            (isRTL
-              ? 'تم إرسال إشعار تجريبي بنجاح!'
-              : 'Notification test envoyée avec succès !')
-        );
-      }
-    } catch (err) {
-      console.error('Erreur test notification:', err);
-      dialog.error(
-        isRTL ? 'تعذر إرسال الإشعار التجريبي' : "Erreur lors de l'envoi du test"
-      );
-    } finally {
-      setTestingNotif(false);
-    }
-  };
-
   // Toggle activation avec sauvegarde automatique
   const handleToggleAttendance = async (val) => {
     setAttendanceReminderEnabled(val);
@@ -184,78 +154,71 @@ const MobileSettingsView = ({ onSwitchToDesktopView }) => {
   };
 
   return (
-    <div className="pb-24 pt-2 px-3 sm:px-4 max-w-lg mx-auto space-y-4">
-      {/* 1. CARTE PROFIL COMPACTE */}
+    <div className="pb-24 pt-2 px-3 sm:px-4 max-w-md mx-auto space-y-3.5">
+      {/* 1. CARTE PROFIL (iOS Inset - Palette Centre d'Aide) */}
       <motion.div
-        initial={{ opacity: 0, y: 10 }}
+        initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700/60"
+        className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-2xl p-3.5 border border-cyan-500/20 dark:border-cyan-500/25 shadow-sm flex items-center gap-3"
       >
-        <div className="flex items-center space-x-3 rtl:space-x-reverse">
-          <div className="relative">
+        <div className="relative shrink-0">
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 via-sky-500 to-blue-600 p-0.5 shadow-md shadow-cyan-950/40">
             {user?.profile_image ? (
               <img
                 src={user.profile_image}
                 alt={user.first_name}
-                className="w-14 h-14 rounded-full object-cover ring-2 ring-primary-500/20"
+                className="w-full h-full rounded-full object-cover"
               />
             ) : (
-              <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-primary-600 to-indigo-500 text-white flex items-center justify-center font-bold text-xl shadow-inner">
+              <div className="w-full h-full rounded-full bg-slate-900 dark:bg-slate-950 flex items-center justify-center font-bold text-white text-sm">
                 {user?.first_name?.[0] || 'U'}
               </div>
             )}
-            <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white dark:border-gray-800 rounded-full" />
           </div>
+          <span className="absolute -bottom-0.5 -right-0.5 rtl:-right-auto rtl:-left-0.5 w-3.5 h-3.5 rounded-full bg-cyan-400 ring-2 ring-white dark:ring-slate-900 shadow-[0_0_6px_rgba(34,211,238,0.9)]" />
+        </div>
 
-          <div className="flex-1 min-w-0">
-            <h2 className="text-base font-bold text-gray-900 dark:text-white truncate">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <h2 className="text-sm font-bold text-gray-900 dark:text-white truncate">
               {user?.first_name} {user?.last_name}
             </h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-              {user?.email}
-            </p>
-            <div className="mt-1">
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-primary-50 dark:bg-primary-950/40 text-primary-700 dark:text-primary-300 border border-primary-200/50 dark:border-primary-800/40">
-                {getRoleLabel()}
-              </span>
-            </div>
+            <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-cyan-500/15 border border-cyan-400/25 text-cyan-700 dark:text-cyan-200">
+              {getRoleLabel()}
+            </span>
           </div>
+          <p className="text-xs text-gray-500 dark:text-slate-400 truncate mt-0.5">
+            {user?.email}
+          </p>
         </div>
 
-        <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700/60">
-          <button
-            onClick={() => navigate('/profile')}
-            className="w-full flex items-center justify-center space-x-1.5 rtl:space-x-reverse py-2 px-3 rounded-xl bg-gray-50 dark:bg-gray-700/40 hover:bg-gray-100 dark:hover:bg-gray-700 text-xs font-medium text-gray-700 dark:text-gray-200 transition-colors"
-          >
-            <User className="w-3.5 h-3.5 text-primary-500" />
-            <span>{isRTL ? 'إدارة الملف الشخصي' : 'Voir mon profil complet'}</span>
-            <ExternalLink className="w-3 h-3 opacity-60" />
-          </button>
-        </div>
+        <button
+          onClick={() => navigate('/profile')}
+          className="p-2 rounded-xl bg-gray-100 dark:bg-slate-800/80 hover:bg-gray-200 dark:hover:bg-slate-800 text-gray-500 dark:text-cyan-300 transition-colors shrink-0"
+          title={isRTL ? 'إدارة الملف الشخصي' : 'Voir mon profil complet'}
+        >
+          <User className="w-4 h-4" />
+        </button>
       </motion.div>
 
-      {/* 2. PRÉFÉRENCES D'AFFICHAGE (Thème & Langue) */}
+      {/* 2. PRÉFÉRENCES D'AFFICHAGE (iOS Inset Group) */}
       <motion.div
-        initial={{ opacity: 0, y: 10 }}
+        initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
-        className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700/60 space-y-4"
+        className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-2xl border border-gray-200/70 dark:border-slate-800/80 overflow-hidden shadow-sm divide-y divide-gray-100 dark:divide-slate-800/60"
       >
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-          {isRTL ? 'تفضيلات العرض' : 'Affichage & Langue'}
-        </h3>
-
         {/* Mode Sombre */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3 rtl:space-x-reverse">
-            <div className="p-2 rounded-xl bg-amber-50 dark:bg-indigo-950/40 text-amber-600 dark:text-indigo-400">
-              {theme === 'dark' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+        <div className="p-3 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-indigo-500/15 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 flex items-center justify-center text-sm shadow-xs">
+              {theme === 'dark' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">
+              <p className="text-xs font-semibold text-gray-900 dark:text-slate-200">
                 {isRTL ? 'المظهر المظلم' : 'Mode sombre'}
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-[10px] text-gray-500 dark:text-slate-400">
                 {theme === 'dark'
                   ? isRTL ? 'المظهر الداكن مفعّل' : 'Thème sombre actif'
                   : isRTL ? 'المظهر الفاتح مفعّل' : 'Thème clair actif'}
@@ -265,56 +228,58 @@ const MobileSettingsView = ({ onSwitchToDesktopView }) => {
           <ToggleSwitch
             checked={theme === 'dark'}
             onChange={toggleTheme}
+            activeColor="peer-checked:bg-gradient-to-r peer-checked:from-cyan-500 peer-checked:to-blue-600"
+            inactiveColor="bg-gray-200 dark:bg-slate-700"
             ariaLabel={isRTL ? 'المظهر المظلم' : 'Mode sombre'}
           />
         </div>
 
         {/* Langue Interface */}
-        <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700/60">
-          <div className="flex items-center space-x-3 rtl:space-x-reverse">
-            <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400">
-              <Languages className="w-5 h-5" />
+        <div className="p-3 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-cyan-500/15 text-cyan-600 dark:text-cyan-300 flex items-center justify-center text-sm shadow-xs">
+              <Languages className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">
+              <p className="text-xs font-semibold text-gray-900 dark:text-slate-200">
                 {isRTL ? 'اللغة' : 'Langue'}
               </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-[10px] text-gray-500 dark:text-slate-400">
                 {currentLanguage === 'fr' ? 'Français' : 'العربية (تونس)'}
               </p>
             </div>
           </div>
           <button
             onClick={toggleLanguage}
-            className="flex items-center space-x-1.5 rtl:space-x-reverse px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 text-xs font-semibold text-gray-800 dark:text-gray-100 transition-colors"
+            className="px-2.5 py-1.5 rounded-xl bg-gray-100 dark:bg-slate-800 text-xs font-semibold text-gray-700 dark:text-slate-200 border border-gray-200 dark:border-slate-700 hover:border-cyan-500/40 transition-colors shadow-xs"
           >
-            <span>{currentLanguage === 'fr' ? '🇹🇳 العربية' : '🇫🇷 Français'}</span>
+            {currentLanguage === 'fr' ? '🇹🇳 العربية' : '🇫🇷 Français'}
           </button>
         </div>
       </motion.div>
 
-      {/* 3. ALERTE DE PRÉSENCE PROGRAMMÉE (Fonctionnalité Clé) */}
+      {/* 3. ALERTE DE PRÉSENCE PROGRAMMÉE (Palette Centre d'Aide - Sans bouton test) */}
       <motion.div
-        initial={{ opacity: 0, y: 10 }}
+        initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700/60 space-y-4"
+        className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-2xl border border-cyan-500/25 p-3.5 shadow-sm space-y-3"
       >
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center space-x-3 rtl:space-x-reverse min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-100 dark:border-emerald-800/40">
-              <Clock className="w-5 h-5" />
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-400/20 to-blue-500/20 border border-cyan-400/30 text-cyan-600 dark:text-cyan-300 flex items-center justify-center text-sm shrink-0 shadow-xs">
+              <Clock className="w-4 h-4" />
             </div>
             <div className="min-w-0">
-              <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                  {isRTL ? 'تنبيه تسجيل الحضور' : 'Alerte de présence'}
+              <div className="flex items-center gap-1.5">
+                <h3 className="text-xs font-bold text-gray-900 dark:text-white truncate">
+                  {isRTL ? 'تنبيه تسجيل الحضور' : 'Alerte de présence programmée'}
                 </h3>
                 <span
-                  className={`px-2 py-0.5 text-[10px] font-semibold rounded-full ${
+                  className={`px-1.5 py-0.5 text-[9px] font-bold rounded-full ${
                     attendanceReminderEnabled
-                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400'
-                      : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+                      ? 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border border-cyan-400/25'
+                      : 'bg-gray-100 text-gray-500 dark:bg-slate-800 dark:text-slate-400'
                   }`}
                 >
                   {attendanceReminderEnabled
@@ -322,209 +287,176 @@ const MobileSettingsView = ({ onSwitchToDesktopView }) => {
                     : isRTL ? 'معطل' : 'Inactif'}
                 </span>
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                {isRTL
-                  ? 'إشعار إذا لم تسجل أي حضور حتى الوقت المحدد'
-                  : "Notification si aucune présence n'a été saisie"}
+              <p className="text-[10px] text-gray-500 dark:text-cyan-100/70 truncate mt-0.5">
+                {isRTL ? 'إشعار صباحي إذا لم يسجل أي حضور' : 'Rappel automatique si aucun pointage'}
               </p>
             </div>
           </div>
           <ToggleSwitch
             checked={attendanceReminderEnabled}
             onChange={handleToggleAttendance}
+            activeColor="peer-checked:bg-gradient-to-r peer-checked:from-cyan-500 peer-checked:to-blue-600"
+            inactiveColor="bg-gray-200 dark:bg-slate-700"
             ariaLabel={isRTL ? 'تفعيل تنبيه الحضور' : 'Alerte présence'}
           />
         </div>
 
-        {attendanceReminderEnabled && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            className="space-y-3.5 pt-3 border-t border-gray-100 dark:border-gray-700/60"
-          >
-            {/* Boîte de réglage au design moderne et épuré */}
-            <div className="bg-gray-50/80 dark:bg-gray-900/50 rounded-xl p-3.5 border border-gray-100 dark:border-gray-700/40 space-y-3.5">
-              {/* Heure du rappel */}
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-                  {isRTL ? 'ساعة التنبيه (صباحاً)' : 'Heure du rappel (matin)'}
-                </label>
-                <input
-                  type="time"
-                  value={attendanceReminderTime}
-                  onChange={(e) => setAttendanceReminderTime(e.target.value)}
-                  className="px-3 py-1.5 text-sm font-bold tracking-wider rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-emerald-400 shadow-xs focus:ring-2 focus:ring-emerald-500 outline-none cursor-pointer"
-                />
-              </div>
+        {attendanceReminderEnabled ? (
+          <div className="pt-3 border-t border-gray-100 dark:border-slate-800/80 space-y-3">
+            {/* Heure (Capsule iOS Cyan) */}
+            <div className="flex items-center justify-between bg-gray-50 dark:bg-slate-950/70 p-2.5 rounded-xl border border-cyan-500/30">
+              <span className="text-xs text-gray-700 dark:text-slate-300 font-medium">
+                {isRTL ? 'وقت التنبيه' : 'Heure de notification'}
+              </span>
+              <input
+                type="time"
+                value={attendanceReminderTime}
+                onChange={(e) => setAttendanceReminderTime(e.target.value)}
+                className="bg-white dark:bg-slate-900 border border-cyan-500/40 text-cyan-600 dark:text-cyan-300 font-bold text-xs px-2.5 py-1 rounded-lg outline-none cursor-pointer focus:ring-2 focus:ring-cyan-500 shadow-inner"
+              />
+            </div>
 
-              {/* Jours actifs */}
-              <div className="pt-2.5 border-t border-gray-200/60 dark:border-gray-700/40 space-y-2">
-                <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-                  {isRTL ? 'أيام التنبيه' : 'Jours de rappel'}
-                </label>
-                <div className="grid grid-cols-6 gap-1.5">
-                  {DAYS_OF_WEEK.map((d) => {
-                    const isSelected = attendanceReminderDays.includes(d.id);
-                    return (
-                      <button
-                        key={d.id}
-                        type="button"
-                        onClick={() => toggleDay(d.id)}
-                        className={`py-2 text-xs font-semibold rounded-xl transition-all flex flex-col items-center justify-center space-y-0.5 ${
-                          isSelected
-                            ? 'bg-emerald-500 text-white shadow-xs dark:bg-emerald-500 scale-[1.02]'
-                            : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700/80 hover:border-gray-300 dark:hover:border-gray-600'
-                        }`}
-                      >
-                        <span>{currentLanguage === 'ar' ? d.labelAr : d.labelFr}</span>
-                        <span
-                          className={`w-1 h-1 rounded-full ${
-                            isSelected ? 'bg-white' : 'bg-transparent'
-                          }`}
-                        />
-                      </button>
-                    );
-                  })}
-                </div>
+            {/* Jours actifs (Pilules Cyan & Saphir) */}
+            <div className="space-y-1.5">
+              <span className="text-[11px] text-gray-500 dark:text-slate-400 font-medium">
+                {isRTL ? 'أيام التفعيل' : 'Jours actifs'}
+              </span>
+              <div className="grid grid-cols-6 gap-1.5">
+                {DAYS_OF_WEEK.map((d) => {
+                  const isSelected = attendanceReminderDays.includes(d.id);
+                  return (
+                    <button
+                      key={d.id}
+                      type="button"
+                      onClick={() => toggleDay(d.id)}
+                      className={`py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-950/50 border border-cyan-400/40 scale-[1.02]'
+                          : 'bg-gray-100 dark:bg-slate-800/80 text-gray-500 dark:text-slate-400 border border-gray-200 dark:border-slate-700/60 hover:text-gray-900 dark:hover:text-slate-200'
+                      }`}
+                    >
+                      {currentLanguage === 'ar' ? d.labelAr : d.labelFr}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            <div className="space-y-2">
-              {/* Bouton Sauvegarder élégant */}
+            {/* Action Unique : Enregistrer l'horaire (Bouton de test supprimé) */}
+            <div className="pt-1">
               <button
                 type="button"
                 onClick={() => handleSavePreferences()}
                 disabled={saving}
-                className="w-full flex items-center justify-center space-x-2 rtl:space-x-reverse py-2.5 px-4 rounded-xl text-xs sm:text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] transition-all shadow-sm shadow-emerald-600/20 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+                className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-xs transition-all shadow-md shadow-cyan-950/40 active:scale-[0.99] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
               >
-                <Save className="w-4 h-4" />
+                <Save className="w-3.5 h-3.5" />
                 <span>
                   {saving
                     ? isRTL ? 'جاري الحفظ...' : 'Enregistrement...'
-                    : isRTL ? 'حفظ إعدادات التنبيه' : "Enregistrer l'horaire"}
-                </span>
-              </button>
-
-              {/* Bouton Tester la notification immédiatement */}
-              <button
-                type="button"
-                onClick={handleTestNotification}
-                disabled={testingNotif}
-                className="w-full flex items-center justify-center space-x-2 rtl:space-x-reverse py-2 px-3 rounded-xl text-xs font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 border border-emerald-200/70 dark:border-emerald-800/40 transition-colors cursor-pointer"
-              >
-                <Bell className="w-3.5 h-3.5" />
-                <span>
-                  {testingNotif
-                    ? isRTL ? 'جاري إرسال التنبيه...' : 'Envoi du test en cours...'
-                    : isRTL ? 'تجربة التنبيه فوراً' : 'Tester la notification maintenant'}
+                    : isRTL ? 'حفظ الإعدادات' : "Enregistrer l'horaire"}
                 </span>
               </button>
             </div>
-          </motion.div>
+          </div>
+        ) : (
+          <p className="text-[11px] text-gray-400 dark:text-slate-500 italic pt-1">
+            {isRTL ? 'التنبيه متوقف حالياً' : 'Le rappel matinal est actuellement désactivé.'}
+          </p>
         )}
       </motion.div>
 
-      {/* 4. NOTIFICATIONS SYSTÈME (Push & Email) */}
+      {/* 4. NOTIFICATIONS SYSTÈME (Push) */}
       <motion.div
-        initial={{ opacity: 0, y: 10 }}
+        initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.15 }}
-        className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700/60 space-y-3"
+        className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-2xl border border-gray-200/70 dark:border-slate-800/80 p-3.5 shadow-sm flex items-center justify-between"
       >
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-          {isRTL ? 'قنوات الإشعارات' : 'Canaux de notification'}
-        </h3>
-
-        {/* Notifications Push */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3 rtl:space-x-reverse">
-            <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400">
-              <Bell className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">
-                {isRTL ? 'إشعارات الهاتف (Push)' : 'Notifications Push'}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                {pushNotifications.isSubscribed
-                  ? isRTL ? 'مفعلة على هذا الهاتف ✅' : 'Actives sur ce téléphone ✅'
-                  : isRTL ? 'غير مفعلة' : 'Désactivées'}
-              </p>
-            </div>
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-cyan-500/15 text-cyan-600 dark:text-cyan-300 flex items-center justify-center text-xs">
+            <Bell className="w-3.5 h-3.5" />
           </div>
-
-          {pushNotifications.isSupported ? (
-            <button
-              onClick={() => {
-                if (pushNotifications.isSubscribed) {
-                  pushNotifications.unsubscribe();
-                } else {
-                  pushNotifications.subscribe();
-                }
-              }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
-                pushNotifications.isSubscribed
-                  ? 'bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-950/30 dark:text-red-400'
-                  : 'bg-primary-600 text-white hover:bg-primary-700'
-              }`}
-            >
+          <div>
+            <p className="text-xs font-semibold text-gray-900 dark:text-slate-200">
+              {isRTL ? 'إشعارات الهاتف (Web Push)' : 'Notifications Push'}
+            </p>
+            <p className="text-[10px] text-cyan-600 dark:text-cyan-300/80">
               {pushNotifications.isSubscribed
-                ? isRTL ? 'إيقاف' : 'Désactiver'
-                : isRTL ? 'تفعيل' : 'Activer'}
-            </button>
-          ) : (
-            <span className="text-[11px] text-gray-400">
-              {isRTL ? 'غير مدعوم' : 'Non supporté'}
-            </span>
-          )}
+                ? isRTL ? 'مفعلة على هذا الهاتف' : 'Actives sur ce téléphone'
+                : isRTL ? 'غير مفعلة' : 'Désactivées'}
+            </p>
+          </div>
         </div>
+
+        {pushNotifications.isSupported ? (
+          <button
+            onClick={() => {
+              if (pushNotifications.isSubscribed) {
+                pushNotifications.unsubscribe();
+              } else {
+                pushNotifications.subscribe();
+              }
+            }}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+              pushNotifications.isSubscribed
+                ? 'bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-950/30 dark:text-red-400 border border-red-200/40 dark:border-red-900/30'
+                : 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-xs'
+            }`}
+          >
+            {pushNotifications.isSubscribed
+              ? isRTL ? 'إيقاف' : 'Désactiver'
+              : isRTL ? 'تفعيل' : 'Activer'}
+          </button>
+        ) : (
+          <span className="text-[11px] text-gray-400">
+            {isRTL ? 'غير مدعوم' : 'Non supporté'}
+          </span>
+        )}
       </motion.div>
 
-      {/* 5. LIEN DISCRET VERS LA CONFIGURATION COMPLÈTE (DESKTOP) */}
+      {/* 5. LIEN CONFIGURATION COMPLÈTE (DESKTOP) */}
       {(user?.role === 'admin' || user?.role === 'developer') && onSwitchToDesktopView && (
         <motion.div
-          initial={{ opacity: 0, y: 10 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-gradient-to-r from-gray-50 to-blue-50/40 dark:from-gray-800 dark:to-gray-800/80 rounded-2xl p-4 border border-blue-100/60 dark:border-gray-700"
+          className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-md rounded-2xl border border-gray-200/70 dark:border-slate-800/70 p-3 flex items-center justify-between text-xs text-gray-700 dark:text-slate-300"
         >
-          <div className="flex items-start space-x-3 rtl:space-x-reverse">
-            <div className="p-2 rounded-xl bg-blue-100/70 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">
-              <Laptop className="w-5 h-5" />
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-7 h-7 rounded-lg bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+              <Laptop className="w-3.5 h-3.5" />
             </div>
-            <div className="flex-1">
-              <h4 className="text-xs font-bold text-gray-900 dark:text-white">
-                {isRTL ? 'الإعدادات الكاملة (حاسوب)' : 'Configuration complète crèche'}
-              </h4>
-              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">
-                {isRTL
-                  ? 'ساعات العمل، العطل الرسمية، تعيين الموظفين والزيارة الافتراضية متوفرة على الحاسوب أو بالتبديل للوضع الكامل.'
-                  : 'Les horaires d’ouverture, jours fériés, affectation du personnel et visite virtuelle sont optimisés pour grand écran.'}
-              </p>
-              <button
-                onClick={onSwitchToDesktopView}
-                className="mt-2 text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline flex items-center space-x-1 rtl:space-x-reverse"
-              >
-                <span>{isRTL ? 'عرض كل الإعدادات على الهاتف' : 'Afficher la version complète'}</span>
-                <span>→</span>
-              </button>
+            <div className="min-w-0">
+              <span className="font-semibold block truncate">
+                {isRTL ? 'الإعدادات الكاملة (حاسوب)' : 'Configuration complète (PC)'}
+              </span>
+              <span className="text-[10px] text-gray-500 dark:text-slate-400 block truncate">
+                {isRTL ? 'ساعات العمل، العطل وتعيين الموظفين' : 'Horaires, jours fériés et gestion avancée'}
+              </span>
             </div>
           </div>
+          <button
+            onClick={onSwitchToDesktopView}
+            className="text-cyan-600 dark:text-cyan-400 font-bold hover:underline shrink-0 px-2 py-1"
+          >
+            {isRTL ? '← فتح' : 'Ouvrir →'}
+          </button>
         </motion.div>
       )}
 
-      {/* 6. BOUTON DÉCONNEXION */}
+      {/* 6. DÉCONNEXION */}
       <motion.div
-        initial={{ opacity: 0, y: 10 }}
+        initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.25 }}
-        className="pt-2"
+        className="pt-1"
       >
         <button
           onClick={handleLogout}
-          className="w-full flex items-center justify-center space-x-2 rtl:space-x-reverse py-3 px-4 rounded-2xl bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 font-medium text-sm transition-colors border border-red-200/50 dark:border-red-800/30"
+          className="w-full py-2.5 rounded-2xl bg-red-50 hover:bg-red-100 dark:bg-red-950/25 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 border border-red-200/50 dark:border-red-900/30 text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
         >
-          <LogOut className="w-4 h-4" />
+          <LogOut className="w-3.5 h-3.5" />
           <span>{isRTL ? 'تسجيل الخروج' : 'Se déconnecter'}</span>
         </button>
       </motion.div>
