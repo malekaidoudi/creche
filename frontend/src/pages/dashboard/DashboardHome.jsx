@@ -264,7 +264,7 @@ const DashboardHome = () => {
   return (
     <>
       {/* VERSION MOBILE/TABLETTE - max-width: 1024px */}
-      <div className="lg:hidden">
+      <div className="lg:hidden pt-[calc(env(safe-area-inset-top,0px)+0.5rem)]">
         <MobileDashboardComplete
           stats={stats}
           recentActivities={recentActivities}

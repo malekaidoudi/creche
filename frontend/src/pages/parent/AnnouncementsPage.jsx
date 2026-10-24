@@ -128,7 +128,7 @@ export default function AnnouncementsPage() {
   }
 
   return (
-    <div className={`min-h-screen max-w-4xl mx-auto p-6 ${isMobile ? 'pb-24' : ''}`}>
+    <div className={`min-h-screen max-w-4xl mx-auto px-4 sm:px-6 pb-6 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] ${isMobile ? 'pb-24' : ''}`}>
       {/* Header */}
       <div className="mb-6">
         {/* Bouton retour pour les parents - masqué sur mobile */}

@@ -224,7 +224,7 @@ const TreatmentsPage = () => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        padding: '12px 16px',
+                        padding: 'calc(env(safe-area-inset-top, 0px) + 12px) 16px 12px 16px',
                         borderBottom: `1px solid ${dirColors.card}`,
                         position: 'sticky',
                         top: 0,

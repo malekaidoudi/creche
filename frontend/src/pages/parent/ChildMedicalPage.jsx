@@ -174,7 +174,7 @@ const ChildMedicalPage = () => {
     }
 
     return (
-        <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 ${isMobile ? 'pb-24' : ''}`}>
+        <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 ${isMobile ? 'pb-24 pt-[calc(env(safe-area-inset-top,0px)+0.75rem)]' : ''}`}>
             <div className="max-w-2xl mx-auto px-4 py-6">
                 {/* Header */}
                 {!isMobile && (

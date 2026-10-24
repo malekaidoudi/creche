@@ -154,7 +154,7 @@ const MobileSettingsView = ({ onSwitchToDesktopView }) => {
   };
 
   return (
-    <div className="pb-24 pt-2 px-3 sm:px-4 max-w-md mx-auto space-y-3.5">
+    <div className="pb-24 pt-[max(1rem,calc(env(safe-area-inset-top,0px)+0.75rem))] px-3 sm:px-4 max-w-md mx-auto space-y-3.5">
       {/* 1. CARTE PROFIL (iOS Inset - Palette Centre d'Aide) */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}

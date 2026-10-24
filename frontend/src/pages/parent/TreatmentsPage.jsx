@@ -139,7 +139,7 @@ const TreatmentsPage = () => {
     }
 
     return (
-        <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} p-4 md:p-6`}>
+        <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} px-4 pb-4 pt-[calc(env(safe-area-inset-top,0px)+1rem)] md:p-6`}>
             <div className="max-w-6xl mx-auto">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-6">

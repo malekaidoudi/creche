@@ -384,7 +384,7 @@ const AttendanceParentPage = () => {
   }
 
   return (
-    <div className={`min-h-screen p-4 md:p-6 ${isDark ? 'bg-gray-900' : 'bg-gray-50'} ${isMobile ? 'pb-24' : ''}`}>
+    <div className={`min-h-screen px-4 pb-4 pt-[calc(env(safe-area-inset-top,0px)+1rem)] md:p-6 ${isDark ? 'bg-gray-900' : 'bg-gray-50'} ${isMobile ? 'pb-24' : ''}`}>
       <div className="max-w-7xl mx-auto">
         {/* En-tête */}
         <motion.div

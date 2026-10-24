@@ -237,7 +237,7 @@ const ChildDailyReportsPage = () => {
     }
 
     return (
-        <div className={`min-h-screen p-4 md:p-6 ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`} dir={isRTL ? 'rtl' : 'ltr'}>
+        <div className={`min-h-screen px-4 pb-4 pt-[calc(env(safe-area-inset-top,0px)+1rem)] md:p-6 ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`} dir={isRTL ? 'rtl' : 'ltr'}>
             {/* En-tête */}
             <div className="mb-6">
                 <Button

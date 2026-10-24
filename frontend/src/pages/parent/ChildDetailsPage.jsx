@@ -257,7 +257,7 @@ const ChildDetailsPage = () => {
     return (
         <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors ${isMobile ? 'pb-24' : ''}`}>
             {/* Header */}
-            <div className="sticky top-0 z-10 bg-white/95 dark:bg-gray-900/95 backdrop-blur border-b border-gray-200 dark:border-gray-800 shadow-sm transition-colors">
+            <div className="sticky top-0 z-10 bg-white/95 dark:bg-gray-900/95 backdrop-blur border-b border-gray-200 dark:border-gray-800 shadow-sm transition-colors pt-[env(safe-area-inset-top,0px)]">
                 <div className="flex items-center justify-between px-4 py-3.5 max-w-2xl mx-auto">
                     <button
                         onClick={() => navigate('/mon-espace')}
