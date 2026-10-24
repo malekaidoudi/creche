@@ -128,28 +128,34 @@ export default function AnnouncementsPage() {
   }
 
   return (
-    <div className={`min-h-screen max-w-4xl mx-auto px-4 sm:px-6 pb-6 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] ${isMobile ? 'pb-24' : ''}`}>
-      {/* Header */}
-      <div className="mb-6">
-        {/* Bouton retour pour les parents - masqué sur mobile */}
-        {user?.role === 'parent' && !isMobile && (
-          <button
-            onClick={() => navigate('/mon-espace')}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            <span>Retour à Mon Espace</span>
-          </button>
-        )}
-
-        <div className="flex items-center gap-3 mb-2">
-          <Megaphone className="w-8 h-8 text-blue-600" />
-          <h1 className="text-3xl font-bold text-gray-900">Annonces</h1>
+    <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 ${isMobile ? 'pb-24' : 'pb-6'}`}>
+      {/* Header Sticky */}
+      <div className="sticky top-0 z-30 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-4 py-3 shadow-xs pt-[calc(env(safe-area-inset-top,0px)+0.75rem)]">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {user?.role === 'parent' && (
+              <button
+                onClick={() => navigate('/mon-espace')}
+                className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-colors"
+                title="Retour"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+            )}
+            <div className="flex items-center gap-2.5">
+              <Megaphone className="w-6 h-6 text-blue-600" />
+              <div>
+                <h1 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white leading-tight">Annonces</h1>
+                <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
+                  Restez informé des dernières actualités de la crèche
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
-        <p className="text-gray-600">
-          Restez informé des dernières actualités de la crèche
-        </p>
       </div>
+
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-4">
 
       {/* Filtres */}
       <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 mb-6">
@@ -261,6 +267,7 @@ export default function AnnouncementsPage() {
 
       {/* Navigation mobile */}
       {isMobile && <MobileNavigation />}
+      </div>
     </div>
   );
 }

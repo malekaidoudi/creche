@@ -35,8 +35,33 @@ const FullscreenFeed = ({
     const containerRef = useRef(null);
     const videoRefs = useRef({});
     const longPressTimer = useRef(null);
-    const dragControls = useDragControls();
     const commentInputRef = useRef(null);
+    const touchStartX = useRef(0);
+    const touchStartY = useRef(0);
+
+    const handlePhotoTouchStart = (e) => {
+        if (e.touches && e.touches.length === 1) {
+            touchStartX.current = e.touches[0].clientX;
+            touchStartY.current = e.touches[0].clientY;
+        }
+    };
+
+    const handlePhotoTouchEnd = (e) => {
+        if (!e.changedTouches || e.changedTouches.length === 0) return;
+        const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+        const deltaY = e.changedTouches[0].clientY - touchStartY.current;
+
+        // Si le geste est principalement horizontal et dépasse 30px
+        if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 30) {
+            if (deltaX < 0) {
+                // Swipe vers la gauche -> photo suivante
+                isRTL ? goToPrevPhoto() : goToNextPhoto();
+            } else {
+                // Swipe vers la droite -> photo précédente
+                isRTL ? goToNextPhoto() : goToPrevPhoto();
+            }
+        }
+    };
 
     const currentActivity = activities[currentIndex];
 
@@ -222,12 +247,15 @@ const FullscreenFeed = ({
             className="fixed inset-0 z-[60] bg-black"
             ref={containerRef}
         >
-            {/* Bouton fermer */}
+            {/* Bouton fermer avec Safe Area iOS */}
             <button
+                type="button"
                 onClick={onClose}
-                className="absolute top-4 left-4 z-50 p-2 text-white bg-black/30 rounded-full"
+                className="absolute left-4 z-50 p-2.5 text-white bg-black/60 hover:bg-black/80 backdrop-blur-md rounded-full shadow-lg transition-transform active:scale-95"
+                style={{ top: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}
+                title={isRTL ? 'إغلاق' : 'Fermer'}
             >
-                <FiX size={24} />
+                <FiX size={22} />
             </button>
 
             {/* Indicateurs de navigation */}
@@ -282,7 +310,11 @@ const FullscreenFeed = ({
                                 controls
                             />
                         ) : (
-                            <div className="relative w-full h-full flex items-center justify-center">
+                            <div 
+                                className="relative w-full h-full flex items-center justify-center"
+                                onTouchStart={handlePhotoTouchStart}
+                                onTouchEnd={handlePhotoTouchEnd}
+                            >
                                 <img
                                     src={currentMediaItems[currentPhotoIndex]?.url || currentActivity.mediaUrl}
                                     alt={currentActivity.title}
@@ -297,10 +329,10 @@ const FullscreenFeed = ({
                                             <button
                                                 type="button"
                                                 onClick={goToPrevPhoto}
-                                                className="absolute left-4 top-1/2 -translate-y-1/2 z-30 p-2.5 rounded-full bg-black/50 hover:bg-black/75 text-white transition-all backdrop-blur-sm pointer-events-auto shadow-lg"
+                                                className="absolute left-3 top-1/2 -translate-y-1/2 z-40 p-3 rounded-full bg-black/60 hover:bg-black/80 text-white transition-all backdrop-blur-md pointer-events-auto shadow-2xl active:scale-90"
                                                 title={isRTL ? 'الصورة السابقة' : 'Photo précédente'}
                                             >
-                                                <FiChevronLeft size={26} />
+                                                <FiChevronLeft size={28} />
                                             </button>
                                         )}
 
@@ -309,21 +341,24 @@ const FullscreenFeed = ({
                                             <button
                                                 type="button"
                                                 onClick={goToNextPhoto}
-                                                className="absolute right-4 top-1/2 -translate-y-1/2 z-30 p-2.5 rounded-full bg-black/50 hover:bg-black/75 text-white transition-all backdrop-blur-sm pointer-events-auto shadow-lg"
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 z-40 p-3 rounded-full bg-black/60 hover:bg-black/80 text-white transition-all backdrop-blur-md pointer-events-auto shadow-2xl active:scale-90"
                                                 title={isRTL ? 'الصورة التالية' : 'Photo suivante'}
                                             >
-                                                <FiChevronRight size={26} />
+                                                <FiChevronRight size={28} />
                                             </button>
                                         )}
 
-                                        {/* Badge compteur de photos en haut au milieu */}
-                                        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 px-3.5 py-1.5 bg-black/60 backdrop-blur-md rounded-full text-white text-xs font-semibold flex items-center gap-1.5 shadow-md pointer-events-none">
+                                        {/* Badge compteur de photos en haut au milieu avec Safe Area */}
+                                        <div 
+                                            className="absolute left-1/2 -translate-x-1/2 z-40 px-3.5 py-1.5 bg-black/60 backdrop-blur-md rounded-full text-white text-xs font-semibold flex items-center gap-1.5 shadow-md pointer-events-none"
+                                            style={{ top: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}
+                                        >
                                             <FiImage size={13} className="text-green-400" />
                                             <span>{currentPhotoIndex + 1} / {currentMediaItems.length}</span>
                                         </div>
 
                                         {/* Puces de pagination en bas */}
-                                        <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 pointer-events-auto">
+                                        <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 pointer-events-auto">
                                             {currentMediaItems.map((_, pIdx) => (
                                                 <button
                                                     key={pIdx}
@@ -351,10 +386,10 @@ const FullscreenFeed = ({
                 {/* Overlay avec infos */}
                 <div className="absolute inset-0 pointer-events-none">
                     {/* Gradient bas */}
-                    <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
+                    <div className="absolute bottom-0 left-0 right-0 h-56 bg-gradient-to-t from-black/95 via-black/60 to-transparent" />
 
-                    {/* Actions côté droit */}
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col items-center gap-1 pointer-events-auto">
+                    {/* Actions côté droit (placées en bas à droite pour ne pas bloquer les photos) */}
+                    <div className="absolute right-2.5 bottom-28 z-40 flex flex-col items-center gap-2 pointer-events-auto">
                         {/* Réaction */}
                         <div className="relative">
                             <button
@@ -474,7 +509,7 @@ const FullscreenFeed = ({
                     </div>
 
                     {/* Infos auteur en bas */}
-                    <div className="absolute bottom-20 left-3 right-14 pointer-events-auto">
+                    <div className="absolute bottom-20 left-3 right-16 pointer-events-auto z-30">
                         <div className="flex items-center gap-2">
                             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white overflow-hidden border-2 border-white shadow-lg flex-shrink-0">
                                 {currentActivity.author?.profileImage ? (
@@ -500,10 +535,10 @@ const FullscreenFeed = ({
                         )}
                     </div>
 
-                    {/* Champ de commentaire */}
+                    {/* Champ de commentaire avec Safe Area Bottom */}
                     <form
                         onSubmit={handleComment}
-                        className="absolute bottom-0 left-0 right-0 p-3 pointer-events-auto bg-black/60 backdrop-blur-sm"
+                        className="absolute bottom-0 left-0 right-0 p-3 pb-[max(0.75rem,calc(env(safe-area-inset-bottom,0px)+0.25rem))] pointer-events-auto bg-black/75 backdrop-blur-md z-40"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="flex items-center gap-3">

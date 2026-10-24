@@ -384,37 +384,31 @@ const AttendanceParentPage = () => {
   }
 
   return (
-    <div className={`min-h-screen px-4 pb-4 pt-[calc(env(safe-area-inset-top,0px)+1rem)] md:p-6 ${isDark ? 'bg-gray-900' : 'bg-gray-50'} ${isMobile ? 'pb-24' : ''}`}>
-      <div className="max-w-7xl mx-auto">
-        {/* En-tête */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          {/* Bouton retour - masqué sur mobile */}
-          {!isMobile && (
-            <div className="flex items-center gap-4 mb-4">
-              <button
-                onClick={() => navigate('/mon-espace')}
-                className={`flex items-center gap-2 transition-colors ${isDark
-                  ? 'text-gray-400 hover:text-white'
-                  : 'text-gray-600 hover:text-gray-900'
-                  }`}
-              >
-                <ArrowLeft className="w-4 h-4" />
-                {isRTL ? 'رجوع إلى مساحتي' : 'Retour à Mon Espace'}
-              </button>
+    <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} ${isMobile ? 'pb-24' : 'pb-6'}`}>
+      {/* Header Sticky Mobile/Desktop */}
+      <div className={`sticky top-0 z-30 ${isDark ? 'bg-gray-900/95 border-gray-800' : 'bg-white/95 border-gray-200'} backdrop-blur-md border-b px-4 py-3 shadow-xs pt-[calc(env(safe-area-inset-top,0px)+0.75rem)]`}>
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/mon-espace')}
+              className={`p-2 rounded-xl transition-colors ${isDark ? 'hover:bg-gray-800 text-gray-300' : 'hover:bg-gray-100 text-gray-600'}`}
+              title={isRTL ? 'رجوع' : 'Retour'}
+            >
+              <ArrowLeft className={`w-5 h-5 ${isRTL ? 'rotate-180' : ''}`} />
+            </button>
+            <div>
+              <h1 className={`text-lg sm:text-2xl font-bold leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                {isRTL ? 'تقرير حضور الأطفال' : 'Calendrier de Présence'}
+              </h1>
+              <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'} hidden sm:block`}>
+                {isRTL ? 'تابع حضور أطفالك في الحضانة' : 'Suivez la présence de vos enfants à la crèche'}
+              </p>
             </div>
-          )}
+          </div>
+        </div>
+      </div>
 
-          <h1 className={`text-2xl sm:text-3xl font-bold mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            {isRTL ? 'تقرير حضور الأطفال' : 'Calendrier de Présence'}
-          </h1>
-          <p className={`${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-            {isRTL ? 'تابع حضور أطفالك في الحضانة' : 'Suivez la présence de vos enfants à la crèche'}
-          </p>
-        </motion.div>
+      <div className="max-w-7xl mx-auto px-4 pt-4">
 
         {/* Sélecteur d'enfant */}
         {children.length > 0 && (

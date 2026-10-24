@@ -237,26 +237,34 @@ const ChildDailyReportsPage = () => {
     }
 
     return (
-        <div className={`min-h-screen px-4 pb-4 pt-[calc(env(safe-area-inset-top,0px)+1rem)] md:p-6 ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`} dir={isRTL ? 'rtl' : 'ltr'}>
-            {/* En-tête */}
-            <div className="mb-6">
-                <Button
-                    variant="ghost"
-                    onClick={() => navigate('/mon-espace')}
-                    className={`mb-4 ${isDark ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}
-                >
-                    <ArrowLeft className={`w-4 h-4 ${isRTL ? 'ml-2 rotate-180' : 'mr-2'}`} />
-                    {labels.back}
-                </Button>
-
-                <h1 className={`text-2xl md:text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                    <FileText className="inline-block w-8 h-8 mr-2 text-primary-500" />
-                    {labels.title}
-                </h1>
-                <p className={`mt-1 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {labels.subtitle}
-                </p>
+        <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} pb-24`} dir={isRTL ? 'rtl' : 'ltr'}>
+            {/* Header Sticky */}
+            <div className={`sticky top-0 z-30 ${isDark ? 'bg-gray-900/95 border-gray-800' : 'bg-white/95 border-gray-200'} backdrop-blur-md border-b px-4 py-3 shadow-xs pt-[calc(env(safe-area-inset-top,0px)+0.75rem)]`}>
+                <div className="max-w-4xl mx-auto flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => navigate('/mon-espace')}
+                            className={`p-2 rounded-xl transition-colors ${isDark ? 'hover:bg-gray-800 text-gray-300' : 'hover:bg-gray-100 text-gray-600'}`}
+                            title={labels.back}
+                        >
+                            <ArrowLeft className={`w-5 h-5 ${isRTL ? 'rotate-180' : ''}`} />
+                        </button>
+                        <div className="flex items-center gap-2">
+                            <FileText className="w-5 h-5 text-primary-500" />
+                            <div>
+                                <h1 className={`text-lg sm:text-2xl font-bold leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                    {labels.title}
+                                </h1>
+                                <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'} hidden sm:block`}>
+                                    {labels.subtitle}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
+
+            <div className="max-w-4xl mx-auto px-4 pt-4">
 
             {/* Sélection d'enfant (si plusieurs) */}
             {children.length > 1 && (
@@ -721,6 +729,7 @@ const ChildDailyReportsPage = () => {
                     </CardContent>
                 </Card>
             )}
+            </div>
         </div>
     );
 };

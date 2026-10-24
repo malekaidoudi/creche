@@ -182,34 +182,31 @@ const AbsenceRequestPage = () => {
   }
 
   return (
-    <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 px-4 pb-4 pt-[calc(env(safe-area-inset-top,0px)+1rem)] md:p-4 ${isRTL ? 'rtl' : 'ltr'} ${isMobile ? 'pb-24' : ''}`}>
-      <div className="max-w-4xl mx-auto">
-        {/* En-tête */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          {/* Bouton retour masqué sur mobile */}
-          {!isMobile && (
-            <div className="flex items-center mb-4">
-              <Button
-                variant="outline"
-                onClick={() => navigate('/mon-espace')}
-                className="mr-4 rtl:mr-0 rtl:ml-4"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2 rtl:rotate-180" />
-                {isRTL ? 'العودة إلى مساحتي' : 'Retour à Mon Espace'}
-              </Button>
+    <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 ${isRTL ? 'rtl' : 'ltr'} ${isMobile ? 'pb-24' : 'pb-6'}`}>
+      {/* Header Sticky */}
+      <div className="sticky top-0 z-30 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-4 py-3 shadow-xs pt-[calc(env(safe-area-inset-top,0px)+0.75rem)]">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/mon-espace')}
+              className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-colors"
+              title={isRTL ? 'العودة إلى مساحتي' : 'Retour à Mon Espace'}
+            >
+              <ArrowLeft className="w-5 h-5 rtl:rotate-180" />
+            </button>
+            <div>
+              <h1 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white leading-tight">
+                {isRTL ? 'طلب غياب' : 'Demande d\'absence'}
+              </h1>
+              <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
+                {isRTL ? 'أعلم الإدارة بغياب طفلك مسبقاً' : 'Informez l\'administration de l\'absence de votre enfant à l\'avance'}
+              </p>
             </div>
-          )}
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            {isRTL ? 'طلب غياب' : 'Demande d\'absence'}
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            {isRTL ? 'أعلم الإدارة بغياب طفلك مسبقاً' : 'Informez l\'administration de l\'absence de votre enfant à l\'avance'}
-          </p>
-        </motion.div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-4xl mx-auto px-4 pt-4">
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Calendrier de demande */}

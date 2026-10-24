@@ -117,7 +117,7 @@ const ActivitiesPage = () => {
   };
 
   return (
-    <div className={`pb-20 min-h-full overflow-x-hidden ${isRTL ? 'rtl' : 'ltr'}`} dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className={`pb-20 min-h-full overflow-x-clip ${isRTL ? 'rtl' : 'ltr'}`} dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Notification de succès */}
       <AnimatePresence>
         {showSuccess && (
@@ -154,15 +154,14 @@ const ActivitiesPage = () => {
         )}
       </AnimatePresence>
 
-      {/* Header - sans bouton refresh */}
-      <div className="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 text-white">
-        <div className="max-w-2xl mx-auto px-4 py-8">
+      {/* Header collant (fixe au défilement) */}
+      <div className="sticky top-0 z-30 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 text-white shadow-md backdrop-blur-md">
+        <div className="max-w-2xl mx-auto px-4 py-4 sm:py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold">{t.title}</h1>
-              <p className="text-white/80 mt-1">{t.subtitle}</p>
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">{t.title}</h1>
+              <p className="text-white/80 text-xs sm:text-sm mt-0.5">{t.subtitle}</p>
             </div>
-            
           </div>
         </div>
       </div>

@@ -139,34 +139,39 @@ const TreatmentsPage = () => {
     }
 
     return (
-        <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} px-4 pb-4 pt-[calc(env(safe-area-inset-top,0px)+1rem)] md:p-6`}>
-            <div className="max-w-6xl mx-auto">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-4">
+        <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} pb-6`}>
+            {/* Header Sticky */}
+            <div className={`sticky top-0 z-30 ${isDark ? 'bg-gray-900/95 border-gray-800' : 'bg-white/95 border-gray-200'} backdrop-blur-md border-b px-4 py-3 shadow-xs pt-[calc(env(safe-area-inset-top,0px)+0.75rem)]`}>
+                <div className="max-w-6xl mx-auto flex items-center justify-between">
+                    <div className="flex items-center gap-3">
                         <button
                             onClick={() => navigate(-1)}
-                            className={`p-2 rounded-lg ${isDark ? 'hover:bg-gray-800' : 'hover:bg-gray-200'}`}
+                            className={`p-2 rounded-xl transition-colors ${isDark ? 'hover:bg-gray-800 text-gray-300' : 'hover:bg-gray-100 text-gray-600'}`}
+                            title={isRTL ? 'رجوع' : 'Retour'}
                         >
-                            <ChevronLeft className={`w-6 h-6 ${isDark ? 'text-gray-300' : 'text-gray-600'}`} />
+                            <ChevronLeft className={`w-5 h-5 ${isRTL ? 'rotate-180' : ''}`} />
                         </button>
                         <div>
-                            <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                            <h1 className={`text-lg sm:text-2xl font-bold leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
                                 💊 {isRTL ? 'العلاجات الطبية' : 'Traitements médicaux'}
                             </h1>
-                            <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                            <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                                 {isRTL ? 'إدارة علاجات أطفالك' : 'Gérez les traitements de vos enfants'}
                             </p>
                         </div>
                     </div>
                     <Button
+                        size="sm"
                         onClick={() => setShowModal(true)}
-                        className="flex items-center gap-2"
+                        className="flex items-center gap-1.5"
                     >
                         <Plus className="w-4 h-4" />
-                        {isRTL ? 'إضافة علاج' : 'Ajouter'}
+                        <span>{isRTL ? 'إضافة' : 'Ajouter'}</span>
                     </Button>
                 </div>
+            </div>
+
+            <div className="max-w-6xl mx-auto px-4 pt-4">
 
                 {/* Filtres */}
                 <div className="flex gap-2 mb-6">
