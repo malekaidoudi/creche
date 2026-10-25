@@ -46,43 +46,42 @@ const MobileNavigation = ({ hideSpacer = false }) => {
     const location = useLocation();
     const [showMore, setShowMore] = useState(false);
 
-    // Navigation principale (5 éléments max)
+    // Navigation principale (5 éléments) : Accueil, Enfant, Inscription, Soins, Plus
     const mainNavItems = [
         {
             id: 'home',
             icon: Home,
             label: isRTL ? 'الرئيسية' : 'Accueil',
             path: '/dashboard',
-            roles: ['admin', 'staff']
-        },
-        {
-            id: 'attendance',
-            icon: ClipboardCheck,
-            label: isRTL ? 'الحضور' : 'Appel',
-            path: '/dashboard/attendance/today',
-            roles: ['admin', 'staff'],
-            feature: 'ATTENDANCE_TODAY'
+            roles: ['admin', 'staff', 'developer']
         },
         {
             id: 'children',
             icon: Users,
-            label: isRTL ? 'الأطفال' : 'Enfants',
+            label: isRTL ? 'الأطفال' : 'Enfant',
             path: '/dashboard/children',
-            roles: ['admin', 'staff']
+            roles: ['admin', 'staff', 'developer']
         },
         {
-            id: 'messages',
-            icon: MessageCircle,
-            label: isRTL ? 'الرسائل' : 'Messages',
-            path: '/dashboard/messages',
-            roles: ['admin', 'staff']
+            id: 'enrollments',
+            icon: UserPlus,
+            label: isRTL ? 'التسجيل' : 'Inscription',
+            path: '/dashboard/enrollments',
+            roles: ['admin', 'staff', 'developer']
+        },
+        {
+            id: 'treatments',
+            icon: Pill,
+            label: isRTL ? 'العلاجات' : 'Soins',
+            path: '/dashboard/treatments',
+            roles: ['admin', 'staff', 'developer']
         },
         {
             id: 'more',
             icon: MoreHorizontal,
             label: isRTL ? 'المزيد' : 'Plus',
             action: () => setShowMore(true),
-            roles: ['admin', 'staff']
+            roles: ['admin', 'staff', 'developer']
         }
     ];
 
@@ -125,66 +124,31 @@ const MobileNavigation = ({ hideSpacer = false }) => {
         }
     ];
 
-    // Menu étendu "Plus"
+    // Menu étendu "Plus" : Planning, Statistiques, Activité récentes, Paramètres
     const moreMenuItems = [
-        // Items Admin/Staff
-        {
-            icon: Image,
-            label: isRTL ? 'الأنشطة' : 'Activités',
-            path: '/dashboard/activities',
-            roles: ['admin', 'staff']
-        },
         {
             icon: Calendar,
             label: isRTL ? 'التخطيط' : 'Planning',
             path: '/dashboard/planning',
-            roles: ['admin', 'staff'],
-            feature: 'STAFF_PLANNING_VIEW'
-        },
-        {
-            icon: FileText,
-            label: isRTL ? 'الوثائق' : 'Documents',
-            path: '/dashboard/documents',
-            roles: ['admin', 'staff']
-        },
-        {
-            icon: UserPlus,
-            label: isRTL ? 'التسجيلات' : 'Inscriptions',
-            path: '/dashboard/enrollments',
-            roles: ['admin']
-        },
-        {
-            icon: Clock,
-            label: isRTL ? 'التقارير اليومية' : 'Rapports journaliers',
-            path: '/dashboard/daily-reports',
-            roles: ['admin', 'staff'],
-            feature: 'DAILY_REPORTS_MANAGE'
-        },
-        {
-            icon: Pill,
-            label: isRTL ? 'العلاجات الطبية' : 'Traitements',
-            path: '/dashboard/treatments',
-            roles: ['admin', 'staff'],
-            feature: 'TREATMENTS_MANAGE'
+            roles: ['admin', 'staff', 'developer']
         },
         {
             icon: BarChart3,
             label: isRTL ? 'الإحصائيات' : 'Statistiques',
             path: '/dashboard/general-stats',
-            roles: ['admin']
+            roles: ['admin', 'staff', 'developer']
+        },
+        {
+            icon: Clock,
+            label: isRTL ? 'الأنشطة الأخيرة' : 'Activité récentes',
+            path: '/dashboard/activities',
+            roles: ['admin', 'staff', 'developer']
         },
         {
             icon: Settings,
             label: isRTL ? 'الإعدادات' : 'Paramètres',
             path: '/dashboard/settings',
-            roles: ['admin']
-        },
-        // Profil pour tous (Calendrier, Messages, Absence déjà dans quickActions)
-        {
-            icon: User,
-            label: isRTL ? 'الملف الشخصي' : 'Profil',
-            path: '/profile',
-            roles: ['admin', 'staff', 'parent']
+            roles: ['admin', 'staff', 'developer']
         }
     ];
 
@@ -250,13 +214,13 @@ const MobileNavigation = ({ hideSpacer = false }) => {
                                     : 'text-gray-500 dark:text-gray-400'
                                     }`}
                             >
-                                <Icon className="w-6 h-6" />
-                                <span className={`text-[11px] sm:text-xs mt-0.5 font-medium truncate max-w-[72px] text-center ${active ? 'font-semibold' : ''}`}>
+                                <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
+                                <span className={`text-[10px] sm:text-xs mt-0.5 font-medium whitespace-nowrap text-center ${active ? 'font-bold' : ''}`}>
                                     {item.label}
                                 </span>
                                 {active && (
                                     <span
-                                        className="absolute bottom-1 w-8 h-0.5 bg-primary-600 dark:bg-primary-400 rounded-full"
+                                        className="absolute bottom-1 w-7 h-0.5 bg-primary-600 dark:bg-primary-400 rounded-full"
                                     />
                                 )}
                             </button>
@@ -304,11 +268,17 @@ const MobileNavigation = ({ hideSpacer = false }) => {
                                 </button>
                             </div>
 
-                            {/* User Info */}
+                            {/* User Info - Accès unique pour modifier le profil */}
                             {user && (
-                                <div className="px-4 py-4 border-b border-gray-200 dark:border-gray-700">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-12 h-12 rounded-full bg-primary-100 dark:bg-primary-900/30 overflow-hidden flex items-center justify-center">
+                                <div
+                                    onClick={() => {
+                                        setShowMore(false);
+                                        navigate('/profile');
+                                    }}
+                                    className="px-4 py-4 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors flex items-center justify-between group"
+                                >
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className="w-12 h-12 rounded-full bg-primary-100 dark:bg-primary-900/30 overflow-hidden flex items-center justify-center shrink-0">
                                             {hasImage() ? (
                                                 <img
                                                     src={getImageUrl()}
@@ -319,17 +289,19 @@ const MobileNavigation = ({ hideSpacer = false }) => {
                                                 <User className="w-6 h-6 text-primary-600 dark:text-primary-400" />
                                             )}
                                         </div>
-                                        <div>
-                                            <p className="font-medium text-gray-900 dark:text-white">
+                                        <div className="min-w-0">
+                                            <p className="font-semibold text-gray-900 dark:text-white truncate">
                                                 {user.first_name} {user.last_name}
                                             </p>
-                                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                                                {user.role === 'admin' || user.role === 'developer' ? (isRTL ? 'مدير' : 'Administrateur') :
-                                                    user.role === 'staff' ? (isRTL ? 'موظف' : 'Personnel') :
-                                                        (isRTL ? 'ولي أمر' : 'Parent')}
+                                            <p className="text-xs text-primary-600 dark:text-primary-400 font-medium flex items-center gap-1 mt-0.5">
+                                                {isRTL ? 'تعديل الملف الشخصي' : 'Modifier le profil'}
+                                                <span className="text-[10px]">→</span>
                                             </p>
                                         </div>
                                     </div>
+                                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300 group-hover:bg-primary-100 transition-colors shrink-0">
+                                        {isRTL ? 'تعديل' : 'Gérer'}
+                                    </span>
                                 </div>
                             )}
 

@@ -10,7 +10,8 @@ import {
   Clock,
   LogOut,
   Save,
-  Laptop
+  Laptop,
+  FileText
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useTheme } from '../../hooks/useTheme';
@@ -417,7 +418,33 @@ const MobileSettingsView = ({ onSwitchToDesktopView }) => {
         )}
       </motion.div>
 
-      {/* 5. LIEN CONFIGURATION COMPLÈTE (DESKTOP) */}
+      {/* 5. DOCUMENTS (Accessible sur mobile) */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.18 }}
+        onClick={() => navigate('/dashboard/documents')}
+        className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-2xl border border-gray-200/70 dark:border-slate-800/80 p-3.5 shadow-sm flex items-center justify-between cursor-pointer hover:border-cyan-500/40 transition-colors"
+      >
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-cyan-500/15 text-cyan-600 dark:text-cyan-300 flex items-center justify-center text-sm shadow-xs">
+            <FileText className="w-4 h-4" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-gray-900 dark:text-slate-200">
+              {isRTL ? 'المستندات والوثائق' : 'Documents'}
+            </p>
+            <p className="text-[10px] text-gray-500 dark:text-slate-400">
+              {isRTL ? 'الاطلاع على المستندات والملفات' : 'Consulter et gérer les documents'}
+            </p>
+          </div>
+        </div>
+        <span className="text-xs text-cyan-600 dark:text-cyan-400 font-bold px-2 py-1">
+          {isRTL ? '← فتح' : 'Ouvrir →'}
+        </span>
+      </motion.div>
+
+      {/* 6. LIEN CONFIGURATION COMPLÈTE (DESKTOP) */}
       {(user?.role === 'admin' || user?.role === 'developer') && onSwitchToDesktopView && (
         <motion.div
           initial={{ opacity: 0, y: 8 }}
