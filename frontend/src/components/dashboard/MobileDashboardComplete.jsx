@@ -23,7 +23,11 @@ import {
     Plus,
     UserPlus,
     Pill,
-    Image
+    Image,
+    Utensils,
+    Moon,
+    Sparkles,
+    Zap
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -127,16 +131,14 @@ const MobileDashboardComplete = ({
         setFocusMode(null);
     };
 
-    // Résumé rapide - Hero Section avec navigation
+    // Résumé rapide - Hero Section avec navigation (Palette Centre d'Aide : Cyan, Saphir, Slate)
     const quickSummary = [
         {
             id: 'present',
             label: isRTL ? 'حاضر' : 'Présents',
             value: stats?.presentToday || 0,
             icon: UserCheck,
-            color: 'bg-green-500',
-            textColor: 'text-green-600',
-            bgLight: 'bg-green-50',
+            iconBg: 'bg-cyan-500/25 border border-cyan-400/40 text-cyan-200',
             link: '/dashboard/attendance/today'
         },
         {
@@ -144,9 +146,7 @@ const MobileDashboardComplete = ({
             label: isRTL ? 'رسائل' : 'Messages',
             value: unreadMessagesCount || 0,
             icon: MessageSquare,
-            color: 'bg-blue-500',
-            textColor: 'text-blue-600',
-            bgLight: 'bg-blue-50',
+            iconBg: 'bg-sky-500/25 border border-sky-400/40 text-sky-200',
             link: '/dashboard/messages'
         },
         {
@@ -154,9 +154,7 @@ const MobileDashboardComplete = ({
             label: isRTL ? 'مهام' : 'Tâches',
             value: stats?.pendingTasks || 0,
             icon: CheckCircle,
-            color: 'bg-purple-500',
-            textColor: 'text-purple-600',
-            bgLight: 'bg-purple-50',
+            iconBg: 'bg-blue-500/25 border border-blue-400/40 text-blue-200',
             link: '/dashboard/events/calendar?filter=tasks'
         },
         {
@@ -164,35 +162,33 @@ const MobileDashboardComplete = ({
             label: isRTL ? 'طلبات' : 'Demandes',
             value: stats?.pendingEnrollments || 0,
             icon: ClipboardList,
-            color: 'bg-orange-500',
-            textColor: 'text-orange-600',
-            bgLight: 'bg-orange-50',
+            iconBg: 'bg-indigo-500/25 border border-indigo-400/40 text-indigo-200',
             link: '/dashboard/enrollments'
         }
     ];
 
     return (
         <>
-            {/* Hero Section - Résumé Rapide */}
+            {/* Hero Section - Résumé Rapide (Palette Centre d'Aide : Slate 950, Cyan 950, Blue 950) */}
             <div
-                className="bg-gradient-to-br from-primary-500 via-primary-600 to-primary-700 rounded-2xl p-4 mb-4 shadow-lg"
+                className="bg-gradient-to-br from-slate-950 via-cyan-950 to-blue-950 text-white rounded-2xl p-4 mb-4 shadow-lg border border-cyan-500/30 relative overflow-hidden"
             >
                 <div className="flex items-center justify-between mb-3">
                     <div>
                         <h2 className="text-white text-lg font-bold">
                             {isRTL ? `مرحباً ${user?.first_name}` : `Bonjour ${user?.first_name}`}
                         </h2>
-                        <p className="text-primary-100 text-sm">
-                            {isRTL ? 'ملخص سريع' : 'Résumé rapide'}
+                        <p className="text-cyan-200/80 text-xs font-medium">
+                            {isRTL ? 'ملخص سريع لليوم' : 'Vue d\'ensemble de la journée'}
                         </p>
                     </div>
                     {/* Cloche de notifications fonctionnelle (mobile uniquement) */}
                     {(user?.role === 'admin' || user?.role === 'staff') && (
                         <button
                             onClick={() => setNotificationOpen(true)}
-                            className="relative p-2 hover:bg-white/10 rounded-lg transition-colors"
+                            className="relative p-2 hover:bg-white/10 rounded-xl transition-colors"
                         >
-                            <Bell className="w-6 h-6 text-white" />
+                            <Bell className="w-5 h-5 text-white" />
                             {unreadCount > 0 && (
                                 <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
                                     {unreadCount > 99 ? '99+' : unreadCount}
@@ -207,22 +203,21 @@ const MobileDashboardComplete = ({
                     {quickSummary.map((item) => (
                         <motion.div
                             key={item.id}
-                            whileTap={{ scale: 0.95 }}
+                            whileTap={{ scale: 0.96 }}
                             onClick={() => {
-                                // Navigation vers la page correspondante
                                 if (item.link) {
                                     navigate(item.link);
                                 }
                             }}
-                            className="bg-white/10 backdrop-blur-sm rounded-xl p-3 border border-white/20 cursor-pointer active:bg-white/20 transition-colors"
+                            className="bg-white/10 backdrop-blur-md rounded-xl p-3 border border-white/15 cursor-pointer active:bg-white/20 hover:border-cyan-400/40 transition-all"
                         >
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-white/80 text-xs mb-1">{item.label}</p>
+                                    <p className="text-cyan-100/80 text-xs mb-0.5">{item.label}</p>
                                     <p className="text-white text-2xl font-bold">{item.value}</p>
                                 </div>
-                                <div className={`${item.color} p-2 rounded-lg`}>
-                                    <item.icon className="w-4 h-4 text-white" />
+                                <div className={`${item.iconBg} p-2 rounded-xl`}>
+                                    <item.icon className="w-4 h-4" />
                                 </div>
                             </div>
                         </motion.div>
@@ -230,92 +225,159 @@ const MobileDashboardComplete = ({
                 </div>
             </div>
 
-            {/* Actions Rapides */}
+            {/* Actions Rapides du quotidien - Palette Centre d'Aide (Cyan, Saphir, Ardoise) */}
             {(isStaff() || isAdmin()) && (
-                <div
-                    className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm mb-4"
-                >
-                    <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
-                        {isRTL ? 'إجراءات سريعة' : 'Actions rapides'}
-                    </h3>
+                <div className="bg-white/95 dark:bg-slate-900/90 backdrop-blur-md rounded-2xl p-3.5 sm:p-4 shadow-xs border border-cyan-100/90 dark:border-cyan-900/40 mb-4 transition-all">
+                    <div className="flex items-center justify-between mb-3 px-0.5">
+                        <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white shadow-xs">
+                                <Zap className="w-3.5 h-3.5" />
+                            </div>
+                            <h3 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">
+                                {isRTL ? 'الإجراءات اليومية' : 'Actions du quotidien'}
+                            </h3>
+                        </div>
+                        <span className="text-[11px] font-medium text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950/70 px-2.5 py-0.5 rounded-full border border-cyan-200/60 dark:border-cyan-800/40">
+                            {isRTL ? 'مباشر' : 'Accès express'}
+                        </span>
+                    </div>
+
                     <div className="grid gap-2 grid-cols-4">
-                        {/* Présences - masqué si la permission "attendance.manage" n'est pas accordée */}
+                        {/* 1. Pointage / Présences */}
                         <Can feature="ATTENDANCE_TODAY">
                             <button
-                                onClick={() => navigate('/dashboard/attendance')}
-                                className="flex flex-col items-center p-3 bg-green-50 dark:bg-green-900/20 rounded-xl active:scale-95 transition-transform"
+                                onClick={() => navigate('/dashboard/attendance/today')}
+                                className="group relative flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-750 hover:border-cyan-300 dark:hover:border-cyan-500/40 active:scale-95 transition-all shadow-xs"
                             >
-                                <UserCheck className="w-6 h-6 text-green-600 mb-1" />
-                                <span className="text-xs text-gray-700 dark:text-gray-300 text-center">{isRTL ? 'الحضور' : 'Présences'}</span>
+                                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-cyan-500/15 via-teal-500/15 to-blue-500/15 dark:from-cyan-400/20 dark:to-teal-500/20 border border-cyan-300/60 dark:border-cyan-700/50 text-cyan-600 dark:text-cyan-300 flex items-center justify-center mb-1.5 transition-transform group-hover:scale-105 shadow-xs">
+                                    <UserCheck className="w-5 h-5" />
+                                </div>
+                                <span className="text-[11px] sm:text-xs font-semibold text-slate-800 dark:text-slate-200 text-center truncate max-w-full">
+                                    {isRTL ? 'الحضور' : 'Pointage'}
+                                </span>
                             </button>
                         </Can>
 
-                        {/* Inscriptions - admin seulement */}
+                        {/* 2. Repas & Biberons */}
+                        <button
+                            onClick={() => navigate('/dashboard/daily-reports?focus=meals')}
+                            className="group relative flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-750 hover:border-cyan-300 dark:hover:border-cyan-500/40 active:scale-95 transition-all shadow-xs"
+                        >
+                            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-cyan-500/15 via-sky-500/20 to-blue-600/15 dark:from-cyan-400/20 dark:to-sky-500/20 border border-cyan-200/70 dark:border-cyan-700/50 text-cyan-600 dark:text-cyan-300 flex items-center justify-center mb-1.5 transition-transform group-hover:scale-105 shadow-xs">
+                                <Utensils className="w-5 h-5" />
+                            </div>
+                            <span className="text-[11px] sm:text-xs font-semibold text-slate-800 dark:text-slate-200 text-center truncate max-w-full">
+                                {isRTL ? 'الوجبات' : 'Repas'}
+                            </span>
+                        </button>
+
+                        {/* 3. Sieste & Repos */}
+                        <button
+                            onClick={() => navigate('/dashboard/daily-reports?focus=sleep')}
+                            className="group relative flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-750 hover:border-cyan-300 dark:hover:border-cyan-500/40 active:scale-95 transition-all shadow-xs"
+                        >
+                            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500/15 via-blue-500/20 to-cyan-500/15 dark:from-indigo-400/20 dark:to-cyan-500/20 border border-indigo-200/70 dark:border-indigo-700/50 text-indigo-600 dark:text-sky-300 flex items-center justify-center mb-1.5 transition-transform group-hover:scale-105 shadow-xs">
+                                <Moon className="w-5 h-5" />
+                            </div>
+                            <span className="text-[11px] sm:text-xs font-semibold text-slate-800 dark:text-slate-200 text-center truncate max-w-full">
+                                {isRTL ? 'القيلولة' : 'Sieste'}
+                            </span>
+                        </button>
+
+                        {/* 4. Soins & Médicaments */}
+                        <button
+                            onClick={() => navigate('/dashboard/treatments')}
+                            className="group relative flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-750 hover:border-cyan-300 dark:hover:border-cyan-500/40 active:scale-95 transition-all shadow-xs"
+                        >
+                            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-rose-500/15 via-blue-500/15 to-cyan-500/15 dark:from-rose-400/20 dark:to-cyan-500/20 border border-rose-200/70 dark:border-rose-800/50 text-rose-600 dark:text-rose-300 flex items-center justify-center mb-1.5 transition-transform group-hover:scale-105 shadow-xs">
+                                <Pill className="w-5 h-5" />
+                            </div>
+                            <span className="text-[11px] sm:text-xs font-semibold text-slate-800 dark:text-slate-200 text-center truncate max-w-full">
+                                {isRTL ? 'العلاجات' : 'Traitements'}
+                            </span>
+                        </button>
+
+                        {/* 5. Bilans Journaliers */}
+                        <button
+                            onClick={() => navigate('/dashboard/daily-reports')}
+                            className="group relative flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-750 hover:border-cyan-300 dark:hover:border-cyan-500/40 active:scale-95 transition-all shadow-xs"
+                        >
+                            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-500/15 via-sky-500/20 to-cyan-500/15 dark:from-blue-400/20 dark:to-cyan-500/20 border border-blue-200/70 dark:border-blue-700/50 text-blue-600 dark:text-blue-300 flex items-center justify-center mb-1.5 transition-transform group-hover:scale-105 shadow-xs">
+                                <ClipboardList className="w-5 h-5" />
+                            </div>
+                            <span className="text-[11px] sm:text-xs font-semibold text-slate-800 dark:text-slate-200 text-center truncate max-w-full">
+                                {isRTL ? 'التقارير' : 'Bilans'}
+                            </span>
+                        </button>
+
+                        {/* 6. Activités & Photos */}
+                        <button
+                            onClick={() => navigate('/dashboard/activities')}
+                            className="group relative flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-750 hover:border-cyan-300 dark:hover:border-cyan-500/40 active:scale-95 transition-all shadow-xs"
+                        >
+                            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-sky-400/20 via-cyan-500/20 to-blue-600/15 dark:from-sky-400/20 dark:to-blue-500/20 border border-sky-300/70 dark:border-sky-700/50 text-sky-600 dark:text-sky-300 flex items-center justify-center mb-1.5 transition-transform group-hover:scale-105 shadow-xs">
+                                <Sparkles className="w-5 h-5" />
+                            </div>
+                            <span className="text-[11px] sm:text-xs font-semibold text-slate-800 dark:text-slate-200 text-center truncate max-w-full">
+                                {isRTL ? 'الأنشطة' : 'Activités'}
+                            </span>
+                        </button>
+
+                        {/* 7. Absences du jour */}
+                        <button
+                            onClick={() => navigate('/dashboard/absence-management')}
+                            className="group relative flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-750 hover:border-cyan-300 dark:hover:border-cyan-500/40 active:scale-95 transition-all shadow-xs"
+                        >
+                            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-slate-500/15 via-cyan-500/15 to-blue-600/15 dark:from-slate-500/20 dark:to-cyan-500/20 border border-slate-200/70 dark:border-slate-750 text-slate-700 dark:text-slate-300 flex items-center justify-center mb-1.5 transition-transform group-hover:scale-105 shadow-xs">
+                                <Calendar className="w-5 h-5" />
+                            </div>
+                            <span className="text-[11px] sm:text-xs font-semibold text-slate-800 dark:text-slate-200 text-center truncate max-w-full">
+                                {isRTL ? 'الغيابات' : 'Absences'}
+                            </span>
+                        </button>
+
+                        {/* 8. Messages Parents */}
+                        <button
+                            onClick={() => navigate('/dashboard/messages')}
+                            className="group relative flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-750 hover:border-cyan-300 dark:hover:border-cyan-500/40 active:scale-95 transition-all shadow-xs"
+                        >
+                            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-600/15 via-sky-500/20 to-cyan-500/15 dark:from-blue-500/20 dark:to-cyan-500/20 border border-blue-200/70 dark:border-blue-700/50 text-blue-600 dark:text-cyan-300 flex items-center justify-center mb-1.5 transition-transform group-hover:scale-105 shadow-xs">
+                                <MessageSquare className="w-5 h-5" />
+                            </div>
+                            <span className="text-[11px] sm:text-xs font-semibold text-slate-800 dark:text-slate-200 text-center truncate max-w-full">
+                                {isRTL ? 'رسائل' : 'Messages'}
+                            </span>
+                        </button>
+
+                        {/* 9. Inscriptions (Admin uniquement) */}
                         {isAdmin() && (
                             <button
                                 onClick={() => navigate('/dashboard/enrollments')}
-                                className="flex flex-col items-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl active:scale-95 transition-transform"
+                                className="group relative flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-750 hover:border-cyan-300 dark:hover:border-cyan-500/40 active:scale-95 transition-all shadow-xs"
                             >
-                                <UserPlus className="w-6 h-6 text-blue-600 mb-1" />
-                                <span className="text-xs text-gray-700 dark:text-gray-300 text-center">{isRTL ? 'التسجيل' : 'Inscription'}</span>
+                                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-cyan-600/20 to-blue-700/20 dark:from-cyan-500/20 dark:to-blue-600/20 border border-cyan-300/70 dark:border-cyan-700/50 text-cyan-600 dark:text-cyan-300 flex items-center justify-center mb-1.5 transition-transform group-hover:scale-105 shadow-xs">
+                                    <UserPlus className="w-5 h-5" />
+                                </div>
+                                <span className="text-[11px] sm:text-xs font-semibold text-slate-800 dark:text-slate-200 text-center truncate max-w-full">
+                                    {isRTL ? 'التسجيل' : 'Inscription'}
+                                </span>
                             </button>
                         )}
 
-                        {/* Événement - admin seulement (staff ne peut pas créer d'événements) */}
+                        {/* 10. Événement (Admin uniquement) */}
                         {isAdmin() && (
                             <button
                                 onClick={() => onOpenEventModal?.()}
-                                className="flex flex-col items-center p-3 bg-purple-50 dark:bg-purple-900/20 rounded-xl active:scale-95 transition-transform"
+                                className="group relative flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-750 hover:border-cyan-300 dark:hover:border-cyan-500/40 active:scale-95 transition-all shadow-xs"
                             >
-                                <CalendarPlus className="w-6 h-6 text-purple-600 mb-1" />
-                                <span className="text-xs text-gray-700 dark:text-gray-300 text-center">{isRTL ? 'حدث' : 'Événement'}</span>
+                                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500/20 to-cyan-500/20 dark:from-indigo-400/20 dark:to-cyan-500/20 border border-indigo-200/70 dark:border-indigo-700/50 text-indigo-600 dark:text-indigo-300 flex items-center justify-center mb-1.5 transition-transform group-hover:scale-105 shadow-xs">
+                                    <CalendarPlus className="w-5 h-5" />
+                                </div>
+                                <span className="text-[11px] sm:text-xs font-semibold text-slate-800 dark:text-slate-200 text-center truncate max-w-full">
+                                    {isRTL ? 'حدث' : 'Événement'}
+                                </span>
                             </button>
                         )}
-
-                        {/* Absences - visible pour staff et admin */}
-                        <button
-                            onClick={() => navigate('/dashboard/absence-management')}
-                            className="flex flex-col items-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded-xl active:scale-95 transition-transform"
-                        >
-                            <Calendar className="w-6 h-6 text-orange-600 mb-1" />
-                            <span className="text-xs text-gray-700 dark:text-gray-300 text-center">{isRTL ? 'الغيابات' : 'Absences'}</span>
-                        </button>
-
-                        {/* Messages - visible pour staff et admin */}
-                        <button
-                            onClick={() => navigate('/dashboard/messages')}
-                            className="flex flex-col items-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl active:scale-95 transition-transform"
-                        >
-                            <MessageSquare className="w-6 h-6 text-blue-600 mb-1" />
-                            <span className="text-xs text-gray-700 dark:text-gray-300 text-center">{isRTL ? 'رسائل' : 'Messages'}</span>
-                        </button>
-
-                        {/* Rapports journaliers - visible pour staff et admin */}
-                        <button
-                            onClick={() => navigate('/dashboard/daily-reports')}
-                            className="flex flex-col items-center p-3 bg-teal-50 dark:bg-teal-900/20 rounded-xl active:scale-95 transition-transform"
-                        >
-                            <Clock className="w-6 h-6 text-teal-600 mb-1" />
-                            <span className="text-xs text-gray-700 dark:text-gray-300 text-center">{isRTL ? 'التقارير' : 'Rapports'}</span>
-                        </button>
-
-                        {/* Traitements médicaux - visible pour staff et admin */}
-                        <button
-                            onClick={() => navigate('/dashboard/treatments')}
-                            className="flex flex-col items-center p-3 bg-pink-50 dark:bg-pink-900/20 rounded-xl active:scale-95 transition-transform"
-                        >
-                            <Pill className="w-6 h-6 text-pink-600 mb-1" />
-                            <span className="text-xs text-gray-700 dark:text-gray-300 text-center">{isRTL ? 'العلاجات' : 'Traitements'}</span>
-                        </button>
-
-                        {/* Activités - visible pour staff et admin */}
-                        <button
-                            onClick={() => navigate('/dashboard/activities')}
-                            className="flex flex-col items-center p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl active:scale-95 transition-transform"
-                        >
-                            <Image className="w-6 h-6 text-indigo-600 mb-1" />
-                            <span className="text-xs text-gray-700 dark:text-gray-300 text-center">{isRTL ? 'الأنشطة' : 'Activités'}</span>
-                        </button>
                     </div>
                 </div>
             )}

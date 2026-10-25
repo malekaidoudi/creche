@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
     ChevronLeft, Search, RefreshCw, Baby, CheckCircle, Clock,
     Utensils, Droplets, Heart, Moon, Activity, MessageSquare,
@@ -37,6 +37,9 @@ const MobileDailyReportsPage = () => {
     const { isRTL } = useLanguage();
     const { user } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
+    const searchParams = new URLSearchParams(location.search);
+    const focusParam = searchParams.get('focus'); // 'meals' | 'sleep'
     const { can } = useAccess();
     const isAdmin = () => user?.role === 'admin' || user?.role === 'developer';
 
@@ -202,6 +205,17 @@ const MobileDailyReportsPage = () => {
             }
         } catch (error) {
             console.error('Erreur chargement stock:', error);
+        }
+
+        // Si focus précis (repas ou sieste), scroller automatiquement vers la section
+        if (focusParam === 'meals') {
+            setTimeout(() => {
+                document.getElementById('section-meals')?.scrollIntoView({ behavior: 'smooth' });
+            }, 300);
+        } else if (focusParam === 'sleep') {
+            setTimeout(() => {
+                document.getElementById('section-sleep')?.scrollIntoView({ behavior: 'smooth' });
+            }, 300);
         }
     };
 
@@ -484,10 +498,18 @@ const MobileDailyReportsPage = () => {
                     <span>{labels.back}</span>
                 </button>
                 <h1 style={{ fontSize: 24, fontWeight: 'bold', color: 'white', margin: 0 }}>
-                    {labels.title}
+                    {focusParam === 'meals'
+                        ? (isRTL ? '🍽️ وجبات اليوم' : '🍽️ Repas du jour')
+                        : focusParam === 'sleep'
+                        ? (isRTL ? '🌙 قيلولة اليوم' : '🌙 Sieste du jour')
+                        : labels.title}
                 </h1>
-                <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)', marginTop: 4 }}>
-                    {labels.subtitle}
+                <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.85)', marginTop: 4 }}>
+                    {focusParam === 'meals'
+                        ? (isRTL ? 'اختر طفلاً لتسجيل الوجبات والحليب' : 'Sélectionnez un enfant pour consigner son repas ou biberon')
+                        : focusParam === 'sleep'
+                        ? (isRTL ? 'اختر طفلاً لتسجيل فترة ونوعية النوم' : 'Sélectionnez un enfant pour consigner sa sieste')
+                        : labels.subtitle}
                 </p>
             </div>
 
@@ -759,7 +781,7 @@ const MobileDailyReportsPage = () => {
                         </div>
 
                         {/* Section Repas */}
-                        <div style={{
+                        <div id="section-meals" style={{
                             backgroundColor: 'rgba(249, 115, 22, 0.15)',
                             borderRadius: 12,
                             padding: 16,
@@ -1060,7 +1082,7 @@ const MobileDailyReportsPage = () => {
                         </div>
 
                         {/* Sommeil */}
-                        <div style={{ marginBottom: 16 }}>
+                        <div id="section-sleep" style={{ marginBottom: 16 }}>
                             <p style={{ fontSize: 14, fontWeight: 600, color: dirColors.text, marginBottom: 8 }}>
                                 🌙 {labels.sleep}
                             </p>

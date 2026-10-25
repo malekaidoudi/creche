@@ -1,0 +1,1444 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Mobile Crèche — Palette Centre d'Aide (Cyan & Saphir)</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* RESET & SHOWCASE BASE */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        :root {
+            --font-main: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+            --font-display: 'Outfit', sans-serif;
+            /* PALETTE CENTRE D'AIDE */
+            --cyan-500: #06B6D4;
+            --cyan-400: #22D3EE;
+            --cyan-300: #67E8F9;
+            --sky-500: #0EA5E9;
+            --sky-600: #0284C7;
+            --blue-600: #2563EB;
+            --blue-700: #1D4ED8;
+            --slate-950: #050B14;
+            --slate-900: #0B1120;
+            --slate-850: #0F172A;
+            --slate-800: #1E293B;
+            --slate-700: #334155;
+            --text-primary: #F8FAFC;
+            --text-secondary: #94A3B8;
+            --text-muted: #64748B;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background: #060911;
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* HEADER */
+        .showcase-header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(6, 9, 17, 0.94);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(6, 182, 212, 0.15);
+            padding: 14px 24px;
+        }
+
+        .header-content {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .brand-badge {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #06B6D4, #2563EB);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.45);
+        }
+
+        .brand-text h1 {
+            font-family: var(--font-display);
+            font-size: 1.15rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            background: linear-gradient(135deg, #FFFFFF, #67E8F9);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand-text p {
+            font-size: 0.8rem;
+            color: #67E8F9;
+            opacity: 0.9;
+        }
+
+        /* CONTROLS */
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .ctrl-group {
+            display: inline-flex;
+            background: #0F172A;
+            border: 1px solid rgba(6, 182, 212, 0.2);
+            border-radius: 10px;
+            padding: 3px;
+            gap: 3px;
+        }
+
+        .ctrl-btn {
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            padding: 6px 12px;
+            border-radius: 7px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .ctrl-btn:hover {
+            color: #FFF;
+        }
+
+        .ctrl-btn.active {
+            background: linear-gradient(135deg, #06B6D4, #0284C7);
+            color: #FFF;
+            box-shadow: 0 2px 8px rgba(6, 182, 212, 0.35);
+        }
+
+        .palette-btn {
+            background: rgba(6, 182, 212, 0.12);
+            border: 1px solid rgba(6, 182, 212, 0.35);
+            color: #67E8F9;
+            padding: 7px 14px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.2s;
+        }
+
+        .palette-btn:hover {
+            background: rgba(6, 182, 212, 0.25);
+            transform: translateY(-1px);
+        }
+
+        /* NAVIGATION TABS */
+        .design-tabs-bar {
+            background: #0B1120;
+            border-bottom: 1px solid rgba(6, 182, 212, 0.12);
+            padding: 10px 24px;
+            overflow-x: auto;
+        }
+
+        .tabs-container {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .design-tab {
+            background: #0F172A;
+            border: 1px solid rgba(6, 182, 212, 0.2);
+            border-radius: 12px;
+            padding: 8px 16px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-family: inherit;
+            font-size: 0.83rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+
+        .design-tab:hover {
+            border-color: rgba(6, 182, 212, 0.5);
+            color: #FFF;
+        }
+
+        .design-tab.active {
+            background: rgba(6, 182, 212, 0.18);
+            border-color: #06B6D4;
+            color: #FFF;
+            box-shadow: 0 0 12px rgba(6, 182, 212, 0.25);
+        }
+
+        .tab-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #06B6D4;
+            box-shadow: 0 0 8px rgba(6, 182, 212, 0.6);
+        }
+
+        /* MAIN CONTAINER */
+        .showcase-body {
+            flex: 1;
+            padding: 30px 24px 80px;
+            max-width: 1600px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .intro-banner {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .intro-banner h2 {
+            font-family: var(--font-display);
+            font-size: 1.85rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #FFFFFF 40%, #67E8F9 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+
+        .intro-banner p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            max-width: 750px;
+            margin: 0 auto;
+        }
+
+        /* PHONE FRAME MOCKUPS */
+        .phone-wrapper {
+            width: 380px;
+            height: 780px;
+            background: #090E18;
+            border: 8px solid #1E293B;
+            border-radius: 46px;
+            box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 40px rgba(6, 182, 212, 0.12);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            user-select: none;
+            transition: all 0.3s;
+        }
+
+        .phone-notch {
+            width: 130px;
+            height: 24px;
+            background: #1E293B;
+            border-bottom-left-radius: 16px;
+            border-bottom-right-radius: 16px;
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 50;
+        }
+
+        .phone-screen {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-bottom: 74px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .phone-screen::-webkit-scrollbar {
+            display: none;
+        }
+
+        .phone-status-bar {
+            height: 44px;
+            padding: 10px 20px 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12px;
+            font-weight: 600;
+            color: #94A3B8;
+            z-index: 20;
+        }
+
+        /* BOTTOM NAVBAR FOR PHONES */
+        .phone-bottom-nav {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 64px;
+            background: rgba(11, 17, 32, 0.95);
+            backdrop-filter: blur(16px);
+            border-top: 1px solid rgba(6, 182, 212, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            padding: 0 8px;
+            z-index: 40;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #64748B;
+            font-size: 10px;
+            font-weight: 600;
+            gap: 3px;
+            cursor: pointer;
+            transition: 0.2s;
+            position: relative;
+            flex: 1;
+        }
+
+        .nav-item.active {
+            color: #06B6D4;
+        }
+
+        .nav-item.active::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            width: 16px;
+            height: 2px;
+            background: #06B6D4;
+            border-radius: 2px;
+            box-shadow: 0 0 8px #06B6D4;
+        }
+
+        /* SINGLE VIEW STYLING */
+        .single-view {
+            display: flex;
+            gap: 40px;
+            align-items: flex-start;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .details-panel {
+            flex: 1;
+            min-width: 320px;
+            max-width: 540px;
+            background: #0F172A;
+            border: 1px solid rgba(6, 182, 212, 0.25);
+            border-radius: 24px;
+            padding: 28px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .details-badge {
+            display: inline-block;
+            background: rgba(6, 182, 212, 0.15);
+            color: #67E8F9;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 12px;
+            border: 1px solid rgba(6, 182, 212, 0.3);
+        }
+
+        .details-title {
+            font-family: var(--font-display);
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: #FFF;
+            margin-bottom: 10px;
+        }
+
+        .details-desc {
+            color: var(--text-secondary);
+            font-size: 0.92rem;
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+
+        .swatches-grid {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .swatch-card {
+            flex: 1;
+            background: #0B1120;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .swatch-card:hover {
+            transform: translateY(-2px);
+            border-color: #06B6D4;
+        }
+
+        .swatch-circle {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            margin: 0 auto 8px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .swatch-name {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #FFF;
+        }
+
+        .swatch-hex {
+            font-size: 0.7rem;
+            color: #64748B;
+            font-family: monospace;
+        }
+
+        .features-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 28px;
+        }
+
+        .features-list li {
+            font-size: 0.88rem;
+            color: #CBD5E1;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .features-list li span.bullet {
+            width: 20px;
+            height: 20px;
+            border-radius: 6px;
+            background: rgba(6, 182, 212, 0.2);
+            color: #67E8F9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .action-cta-btn {
+            width: 100%;
+            padding: 14px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #06B6D4, #2563EB);
+            border: none;
+            color: #FFF;
+            font-family: inherit;
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(6, 182, 212, 0.4);
+            transition: all 0.2s;
+        }
+
+        .action-cta-btn:hover {
+            opacity: 0.95;
+            transform: translateY(-1px);
+        }
+
+        /* GRID VIEW STYLING */
+        .grid-view {
+            display: none;
+            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+            gap: 36px;
+            justify-items: center;
+        }
+
+        .card-preview {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .card-preview-header {
+            text-align: center;
+        }
+
+        .card-preview-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #FFF;
+        }
+
+        .card-preview-sub {
+            font-size: 0.8rem;
+            color: #67E8F9;
+        }
+
+        /* TOAST */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: #0B1120;
+            border: 1px solid #06B6D4;
+            color: #FFF;
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5), 0 0 15px rgba(6, 182, 212, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 200;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        /* DESIGN 1: CENTRE D'AIDE SIGNATURE (CYAN & SAPHIR GLASS) */
+        .d1-bg {
+            background: #060A14;
+            color: #F8FAFC;
+        }
+        .d1-hero {
+            background: linear-gradient(135deg, #050B14 0%, #082F49 60%, #1E3A8A 100%);
+            border: 1px solid rgba(6, 182, 212, 0.35);
+            border-radius: 20px;
+            padding: 16px;
+            margin: 8px 12px 14px;
+            box-shadow: 0 10px 25px -5px rgba(6, 182, 212, 0.15);
+        }
+        .d1-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .d1-summary-chip {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 12px;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .d1-summary-chip:active {
+            transform: scale(0.97);
+            background: rgba(255, 255, 255, 0.15);
+        }
+        .d1-actions-card {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(6, 182, 212, 0.2);
+            border-radius: 20px;
+            padding: 14px;
+            margin: 0 12px 14px;
+        }
+        .d1-section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        .d1-actions-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+        .d1-btn-action {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(11, 17, 32, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 10px 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .d1-btn-action:hover, .d1-btn-action:active {
+            border-color: #06B6D4;
+            transform: translateY(-2px);
+            background: rgba(6, 182, 212, 0.12);
+        }
+        .d1-btn-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 19px;
+            margin-bottom: 6px;
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.18), rgba(37, 99, 235, 0.18));
+            color: #67E8F9;
+        }
+        .d1-btn-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #E2E8F0;
+            text-align: center;
+        }
+        .d1-task-card {
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 12px;
+            margin: 0 12px 10px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* DESIGN 2: BENTO TACTILE (GRANDES TUILES REPAS & SIESTE) */
+        .d2-bg {
+            background: #080D1A;
+            color: #F8FAFC;
+        }
+        .d2-bento-hero {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 10px 12px 14px;
+        }
+        .d2-big-tile {
+            background: linear-gradient(145deg, #0F172A, #1E293B);
+            border: 1px solid rgba(6, 182, 212, 0.25);
+            border-radius: 20px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 125px;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: 0.2s;
+        }
+        .d2-big-tile:active {
+            transform: scale(0.97);
+            border-color: #06B6D4;
+        }
+        .d2-big-tile.meals {
+            background: linear-gradient(145deg, rgba(6, 182, 212, 0.2), #0F172A);
+            border-color: rgba(6, 182, 212, 0.45);
+        }
+        .d2-big-tile.sleep {
+            background: linear-gradient(145deg, rgba(37, 99, 235, 0.2), #0F172A);
+            border-color: rgba(37, 99, 235, 0.45);
+        }
+        .d2-tile-badge {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 12px;
+            width: fit-content;
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        /* DESIGN 3: IOS INSET PRO (CYAN SAPHIR SOBRE) */
+        .d3-bg {
+            background: #040810;
+            color: #F8FAFC;
+        }
+        .d3-group {
+            background: #0C1322;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 18px;
+            margin: 10px 12px 14px;
+            overflow: hidden;
+        }
+        .d3-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 13px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .d3-row:last-child {
+            border-bottom: none;
+        }
+        .d3-row:active {
+            background: rgba(6, 182, 212, 0.1);
+        }
+        .d3-icon-box {
+            width: 32px;
+            height: 32px;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            margin-right: 12px;
+        }
+
+        /* DESIGN 4: TIMELINE CRÈCHE (CONTEXTUEL MATIN / MIDI / SOIR) */
+        .d4-bg {
+            background: #070B14;
+            color: #F8FAFC;
+        }
+        .d4-timeline-nav {
+            display: flex;
+            gap: 6px;
+            padding: 4px;
+            background: #0E1626;
+            border-radius: 14px;
+            margin: 8px 12px 14px;
+            border: 1px solid rgba(6, 182, 212, 0.2);
+        }
+        .d4-time-pill {
+            flex: 1;
+            padding: 7px;
+            text-align: center;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .d4-time-pill.active {
+            background: linear-gradient(135deg, #06B6D4, #2563EB);
+            color: #FFF;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- TOP CONTROL BAR -->
+    <header class="showcase-header">
+        <div class="header-content">
+            <div class="brand-badge">
+                <div class="brand-icon">✨</div>
+                <div class="brand-text">
+                    <h1>Crèche Petite Enfance</h1>
+                    <p>Palette Harmonieuse "Centre d'Aide" (Cyan, Saphir & Slate)</p>
+                </div>
+            </div>
+
+            <div class="header-controls">
+                <!-- VIEW MODE TOGGLE -->
+                <div class="ctrl-group">
+                    <button class="ctrl-btn active" id="btn-single-view" onclick="setViewMode('single')">
+                        <span>📱</span> Vue Détaillée
+                    </button>
+                    <button class="ctrl-btn" id="btn-grid-view" onclick="setViewMode('grid')">
+                        <span>🗂️</span> Comparatif Côte à Côte
+                    </button>
+                </div>
+
+                <!-- ROLE TOGGLE -->
+                <div class="ctrl-group">
+                    <button class="ctrl-btn active" id="role-staff" onclick="setRole('staff')">
+                        <span>👩‍🏫</span> Éducatrice
+                    </button>
+                    <button class="ctrl-btn" id="role-admin" onclick="setRole('admin')">
+                        <span>👑</span> Directrice
+                    </button>
+                </div>
+
+                <!-- PALETTE MODAL TRIGGER -->
+                <button class="palette-btn" onclick="copyPalette()">
+                    <span>🎨</span> Nuancier Hex
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- TABS TO SWITCH DESIGNS -->
+    <nav class="design-tabs-bar" id="tabs-bar">
+        <div class="tabs-container">
+            <button class="design-tab active" onclick="selectDesign(1)">
+                <span class="tab-dot" style="background: #06B6D4;"></span>
+                1. Centre d'Aide Signature (Recommandé)
+            </button>
+            <button class="design-tab" onclick="selectDesign(2)">
+                <span class="tab-dot" style="background: #0EA5E9;"></span>
+                2. Bento Tactile (Grandes dalles Repas & Sieste)
+            </button>
+            <button class="design-tab" onclick="selectDesign(3)">
+                <span class="tab-dot" style="background: #2563EB;"></span>
+                3. iOS Inset Pro (Sobriété & Listes précises)
+            </button>
+            <button class="design-tab" onclick="selectDesign(4)">
+                <span class="tab-dot" style="background: #38BDF8;"></span>
+                4. Rythme du Jour (Timeline Matin • Midi • Soir)
+            </button>
+        </div>
+    </nav>
+
+    <!-- MAIN BODY -->
+    <main class="showcase-body">
+        
+        <div class="intro-banner">
+            <h2>Actions Réelles de la Crèche • Zéro Couleurs Flashy</h2>
+            <p>Tous les écrans intègrent les vrais boutons du quotidien : <b>Repas & Biberons</b>, <b>Sieste & Repos</b>, <b>Pointage Arrivée/Départ</b>, <b>Soins & Médicaments</b>, <b>Bilans & Changes</b>.</p>
+        </div>
+
+        <!-- ==================== SINGLE VIEW CONTAINER ==================== -->
+        <div class="single-view" id="single-view-container">
+            <div id="single-phone-mount">
+                <!-- Injected via JavaScript -->
+            </div>
+
+            <div class="details-panel" id="design-details-panel">
+                <span class="details-badge">Concept 1 — Signature</span>
+                <h3 class="details-title">Centre d'Aide Signature</h3>
+                <p class="details-desc">
+                    Harmonisé directement avec le design du <b>Centre d'Aide</b> de la crèche : dégradé bleu nuit profond, halo cyan signature, et grille 4 colonnes compacte avec boutons réels tactiles. Finies les couleurs arc-en-ciel disparate, tout est élégant et reposant pour les yeux.
+                </p>
+
+                <div class="swatches-grid">
+                    <div class="swatch-card" onclick="copyHex('#06B6D4')">
+                        <div class="swatch-circle" style="background: #06B6D4;"></div>
+                        <div class="swatch-name">Cyan Primaire</div>
+                        <div class="swatch-hex">#06B6D4</div>
+                    </div>
+                    <div class="swatch-card" onclick="copyHex('#0EA5E9')">
+                        <div class="swatch-circle" style="background: #0EA5E9;"></div>
+                        <div class="swatch-name">Saphir Sky</div>
+                        <div class="swatch-hex">#0EA5E9</div>
+                    </div>
+                    <div class="swatch-card" onclick="copyHex('#2563EB')">
+                        <div class="swatch-circle" style="background: #2563EB;"></div>
+                        <div class="swatch-name">Bleu Profond</div>
+                        <div class="swatch-hex">#2563EB</div>
+                    </div>
+                    <div class="swatch-card" onclick="copyHex('#0B1120')">
+                        <div class="swatch-circle" style="background: #0B1120;"></div>
+                        <div class="swatch-name">Ardoise Nuit</div>
+                        <div class="swatch-hex">#0B1120</div>
+                    </div>
+                </div>
+
+                <ul class="features-list">
+                    <li><span class="bullet">✓</span> <b>Bouton Repas dédié (🍽️)</b> : mène directement à la saisie des repas, goûters et biberons.</li>
+                    <li><span class="bullet">✓</span> <b>Bouton Sieste dédié (🌙)</b> : consigne les heures de sommeil et la qualité du repos.</li>
+                    <li><span class="bullet">✓</span> <b>Bouton Pointage (⏱️)</b> : badge vert/cyan pour marquer les arrivées et départs en direct.</li>
+                    <li><span class="bullet">✓</span> <b>Bouton Traitements (💊)</b> : gestion des médicaments prescrits du jour.</li>
+                    <li><span class="bullet">✓</span> <b>100% cohérent</b> : même palette et reflets que le widget d'aide flottant.</li>
+                </ul>
+
+                <button class="action-cta-btn" onclick="showToast('Modèle déjà actif et intégré dans le code de l\'application !')">
+                    🚀 Appliqué sur votre Application
+                </button>
+            </div>
+        </div>
+
+        <!-- ==================== GRID COMPARATIVE VIEW ==================== -->
+        <div class="grid-view" id="grid-view-container">
+
+            <!-- DESIGN 1 TEMPLATE -->
+            <div class="card-preview" id="card-design-1">
+                <div class="card-preview-header">
+                    <div class="card-preview-title">1. Centre d'Aide Signature</div>
+                    <div class="card-preview-sub">Cyan & Saphir Glass • Grille 4 colonnes</div>
+                </div>
+                
+                <div class="phone-wrapper d1-bg">
+                    <div class="phone-notch"></div>
+                    <div class="phone-status-bar">
+                        <span>09:41</span>
+                        <span>📶 5G 100%</span>
+                    </div>
+
+                    <div class="phone-screen">
+                        <!-- HERO BANNER -->
+                        <div class="d1-hero">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <div>
+                                    <div style="font-size:11px; color:#67E8F9; font-weight:600; text-transform:uppercase; letter-spacing:0.04em;">Espace Crèche</div>
+                                    <div style="font-size:18px; font-weight:800; color:#FFF; margin-top:2px;">Bonjour Sophie 👋</div>
+                                </div>
+                                <div style="background:rgba(6,182,212,0.2); border:1px solid rgba(6,182,212,0.4); width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; color:#67E8F9; font-size:16px;">
+                                    🔔
+                                </div>
+                            </div>
+
+                            <div class="d1-summary-grid">
+                                <div class="d1-summary-chip" onclick="showToast('Présents : 22 enfants sur 28 attendus aujourd\'hui')">
+                                    <div>
+                                        <div style="font-size:10px; color:#94A3B8;">Présents</div>
+                                        <div style="font-size:17px; font-weight:800; color:#FFF;">22/28</div>
+                                    </div>
+                                    <span style="font-size:18px;">👶</span>
+                                </div>
+                                <div class="d1-summary-chip" onclick="showToast('2 transmissions en attente pour la sieste')">
+                                    <div>
+                                        <div style="font-size:10px; color:#94A3B8;">Siestes en cours</div>
+                                        <div style="font-size:17px; font-weight:800; color:#67E8F9;">14</div>
+                                    </div>
+                                    <span style="font-size:18px;">🌙</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ACTIONS DU QUOTIDIEN (8 VRAIS BOUTONS) -->
+                        <div class="d1-actions-card">
+                            <div class="d1-section-header">
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <span style="font-size:14px; color:#06B6D4;">⚡</span>
+                                    <span style="font-size:13px; font-weight:700; color:#FFF;">Actions du quotidien</span>
+                                </div>
+                                <span style="font-size:10px; color:#67E8F9; background:rgba(6,182,212,0.15); padding:2px 8px; border-radius:10px; font-weight:600; border:1px solid rgba(6,182,212,0.3);">Express</span>
+                            </div>
+
+                            <div class="d1-actions-grid">
+                                <!-- 1. REPAS -->
+                                <div class="d1-btn-action" onclick="showToast('Ouverture saisie Repas : Déjeuner, biberon ou goûter')">
+                                    <div class="d1-btn-icon">🍽️</div>
+                                    <span class="d1-btn-label">Repas</span>
+                                </div>
+
+                                <!-- 2. SIESTE -->
+                                <div class="d1-btn-action" onclick="showToast('Ouverture saisie Sieste : 14 enfants endormis')">
+                                    <div class="d1-btn-icon">🌙</div>
+                                    <span class="d1-btn-label">Sieste</span>
+                                </div>
+
+                                <!-- 3. POINTAGE -->
+                                <div class="d1-btn-action" onclick="showToast('Ouverture Pointage arrivée & départ')">
+                                    <div class="d1-btn-icon">⏱️</div>
+                                    <span class="d1-btn-label">Pointage</span>
+                                </div>
+
+                                <!-- 4. MÉDICAMENTS -->
+                                <div class="d1-btn-action" onclick="showToast('Soins : 2 médicaments prescrits à donner à 14h00')">
+                                    <div class="d1-btn-icon">💊</div>
+                                    <span class="d1-btn-label">Soins</span>
+                                </div>
+
+                                <!-- 5. BILANS -->
+                                <div class="d1-btn-action" onclick="showToast('Ouverture Bilans & Changes journaliers')">
+                                    <div class="d1-btn-icon">📋</div>
+                                    <span class="d1-btn-label">Bilans</span>
+                                </div>
+
+                                <!-- 6. ACTIVITÉS -->
+                                <div class="d1-btn-action" onclick="showToast('Ajouter une photo d\'activité motricité')">
+                                    <div class="d1-btn-icon">✨</div>
+                                    <span class="d1-btn-label">Activités</span>
+                                </div>
+
+                                <!-- 7. ABSENCES -->
+                                <div class="d1-btn-action" onclick="showToast('Absences : 3 enfants absents signalés')">
+                                    <div class="d1-btn-icon">📅</div>
+                                    <span class="d1-btn-label">Absences</span>
+                                </div>
+
+                                <!-- 8. MESSAGES -->
+                                <div class="d1-btn-action" onclick="showToast('Messagerie parents : 1 message non lu')">
+                                    <div class="d1-btn-icon">💬</div>
+                                    <span class="d1-btn-label">Messages</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TÂCHES DU JOUR WIDGET -->
+                        <div class="d1-task-card">
+                            <div style="background:rgba(6,182,212,0.15); border:1px solid rgba(6,182,212,0.3); width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:18px;">
+                                🍼
+                            </div>
+                            <div style="flex:1;">
+                                <div style="font-size:12px; font-weight:700; color:#FFF;">Biberon de 11h30 • Youssef M.</div>
+                                <div style="font-size:10px; color:#94A3B8;">Lait maternel 180ml apporté par maman</div>
+                            </div>
+                            <span style="font-size:10px; color:#67E8F9; font-weight:700;">À faire</span>
+                        </div>
+                    </div>
+
+                    <!-- BOTTOM NAV -->
+                    <div class="phone-bottom-nav">
+                        <div class="nav-item active"><span>🏠</span><span>Accueil</span></div>
+                        <div class="nav-item"><span>👶</span><span>Enfants</span></div>
+                        <div class="nav-item"><span>⏱️</span><span>Présence</span></div>
+                        <div class="nav-item"><span>💬</span><span>Messages</span></div>
+                        <div class="nav-item"><span>⚙️</span><span>Plus</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DESIGN 2 TEMPLATE -->
+            <div class="card-preview" id="card-design-2">
+                <div class="card-preview-header">
+                    <div class="card-preview-title">2. Bento Tactile Éducatrice</div>
+                    <div class="card-preview-sub">Grandes dalles Repas & Sieste en accès immédiat</div>
+                </div>
+
+                <div class="phone-wrapper d2-bg">
+                    <div class="phone-notch"></div>
+                    <div class="phone-status-bar"><span>09:41</span><span>📶 100%</span></div>
+
+                    <div class="phone-screen">
+                        <!-- HEADER -->
+                        <div style="padding:16px 14px 4px; display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <span style="font-size:11px; color:#38BDF8; font-weight:700;">ACCÈS DIRECT ÉQUIPE</span>
+                                <h3 style="font-size:18px; font-weight:800; color:#FFF;">Tableau de Bord</h3>
+                            </div>
+                            <span style="background:#1E293B; border:1px solid rgba(56,189,248,0.3); padding:4px 10px; border-radius:12px; font-size:11px; color:#38BDF8; font-weight:600;">Aujourd'hui</span>
+                        </div>
+
+                        <!-- BENTO BIG TILES: REPAS & SIESTE EN VEDETTE -->
+                        <div class="d2-bento-hero">
+                            <div class="d2-big-tile meals" onclick="showToast('Saisie Repas express : déjeuner')">
+                                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                                    <span style="font-size:26px;">🍽️</span>
+                                    <span class="d2-tile-badge" style="color:#67E8F9; border:1px solid #06B6D4;">Midi</span>
+                                </div>
+                                <div>
+                                    <div style="font-size:14px; font-weight:800; color:#FFF;">Repas du Jour</div>
+                                    <div style="font-size:10px; color:#94A3B8;">Biberons, plats & desserts</div>
+                                </div>
+                            </div>
+
+                            <div class="d2-big-tile sleep" onclick="showToast('Saisie Sieste express : début du repos')">
+                                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                                    <span style="font-size:26px;">🌙</span>
+                                    <span class="d2-tile-badge" style="color:#93C5FD; border:1px solid #2563EB;">13:00 - 15:30</span>
+                                </div>
+                                <div>
+                                    <div style="font-size:14px; font-weight:800; color:#FFF;">Sieste & Sommeil</div>
+                                    <div style="font-size:10px; color:#94A3B8;">Qualité, début & fin</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 6 AUTRES BOUTONS EN TUILES MOYENNES -->
+                        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin:0 12px 14px;">
+                            <div class="d1-btn-action" onclick="showToast('Pointage des arrivées')">
+                                <div class="d1-btn-icon">⏱️</div>
+                                <span class="d1-btn-label">Pointage</span>
+                            </div>
+                            <div class="d1-btn-action" onclick="showToast('Traitements et ordonnances')">
+                                <div class="d1-btn-icon">💊</div>
+                                <span class="d1-btn-label">Soins</span>
+                            </div>
+                            <div class="d1-btn-action" onclick="showToast('Bilans de fin de journée')">
+                                <div class="d1-btn-icon">📋</div>
+                                <span class="d1-btn-label">Bilans</span>
+                            </div>
+                            <div class="d1-btn-action" onclick="showToast('Ajouter photo d\'activité')">
+                                <div class="d1-btn-icon">✨</div>
+                                <span class="d1-btn-label">Activités</span>
+                            </div>
+                            <div class="d1-btn-action" onclick="showToast('Signalements d\'absences')">
+                                <div class="d1-btn-icon">📅</div>
+                                <span class="d1-btn-label">Absences</span>
+                            </div>
+                            <div class="d1-btn-action" onclick="showToast('Messagerie parents')">
+                                <div class="d1-btn-icon">💬</div>
+                                <span class="d1-btn-label">Messages</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="phone-bottom-nav">
+                        <div class="nav-item active"><span>🏠</span><span>Accueil</span></div>
+                        <div class="nav-item"><span>👶</span><span>Enfants</span></div>
+                        <div class="nav-item"><span>⏱️</span><span>Présence</span></div>
+                        <div class="nav-item"><span>💬</span><span>Messages</span></div>
+                        <div class="nav-item"><span>⚙️</span><span>Plus</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DESIGN 3 TEMPLATE -->
+            <div class="card-preview" id="card-design-3">
+                <div class="card-preview-header">
+                    <div class="card-preview-title">3. iOS Inset Pro</div>
+                    <div class="card-preview-sub">Sobriété & Listes claires inspirées Apple</div>
+                </div>
+
+                <div class="phone-wrapper d3-bg">
+                    <div class="phone-notch"></div>
+                    <div class="phone-status-bar"><span>09:41</span><span>📶 100%</span></div>
+
+                    <div class="phone-screen">
+                        <div style="padding:14px 16px 6px;">
+                            <div style="font-size:20px; font-weight:800; color:#FFF;">Crèche Dashboard</div>
+                            <div style="font-size:11px; color:#67E8F9;">Gestions & Bilans Journaliers</div>
+                        </div>
+
+                        <!-- GROUPE 1 : RYTHME DE L'ENFANT -->
+                        <div class="d3-group">
+                            <div style="padding:10px 16px 4px; font-size:11px; font-weight:700; color:#67E8F9; text-transform:uppercase;">Rythme & Repos</div>
+                            <div class="d3-row" onclick="showToast('Saisie Repas : déjeuner, biberons, goûter')">
+                                <div style="display:flex; align-items:center;">
+                                    <div class="d3-icon-box" style="background:rgba(6,182,212,0.2); color:#67E8F9;">🍽️</div>
+                                    <div>
+                                        <div style="font-size:13px; font-weight:600; color:#FFF;">Repas & Biberons</div>
+                                        <div style="font-size:10px; color:#94A3B8;">Quantités mangées & collations</div>
+                                    </div>
+                                </div>
+                                <span style="color:#64748B; font-size:14px;">›</span>
+                            </div>
+                            <div class="d3-row" onclick="showToast('Saisie Sieste : horaires & sommeil')">
+                                <div style="display:flex; align-items:center;">
+                                    <div class="d3-icon-box" style="background:rgba(37,99,235,0.2); color:#93C5FD;">🌙</div>
+                                    <div>
+                                        <div style="font-size:13px; font-weight:600; color:#FFF;">Sieste & Sommeil</div>
+                                        <div style="font-size:10px; color:#94A3B8;">Heure d'endormissement & calme</div>
+                                    </div>
+                                </div>
+                                <span style="color:#64748B; font-size:14px;">›</span>
+                            </div>
+                            <div class="d3-row" onclick="showToast('Soins et médicaments prescrits')">
+                                <div style="display:flex; align-items:center;">
+                                    <div class="d3-icon-box" style="background:rgba(236,72,153,0.18); color:#F472B6;">💊</div>
+                                    <div>
+                                        <div style="font-size:13px; font-weight:600; color:#FFF;">Médicaments & Soins</div>
+                                        <div style="font-size:10px; color:#94A3B8;">Ordonnances et prises du jour</div>
+                                    </div>
+                                </div>
+                                <span style="color:#64748B; font-size:14px;">›</span>
+                            </div>
+                        </div>
+
+                        <!-- GROUPE 2 : TRANSMISSIONS & VIE DE GROUPE -->
+                        <div class="d3-group">
+                            <div style="padding:10px 16px 4px; font-size:11px; font-weight:700; color:#67E8F9; text-transform:uppercase;">Groupe & Vie Quotidienne</div>
+                            <div class="d3-row" onclick="showToast('Pointage présence express')">
+                                <div style="display:flex; align-items:center;">
+                                    <div class="d3-icon-box" style="background:rgba(16,185,129,0.2); color:#6EE7B7;">⏱️</div>
+                                    <div style="font-size:13px; font-weight:600; color:#FFF;">Pointage Présences</div>
+                                </div>
+                                <span style="color:#64748B; font-size:14px;">›</span>
+                            </div>
+                            <div class="d3-row" onclick="showToast('Rapports journaliers complets')">
+                                <div style="display:flex; align-items:center;">
+                                    <div class="d3-icon-box" style="background:rgba(6,182,212,0.2); color:#67E8F9;">📋</div>
+                                    <div style="font-size:13px; font-weight:600; color:#FFF;">Bilans du soir</div>
+                                </div>
+                                <span style="color:#64748B; font-size:14px;">›</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="phone-bottom-nav">
+                        <div class="nav-item active"><span>🏠</span><span>Accueil</span></div>
+                        <div class="nav-item"><span>👶</span><span>Enfants</span></div>
+                        <div class="nav-item"><span>⏱️</span><span>Présence</span></div>
+                        <div class="nav-item"><span>💬</span><span>Messages</span></div>
+                        <div class="nav-item"><span>⚙️</span><span>Plus</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DESIGN 4 TEMPLATE -->
+            <div class="card-preview" id="card-design-4">
+                <div class="card-preview-header">
+                    <div class="card-preview-title">4. Rythme du Jour</div>
+                    <div class="card-preview-sub">Boutons adaptatifs selon l'heure (Matin / Midi / Soir)</div>
+                </div>
+
+                <div class="phone-wrapper d4-bg">
+                    <div class="phone-notch"></div>
+                    <div class="phone-status-bar"><span>09:41</span><span>📶 100%</span></div>
+
+                    <div class="phone-screen">
+                        <div style="padding:14px 14px 4px;">
+                            <span style="font-size:11px; color:#38BDF8; font-weight:700;">CHRONOLOGIE CRÈCHE</span>
+                            <div style="font-size:18px; font-weight:800; color:#FFF;">Rythme de la Journée</div>
+                        </div>
+
+                        <!-- TIMELINE SWITCHER -->
+                        <div class="d4-timeline-nav">
+                            <div class="d4-time-pill" onclick="showToast('Filtre Matin : Arrivées & Médicaments')">Matin (8h-11h)</div>
+                            <div class="d4-time-pill active" onclick="showToast('Filtre Midi : Repas & Siestes prioritaires')">Midi (11h-14h)</div>
+                            <div class="d4-time-pill" onclick="showToast('Filtre Soir : Bilans & Départs')">Soir (14h-18h)</div>
+                        </div>
+
+                        <!-- ACTIONS DU MOMENT SÉLECTIONNÉ -->
+                        <div style="background:#0E1626; border:1px solid rgba(6,182,212,0.25); border-radius:18px; padding:14px; margin:0 12px 14px;">
+                            <div style="font-size:12px; font-weight:700; color:#67E8F9; margin-bottom:10px;">☀️ ACTIONS ACTIVES DU MIDI</div>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                                <div class="d2-big-tile meals" style="height:95px;" onclick="showToast('Saisie Repas')">
+                                    <span style="font-size:22px;">🍽️</span>
+                                    <div style="font-size:13px; font-weight:800; color:#FFF;">Repas Midi</div>
+                                </div>
+                                <div class="d2-big-tile sleep" style="height:95px;" onclick="showToast('Saisie Sieste')">
+                                    <span style="font-size:22px;">🌙</span>
+                                    <div style="font-size:13px; font-weight:800; color:#FFF;">Sieste Dortoir</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="padding:0 14px;">
+                            <div style="font-size:12px; font-weight:700; color:#94A3B8; margin-bottom:8px;">AUTRES ACTIONS</div>
+                            <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:8px;">
+                                <div class="d1-btn-action" onclick="showToast('Pointage')"><div class="d1-btn-icon">⏱️</div><span class="d1-btn-label">Pointage</span></div>
+                                <div class="d1-btn-action" onclick="showToast('Soins')"><div class="d1-btn-icon">💊</div><span class="d1-btn-label">Soins</span></div>
+                                <div class="d1-btn-action" onclick="showToast('Photos')"><div class="d1-btn-icon">✨</div><span class="d1-btn-label">Activités</span></div>
+                                <div class="d1-btn-action" onclick="showToast('Messages')"><div class="d1-btn-icon">💬</div><span class="d1-btn-label">Messages</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="phone-bottom-nav">
+                        <div class="nav-item active"><span>🏠</span><span>Accueil</span></div>
+                        <div class="nav-item"><span>👶</span><span>Enfants</span></div>
+                        <div class="nav-item"><span>⏱️</span><span>Présence</span></div>
+                        <div class="nav-item"><span>💬</span><span>Messages</span></div>
+                        <div class="nav-item"><span>⚙️</span><span>Plus</span></div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- TOAST NOTIFICATION -->
+    <div class="toast" id="toast-el">
+        <span id="toast-icon">✨</span>
+        <span id="toast-text">Action effectuée</span>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        const designsInfo = {
+            1: {
+                badge: "Concept 1 — Signature",
+                title: "Centre d'Aide Signature (Recommandé)",
+                desc: "Aligné à 100% avec l'esthétique du Centre d'Aide : dégradé bleu nuit profond, halo cyan signature, et grille 4 colonnes ultra-tactile pour les 8 actions du quotidien. Finies les couleurs disparates.",
+                swatches: [
+                    { name: "Cyan Primaire", hex: "#06B6D4" },
+                    { name: "Saphir Sky", hex: "#0EA5E9" },
+                    { name: "Bleu Profond", hex: "#2563EB" },
+                    { name: "Ardoise Nuit", hex: "#0B1120" }
+                ],
+                features: [
+                    "Bouton Repas dédié (🍽️) pour noter déjeuners, biberons et goûters",
+                    "Bouton Sieste dédié (🌙) pour consigner les heures de sommeil",
+                    "Bouton Pointage (⏱️) pour marquer les arrivées et départs en 1 clic",
+                    "Bouton Soins & Médicaments (💊) avec alerte des ordonnances du jour",
+                    "Zéro couleur criarde, palette unifiée cyan/saphir/slate"
+                ]
+            },
+            2: {
+                badge: "Concept 2 — Bento",
+                title: "Bento Tactile Éducatrice",
+                desc: "Place les deux actions les plus fréquentes de la journée (Repas du midi & Sieste de l'après-midi) dans de grandes dalles tactiles au sommet, idéales pour l'utilisation à une seule main en section.",
+                swatches: [
+                    { name: "Cyan Lumineux", hex: "#38BDF8" },
+                    { name: "Saphir Royal", hex: "#1D4ED8" },
+                    { name: "Ardoise Sombre", hex: "#080D1A" },
+                    { name: "Bleu Minuit", hex: "#0F172A" }
+                ],
+                features: [
+                    "Grandes tuiles Bento pour Repas et Sieste en accès prioritaire",
+                    "Badge d'horaires en direct (ex: 13:00 - 15:30 pour le dortoir)",
+                    "Grille secondaire 3x2 pour le pointage, soins et messages parents",
+                    "Navigation fluide et moderne"
+                ]
+            },
+            3: {
+                badge: "Concept 3 — Apple Inset",
+                title: "iOS Inset Pro",
+                desc: "Style épuré façon réglages Apple : des groupes arrondis très nets avec sous-titres explicatifs pour chaque action. Parfait si l'équipe préfère une liste structurée avec descriptions plutôt que des icônes isolées.",
+                swatches: [
+                    { name: "Cyan Feutré", hex: "#0284C7" },
+                    { name: "Bleu Nuit Pur", hex: "#040810" },
+                    { name: "Ardoise Inset", hex: "#0C1322" },
+                    { name: "Texte Glace", hex: "#E2E8F0" }
+                ],
+                features: [
+                    "Groupes thématiques séparés (Rythme de l'enfant vs Vie de groupe)",
+                    "Sous-titre descriptif sous chaque action pour éviter les erreurs",
+                    "Chevron indicateur de navigation iOS",
+                    "Contraste maximal sous lumière vive"
+                ]
+            },
+            4: {
+                badge: "Concept 4 — Chronologique",
+                title: "Rythme du Jour (Timeline)",
+                desc: "Les boutons affichés s'adaptent selon le moment de la crèche : le matin met l'accent sur les arrivées et médicaments, le midi sur les repas et le coucher, le soir sur les bilans et les départs.",
+                swatches: [
+                    { name: "Cyan Électrique", hex: "#00F0FF" },
+                    { name: "Bleu Saphir", hex: "#2563EB" },
+                    { name: "Ardoise Profonde", hex: "#070B14" },
+                    { name: "Surface Card", hex: "#0E1626" }
+                ],
+                features: [
+                    "Onglets temporels Matin • Midi • Soir avec mise en avant dynamique",
+                    "Affichage des 2 actions urgentes du créneau horaire en grand",
+                    "Accès constant aux autres fonctionnalités en bas de page",
+                    "Réduction de la charge mentale des éducatrices"
+                ]
+            }
+        };
+
+        let currentActiveDesign = 1;
+        let currentViewMode = 'single';
+
+        function updateSingleViewContent() {
+            const data = designsInfo[currentActiveDesign];
+            const mount = document.getElementById('single-phone-mount');
+            const targetPhone = document.querySelector(`#card-design-${currentActiveDesign} .phone-wrapper`);
+            
+            if (targetPhone) {
+                mount.innerHTML = '';
+                mount.appendChild(targetPhone.cloneNode(true));
+            }
+
+            // Mettre à jour le panneau d'explications
+            const panel = document.getElementById('design-details-panel');
+            let swatchesHtml = data.swatches.map(s => `
+                <div class="swatch-card" onclick="copyHex('${s.hex}')">
+                    <div class="swatch-circle" style="background: ${s.hex};"></div>
+                    <div class="swatch-name">${s.name}</div>
+                    <div class="swatch-hex">${s.hex}</div>
+                </div>
+            `).join('');
+
+            let featuresHtml = data.features.map(f => `
+                <li><span class="bullet">✓</span> ${f}</li>
+            `).join('');
+
+            panel.innerHTML = `
+                <span class="details-badge">${data.badge}</span>
+                <h3 class="details-title">${data.title}</h3>
+                <p class="details-desc">${data.desc}</p>
+                <div class="swatches-grid">${swatchesHtml}</div>
+                <ul class="features-list">${featuresHtml}</ul>
+                <button class="action-cta-btn" onclick="showToast('Ce design est déjà disponible et intégré dans votre dashboard !')">
+                    🚀 Choisir ce style pour la Crèche
+                </button>
+            `;
+
+            // Active tabs
+            document.querySelectorAll('.design-tab').forEach((tab, index) => {
+                if (index + 1 === currentActiveDesign) {
+                    tab.classList.add('active');
+                } else {
+                    tab.classList.remove('active');
+                }
+            });
+        }
+
+        function selectDesign(id) {
+            currentActiveDesign = id;
+            if (currentViewMode === 'grid') {
+                setViewMode('single');
+            } else {
+                updateSingleViewContent();
+            }
+        }
+
+        function setViewMode(mode) {
+            currentViewMode = mode;
+            const singleView = document.getElementById('single-view-container');
+            const gridView = document.getElementById('grid-view-container');
+            const tabsBar = document.getElementById('tabs-bar');
+            const btnSingle = document.getElementById('btn-single-view');
+            const btnGrid = document.getElementById('btn-grid-view');
+
+            if (mode === 'single') {
+                singleView.style.display = 'flex';
+                gridView.style.display = 'none';
+                tabsBar.style.display = 'block';
+                btnSingle.classList.add('active');
+                btnGrid.classList.remove('active');
+                updateSingleViewContent();
+            } else {
+                singleView.style.display = 'none';
+                gridView.style.display = 'grid';
+                tabsBar.style.display = 'none';
+                btnSingle.classList.remove('active');
+                btnGrid.classList.add('active');
+            }
+        }
+
+        function setRole(role) {
+            document.getElementById('role-staff').classList.toggle('active', role === 'staff');
+            document.getElementById('role-admin').classList.toggle('active', role === 'admin');
+            showToast(role === 'staff' ? "Vue Éducatrice activée (8 actions réelles)" : "Vue Directrice activée (avec gestion inscriptions)");
+        }
+
+        let toastTimeout;
+        function showToast(msg) {
+            const toast = document.getElementById('toast-el');
+            document.getElementById('toast-text').textContent = msg;
+            toast.classList.add('show');
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        function copyHex(hex) {
+            navigator.clipboard.writeText(hex).then(() => {
+                showToast(`Couleur ${hex} copiée dans le presse-papier !`);
+            });
+        }
+
+        function copyPalette() {
+            copyHex("#06B6D4, #0EA5E9, #2563EB, #0B1120");
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            updateSingleViewContent();
+        });
+    </script>
+</body>
+</html>
