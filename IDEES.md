@@ -94,7 +94,20 @@ Format suggéré : `- [ ] Description de l'idée` (laisser `[ ]`, passer à `[x]
   - Détection automatique des sorties non pointées par le personnel à l'heure officielle de fermeture (`nursery_settings.closing_time`, ex: 18h00 en semaine / 13h00 le samedi).
   - Backend : `attendanceAutoCheckoutService.js` clôture automatiquement en base tout enregistrement non terminé (`check_out_time = date + closing_time`) avec note d'audit `[Départ automatique - fermeture de la crèche]`.
   - Exécution double : automatique à chaque consultation des présences (`/today`, `/currently-present`, `/stats`, `/date/:date`) + cron planifié `attendanceJob.js` (13h/18h et sécurité à 20h).
-  - Frontend : arrêt et plafonnement visuel du compteur en cours dès que l'heure de fermeture est atteinte avec badge `Compteur arrêté à l'heure de fermeture (18:00)`, et pastilles explicatives `Clôture auto à la fermeture` sur desktop (`TodaySection.jsx`) et mobile (`MobileAttendance.jsx`).
+- [x] **Unification Profil & Préférences personnelles ("Mon Compte") pour Staff et Parents (Fin de l'erreur 403 sur Paramètres)** :
+  - Centralisation dans `UnifiedProfilePage.jsx` (`/profile`) : Photo, coordonnées personnelles, changement de mot de passe, thème Clair/Sombre, langue de l'interface (Français/العربية), activation des notifications Push PWA sur l'appareil et rappel matinal de pointage pour le staff.
+  - Redirection automatique intelligente de `/dashboard/settings` vers `/profile` pour les non-admins (Staff et Parents), éliminant définitivement les erreurs 403 Forbidden.
+  - Mise à jour de la navigation mobile et desktop pour un ciblage clair : "Paramètres crèche" pour Admin/Dev et "Mon Compte & Préférences" pour Staff/Parents.
+- [x] **Widget unifié de présence en direct et fil d'activité pour la Direction & Développeur** :
+  - Réservé exclusivement à `admin` et `developer` (bloqué côté backend et masqué côté frontend).
+  - Rôle `developer` strictement masqué des listes et badges de présence utilisateur.
+  - Deux colonnes sur grand écran : Activités récentes des enfants et de l'équipe | Présence en direct avec filtres Connectés, Équipe, Parents, Tous sans troncature de texte.
+  - Remontée en temps réel des tâches créées et complétées par le personnel dans le flux d'activité du tableau de bord.
+- [x] **Notifications & Rétroaction en temps réel des Tâches** :
+  - Notification Push et in-app instantanée à l'éducatrice lors de l'assignation d'une tâche.
+  - Notification in-app et Push à la direction lors de la complétion d'une tâche par une éducatrice.
+  - Correction du routage d'API de complétion de tâche (`/api/tasks/:id/status` avec repli de sécurité sur `/api/events/:id/status`).
+  - Redirection immédiate de la bannière d'alerte des tâches en retard du mobile vers la modale des tâches en retard (`openFocusMode('overdue')`) plutôt que vers le planning général.
 - [ ] *(ajouter ici)*
 
 ## 🚀 Performance & Technique
@@ -115,6 +128,8 @@ Format suggéré : `- [ ] Description de l'idée` (laisser `[ ]`, passer à `[x]
 
 ## 📱 Mobile / PWA
 
+- [x] **Bannière d'alerte contextuelle mobile** : le clic sur "Voir" pour les tâches en retard ouvre directement la modale dédiée aux tâches en souffrance sans quitter le tableau de bord ni renvoyer inutilement vers le planning.
+- [x] **Navigation tactile & Bottom Navigation bar** : intégration du raccourci "Mon Compte & Préférences" dans le tiroir Plus pour tous les profils (parents et éducatrices).
 - [ ] *(ajouter ici)*
 
 ---

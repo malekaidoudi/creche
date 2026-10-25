@@ -154,7 +154,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
 /**
  * PATCH /api/events/:id/status
- * Changer le statut d'un événement
+ * Changer le statut d'un événement (avec repli sur table tasks si nécessaire)
  */
 router.patch('/:id/status', authenticateToken, async (req, res) => {
   try {
@@ -167,7 +167,22 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
       });
     }
 
-    const result = await eventService.updateEventStatus(req.params.id, status, req.user.id);
+    const currentUserId = req.user.id || req.user.userId;
+    let result = await eventService.updateEventStatus(req.params.id, status, currentUserId);
+    
+    // Si non trouvé dans la table events, tenter dans la table tasks
+    if (!result.success && result.error === 'Événement non trouvé') {
+      try {
+        const taskService = require('../services/taskService');
+        const taskResult = await taskService.updateTaskStatus(parseInt(req.params.id), status, currentUserId);
+        if (taskResult.success) {
+          return res.json(taskResult);
+        }
+      } catch (taskErr) {
+        // Ignorer l'erreur fallback
+      }
+    }
+
     res.json(result);
 
   } catch (error) {

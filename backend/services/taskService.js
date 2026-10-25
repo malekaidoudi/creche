@@ -16,43 +16,50 @@ async function createTask(taskData, creatorId) {
     await client.query('BEGIN');
 
     const { title, description, assigned_to, due_date, priority = 'medium' } = taskData;
+    const targetUserId = parseInt(assigned_to);
+    const authorId = parseInt(creatorId);
 
-    console.log('📝 Création tâche:', { title, assigned_to, creatorId, due_date, priority });
+    console.log('📝 Création tâche:', { title, assigned_to: targetUserId, creatorId: authorId, due_date, priority });
 
     // Créer la tâche
     const result = await client.query(`
       INSERT INTO tasks (title, description, assigned_to, created_by, due_date, priority, status)
       VALUES ($1, $2, $3, $4, $5, $6, 'pending')
       RETURNING *
-    `, [title, description, assigned_to, creatorId, due_date, priority]);
+    `, [title, description, targetUserId, authorId, due_date, priority]);
 
     const task = result.rows[0];
 
     // Créer notification pour le staff assigné
     let pushPayload = null;
-    if (assigned_to !== creatorId) {
-      const creator = await getUserById(creatorId);
-      const taskTitle = '✅ Nouvelle tâche assignée';
-      const taskMessage = `${creator.first_name} ${creator.last_name} vous a assigné une tâche : "${title}"`;
+    if (targetUserId && targetUserId !== authorId) {
+      const creator = await getUserById(authorId);
+      const creatorName = creator ? `${creator.first_name || ''} ${creator.last_name || ''}`.trim() || 'La direction' : 'La direction';
+      const taskTitle = '📋 Nouvelle tâche assignée';
+      const taskMessage = `${creatorName} vous a assigné une tâche : "${title}"`;
 
       await client.query(`
-        INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
-        VALUES ($1, $2, $3, 'task_assigned', $4, false)
-      `, [assigned_to, taskTitle, taskMessage, task.id]);
+        INSERT INTO notifications (user_id, title, message, type, related_id, is_read, created_at)
+        VALUES ($1, $2, $3, 'task_assigned', $4, false, NOW())
+      `, [targetUserId, taskTitle, taskMessage, task.id]);
 
-      pushPayload = { userId: assigned_to, title: taskTitle, message: taskMessage, taskId: task.id };
+      pushPayload = { userId: targetUserId, title: taskTitle, message: taskMessage, taskId: task.id };
     }
 
     await client.query('COMMIT');
 
-    console.log(`✅ Tâche créée: ${title} → assignée à user ${assigned_to}`);
+    console.log(`✅ Tâche créée: ${title} → assignée à user ${targetUserId}`);
 
     if (pushPayload) {
-      await pushNotificationService.sendPushToUser(pushPayload.userId, {
-        title: pushPayload.title,
-        message: pushPayload.message,
-        url: `/dashboard/tasks?taskId=${pushPayload.taskId}`
-      });
+      try {
+        await pushNotificationService.sendPushToUser(pushPayload.userId, {
+          title: pushPayload.title,
+          message: pushPayload.message,
+          url: `/dashboard/tasks?taskId=${pushPayload.taskId}`
+        });
+      } catch (pushErr) {
+        console.warn('⚠️ Échec envoi push assignation tâche:', pushErr.message);
+      }
     }
 
     return { success: true, task };
@@ -254,31 +261,54 @@ async function updateTaskStatus(taskId, status, userId) {
 
     const updatedTask = result.rows[0];
 
-    // Si complétée, notifier le créateur
-    let pushPayload = null;
-    if (status === 'completed' && task.created_by !== userId) {
-      const completer = await getUserById(userId);
-      const title = '✅ Tâche complétée';
-      const message = `${completer.first_name} ${completer.last_name} a complété la tâche : "${task.title}"`;
+    // Si complétée, notifier le créateur et l'administration
+    let pushPayloads = [];
+    const completerId = parseInt(userId);
+    if (status === 'completed') {
+      const completer = await getUserById(completerId);
+      const completerName = completer ? `${completer.first_name || ''} ${completer.last_name || ''}`.trim() || 'Une éducatrice' : 'Une éducatrice';
+      const notifTitle = '✅ Tâche complétée';
+      const notifMessage = `${completerName} a complété la tâche : "${task.title}"`;
 
-      await client.query(`
-        INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
-        VALUES ($1, $2, $3, 'task_completed', $4, false)
-      `, [task.created_by, title, message, task.id]);
+      // Notifier le créateur de la tâche + tous les administrateurs actifs (sauf le compléteur s'il en fait partie)
+      const adminQuery = await client.query(`
+        SELECT id FROM users 
+        WHERE (role = 'admin' OR id = $1)
+          AND is_active = true 
+          AND id != $2
+      `, [task.created_by, completerId]);
 
-      pushPayload = { userId: task.created_by, title, message };
+      const recipientIds = [...new Set(adminQuery.rows.map(r => r.id))];
+
+      for (const recId of recipientIds) {
+        await client.query(`
+          INSERT INTO notifications (user_id, title, message, type, related_id, is_read, created_at)
+          VALUES ($1, $2, $3, 'task_completed', $4, false, NOW())
+        `, [recId, notifTitle, notifMessage, task.id]);
+
+        pushPayloads.push({
+          userId: recId,
+          title: notifTitle,
+          message: notifMessage,
+          taskId: task.id
+        });
+      }
     }
 
     await client.query('COMMIT');
 
     console.log(`✅ Tâche ${taskId} → statut: ${status}`);
 
-    if (pushPayload) {
-      await pushNotificationService.sendPushToUser(pushPayload.userId, {
-        title: pushPayload.title,
-        message: pushPayload.message,
-        url: `/dashboard/tasks?taskId=${taskId}`
-      });
+    for (const p of pushPayloads) {
+      try {
+        await pushNotificationService.sendPushToUser(p.userId, {
+          title: p.title,
+          message: p.message,
+          url: `/dashboard/tasks?taskId=${p.taskId}`
+        });
+      } catch (pushErr) {
+        console.warn('⚠️ Échec envoi push complétion tâche:', pushErr.message);
+      }
     }
 
     return { success: true, task: updatedTask };

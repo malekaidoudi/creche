@@ -35,10 +35,14 @@ import CreateAppointmentModal from '../../components/modals/CreateAppointmentMod
 import api from '../../services/api';
 import activityLogService from '../../services/activityLogService';
 import NewsWidget from '../../components/NewsWidget';
+import RecentActivitiesWidget from '../../components/widgets/RecentActivitiesWidget';
+import OnlineUsersWidget from '../../components/widgets/OnlineUsersWidget';
+import CombinedPresenceActivityWidget from '../../components/widgets/CombinedPresenceActivityWidget';
 
 // Cache en mémoire pour préserver l'état du tableau de bord lors de la navigation (évite le flash de chargement)
 let cachedDashboardStats = null;
 let cachedRecentActivities = [];
+let cachedOnlineUsersData = { users: [], onlineCount: 0 };
 
 const DashboardHome = () => {
   const { user, isAdmin, isStaff } = useAuth();
@@ -50,7 +54,9 @@ const DashboardHome = () => {
   const [showAppointmentModal, setShowAppointmentModal] = useState(false);
   const [loading, setLoading] = useState(() => !cachedDashboardStats);
   const [recentActivities, setRecentActivities] = useState(() => cachedRecentActivities);
+  const [onlineUsersData, setOnlineUsersData] = useState(() => cachedOnlineUsersData);
   const [activityStats, setActivityStats] = useState(null);
+  const [refreshingCombined, setRefreshingCombined] = useState(false);
 
   // Fonction pour formater un log en activité affichable
   const formatLogToActivity = (log) => {
@@ -122,6 +128,71 @@ const DashboardHome = () => {
     }
   };
 
+  // 1. Charge les activités récentes du quotidien (enfants & éducatrices)
+  const loadActivities = async () => {
+    try {
+      const response = await api.get('/api/dashboard/recent-activities');
+      if (response.data?.success && response.data.activities) {
+        setRecentActivities(response.data.activities);
+        cachedRecentActivities = response.data.activities;
+        return;
+      }
+    } catch (err) {
+      console.warn('Flux recent-activities indisponible, tentative repli:', err.message);
+    }
+
+    // Repli sur l'ancien système de logging si besoin
+    try {
+      const [activityResponse, activityStatsResponse] = await Promise.all([
+        activityLogService.getLogs({ limit: 10, period: 'week' }),
+        activityLogService.getStats({ period: 'today' })
+      ]);
+
+      if (activityResponse.success && activityResponse.logs) {
+        setRecentActivities(activityResponse.logs);
+        cachedRecentActivities = activityResponse.logs;
+      }
+      if (activityStatsResponse.success) {
+        setActivityStats(activityStatsResponse.stats);
+      }
+    } catch (activityError) {
+      try {
+        const response = await api.get('/api/logs?limit=5');
+        if (response.data?.success) {
+          const formatted = response.data.logs.map(formatLogToActivity);
+          setRecentActivities(formatted);
+          cachedRecentActivities = formatted;
+        }
+      } catch {
+        setRecentActivities([]);
+      }
+    }
+  };
+
+  // 2. Charge la liste et le statut des utilisateurs (Direction, Équipe, Parents) - Exclusif Admin & Développeur
+  const loadOnlineUsers = async () => {
+    if (isAdmin() || user?.role === 'developer') {
+      try {
+        const res = await api.get('/api/users/online');
+        if (res.data?.success) {
+          const users = res.data.users || [];
+          const onlineCount = res.data.onlineCount ?? users.filter(u => u.is_online).length;
+          const data = { users, onlineCount };
+          setOnlineUsersData(data);
+          cachedOnlineUsersData = data;
+        }
+      } catch (err) {
+        console.warn('Erreur chargement online users:', err.message);
+      }
+    }
+  };
+
+  const handleRefreshCombinedWidget = async () => {
+    setRefreshingCombined(true);
+    await Promise.all([loadActivities(), loadOnlineUsers()]);
+    setRefreshingCombined(false);
+  };
+
   useEffect(() => {
     const defaultStats = {
       totalChildren: 0,
@@ -133,37 +204,7 @@ const DashboardHome = () => {
       newEnrollmentsThisMonth: 0
     };
 
-    // Charge les activités récentes: nouveau système de logging, avec repli
-    // sur l'ancien système en cas d'échec (404/erreur), sans bloquer les stats.
-    const loadActivities = async () => {
-      try {
-        const [activityResponse, activityStatsResponse] = await Promise.all([
-          activityLogService.getLogs({ limit: 10, period: 'week' }),
-          activityLogService.getStats({ period: 'today' })
-        ]);
-
-        if (activityResponse.success && activityResponse.logs) {
-          setRecentActivities(activityResponse.logs);
-          cachedRecentActivities = activityResponse.logs;
-        }
-        if (activityStatsResponse.success) {
-          setActivityStats(activityStatsResponse.stats);
-        }
-      } catch (activityError) {
-        console.log('📊 Système de logging non disponible, utilisation des logs classiques');
-        try {
-          const response = await api.get('/api/logs?limit=5');
-          if (response.data.success) {
-            const formatted = response.data.logs.map(formatLogToActivity);
-            setRecentActivities(formatted);
-            cachedRecentActivities = formatted;
-          }
-        } catch {
-          setRecentActivities([]);
-        }
-      }
-    };
-
+    // Charge les statistiques globales
     const loadStats = async () => {
       try {
         const statsResponse = await api.get('/api/dashboard/stats');
@@ -176,13 +217,22 @@ const DashboardHome = () => {
       }
     };
 
-    // Les deux groupes de données sont indépendants: on les lance en
-    // parallèle plutôt qu'en cascade pour diviser le temps de chargement
-    // par ~2-3 au lieu de sommer chaque aller-retour réseau.
-    Promise.all([loadStats(), loadActivities()]).finally(() => {
+    // Lancer les chargements en parallèle
+    Promise.all([loadStats(), loadActivities(), loadOnlineUsers()]).finally(() => {
       setLoading(false);
     });
-  }, []);
+
+    // Écouter les mises à jour de tâches pour rafraîchir instantanément les activités récentes et stats
+    const handleTaskUpdated = () => {
+      loadActivities();
+      loadStats();
+    };
+    window.addEventListener('taskUpdated', handleTaskUpdated);
+
+    return () => {
+      window.removeEventListener('taskUpdated', handleTaskUpdated);
+    };
+  }, [user]);
 
   const statsCards = [
     {
@@ -384,6 +434,25 @@ const DashboardHome = () => {
             transition={{ duration: 0.6, delay: 0.6 }}
           >
             <TodayAbsences />
+          </motion.div>
+        )}
+
+        {/* Widget combiné : Présence en direct et dernière activité de l'équipe et des parents (Exclusif Admin et Développeur) */}
+        {(isAdmin() || user?.role === 'developer') && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.65 }}
+          >
+            <CombinedPresenceActivityWidget
+              activities={recentActivities}
+              users={onlineUsersData.users}
+              onlineCount={onlineUsersData.onlineCount}
+              currentUserId={user?.id || user?.userId}
+              currentUser={user}
+              onRefresh={handleRefreshCombinedWidget}
+              loading={refreshingCombined}
+            />
           </motion.div>
         )}
 

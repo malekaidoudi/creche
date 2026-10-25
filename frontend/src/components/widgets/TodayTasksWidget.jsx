@@ -506,11 +506,17 @@ const TodayTasksWidget = ({ onOpenMemoModal, onOpenTaskModal, onOpenAppointmentM
                     if (t.type === 'appointment') {
                       const apptId = t.metadata?.appointment_id || t.id.replace('appt-', '');
                       await api.patch(`/api/appointments/${apptId}/status`, { status: 'completed' });
+                    } else if (t.source === 'personal_memos' || t.type === 'memo' || String(t.id).startsWith('memo-')) {
+                      const memoId = String(t.id).replace('memo-', '');
+                      await api.patch(`/api/personal-memos/${memoId}/complete`);
+                    } else if (t.source === 'tasks' || t.type === 'task') {
+                      await api.patch(`/api/tasks/${t.id}/status`, { status: 'completed' });
                     } else {
                       await api.patch(`/api/events/${t.id}/status`, { status: 'completed' });
                     }
                     dialog.success(isRTL ? 'تم الإنهاء' : 'Terminé !');
                     loadTodayTasks();
+                    window.dispatchEvent(new Event('taskUpdated'));
                   } catch (error) {
                     console.error('Erreur:', error);
                     dialog.error(error.response?.data?.error || (isRTL ? 'خطأ' : 'Erreur'));

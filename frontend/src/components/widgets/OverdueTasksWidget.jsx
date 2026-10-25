@@ -122,13 +122,21 @@ const OverdueTasksWidget = () => {
     try {
       setProcessingId(taskId);
 
-      const response = await api.patch(`/api/events/${taskId}/status`, {
-        status: 'completed'
-      });
+      let response;
+      try {
+        response = await api.patch(`/api/tasks/${taskId}/status`, { status: 'completed' });
+      } catch (err) {
+        if (err.response?.status === 404) {
+          response = await api.patch(`/api/events/${taskId}/status`, { status: 'completed' });
+        } else {
+          throw err;
+        }
+      }
 
-      if (response.data.success) {
+      if (response?.data?.success) {
         dialog.success(isRTL ? 'تم إكمال المهمة' : 'Tâche complétée');
         setTasks(tasks.filter(t => t.id !== taskId));
+        window.dispatchEvent(new Event('taskUpdated'));
       }
     } catch (error) {
       console.error('Erreur marquage tâche:', error);

@@ -206,15 +206,24 @@ const DashboardHeader = ({ onMenuClick }) => {
                       {isRTL ? 'الملف الشخصي' : 'Profil'}
                     </Link>
 
-                    {/* Paramètres - Admin, Staff et Developer */}
-                    {(user?.role === 'admin' || user?.role === 'staff' || user?.role === 'developer') && (
+                    {/* Paramètres - Admin et Developer : Paramètres crèche / Staff & Parent : Mon Compte */}
+                    {(user?.role === 'admin' || user?.role === 'developer') ? (
                       <Link
-                        to={(user?.role === 'admin' || user?.role === 'developer') ? '/dashboard/settings' : '/dashboard/staff-settings'}
+                        to="/dashboard/settings"
                         onClick={() => setUserMenuOpen(false)}
                         className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                       >
                         <Settings className="w-4 h-4 mr-3 rtl:mr-0 rtl:ml-3" />
-                        {isRTL ? 'الإعدادات' : 'Paramètres'}
+                        {isRTL ? 'إعدادات الحضانة' : 'Paramètres crèche'}
+                      </Link>
+                    ) : (
+                      <Link
+                        to="/profile"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      >
+                        <Settings className="w-4 h-4 mr-3 rtl:mr-0 rtl:ml-3" />
+                        {isRTL ? 'حسابي وإعداداتي' : 'Mon Compte & Préférences'}
                       </Link>
                     )}
 

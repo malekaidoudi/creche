@@ -69,6 +69,9 @@
 | **75** | 18/10/2026 | `.github/workflows/deploy-frontend.yml` *(supprimé)*, `frontend/vercel.json`, `vercel.json`, `frontend/package.json` (champ `homepage`, scripts `deploy`/`predeploy`/`build:github`, dépendance `gh-pages` retirés), `documentsV2/{19_TESTS_DEPLOIEMENT_MAINTENANCE.md,23_ANOMALIES_ET_RECOMMANDATIONS.md}` | Audit documentsV2 — Anomalie #18 | Cible d'hébergement clarifiée : **Vercel**. Le workflow GitHub Pages et tous les résidus de sa configuration sont retirés | ✅ Validé & Appliqué |
 | **76** | 18/10/2026 | `frontend/src/config/api.js`, `documentsV2/{18_CONFIGURATION_ENVIRONNEMENT.md,23_ANOMALIES_ET_RECOMMANDATIONS.md}` | Audit documentsV2 — Anomalie #19 | `VITE_API_URL` absent en build prod → `console.error` explicite au lieu d'une dépendance silencieuse au repli codé en dur ; divergence `.env.production` vs repli signalée | ✅ Validé & Appliqué |
 | **77** | 18/10/2026 | `backend/routes_postgres/auth.js`, `frontend/src/{routes/AppRoutes.jsx,pages/auth/RegisterPage.jsx (supprimé),contexts/AuthContext.jsx,services/authService.js,config/api.js,i18n/config.js}`, `documentsV2/{10_AUTHENTIFICATION.md,14_API_REST.md,15_FRONTEND_ET_INTERFACE.md,23_ANOMALIES_ET_RECOMMANDATIONS.md}` | Audit documentsV2 — Anomalie #20 | Suppression du parcours d'inscription libre `/register` (endpoint backend + page + services frontend + 8 clés i18n mortes `register`/`registerButton`/`registerSuccess` fr+ar) — la création de compte parent passe uniquement par `/inscription` + approbation | ✅ Validé & Appliqué |
+| **89** | 25/10/2026 | `backend/routes_postgres/users.js`, `frontend/src/components/widgets/CombinedPresenceActivityWidget.jsx`, `frontend/src/components/widgets/OnlineUsersWidget.jsx`, `frontend/src/components/widgets/RecentActivitiesWidget.jsx`, `frontend/src/pages/dashboard/DashboardHome.jsx` | Sécurité Présence & Supervision | Réservation stricte du widget unifié de présence/activités à la Direction et Développeur, masquage total du compte développeur des compteurs et listes | ✅ Validé & Appliqué |
+| **90** | 25/10/2026 | `backend/services/taskService.js`, `backend/routes_postgres/{events.js,dashboardStats.js}`, `frontend/src/components/widgets/{TodayTasksWidget.jsx,TodayTasksWidgetMobile.jsx,OverdueTasksWidget.jsx}`, `frontend/src/components/dashboard/MobileDashboardComplete.jsx` | Feedback Tâches & UX Mobile | Notification push/in-app lors de l'assignation et de la complétion des tâches, intégration dans le fil d'activité et ouverture directe de la modale des tâches en retard depuis la bannière d'alerte mobile (fin de la fausse redirection planning) | ✅ Validé & Appliqué |
+| **91** | 25/10/2026 | `frontend/src/pages/UnifiedProfilePage.jsx`, `frontend/src/components/mobile/MobileNavigation.jsx`, `frontend/src/routes/AppRoutes.jsx`, `frontend/src/utils/routeValidator.js`, `frontend/src/components/layout/{DashboardHeader.jsx,DashboardSidebar.jsx}`, `frontend/src/components/ui/{SideMenu.jsx,FloatingActionButton.jsx}` | Unification Compte & Préférences (PWA) | Centralisation de "Mon Compte & Préférences" (Profil, Mot de passe, Thème clair/sombre, Langue FR/AR, Notifications push PWA, Rappels staff), suppression définitive des erreurs 403 sur Paramètres pour Staff et Parents via redirection intelligente | ✅ Validé & Appliqué |
 
 ---
 
@@ -1990,3 +1993,99 @@
   - [`frontend/src/components/mobile/MobileNavigation.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/mobile/MobileNavigation.jsx)
   - [`frontend/src/pages/messages/MessagesPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/messages/MessagesPage.jsx)
 - **Résultat** : Suppression définitive du bloc noir en bas des contacts, continuité visuelle parfaite, disparition du cadre blanc parasite et curseur de saisie parfaitement aligné à l'intérieur du champ sur smartphone.
+
+---
+
+### Fiche 89 - Réservation Stricte du Widget Présence/Activités à la Direction et Masquage Total du Compte Développeur
+
+- **Date** : 25 Octobre 2026
+- **Contexte** :
+  1. Le widget unifié de présence en direct et fil d'activité était accessible et visible pour le personnel et les parents, ce qui posait un problème de confidentialité et de pertinence métier.
+  2. Le compte technique avec le rôle `developer` apparaissait dans les compteurs et listes d'utilisateurs en ligne, dévoilant un profil technique interne aux utilisateurs.
+- **Causes identifiées** :
+  1. L'endpoint `/api/users/online` ne filtrait pas les rôles requérants et n'excluait pas explicitement `role = 'developer'`.
+  2. Le composant DashboardHome affichait le widget sans conditionner son rendu aux rôles autorisés (`admin`, `developer`).
+- **Action appliquée** :
+  - **Backend (`routes_postgres/users.js`)** :
+    - Verrouillage de `GET /api/users/online` avec vérification stricte : si `req.user.role` n'est pas dans `['admin', 'developer']`, renvoi immédiat d'une erreur HTTP 403 Forbidden.
+    - Requête SQL filtrée : exclusion absolue de `role = 'developer'`, seuls les rôles `admin`, `staff` et `parent` sont restitués.
+  - **Frontend (`DashboardHome.jsx` & `MobileDashboardComplete.jsx`)** :
+    - Rendu du widget `<CombinedPresenceActivityWidget />` strictement réservé à `(isAdmin() || user?.role === 'developer')`.
+    - Chargement des données `loadOnlineUsers` conditionné au rôle pour économiser les requêtes réseau chez les éducatrices et parents.
+- **Fichiers modifiés** :
+  - [`backend/routes_postgres/users.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/users.js)
+  - [`frontend/src/pages/dashboard/DashboardHome.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/DashboardHome.jsx)
+  - [`frontend/src/components/dashboard/MobileDashboardComplete.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/dashboard/MobileDashboardComplete.jsx)
+- **Résultat** : Confidentialité totale garantie. Seuls les administrateurs et le développeur ont accès à la supervision de présence, et le compte développeur demeure 100% invisible.
+
+---
+
+### Fiche 90 - Traçabilité & Rétroaction des Tâches Éducatrices et Correction UX des Alertes Mobiles
+
+- **Date** : 25 Octobre 2026
+- **Contexte** :
+  1. **Absence de notification d'assignation** : Lorsqu'un administrateur assignait une tâche à une éducatrice, celle-ci ne recevait aucune notification sur son smartphone.
+  2. **Absence de rétroaction lors de la complétion** : Lorsqu'une éducatrice terminait une tâche, l'administrateur n'avait aucun feedback (ni notification push, ni apparition dans les activités récentes du tableau de bord).
+  3. **Erreur 404 lors du marquage comme terminé** : Le bouton "Terminer" envoyait une requête à `/api/events/:id/status` au lieu de `/api/tasks/:id/status`, échouant silencieusement.
+  4. **Lien incohérent sur la bannière mobile** : Le clic sur "Voir" de l'alerte « Vous avez 4 tâches en retard » renvoyait vers le calendrier/planning (`/dashboard/events/calendar?filter=tasks`), ce qui désorientait l'utilisateur.
+  5. **Troncature des filtres de présence** : Les onglets affichaient des mots incomplets (`C... 3`, `É... 4`, `P... 15`, `T... 19`).
+- **Causes identifiées** :
+  1. Typage hétérogène des identifiants (`assigned_to` string vs integer) bloquant l'envoi de notifications push.
+  2. `updateTaskStatus` ne notifiait pas les administrateurs et `dashboardStats.js` n'interrogeait pas la table `tasks`.
+  3. Les widgets de tâches appelaient l'API des événements au lieu de celle des tâches.
+  4. `MobileDashboardComplete.jsx` utilisait un `navigate()` externe vers le planning.
+  5. `OnlineUsersWidget.jsx` utilisait `grid-cols-4` avec la classe `truncate` forçant l'ellipse sur les largeurs réduites.
+- **Action appliquée** :
+  - **Service Tâches & API (`taskService.js`, `events.js`, `dashboardStats.js`)** :
+    - Normalisation des IDs avec `parseInt(id, 10)`, création de notification in-app et envoi push à l'assignation.
+    - À la complétion (`status = 'completed'`), notification automatique du créateur et de tous les administrateurs actifs en in-app et push.
+    - Ajout des tâches terminées et assignées dans le flux des activités récentes (`GET /api/dashboard/recent-activities`).
+    - Mise en place d'un fallback bidirectionnel sur `PATCH /api/events/:id/status` vers `taskService.updateTaskStatus`.
+  - **Widgets & Navigation Frontend** :
+    - Correction des appels API dans `TodayTasksWidget.jsx`, `TodayTasksWidgetMobile.jsx` et `OverdueTasksWidget.jsx` vers `/api/tasks/:id/status`.
+    - La bannière d'alerte mobile ouvre désormais directement la vue focus des tâches en retard (`openFocusMode('overdue')`) sur le tableau de bord.
+    - Suppression de la classe `truncate` et passage en disposition flexible `flex min-w-fit whitespace-nowrap` sur les onglets de filtre (Connectés, Équipe, Parents, Tous).
+- **Fichiers modifiés** :
+  - [`backend/services/taskService.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/services/taskService.js)
+  - [`backend/routes_postgres/events.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/events.js)
+  - [`backend/routes_postgres/dashboardStats.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/dashboardStats.js)
+  - [`frontend/src/components/widgets/TodayTasksWidget.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/widgets/TodayTasksWidget.jsx)
+  - [`frontend/src/components/widgets/TodayTasksWidgetMobile.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/widgets/TodayTasksWidgetMobile.jsx)
+  - [`frontend/src/components/widgets/OverdueTasksWidget.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/widgets/OverdueTasksWidget.jsx)
+  - [`frontend/src/components/widgets/OnlineUsersWidget.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/widgets/OnlineUsersWidget.jsx)
+  - [`frontend/src/components/dashboard/MobileDashboardComplete.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/dashboard/MobileDashboardComplete.jsx)
+- **Résultat** : Les éducatrices sont immédiatement notifiées de leurs tâches, les administrateurs reçoivent un feedback instantané lors de leur achèvement, la bannière mobile ouvre la bonne modale en 1 clic, et les filtres de présence s'affichent lisiblement sans troncature.
+
+---
+
+### Fiche 91 - Unification de "Mon Compte & Préférences" et Éradication de l'Erreur 403 sur Paramètres
+
+- **Date** : 25 Octobre 2026
+- **Contexte** :
+  1. Les éducatrices (Staff) et les parents recevaient une page d'erreur 403 Forbidden lorsqu'ils tentaient d'accéder aux paramètres depuis la barre de navigation PWA, car la route pointait vers la configuration générale de la crèche (`/dashboard/settings`).
+  2. Les utilisateurs non-admins n'avaient pas d'espace clair et accessible pour régler leur thème (clair/sombre), leur langue d'interface (français/arabe), leurs notifications push ou leurs rappels.
+- **Causes identifiées** :
+  1. La route `/dashboard/settings` était réservée strictement aux rôles `admin` et `developer`.
+  2. Le menu mobile "Plus" liait aveuglément tous les profils vers `/dashboard/settings`.
+  3. Les fonctionnalités de personnalisation étaient dispersées entre plusieurs pages secondaires au lieu d'un écran unifié.
+- **Action appliquée** :
+  - **Enrichissement de la page unifiée (`UnifiedProfilePage.jsx` - `/profile`)** :
+    - Intégration de la carte **Affichage & Langue** avec bascule instantanée du mode sombre (`useTheme`) et sélecteur de langue (`useLanguage`) avec gestion RTL/LTR.
+    - Intégration de la carte **Rappel de Pointage** matinal paramétrable pour le personnel.
+    - Maintien et mise en valeur de la carte d'autorisation des **Notifications Push PWA** sur l'appareil.
+  - **Navigation Mobile & Desktop Adaptative** :
+    - Dans `MobileNavigation.jsx`, dissociation des options du tiroir "Plus" : "Paramètres crèche" pour `admin`/`developer`, et "Mon Compte & Préférences" (`/profile`) pour `staff` et `parent`.
+    - Alignement de `DashboardHeader.jsx`, `SideMenu.jsx` et `FloatingActionButton.jsx`.
+  - **Redirection Intelligente Anti-403 (`AppRoutes.jsx`, `routeValidator.js`)** :
+    - Implémentation du composant `SmartSettingsRoute` : les administrateurs accèdent à `DashboardSettingsPage`, tandis que les éducatrices et parents accédant à `/dashboard/settings` sont redirigés de façon transparente vers `/profile`.
+- **Fichiers modifiés** :
+  - [`frontend/src/pages/UnifiedProfilePage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/UnifiedProfilePage.jsx)
+  - [`frontend/src/components/mobile/MobileNavigation.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/mobile/MobileNavigation.jsx)
+  - [`frontend/src/routes/AppRoutes.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/routes/AppRoutes.jsx)
+  - [`frontend/src/utils/routeValidator.js`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/utils/routeValidator.js)
+  - [`frontend/src/components/layout/DashboardHeader.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/layout/DashboardHeader.jsx)
+  - [`frontend/src/components/layout/DashboardSidebar.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/layout/DashboardSidebar.jsx)
+  - [`frontend/src/components/ui/SideMenu.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/ui/SideMenu.jsx)
+  - [`frontend/src/components/ui/FloatingActionButton.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/ui/FloatingActionButton.jsx)
+- **Résultat** : Zéro erreur 403. Chaque utilisateur accède en un tap à ses préférences personnelles, avec contrôle total sur l'affichage, la langue et les notifications PWA.
+

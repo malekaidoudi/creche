@@ -124,8 +124,8 @@ export default function SideMenu() {
       label: 'Paramètres',
       color: 'from-gray-500 to-slate-600',
       hoverColor: 'hover:from-gray-600 hover:to-slate-700',
-      show: user?.role === 'admin' || user?.role === 'staff',
-      onClick: () => navigate(user?.role === 'admin' ? '/dashboard/settings' : '/dashboard/staff-settings')
+      show: user?.role === 'admin' || user?.role === 'staff' || user?.role === 'developer',
+      onClick: () => navigate((user?.role === 'admin' || user?.role === 'developer') ? '/dashboard/settings' : '/profile')
     },
     // Parent: Messages
     {

@@ -55,7 +55,7 @@ export const CANONICAL_ROUTES = {
   '/dashboard/activities': ['staff', 'admin', 'developer'],
   '/dashboard/treatments': ['staff', 'admin', 'developer'],
   '/dashboard/daily-reports': ['staff', 'admin', 'developer'],
-  '/dashboard/staff-settings': ['staff', 'admin', 'developer'],
+  '/dashboard/staff-settings': ['staff', 'admin', 'developer', 'parent'],
 
   // --- Modules d'Administration (admin / developer) ---
   '/dashboard/add-child': ['admin', 'developer'],
@@ -69,7 +69,7 @@ export const CANONICAL_ROUTES = {
   '/dashboard/add-user': ['admin', 'developer'],
   '/dashboard/general-stats': ['admin', 'developer'],
   '/dashboard/attendance-report': ['admin', 'developer'],
-  '/dashboard/settings': ['admin', 'developer'], // Paramètres crèche, horaires, jours fériés (#section-holidays)
+  '/dashboard/settings': ['admin', 'developer', 'staff', 'parent'], // Paramètres crèche (admin/dev) ou redirection transparente vers profil (staff/parent)
   '/dashboard/activity-feed': ['admin', 'developer'],
   '/dashboard/mailbox': ['admin', 'developer'],
   '/dashboard/testimonials': ['admin', 'developer'],

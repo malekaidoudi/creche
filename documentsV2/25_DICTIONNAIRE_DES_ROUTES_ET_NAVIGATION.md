@@ -72,12 +72,12 @@ Ce document constitue le **référentiel canonique absolu** de toutes les routes
 | `/dashboard/messages` | `MessagesPage.jsx` | `staff`, `admin`, `developer` | Messagerie interne d'établissement. |
 | `/dashboard/announcements`| `AnnouncementsPage.jsx` | `staff`, `admin`, `developer` | Publication des avis et annonces à destination des familles. |
 | `/dashboard/tasks` | `TasksPage.jsx` | `staff`, `admin`, `developer` | Gestion des tâches internes de l'équipe. |
-| `/dashboard/staff-settings`| `StaffSettingsPage.jsx` | `staff`, `admin`, `developer` | Préférences personnelles de l'éducatrice. |
+| `/dashboard/staff-settings`| `UnifiedProfilePage.jsx` (redirection)| `staff`, `admin`, `developer`, `parent` | Redirige vers `/profile` (Mon Compte & Préférences unifié). |
 
 ---
 
 ### E. Modules d'Administration et Direction (`/dashboard/*` admin/dev)
-> **Rôles autorisés** : `admin`, `developer`. Le personnel standard (`staff`) y reçoit une erreur 403 Forbidden.
+> **Rôles autorisés** : `admin`, `developer`. Le personnel standard (`staff`) et les parents y accédant sont redirigés de façon transparente vers leur compte (`/profile`), évitant toute erreur 403 Forbidden intempestive.
 
 | Route Frontend | Composant Page | Rôles Autorisés | Description & Fonctionnalités |
 |---|---|---|---|
@@ -89,7 +89,7 @@ Ce document constitue le **référentiel canonique absolu** de toutes les routes
 | `/dashboard/add-user` | `AddUserPage.jsx` | `admin`, `developer` | Création d'un compte utilisateur (éducatrice, administrateur). |
 | `/dashboard/general-stats` | `GeneralStatsPage.jsx` | `admin`, `developer` | Statistiques globales de fréquentation, taux de remplissage et ratios. |
 | `/dashboard/attendance-report` | `AttendanceReportPage.jsx` | `admin`, `developer` | Rapports consolidés de présence pour facturation ou audit. |
-| `/dashboard/settings` | `DashboardSettingsPage.jsx`| `admin`, `developer` | Paramètres généraux de la crèche, horaires, politique de mot de passe. |
+| `/dashboard/settings` | `DashboardSettingsPage.jsx`| `admin`, `developer` (redirection `staff`/`parent` vers `/profile`) | Paramètres généraux de la crèche, horaires, politique de mot de passe. |
 | `/dashboard/settings#section-holidays` | `DashboardSettingsPage.jsx`| `admin`, `developer` | **Gestion des 28 jours fériés tunisiens** (activation/désactivation). |
 | `/dashboard/settings#section-backups` | `DashboardSettingsPage.jsx`| `admin`, `developer` | Déclenchement de sauvegardes manuelles et téléchargement des archives. |
 | `/dashboard/activity-feed` | `ActivityFeedPage.jsx` | `admin`, `developer` | Flux chronologique des actions administratives et alertes. |

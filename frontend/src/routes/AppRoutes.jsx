@@ -10,6 +10,7 @@ import DashboardLayout from '../layouts/DashboardLayout'
 import ProtectedRoute from '../components/auth/ProtectedRoute'
 import ErrorBoundary from '../components/ErrorBoundary'
 import LoadingSpinner from '../components/ui/LoadingSpinner'
+import { useAuth } from '../hooks/useAuth'
 
 // Pages publiques
 const HomePage = lazy(() => import('../pages/public/HomePage'))
@@ -96,6 +97,17 @@ const RouteFallback = () => (
         <LoadingSpinner size="lg" />
     </div>
 )
+
+// Redirection intelligente des paramètres :
+// - Admin & Developer -> DashboardSettingsPage (crèche)
+// - Staff & Parent -> /profile (Mon Compte & Préférences personnelles)
+const SmartSettingsRoute = () => {
+    const { user } = useAuth();
+    if (user?.role === 'admin' || user?.role === 'developer') {
+        return <DashboardSettingsPage />;
+    }
+    return <Navigate to="/profile" replace />;
+};
 
 const AppRoutes = () => {
     return (
@@ -355,16 +367,12 @@ const AppRoutes = () => {
                             </ProtectedRoute>
                         } />
                         <Route path="settings" element={
-                            <ProtectedRoute roles={['admin', 'developer']}>
-                                <ErrorBoundary>
-                                    <DashboardSettingsPage />
-                                </ErrorBoundary>
-                            </ProtectedRoute>
+                            <ErrorBoundary>
+                                <SmartSettingsRoute />
+                            </ErrorBoundary>
                         } />
                         <Route path="staff-settings" element={
-                            <ErrorBoundary>
-                                <StaffSettingsPage />
-                            </ErrorBoundary>
+                            <Navigate to="/profile" replace />
                         } />
                         <Route path="activity-logs" element={
                             <ProtectedRoute roles={['admin', 'developer']}>

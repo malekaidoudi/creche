@@ -260,16 +260,53 @@ router.post('/presence', auth.authenticateToken, async (req, res) => {
   }
 });
 
-// GET /api/users/online - Liste des utilisateurs actifs (< 5 minutes)
+// GET /api/users/online - Liste des utilisateurs (Direction, Personnel, Parents) avec statut en ligne et last_active
 router.get('/online', auth.authenticateToken, async (req, res) => {
   try {
+    const userRole = req.user.role;
+    if (!['admin', 'developer'].includes(userRole)) {
+      return res.status(403).json({
+        success: false,
+        error: 'Accès réservé exclusivement à la direction et au développeur'
+      });
+    }
+
+    const currentUserId = req.user.id || req.user.userId;
+    if (currentUserId) {
+      await db.query('UPDATE users SET last_active = NOW() WHERE id = $1', [currentUserId]).catch(() => {});
+    }
+
+    // Récupérer les utilisateurs (Direction, Personnel, Parents), STRICTEMENT sans le rôle 'developer'
     const result = await db.query(
-      `SELECT id, email, first_name, last_name, role, last_active
+      `SELECT 
+          id, 
+          email, 
+          first_name, 
+          last_name, 
+          role, 
+          profile_image, 
+          last_active,
+          CASE 
+              WHEN last_active > NOW() - INTERVAL '15 minutes' THEN true 
+              ELSE false 
+          END AS is_online
        FROM users
-       WHERE last_active > NOW() - INTERVAL '5 minutes'
-       AND is_active = true`
+       WHERE role IN ('admin', 'staff', 'parent')
+         AND role != 'developer'
+         AND is_active = true
+       ORDER BY 
+          CASE WHEN last_active > NOW() - INTERVAL '15 minutes' THEN 0 ELSE 1 END,
+          last_active DESC NULLS LAST,
+          first_name ASC`
     );
-    res.json({ success: true, users: result.rows });
+
+    const onlineCount = result.rows.filter(u => u.is_online).length;
+
+    res.json({ 
+      success: true, 
+      users: result.rows,
+      onlineCount
+    });
   } catch (error) {
     console.error('Erreur récupération utilisateurs en ligne:', error);
     res.status(500).json({ success: false, error: 'Erreur' });

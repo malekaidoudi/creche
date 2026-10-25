@@ -97,7 +97,7 @@ export default function FloatingActionButton() {
         navigate('/dashboard/absence-management');
         break;
       case 'settings':
-        navigate(user?.role === 'admin' ? '/dashboard/settings' : '/dashboard/staff-settings');
+        navigate((user?.role === 'admin' || user?.role === 'developer') ? '/dashboard/settings' : '/profile');
         break;
       default:
         break;

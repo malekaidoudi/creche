@@ -288,14 +288,17 @@ const TodayTasksWidgetMobile = () => {
             if (task.type === 'appointment') {
                 const apptId = task.metadata?.appointment_id || task.id.replace('appt-', '');
                 await api.patch(`/api/appointments/${apptId}/status`, { status: 'completed' });
-            } else if (task.type === 'memo') {
-                const memoId = task.id.replace('memo-', '');
+            } else if (task.source === 'personal_memos' || task.type === 'memo' || String(task.id).startsWith('memo-')) {
+                const memoId = String(task.id).replace('memo-', '');
                 await api.patch(`/api/personal-memos/${memoId}/complete`);
+            } else if (task.source === 'tasks' || task.type === 'task') {
+                await api.patch(`/api/tasks/${task.id}/status`, { status: 'completed' });
             } else {
                 await api.patch(`/api/events/${task.id}/status`, { status: 'completed' });
             }
             dialog.success(isRTL ? 'تم الإنهاء' : 'Terminé !');
             loadTodayTasks();
+            window.dispatchEvent(new Event('taskUpdated'));
         } catch (error) {
             console.error('Erreur:', error);
             dialog.error(error.response?.data?.error || (isRTL ? 'خطأ' : 'Erreur'));

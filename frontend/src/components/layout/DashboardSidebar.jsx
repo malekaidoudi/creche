@@ -260,7 +260,7 @@ const DashboardSidebar = ({ isOpen, onClose, onCollapsedChange }) => {
     // Paramètres - Pour admin et développeur uniquement
     {
       key: 'settings',
-      title: isRTL ? 'الإعدادات' : 'Paramètres',
+      title: isRTL ? 'إعدادات الحضانة' : 'Paramètres crèche',
       icon: Settings,
       path: '/dashboard/settings',
       roles: ['admin', 'developer']

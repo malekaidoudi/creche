@@ -114,6 +114,10 @@ const auth = {
       }
 
       req.user = user;
+      // Mise à jour de présence asynchrone non-bloquante pour suivi en direct
+      if (user.id) {
+        db.query('UPDATE users SET last_active = NOW() WHERE id = $1', [user.id]).catch(() => {});
+      }
       next();
     });
   },

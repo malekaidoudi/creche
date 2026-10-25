@@ -144,11 +144,19 @@ const MobileNavigation = ({ hideSpacer = false }) => {
             path: '/dashboard/activities',
             roles: ['admin', 'staff', 'developer']
         },
+        // Paramètres de l'établissement (Admin / Développeur uniquement)
         {
             icon: Settings,
-            label: isRTL ? 'الإعدادات' : 'Paramètres',
+            label: isRTL ? 'إعدادات الحضانة' : 'Paramètres crèche',
             path: '/dashboard/settings',
-            roles: ['admin', 'staff', 'developer']
+            roles: ['admin', 'developer']
+        },
+        // Mon Compte & Préférences personnelles (Pour Staff et Parents)
+        {
+            icon: Settings,
+            label: isRTL ? 'حسابي وإعداداتي' : 'Mon Compte & Préférences',
+            path: '/profile',
+            roles: ['staff', 'parent']
         }
     ];
 

@@ -32,11 +32,14 @@ import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useNotifications } from '../../hooks/useNotifications';
 import api from '../../services/api';
+import API_CONFIG from '../../config/api';
 import TodayTasksWidget from '../widgets/TodayTasksWidget';
 import TodayTasksWidgetMobile from '../widgets/TodayTasksWidgetMobile';
 import TodayAppointmentsWidget from '../widgets/TodayAppointmentsWidget';
 import OverdueTasksWidget from '../widgets/OverdueTasksWidget';
 import BirthdaysWidget from '../widgets/BirthdaysWidget';
+import RecentActivitiesWidget from '../widgets/RecentActivitiesWidget';
+import OnlineUsersWidget from '../widgets/OnlineUsersWidget';
 import TodayAbsences from './TodayAbsences';
 import HolidaysList from '../HolidaysList';
 import SimpleNotificationCenter from './SimpleNotificationCenter';
@@ -115,6 +118,7 @@ let cachedWidgetData = {
     absences: [],
     holidays: [],
     onlineUsers: [],
+    onlineCount: 0,
     isLoaded: false
 };
 
@@ -206,7 +210,7 @@ const MobileDashboardComplete = ({
                     api.get('/api/children/birthdays/month'),
                     api.get(`/api/absence-requests/today?date=${todayStr}`),
                     api.get('/api/holidays?effective=true'),
-                    (isAdmin() || user?.role === 'developer') ? api.get('/api/users/online') : Promise.resolve({ data: { users: [] } })
+                    (isAdmin() || user?.role === 'developer') ? api.get('/api/users/online') : Promise.resolve({ data: { users: [], onlineCount: 0 } })
                 ]);
 
                 const appointments = apptsRes.status === 'fulfilled' && apptsRes.value.data?.success
@@ -239,6 +243,10 @@ const MobileDashboardComplete = ({
                     ? (onlineRes.value.data.users || [])
                     : cachedWidgetData.onlineUsers;
 
+                const onlineCount = onlineRes.status === 'fulfilled' && onlineRes.value.data?.success
+                    ? (onlineRes.value.data.onlineCount ?? onlineUsers.filter(u => u.is_online).length)
+                    : cachedWidgetData.onlineCount;
+
                 const newData = {
                     appointments,
                     overdue,
@@ -246,6 +254,7 @@ const MobileDashboardComplete = ({
                     absences,
                     holidays,
                     onlineUsers,
+                    onlineCount,
                     isLoaded: true
                 };
 
@@ -271,6 +280,21 @@ const MobileDashboardComplete = ({
             cachedExpandedSections = next;
             return next;
         });
+
+        // Si on ouvre la section utilisateurs connectés, on rafraîchit immédiatement la liste
+        if (section === 'onlineUsers') {
+            api.get('/api/users/online')
+                .then(res => {
+                    if (res.data?.success && res.data.users) {
+                        setWidgetData(prev => ({
+                            ...prev,
+                            onlineUsers: res.data.users,
+                            onlineCount: res.data.onlineCount ?? res.data.users.filter(u => u.is_online).length
+                        }));
+                    }
+                })
+                .catch(err => console.error('Erreur rafraîchissement online users:', err));
+        }
     };
 
     const openFocusMode = (section) => {
@@ -319,7 +343,10 @@ const MobileDashboardComplete = ({
                 text: isRTL ? `لديك ${count} مهمة متأخرة تحتاج للمتابعة` : (count === 1 ? 'Vous avez 1 tâche en retard' : `Vous avez ${count} tâches en retard`),
                 icon: AlertCircle,
                 style: 'bg-red-50/90 dark:bg-red-950/40 border-red-200 dark:border-red-800/60 text-red-800 dark:text-red-200',
-                onClick: () => navigate('/dashboard/events/calendar?filter=tasks')
+                onClick: () => {
+                    setExpandedSections(prev => ({ ...prev, overdue: true }));
+                    openFocusMode('overdue');
+                }
             };
         }
 
@@ -335,7 +362,10 @@ const MobileDashboardComplete = ({
                 text: isRTL ? `غداً يوم عطلة رسمية (${holidayTomorrow.name})` : `Demain est un jour férié (${holidayTomorrow.name})`,
                 icon: MapPin,
                 style: 'bg-emerald-50/90 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-200',
-                onClick: () => navigate('/dashboard/events/calendar')
+                onClick: () => {
+                    setExpandedSections(prev => ({ ...prev, holidays: true }));
+                    openFocusMode('holidays');
+                }
             };
         }
 
@@ -348,7 +378,10 @@ const MobileDashboardComplete = ({
                 text: isRTL ? `اليوم عطلة رسمية (${holidayToday.name})` : `Aujourd'hui est un jour férié (${holidayToday.name})`,
                 icon: MapPin,
                 style: 'bg-emerald-50/90 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-200',
-                onClick: () => navigate('/dashboard/events/calendar')
+                onClick: () => {
+                    setExpandedSections(prev => ({ ...prev, holidays: true }));
+                    openFocusMode('holidays');
+                }
             };
         }
 
@@ -356,10 +389,13 @@ const MobileDashboardComplete = ({
         if (widgetData.appointments.length > 0) {
             const count = widgetData.appointments.length;
             return {
-                text: isRTL ? `لديك ${count} موعد مبرمج لليوم` : (count === 1 ? '1 rendez-vous planifié aujourd\'hui' : `${count} rendez-vous planifiés aujourd'hui`),
+                text: isRTL ? `لديك ${count} موعد مبرمج لليom` : (count === 1 ? '1 rendez-vous planifié aujourd\'hui' : `${count} rendez-vous planifiés aujourd'hui`),
                 icon: CalendarCheck,
                 style: 'bg-blue-50/90 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800/60 text-blue-800 dark:text-blue-200',
-                onClick: () => navigate('/dashboard/events/calendar?filter=appointments')
+                onClick: () => {
+                    setExpandedSections(prev => ({ ...prev, appointments: true }));
+                    openFocusMode('appointments');
+                }
             };
         }
 
@@ -369,7 +405,10 @@ const MobileDashboardComplete = ({
                 text: isRTL ? `لديك ${stats.pendingTasks} مهام لليوم` : `${stats.pendingTasks} tâche(s) du jour à accomplir`,
                 icon: CheckCircle,
                 style: 'bg-cyan-50/90 dark:bg-cyan-950/40 border-cyan-200 dark:border-cyan-800/60 text-cyan-800 dark:text-cyan-200',
-                onClick: () => navigate('/dashboard/events/calendar?filter=tasks')
+                onClick: () => {
+                    setExpandedSections(prev => ({ ...prev, tasks: true }));
+                    openFocusMode('tasks');
+                }
             };
         }
 
@@ -402,7 +441,10 @@ const MobileDashboardComplete = ({
             value: stats?.pendingTasks || 0,
             icon: CheckCircle,
             iconBg: 'bg-blue-500/25 border border-blue-400/40 text-blue-200',
-            link: '/dashboard/events/calendar?filter=tasks'
+            onClick: () => {
+                setExpandedSections(prev => ({ ...prev, tasks: true }));
+                openFocusMode('tasks');
+            }
         },
         {
             id: 'pending',
@@ -494,7 +536,9 @@ const MobileDashboardComplete = ({
                             key={item.id}
                             whileTap={{ scale: 0.96 }}
                             onClick={() => {
-                                if (item.link) {
+                                if (item.onClick) {
+                                    item.onClick();
+                                } else if (item.link) {
                                     navigate(item.link);
                                 }
                             }}
@@ -594,7 +638,7 @@ const MobileDashboardComplete = ({
             )}
 
             {/* Sections Collapsibles : Affichées UNIQUEMENT si elles ont des données */}
-            <div className="mobile-dashboard-container space-y-3">
+            <div className="mobile-dashboard-container space-y-3 pb-28">
                 {/* 1. Tâches du jour */}
                 {(isStaff() || isAdmin() || user?.role === 'developer') && hasTasks && (
                     <CollapsibleCard
@@ -709,13 +753,13 @@ const MobileDashboardComplete = ({
                         icon={Clock}
                         isExpanded={expandedSections.activities}
                         onToggle={() => toggleSection('activities')}
-                        onFocus={() => openFocusMode('activities')}
+                        hideFocus={true}
                     >
-                        <ActivitiesContent activities={recentActivities} />
+                        <RecentActivitiesWidget activities={recentActivities} isMobile={true} />
                     </CollapsibleCard>
                 )}
 
-                {/* 8. UTILISATEURS CONNECTÉS (Toujours affiché tout en bas, fermé par défaut, pour admin & développeur) */}
+                {/* 8. UTILISATEURS CONNECTÉS (Toujours affiché tout en bas, fermé par défaut, pour admin & développeur uniquement) */}
                 {(isAdmin() || user?.role === 'developer') && (
                     <CollapsibleCard
                         id="onlineUsers"
@@ -723,13 +767,15 @@ const MobileDashboardComplete = ({
                         icon={Users}
                         isExpanded={expandedSections.onlineUsers}
                         onToggle={() => toggleSection('onlineUsers')}
-                        onFocus={() => openFocusMode('onlineUsers')}
-                        badge={widgetData.onlineUsers.length > 0 ? widgetData.onlineUsers.length : null}
+                        hideFocus={true}
+                        badge={widgetData.onlineCount > 0 ? widgetData.onlineCount : null}
                     >
-                        <OnlineUsersContent
+                        <OnlineUsersWidget
                             users={widgetData.onlineUsers}
+                            onlineCount={widgetData.onlineCount}
                             currentUserId={user?.id || user?.userId}
-                            isRTL={isRTL}
+                            currentUser={user}
+                            isMobile={true}
                         />
                     </CollapsibleCard>
                 )}
@@ -766,6 +812,7 @@ const CollapsibleCard = ({
     isExpanded,
     onToggle,
     onFocus,
+    hideFocus = false,
     badge,
     scrollable,
     hasActionBar,
@@ -799,16 +846,18 @@ const CollapsibleCard = ({
                 </div>
 
                 <div className="flex items-center space-x-2 rtl:space-x-reverse flex-shrink-0">
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onFocus();
-                        }}
-                        className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500 dark:text-gray-400 transition-colors"
-                        title="Plein écran"
-                    >
-                        <Maximize2 className="w-4 h-4" />
-                    </button>
+                    {!hideFocus && onFocus && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onFocus();
+                            }}
+                            className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500 dark:text-gray-400 transition-colors"
+                            title="Plein écran"
+                        >
+                            <Maximize2 className="w-4 h-4" />
+                        </button>
+                    )}
                     <ChevronDown className={`w-5 h-5 text-gray-500 dark:text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
                 </div>
             </div>
@@ -890,14 +939,38 @@ const CollapsibleCard = ({
 };
 
 // Composant Utilisateurs Connectés
-const OnlineUsersContent = ({ users, currentUserId, isRTL }) => {
-    const otherUsers = (users || []).filter(u => u.id !== currentUserId);
+const OnlineUsersContent = ({ users, currentUserId, currentUser, isRTL }) => {
+    const normalizedCurrentId = String(currentUserId || '');
 
-    if (otherUsers.length === 0) {
+    // Construire la liste à afficher en garantissant la présence de l'utilisateur actuel
+    let displayUsers = Array.isArray(users) ? [...users] : [];
+
+    const hasMe = displayUsers.some(u => String(u.id) === normalizedCurrentId);
+    if (!hasMe && currentUser && normalizedCurrentId) {
+        displayUsers.unshift({
+            id: currentUser.id || currentUser.userId,
+            first_name: currentUser.first_name || currentUser.name || 'Moi',
+            last_name: currentUser.last_name || '',
+            role: currentUser.role || 'admin',
+            profile_image: currentUser.profile_image || null,
+            last_active: new Date().toISOString()
+        });
+    }
+
+    // Trier pour mettre l'utilisateur connecté en tête de liste
+    displayUsers.sort((a, b) => {
+        const aIsMe = String(a.id) === normalizedCurrentId;
+        const bIsMe = String(b.id) === normalizedCurrentId;
+        if (aIsMe) return -1;
+        if (bIsMe) return 1;
+        return 0;
+    });
+
+    if (displayUsers.length === 0) {
         return (
             <div className="p-4 text-center text-gray-500 dark:text-gray-400 text-xs">
                 <Users className="w-7 h-7 mx-auto mb-2 opacity-40 text-cyan-500" />
-                <p>{isRTL ? 'لا يوجد مستخدمون آخرون متصلون حالياً' : 'Aucun autre utilisateur connecté actuellement'}</p>
+                <p>{isRTL ? 'لا يوجد مستخدمون متصلون حالياً' : 'Aucun utilisateur connecté actuellement'}</p>
             </div>
         );
     }
@@ -908,35 +981,65 @@ const OnlineUsersContent = ({ users, currentUserId, isRTL }) => {
             case 'developer':
                 return { label: isRTL ? 'إدارة' : 'Direction', color: 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border-cyan-400/25' };
             case 'staff':
-                return { label: isRTL ? 'فريق' : 'Personnel', color: 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-400/25' };
+                return { label: isRTL ? 'فريق العمل' : 'Personnel', color: 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-400/25' };
             default:
                 return { label: isRTL ? 'ولي أمر' : 'Parent', color: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-400/25' };
         }
     };
 
+    const isOnlyMe = displayUsers.length === 1 && String(displayUsers[0].id) === normalizedCurrentId;
+
     return (
         <div className="p-3 space-y-2">
-            {otherUsers.map((u) => {
+            {displayUsers.map((u) => {
+                const isMe = String(u.id) === normalizedCurrentId;
                 const roleBadge = getRoleBadge(u.role);
+                const fullName = `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email || 'Utilisateur';
+
+                let avatarSrc = null;
+                if (u.profile_image) {
+                    avatarSrc = u.profile_image.startsWith('http')
+                        ? u.profile_image
+                        : `${API_CONFIG.BASE_URL}${u.profile_image.startsWith('/') ? '' : '/'}${u.profile_image}`;
+                }
+
                 return (
                     <div
                         key={u.id}
-                        className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50/80 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-700/60"
+                        className={`flex items-center justify-between p-2.5 rounded-xl border transition-all ${
+                            isMe
+                                ? 'bg-cyan-50/70 dark:bg-cyan-950/20 border-cyan-200/80 dark:border-cyan-800/50 shadow-xs'
+                                : 'bg-gray-50/80 dark:bg-gray-800/60 border-gray-100 dark:border-gray-700/60'
+                        }`}
                     >
                         <div className="flex items-center gap-2.5 min-w-0">
                             <div className="relative shrink-0">
-                                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">
-                                    {u.first_name?.[0] || 'U'}
+                                {avatarSrc ? (
+                                    <img
+                                        src={avatarSrc}
+                                        alt={fullName}
+                                        className="w-9 h-9 rounded-full object-cover border border-cyan-300/40"
+                                        onError={(e) => {
+                                            e.currentTarget.style.display = 'none';
+                                            e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                        }}
+                                    />
+                                ) : null}
+                                <div className={`w-9 h-9 rounded-full bg-gradient-to-br from-cyan-400 to-blue-600 text-white font-bold text-xs flex items-center justify-center shadow-xs ${avatarSrc ? 'hidden' : ''}`}>
+                                    {(u.first_name?.[0] || fullName[0] || 'U').toUpperCase()}
                                 </div>
                                 <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-gray-800 shadow-[0_0_4px_rgba(16,185,129,0.9)]" />
                             </div>
                             <div className="min-w-0">
                                 <p className="text-xs font-semibold text-gray-900 dark:text-white truncate">
-                                    {u.first_name} {u.last_name}
+                                    {fullName} {isMe && <span className="text-cyan-600 dark:text-cyan-400 font-semibold">({isRTL ? 'أنت' : 'Moi'})</span>}
                                 </p>
                                 <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
-                                    {isRTL ? 'نشط الآن' : 'En ligne'}
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+                                    {isMe
+                                        ? (isRTL ? 'متصل الآن (أنت)' : 'Connecté maintenant (Vous)')
+                                        : (isRTL ? 'متصل الآن' : 'En ligne')
+                                    }
                                 </span>
                             </div>
                         </div>
@@ -946,6 +1049,14 @@ const OnlineUsersContent = ({ users, currentUserId, isRTL }) => {
                     </div>
                 );
             })}
+
+            {isOnlyMe && (
+                <div className="pt-1 text-center">
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 italic">
+                        {isRTL ? 'لا يوجد أعضاء آخرون متصلون حالياً' : 'Aucun autre utilisateur connecté actuellement'}
+                    </p>
+                </div>
+            )}
         </div>
     );
 };
@@ -1023,7 +1134,7 @@ const FocusModal = ({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end"
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-end"
                 onClick={onClose}
             >
                 <motion.div
@@ -1031,7 +1142,7 @@ const FocusModal = ({
                     animate={{ y: 0 }}
                     exit={{ y: '100%' }}
                     transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-                    className="bg-white dark:bg-gray-800 w-full max-h-[85vh] rounded-t-3xl overflow-hidden shadow-2xl"
+                    className="bg-white dark:bg-gray-800 w-full max-h-[85vh] rounded-t-3xl overflow-hidden shadow-2xl pb-16 safe-area-inset-bottom"
                     onClick={(e) => e.stopPropagation()}
                 >
                     {/* Header */}
@@ -1048,7 +1159,7 @@ const FocusModal = ({
                     </div>
 
                     {/* Content */}
-                    <div className="overflow-y-auto max-h-[calc(85vh-64px)]">
+                    <div className="overflow-y-auto max-h-[calc(85vh-120px)] pb-6">
                         {section === 'tasks' && (
                             <div className="p-4">
                                 <TodayTasksWidget
@@ -1084,14 +1195,20 @@ const FocusModal = ({
                             </div>
                         )}
                         {section === 'activities' && (
-                            <ActivitiesContent activities={recentActivities} />
+                            <div className="p-4">
+                                <RecentActivitiesWidget activities={recentActivities} isMobile={true} />
+                            </div>
                         )}
                         {section === 'onlineUsers' && (
-                            <OnlineUsersContent
-                                users={onlineUsers}
-                                currentUserId={user?.id || user?.userId}
-                                isRTL={isRTL}
-                            />
+                            <div className="p-4">
+                                <OnlineUsersWidget
+                                    users={onlineUsers}
+                                    onlineCount={widgetData.onlineCount}
+                                    currentUserId={user?.id || user?.userId}
+                                    currentUser={user}
+                                    isMobile={true}
+                                />
+                            </div>
                         )}
                     </div>
                 </motion.div>
