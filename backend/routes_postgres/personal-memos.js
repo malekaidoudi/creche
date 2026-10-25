@@ -53,7 +53,7 @@ router.get('/', auth.authenticateToken, async (req, res) => {
 });
 
 /**
- * GET /api/personal-memos/today - Mémos d'aujourd'hui
+ * GET /api/personal-memos/today - Mémos à traiter (aujourd'hui + en retard, non terminés)
  */
 router.get('/today', auth.authenticateToken, async (req, res) => {
   try {

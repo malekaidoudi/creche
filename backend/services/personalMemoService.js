@@ -64,16 +64,20 @@ async function getUserMemos(userId, filters = {}) {
 }
 
 /**
- * Récupérer les mémos d'aujourd'hui
+ * Récupérer les mémos "à traiter" : ceux d'aujourd'hui ET ceux des jours
+ * précédents non encore marqués comme terminés (ils ne doivent jamais
+ * disparaître tant que l'utilisateur ne les a pas explicitement complétés).
+ * Un mémo complété, lui, sort définitivement de cette liste quelle que soit sa date.
+ * ⚠️ Ne concerne que la table personal_memos : ne touche pas à la logique des tâches (tasks).
  */
 async function getTodayMemos(userId) {
   try {
     const result = await pool.query(`
       SELECT * FROM personal_memos
       WHERE user_id = $1
-        AND memo_date = CURRENT_DATE
+        AND memo_date <= CURRENT_DATE
         AND is_completed = false
-      ORDER BY created_at ASC
+      ORDER BY memo_date ASC, created_at ASC
     `, [userId]);
     
     return { success: true, memos: result.rows };
