@@ -33,6 +33,7 @@ import { useDialogContext } from '../../contexts/DialogContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
+import MobileNavigation from '../../components/mobile/MobileNavigation';
 
 const DocumentsPage = () => {
     const { user } = useAuth();
@@ -353,34 +354,34 @@ const DocumentsPage = () => {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-64">
+            <div className="flex items-center justify-center min-h-[50vh] pt-[calc(env(safe-area-inset-top,0px)+2rem)] lg:pt-0">
                 <LoadingSpinner size="lg" />
             </div>
         );
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 pt-[calc(env(safe-area-inset-top,0px)+0.875rem)] lg:pt-0 pb-24 lg:pb-6 px-3 sm:px-4 lg:px-0">
             {/* En-tête */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                    <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
                         {isRTL ? 'إدارة المستندات' : 'Gestion des documents'}
                     </h1>
-                    <p className="text-gray-600 dark:text-gray-300">
+                    <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 mt-0.5">
                         {isRTL ? 'إدارة المستندات الإدارية والملفات' : 'Gérer les documents administratifs et fichiers'}
                     </p>
                 </div>
 
-                <div className="flex gap-2">
-                    <Button variant="outline" onClick={loadDocuments}>
-                        <RefreshCw className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                <div className="flex items-center gap-2 flex-wrap">
+                    <Button variant="outline" size="sm" onClick={loadDocuments}>
+                        <RefreshCw className="w-4 h-4 mr-1.5 rtl:mr-0 rtl:ml-1.5" />
                         {isRTL ? 'تحديث' : 'Actualiser'}
                     </Button>
 
                     {isAdmin() && (
-                        <Button onClick={() => setShowUploadModal(true)}>
-                            <Plus className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                        <Button size="sm" onClick={() => setShowUploadModal(true)}>
+                            <Plus className="w-4 h-4 mr-1.5 rtl:mr-0 rtl:ml-1.5" />
                             {isRTL ? 'رفع مستند إداري' : 'Ajouter document admin'}
                         </Button>
                     )}
@@ -1046,6 +1047,9 @@ const DocumentsPage = () => {
                     </div>
                 </div>
             )}
+
+            {/* Barre de navigation mobile */}
+            <MobileNavigation />
         </div>
     );
 };

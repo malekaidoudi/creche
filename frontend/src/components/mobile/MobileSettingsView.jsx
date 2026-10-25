@@ -304,16 +304,17 @@ const MobileSettingsView = ({ onSwitchToDesktopView }) => {
 
         {attendanceReminderEnabled ? (
           <div className="pt-3 border-t border-gray-100 dark:border-slate-800/80 space-y-3">
-            {/* Heure (Capsule iOS Cyan) */}
-            <div className="flex items-center justify-between bg-gray-50 dark:bg-slate-950/70 p-2.5 rounded-xl border border-cyan-500/30">
-              <span className="text-xs text-gray-700 dark:text-slate-300 font-medium">
+            {/* Heure (Capsule iOS Cyan avec espacement et police harmonieuse) */}
+            <div className="flex items-center justify-between gap-4 bg-gray-50/90 dark:bg-slate-950/70 px-3.5 py-2.5 rounded-xl border border-cyan-500/30">
+              <span className="text-xs text-gray-700 dark:text-slate-300 font-medium whitespace-nowrap">
                 {isRTL ? 'وقت التنبيه' : 'Heure de notification'}
               </span>
               <input
                 type="time"
                 value={attendanceReminderTime}
                 onChange={(e) => setAttendanceReminderTime(e.target.value)}
-                className="bg-white dark:bg-slate-900 border border-cyan-500/40 text-cyan-600 dark:text-cyan-300 font-bold text-xs px-2.5 py-1 rounded-lg outline-none cursor-pointer focus:ring-2 focus:ring-cyan-500 shadow-inner"
+                className="bg-white dark:bg-slate-900 border border-cyan-500/40 text-cyan-700 dark:text-cyan-300 font-semibold text-xs px-2.5 py-1.5 rounded-lg outline-none cursor-pointer focus:ring-2 focus:ring-cyan-500 shadow-xs text-center w-24 shrink-0 [color-scheme:light_dark]"
+                style={{ fontSize: '13px', lineHeight: '1.2' }}
               />
             </div>
 
