@@ -156,16 +156,20 @@ const TodayTasksWidgetMobile = () => {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
-            const eventsResponse = await api.get('/api/events', {
-                params: { limit: 50 }
-            });
+            const [eventsResponse, memosResponse] = await Promise.allSettled([
+                api.get('/api/events', { params: { limit: 50 } }),
+                api.get('/api/personal-memos/today')
+            ]);
 
             // NE PAS charger les RDV - ils ont leur propre widget
 
-            if (eventsResponse.data.success) {
+            if (eventsResponse.status === 'fulfilled' && eventsResponse.value.data.success) {
                 // Filtrer STRICTEMENT pour aujourd'hui et exclure les tâches en retard
-                const filtered = (eventsResponse.data.events || []).filter(event => {
-                    if (!['task', 'memo', 'event', 'meeting'].includes(event.type)) return false;
+                // ⚠️ Les mémos ne viennent PAS de /api/events (table events, type='memo' = legacy
+                // et jamais alimentée) mais de /api/personal-memos (table personal_memos),
+                // traités séparément ci-dessous via memosResponse.
+                const filtered = (eventsResponse.value.data.events || []).filter(event => {
+                    if (!['task', 'event', 'meeting'].includes(event.type)) return false;
 
                     if (event.metadata && typeof event.metadata === 'object') {
                         if (event.metadata.from_staff === true) return false;
@@ -179,19 +183,27 @@ const TodayTasksWidgetMobile = () => {
 
                     if (event.status === 'completed' || event.status === 'cancelled') return false;
 
-                    // Mémos créés aujourd'hui uniquement
-                    if (event.type === 'memo') {
-                        const createdDate = new Date(event.created_at);
-                        createdDate.setHours(0, 0, 0, 0);
-                        return createdDate.getTime() === today.getTime();
-                    }
-
-                    // Autres types: STRICTEMENT aujourd'hui (pas en retard)
+                    // STRICTEMENT aujourd'hui (pas en retard)
                     const eventDate = new Date(event.start_date);
                     eventDate.setHours(0, 0, 0, 0);
 
                     return eventDate.getTime() === today.getTime();
                 });
+
+                // Mémos personnels : aujourd'hui + en retard, tant qu'ils ne sont pas marqués
+                // terminés (même règle que le widget desktop, cf. personalMemoService.getTodayMemos)
+                let memos = [];
+                if (memosResponse.status === 'fulfilled' && memosResponse.value.data.success) {
+                    memos = (memosResponse.value.data.memos || []).map(memo => ({
+                        id: `memo-${memo.id}`,
+                        type: 'memo',
+                        title: memo.content.substring(0, 50) + (memo.content.length > 50 ? '...' : ''),
+                        description: memo.content,
+                        start_date: memo.memo_date,
+                        priority: 'low',
+                        status: memo.is_completed ? 'completed' : 'pending'
+                    }));
+                }
 
                 // NE PAS inclure les RDV - ils ont leur propre widget
                 // const appointmentTasks = [...];
@@ -227,7 +239,7 @@ const TodayTasksWidgetMobile = () => {
                 }
 
                 // Combiner SANS les RDV (ils ont leur propre widget)
-                const combined = [...filtered, ...birthdays];
+                const combined = [...filtered, ...memos, ...birthdays];
 
                 combined.sort((a, b) => {
                     // Par priorité puis par heure
@@ -276,6 +288,9 @@ const TodayTasksWidgetMobile = () => {
             if (task.type === 'appointment') {
                 const apptId = task.metadata?.appointment_id || task.id.replace('appt-', '');
                 await api.patch(`/api/appointments/${apptId}/status`, { status: 'completed' });
+            } else if (task.type === 'memo') {
+                const memoId = task.id.replace('memo-', '');
+                await api.patch(`/api/personal-memos/${memoId}/complete`);
             } else {
                 await api.patch(`/api/events/${task.id}/status`, { status: 'completed' });
             }
