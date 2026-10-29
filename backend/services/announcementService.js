@@ -75,7 +75,7 @@ async function getAnnouncements(filters = {}) {
   try {
     const { is_published, event_type, current_month_only = false } = filters;
 
-    let query = `
+    let sql = `
       SELECT 
         a.*,
         u.first_name || ' ' || u.last_name as created_by_name
@@ -89,25 +89,25 @@ async function getAnnouncements(filters = {}) {
 
     if (is_published !== undefined) {
       paramCount++;
-      query += ` AND a.is_published = $${paramCount}`;
+      sql += ` AND a.is_published = $${paramCount}`;
       params.push(is_published);
     }
 
     if (event_type) {
       paramCount++;
-      query += ` AND a.event_type = $${paramCount}`;
+      sql += ` AND a.event_type = $${paramCount}`;
       params.push(event_type);
     }
 
     // Filtrer par mois courant si demandé
     if (current_month_only) {
-      query += ` AND a.event_date >= DATE_TRUNC('month', CURRENT_DATE)`;
-      query += ` AND a.event_date < DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month'`;
+      sql += ` AND a.event_date >= DATE_TRUNC('month', CURRENT_DATE)`;
+      sql += ` AND a.event_date < DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month'`;
     }
 
-    query += ` ORDER BY a.event_date ASC`;
+    sql += ` ORDER BY a.event_date ASC`;
 
-    const result = await query(query, params);
+    const result = await query(sql, params);
 
     return { success: true, announcements: result.rows };
 

@@ -35,25 +35,25 @@ async function getUserMemos(userId, filters = {}) {
   try {
     const { date, is_completed } = filters;
     
-    let query = 'SELECT * FROM personal_memos WHERE user_id = $1';
+    let sql = 'SELECT * FROM personal_memos WHERE user_id = $1';
     const params = [userId];
     let paramCount = 1;
     
     if (date) {
       paramCount++;
-      query += ` AND memo_date = $${paramCount}`;
+      sql += ` AND memo_date = $${paramCount}`;
       params.push(date);
     }
     
     if (is_completed !== undefined) {
       paramCount++;
-      query += ` AND is_completed = $${paramCount}`;
+      sql += ` AND is_completed = $${paramCount}`;
       params.push(is_completed);
     }
     
-    query += ' ORDER BY memo_date DESC, created_at DESC';
+    sql += ' ORDER BY memo_date DESC, created_at DESC';
     
-    const result = await query(query, params);
+    const result = await query(sql, params);
     
     return { success: true, memos: result.rows };
     

@@ -101,15 +101,15 @@ async function sendNotificationToMany(userIds, notificationData) {
  */
 async function sendNotificationToRole(role, notificationData, excludeUserId = null) {
     try {
-        let query = 'SELECT id FROM users WHERE role = $1 AND is_active = true';
+        let sql = 'SELECT id FROM users WHERE role = $1 AND is_active = true';
         const params = [role];
 
         if (excludeUserId) {
-            query += ' AND id != $2';
+            sql += ' AND id != $2';
             params.push(excludeUserId);
         }
 
-        const result = await query(query, params);
+        const result = await query(sql, params);
         const userIds = result.rows.map(row => row.id);
 
         return await sendNotificationToMany(userIds, notificationData);
@@ -127,15 +127,15 @@ async function sendNotificationToAllUsers(notificationData, excludeUserId = null
         console.log('📢 sendNotificationToAllUsers:', { title: notificationData.title, excludeUserId });
 
         // Exclure les admins - notifications uniquement pour parents et staff
-        let query = "SELECT id FROM users WHERE role IN ('parent', 'staff') AND is_active = true";
+        let sql = "SELECT id FROM users WHERE role IN ('parent', 'staff') AND is_active = true";
         const params = [];
 
         if (excludeUserId) {
-            query += ' AND id != $1';
+            sql += ' AND id != $1';
             params.push(excludeUserId);
         }
 
-        const result = await query(query, params);
+        const result = await query(sql, params);
         const userIds = result.rows.map(row => row.id);
 
         console.log(`📢 Envoi à ${userIds.length} utilisateurs (parents + staff):`, userIds);

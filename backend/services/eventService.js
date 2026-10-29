@@ -112,7 +112,7 @@ async function createEvent(eventData, userId) {
  */
 async function getEvents(filters = {}) {
   try {
-    let query = `
+    let sql = `
       SELECT 
         e.*,
         u1.first_name || ' ' || u1.last_name as created_by_name,
@@ -135,31 +135,31 @@ async function getEvents(filters = {}) {
     // Filtres
     if (filters.type) {
       paramCount++;
-      query += ` AND e.type = $${paramCount}`;
+      sql += ` AND e.type = $${paramCount}`;
       params.push(filters.type);
     }
 
     if (filters.status) {
       paramCount++;
-      query += ` AND e.status = $${paramCount}`;
+      sql += ` AND e.status = $${paramCount}`;
       params.push(filters.status);
     }
 
     if (filters.priority) {
       paramCount++;
-      query += ` AND e.priority = $${paramCount}`;
+      sql += ` AND e.priority = $${paramCount}`;
       params.push(filters.priority);
     }
 
     if (filters.assigned_to) {
       paramCount++;
-      query += ` AND e.assigned_to = $${paramCount}`;
+      sql += ` AND e.assigned_to = $${paramCount}`;
       params.push(filters.assigned_to);
     }
 
     if (filters.child_id) {
       paramCount++;
-      query += ` AND e.child_id = $${paramCount}`;
+      sql += ` AND e.child_id = $${paramCount}`;
       params.push(filters.child_id);
     }
 
@@ -168,45 +168,45 @@ async function getEvents(filters = {}) {
     // Sinon, si user_id est fourni (contexte utilisateur), filtrer TOUS les mémos par cet utilisateur
     if (filters.created_by) {
       paramCount++;
-      query += ` AND e.created_by = $${paramCount}`;
+      sql += ` AND e.created_by = $${paramCount}`;
       params.push(filters.created_by);
     } else if (filters.user_id) {
       // Filtrer automatiquement les mémos par utilisateur
       // Les autres types (task, event, etc.) restent visibles par tous
       paramCount++;
-      query += ` AND (e.type != 'memo' OR e.created_by = $${paramCount})`;
+      sql += ` AND (e.type != 'memo' OR e.created_by = $${paramCount})`;
       params.push(filters.user_id);
     }
 
     if (filters.start_date) {
       paramCount++;
-      query += ` AND e.start_date >= $${paramCount}`;
+      sql += ` AND e.start_date >= $${paramCount}`;
       params.push(filters.start_date);
     }
 
     if (filters.end_date) {
       paramCount++;
-      query += ` AND e.start_date <= $${paramCount}`;
+      sql += ` AND e.start_date <= $${paramCount}`;
       params.push(filters.end_date);
     }
 
     // Tri
-    query += ` ORDER BY e.start_date ASC`;
+    sql += ` ORDER BY e.start_date ASC`;
 
     // Pagination
     if (filters.limit) {
       paramCount++;
-      query += ` LIMIT $${paramCount}`;
+      sql += ` LIMIT $${paramCount}`;
       params.push(filters.limit);
     }
 
     if (filters.offset) {
       paramCount++;
-      query += ` OFFSET $${paramCount}`;
+      sql += ` OFFSET $${paramCount}`;
       params.push(filters.offset);
     }
 
-    const result = await query(query, params);
+    const result = await query(sql, params);
 
     return { success: true, events: result.rows };
 
@@ -775,7 +775,7 @@ async function createTaskCompletedNotification(task, recipientId, completedById)
  */
 async function getCalendarEvents(startDate, endDate, userId, types = null, userRole = 'admin') {
   try {
-    let query = `
+    let sql = `
       SELECT 
         e.id,
         e.title,
@@ -798,7 +798,7 @@ async function getCalendarEvents(startDate, endDate, userId, types = null, userR
     // Filtres selon le rôle
     if (userRole === 'admin') {
       // Admin voit tout ce qui lui est assigné ou créé par lui SAUF les mémos
-      query += ` AND (e.assigned_to = $${paramIndex} OR e.created_by = $${paramIndex}) AND e.type != 'memo'`;
+      sql += ` AND (e.assigned_to = $${paramIndex} OR e.created_by = $${paramIndex}) AND e.type != 'memo'`;
       params.push(userId);
       paramIndex++;
     } else if (userRole === 'staff') {
@@ -806,7 +806,7 @@ async function getCalendarEvents(startDate, endDate, userId, types = null, userR
       // - Les mémos de l'admin (type='memo' ET created_by != staff)
       // - Les RDV non assignés à lui
       // - Les tâches non assignées à lui
-      query += ` AND (
+      sql += ` AND (
         (e.type NOT IN ('memo', 'rdv', 'task'))
         OR (e.type = 'memo' AND e.created_by = $${paramIndex})
         OR (e.type = 'rdv' AND e.assigned_to = $${paramIndex})
@@ -820,7 +820,7 @@ async function getCalendarEvents(startDate, endDate, userId, types = null, userR
       // - Les anniversaires (type='birthday')
       // - Les vacances (type='vacation_reminder')
       // - Les RDV liés à lui (assigned_to)
-      query += ` AND (
+      sql += ` AND (
         e.type = 'event'
         OR e.type = 'birthday'
         OR e.type = 'vacation_reminder'
@@ -832,15 +832,15 @@ async function getCalendarEvents(startDate, endDate, userId, types = null, userR
 
     // Ajouter le filtre par type si spécifié
     if (types && types.length > 0) {
-      query += ` AND e.type = ANY($${paramIndex})`;
+      sql += ` AND e.type = ANY($${paramIndex})`;
       params.push(types);
       paramIndex++;
     }
 
-    query += ` ORDER BY e.start_date ASC`;
+    sql += ` ORDER BY e.start_date ASC`;
 
     try {
-      const result = await query(query, params);
+      const result = await query(sql, params);
       return { success: true, events: result.rows };
     } catch (queryError) {
       console.error('❌ Erreur SQL Query:', queryError.message);

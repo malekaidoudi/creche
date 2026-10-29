@@ -80,7 +80,7 @@ async function getUserTasks(userId, filters = {}) {
   try {
     const { status, date } = filters;
 
-    let query = `
+    let sql = `
       SELECT 
         t.*,
         u.first_name || ' ' || u.last_name as created_by_name
@@ -94,19 +94,19 @@ async function getUserTasks(userId, filters = {}) {
 
     if (status) {
       paramCount++;
-      query += ` AND t.status = $${paramCount}`;
+      sql += ` AND t.status = $${paramCount}`;
       params.push(status);
     }
 
     if (date) {
       paramCount++;
-      query += ` AND DATE(t.due_date) = $${paramCount}`;
+      sql += ` AND DATE(t.due_date) = $${paramCount}`;
       params.push(date);
     }
 
-    query += ` ORDER BY t.priority DESC, t.due_date ASC`;
+    sql += ` ORDER BY t.priority DESC, t.due_date ASC`;
 
-    const result = await query(query, params);
+    const result = await query(sql, params);
 
     return { success: true, tasks: result.rows };
 
@@ -452,14 +452,14 @@ async function updateTask(taskId, updates) {
     fields.push(`updated_at = NOW()`);
     values.push(taskId);
 
-    const query = `
+    const sql = `
       UPDATE tasks
       SET ${fields.join(', ')}
       WHERE id = $${idx}
       RETURNING *
     `;
 
-    const result = await query(query, values);
+    const result = await query(sql, values);
 
     if (result.rows.length === 0) {
       return { success: false, error: 'Tâche non trouvée' };

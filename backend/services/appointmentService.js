@@ -473,7 +473,7 @@ async function getAppointments(userId, role, filters = {}) {
     const { status } = filters;
 
     // Requête compatible avec l'ancienne et nouvelle structure de table
-    let query = `
+    let sql = `
       SELECT 
         a.*,
         u.first_name || ' ' || u.last_name as parent_name,
@@ -489,19 +489,19 @@ async function getAppointments(userId, role, filters = {}) {
 
     if (role === 'parent') {
       paramCount++;
-      query += ` AND a.parent_id = $${paramCount}`;
+      sql += ` AND a.parent_id = $${paramCount}`;
       params.push(userId);
     }
 
     if (status) {
       paramCount++;
-      query += ` AND a.status = $${paramCount}`;
+      sql += ` AND a.status = $${paramCount}`;
       params.push(status);
     }
 
-    query += ` ORDER BY COALESCE(a.confirmed_date, a.proposed_date) DESC`;
+    sql += ` ORDER BY COALESCE(a.confirmed_date, a.proposed_date) DESC`;
 
-    const result = await query(query, params);
+    const result = await query(sql, params);
     return { success: true, appointments: result.rows };
 
   } catch (error) {
