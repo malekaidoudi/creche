@@ -3,7 +3,7 @@
  * Gère l'envoi de notifications pour tous les événements du système
  */
 
-const { pool } = require('../config/db_postgres');
+const { query } = require('../config/db_postgres');
 
 /**
  * Types de notifications supportés
@@ -57,7 +57,7 @@ async function createNotification(userId, { title, message, type, relatedId = nu
     try {
         console.log('📝 Création notification:', { userId, title, type });
 
-        const result = await pool.query(`
+        const result = await query(`
             INSERT INTO notifications (user_id, title, message, type, related_id, metadata, is_read, created_at)
             VALUES ($1, $2, $3, $4, $5, $6, false, CURRENT_TIMESTAMP)
             RETURNING *
@@ -109,7 +109,7 @@ async function sendNotificationToRole(role, notificationData, excludeUserId = nu
             params.push(excludeUserId);
         }
 
-        const result = await pool.query(query, params);
+        const result = await query(query, params);
         const userIds = result.rows.map(row => row.id);
 
         return await sendNotificationToMany(userIds, notificationData);
@@ -135,7 +135,7 @@ async function sendNotificationToAllUsers(notificationData, excludeUserId = null
             params.push(excludeUserId);
         }
 
-        const result = await pool.query(query, params);
+        const result = await query(query, params);
         const userIds = result.rows.map(row => row.id);
 
         console.log(`📢 Envoi à ${userIds.length} utilisateurs (parents + staff):`, userIds);

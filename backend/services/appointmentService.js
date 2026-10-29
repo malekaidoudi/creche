@@ -15,7 +15,7 @@
  * - Marquées complètes quand le RDV change de statut
  */
 
-const { pool } = require('../config/db_postgres');
+const { pool, query } = require('../config/db_postgres');
 const cloudinaryService = require('./cloudinaryService');
 const pushNotificationService = require('./pushNotificationService');
 
@@ -25,7 +25,7 @@ const pushNotificationService = require('./pushNotificationService');
 
 async function getUserById(userId) {
   try {
-    const result = await pool.query(
+    const result = await query(
       'SELECT id, email, first_name, last_name, role FROM users WHERE id = $1',
       [userId]
     );
@@ -501,7 +501,7 @@ async function getAppointments(userId, role, filters = {}) {
 
     query += ` ORDER BY COALESCE(a.confirmed_date, a.proposed_date) DESC`;
 
-    const result = await pool.query(query, params);
+    const result = await query(query, params);
     return { success: true, appointments: result.rows };
 
   } catch (error) {
@@ -515,7 +515,7 @@ async function getAppointments(userId, role, filters = {}) {
  */
 async function getAppointmentById(appointmentId, userId, role) {
   try {
-    const result = await pool.query(`
+    const result = await query(`
       SELECT 
         a.*,
         u.first_name || ' ' || u.last_name as parent_name,
@@ -551,7 +551,7 @@ async function getAppointmentById(appointmentId, userId, role) {
 async function getTodayAppointments() {
   try {
     // Compatible avec ancienne et nouvelle structure (rescheduled ou counter_proposed)
-    const result = await pool.query(`
+    const result = await query(`
       SELECT 
         a.*,
         COALESCE(u.first_name || ' ' || u.last_name, a.parent_first_name || ' ' || a.parent_last_name) as parent_name,
@@ -581,7 +581,7 @@ async function getPendingAppointments() {
     // Essayer d'abord avec la nouvelle structure
     let result;
     try {
-      result = await pool.query(`
+      result = await query(`
         SELECT 
           a.*,
           u.first_name || ' ' || u.last_name as parent_name,
@@ -594,7 +594,7 @@ async function getPendingAppointments() {
       `);
     } catch (e) {
       // Fallback pour ancienne structure (sans pending_response_from)
-      result = await pool.query(`
+      result = await query(`
         SELECT 
           a.*,
           u.first_name || ' ' || u.last_name as parent_name,
@@ -669,7 +669,7 @@ async function cancelAppointment(appointmentId, userId) {
  */
 async function completeAppointment(appointmentId, notes) {
   try {
-    const result = await pool.query(`
+    const result = await query(`
       UPDATE appointments
       SET status = 'completed', notes = $1, pending_response_from = NULL, updated_at = NOW()
       WHERE id = $2
@@ -700,7 +700,7 @@ async function updateAppointmentStatus(appointmentId, status, userId) {
       return { success: false, error: `Statut invalide. Valeurs acceptées: ${validStatuses.join(', ')}` };
     }
 
-    const result = await pool.query(`
+    const result = await query(`
       UPDATE appointments
       SET status = $1, updated_at = NOW()
       WHERE id = $2

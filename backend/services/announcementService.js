@@ -3,7 +3,7 @@
  * Gestion des actualités/événements pour les parents
  */
 
-const { pool } = require('../config/db_postgres');
+const { pool, query } = require('../config/db_postgres');
 const pushNotificationService = require('./pushNotificationService');
 
 /**
@@ -107,7 +107,7 @@ async function getAnnouncements(filters = {}) {
 
     query += ` ORDER BY a.event_date ASC`;
 
-    const result = await pool.query(query, params);
+    const result = await query(query, params);
 
     return { success: true, announcements: result.rows };
 
@@ -125,7 +125,7 @@ async function getParentAnnouncements(parentUserId) {
     console.log('🔍 getParentAnnouncements pour user_id:', parentUserId);
 
     // Récupérer les enfants du parent (utiliser parent_id)
-    const childrenResult = await pool.query(
+    const childrenResult = await query(
       'SELECT id FROM children WHERE parent_id = $1',
       [parentUserId]
     );
@@ -135,7 +135,7 @@ async function getParentAnnouncements(parentUserId) {
     const childIds = childrenResult.rows.map(c => c.id);
 
     // Récupérer les annonces publiées du mois courant uniquement (DISTINCT pour éviter doublons)
-    const result = await pool.query(`
+    const result = await query(`
       SELECT DISTINCT ON (a.id)
         a.*,
         u.first_name || ' ' || u.last_name as author_name
@@ -209,7 +209,7 @@ async function publishAnnouncement(announcementId) {
  */
 async function deleteAnnouncement(announcementId) {
   try {
-    const result = await pool.query(
+    const result = await query(
       'DELETE FROM announcements WHERE id = $1 RETURNING *',
       [announcementId]
     );

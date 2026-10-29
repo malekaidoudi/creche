@@ -3,7 +3,7 @@
  * Messages staff ↔ admin avec réponses
  */
 
-const { pool } = require('../config/db_postgres');
+const { pool, query } = require('../config/db_postgres');
 const pushNotificationService = require('./pushNotificationService');
 
 /**
@@ -72,7 +72,7 @@ async function sendMessage(messageData, senderId) {
  */
 async function getUserMessages(userId) {
   try {
-    const result = await pool.query(`
+    const result = await query(`
       SELECT 
         m.*,
         sender.first_name || ' ' || sender.last_name as sender_name,
@@ -98,7 +98,7 @@ async function getUserMessages(userId) {
  */
 async function getConversation(messageId, userId) {
   try {
-    const result = await pool.query(`
+    const result = await query(`
       SELECT 
         m.*,
         sender.first_name || ' ' || sender.last_name as sender_name,
@@ -124,7 +124,7 @@ async function getConversation(messageId, userId) {
  */
 async function markAsRead(messageId, userId) {
   try {
-    const result = await pool.query(`
+    const result = await query(`
       UPDATE staff_messages
       SET is_read = true, read_at = NOW()
       WHERE id = $1 AND recipient_id = $2
@@ -148,7 +148,7 @@ async function markAsRead(messageId, userId) {
  */
 async function getUserById(userId) {
   try {
-    const result = await pool.query(
+    const result = await query(
       'SELECT id, email, first_name, last_name, role FROM users WHERE id = $1',
       [userId]
     );
@@ -164,7 +164,7 @@ async function getUserById(userId) {
  */
 async function getUnreadMessages(userId) {
   try {
-    const result = await pool.query(`
+    const result = await query(`
       SELECT 
         sm.id,
         sm.content,
@@ -197,7 +197,7 @@ async function getUnreadMessages(userId) {
  */
 async function getConversationsList(userId) {
   try {
-    const result = await pool.query(`
+    const result = await query(`
       WITH conversation_contacts AS (
         SELECT DISTINCT
           CASE 
@@ -270,7 +270,7 @@ async function getConversationsList(userId) {
 async function getConversationWithContact(contactId, userId) {
   try {
     // Récupérer les infos du contact
-    const contactResult = await pool.query(
+    const contactResult = await query(
       'SELECT id, first_name, last_name, role, profile_image FROM users WHERE id = $1',
       [contactId]
     );
@@ -278,7 +278,7 @@ async function getConversationWithContact(contactId, userId) {
 
     // Si le contact est un parent, récupérer ses enfants
     if (contact && contact.role === 'parent') {
-      const childrenResult = await pool.query(
+      const childrenResult = await query(
         `SELECT c.id, c.first_name 
          FROM children c
          WHERE c.parent_id = $1 AND c.is_active = true
@@ -289,7 +289,7 @@ async function getConversationWithContact(contactId, userId) {
     }
 
     // Récupérer tous les messages entre les deux utilisateurs
-    const result = await pool.query(`
+    const result = await query(`
       SELECT 
         m.id,
         m.content,
@@ -306,7 +306,7 @@ async function getConversationWithContact(contactId, userId) {
     `, [userId, contactId]);
 
     // Marquer les messages reçus comme lus
-    await pool.query(`
+    await query(`
       UPDATE staff_messages
       SET is_read = true, read_at = NOW()
       WHERE sender_id = $1 AND recipient_id = $2 AND is_read = false

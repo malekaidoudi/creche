@@ -5,7 +5,7 @@
  */
 
 const webpush = require('web-push');
-const { pool } = require('../config/db_postgres');
+const { query } = require('../config/db_postgres');
 
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
@@ -28,7 +28,7 @@ async function saveSubscription(userId, subscription, userAgent = null) {
         throw new Error('Abonnement push invalide: endpoint/keys manquants');
     }
 
-    const result = await pool.query(`
+    const result = await query(`
         INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, user_agent)
         VALUES ($1, $2, $3, $4, $5)
         ON CONFLICT (endpoint) DO UPDATE
@@ -46,7 +46,7 @@ async function saveSubscription(userId, subscription, userAgent = null) {
  * Supprimer un abonnement push (désinscription explicite)
  */
 async function removeSubscription(userId, endpoint) {
-    await pool.query(
+    await query(
         'DELETE FROM push_subscriptions WHERE user_id = $1 AND endpoint = $2',
         [userId, endpoint]
     );
@@ -56,7 +56,7 @@ async function removeSubscription(userId, endpoint) {
  * Supprimer un abonnement devenu invalide (410 Gone / 404 renvoyés par le navigateur)
  */
 async function removeSubscriptionByEndpoint(endpoint) {
-    await pool.query('DELETE FROM push_subscriptions WHERE endpoint = $1', [endpoint]);
+    await query('DELETE FROM push_subscriptions WHERE endpoint = $1', [endpoint]);
 }
 
 /**
@@ -89,7 +89,7 @@ async function sendPushToUser(userId, { title, message, url = '/', metadata = nu
     if (!isConfigured || !userId) return;
 
     try {
-        const result = await pool.query(
+        const result = await query(
             'SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = $1',
             [userId]
         );
@@ -113,7 +113,7 @@ async function sendPushToMany(userIds, { title, message, url = '/', metadata = n
         const uniqueIds = Array.from(new Set(userIds.filter(Boolean)));
         if (uniqueIds.length === 0) return;
 
-        const result = await pool.query(
+        const result = await query(
             'SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = ANY($1::int[])',
             [uniqueIds]
         );

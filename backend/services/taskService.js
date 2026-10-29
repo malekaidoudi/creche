@@ -3,7 +3,7 @@
  * Gestion des tâches assignées par admin au staff
  */
 
-const { pool } = require('../config/db_postgres');
+const { pool, query } = require('../config/db_postgres');
 const pushNotificationService = require('./pushNotificationService');
 
 /**
@@ -106,7 +106,7 @@ async function getUserTasks(userId, filters = {}) {
 
     query += ` ORDER BY t.priority DESC, t.due_date ASC`;
 
-    const result = await pool.query(query, params);
+    const result = await query(query, params);
 
     return { success: true, tasks: result.rows };
 
@@ -126,7 +126,7 @@ async function getUserTasks(userId, filters = {}) {
 async function getTodayTasks(userId) {
   try {
     // Chaque utilisateur voit uniquement les tâches qui lui sont assignées
-    const result = await pool.query(`
+    const result = await query(`
       SELECT 
         t.id,
         t.title,
@@ -177,7 +177,7 @@ async function getOverdueTasks(userId = null, userRole = null) {
     // Si userId fourni, récupérer le rôle
     let role = userRole;
     if (userId && !role) {
-      const userResult = await pool.query('SELECT role FROM users WHERE id = $1', [userId]);
+      const userResult = await query('SELECT role FROM users WHERE id = $1', [userId]);
       role = userResult.rows[0]?.role || 'staff';
     }
 
@@ -187,7 +187,7 @@ async function getOverdueTasks(userId = null, userRole = null) {
       ? ''
       : 'AND t.assigned_to = $1';
 
-    const result = await pool.query(`
+    const result = await query(`
       SELECT 
         t.id,
         t.title,
@@ -378,7 +378,7 @@ async function sendTaskReminder(taskId, adminId) {
  */
 async function deleteTask(taskId) {
   try {
-    const result = await pool.query(
+    const result = await query(
       'DELETE FROM tasks WHERE id = $1 RETURNING *',
       [taskId]
     );
@@ -402,7 +402,7 @@ async function deleteTask(taskId) {
  */
 async function getUserById(userId) {
   try {
-    const result = await pool.query(
+    const result = await query(
       'SELECT id, email, first_name, last_name, role FROM users WHERE id = $1',
       [userId]
     );
@@ -459,7 +459,7 @@ async function updateTask(taskId, updates) {
       RETURNING *
     `;
 
-    const result = await pool.query(query, values);
+    const result = await query(query, values);
 
     if (result.rows.length === 0) {
       return { success: false, error: 'Tâche non trouvée' };

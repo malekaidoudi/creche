@@ -3,7 +3,7 @@
  * Génération automatique des événements d'anniversaire
  */
 
-const { pool } = require('../config/db_postgres');
+const { pool, query } = require('../config/db_postgres');
 const { sendBirthdayReminder } = require('./eventEmailService');
 
 /**
@@ -133,7 +133,7 @@ async function checkBirthdayEventExists(personId, year, type = 'child') {
     
     const field = type === 'child' ? 'child_id' : 'assigned_to';
     
-    const result = await pool.query(`
+    const result = await query(`
       SELECT id FROM events
       WHERE type = 'birthday'
         AND ${field} = $1
@@ -159,7 +159,7 @@ async function getBirthdaysThisMonth() {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     
-    const result = await pool.query(`
+    const result = await query(`
       SELECT 
         e.*,
         c.first_name, c.last_name, c.birth_date, c.photo_url
@@ -189,7 +189,7 @@ async function getUpcomingBirthdays(days = 30) {
     const futureDate = new Date();
     futureDate.setDate(futureDate.getDate() + days);
     
-    const result = await pool.query(`
+    const result = await query(`
       SELECT 
         e.*,
         c.first_name, c.last_name, c.birth_date, c.photo_url
@@ -218,7 +218,7 @@ async function sendBirthdayReminders() {
     console.log('🎂 Envoi des rappels d\'anniversaire...');
     
     // Récupérer les rappels à envoyer
-    const result = await pool.query(`
+    const result = await query(`
       SELECT 
         er.*,
         e.*,
@@ -237,7 +237,7 @@ async function sendBirthdayReminders() {
     
     for (const reminder of result.rows) {
       // Récupérer tous les staff
-      const staffResult = await pool.query(`
+      const staffResult = await query(`
         SELECT id, email, first_name, last_name
         FROM users
         WHERE role IN ('admin', 'staff')
@@ -259,7 +259,7 @@ async function sendBirthdayReminders() {
         
         if (emailResult.success) {
           // Marquer comme envoyé
-          await pool.query(`
+          await query(`
             UPDATE event_reminders
             SET sent = true, sent_at = NOW()
             WHERE id = $1

@@ -3,7 +3,7 @@
  * Mémos personnels pour chaque utilisateur
  */
 
-const { pool } = require('../config/db_postgres');
+const { query } = require('../config/db_postgres');
 
 /**
  * Créer un mémo personnel
@@ -12,7 +12,7 @@ async function createMemo(memoData, userId) {
   try {
     const { content, memo_date } = memoData;
     
-    const result = await pool.query(`
+    const result = await query(`
       INSERT INTO personal_memos (user_id, content, memo_date)
       VALUES ($1, $2, $3)
       RETURNING *
@@ -53,7 +53,7 @@ async function getUserMemos(userId, filters = {}) {
     
     query += ' ORDER BY memo_date DESC, created_at DESC';
     
-    const result = await pool.query(query, params);
+    const result = await query(query, params);
     
     return { success: true, memos: result.rows };
     
@@ -72,7 +72,7 @@ async function getUserMemos(userId, filters = {}) {
  */
 async function getTodayMemos(userId) {
   try {
-    const result = await pool.query(`
+    const result = await query(`
       SELECT * FROM personal_memos
       WHERE user_id = $1
         AND memo_date <= CURRENT_DATE
@@ -93,7 +93,7 @@ async function getTodayMemos(userId) {
  */
 async function completeMemo(memoId, userId) {
   try {
-    const result = await pool.query(`
+    const result = await query(`
       UPDATE personal_memos
       SET is_completed = true, completed_at = NOW(), updated_at = NOW()
       WHERE id = $1 AND user_id = $2
@@ -119,7 +119,7 @@ async function completeMemo(memoId, userId) {
  */
 async function deleteMemo(memoId, userId) {
   try {
-    const result = await pool.query(
+    const result = await query(
       'DELETE FROM personal_memos WHERE id = $1 AND user_id = $2 RETURNING *',
       [memoId, userId]
     );

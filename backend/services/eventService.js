@@ -3,7 +3,7 @@
  * Logique métier pour les événements, tâches, RDV, anniversaires, etc.
  */
 
-const { pool } = require('../config/db_postgres');
+const { pool, query } = require('../config/db_postgres');
 const { sendEventReminder, sendEventAssigned, sendEventOverdue } = require('./eventEmailService');
 
 /**
@@ -206,7 +206,7 @@ async function getEvents(filters = {}) {
       params.push(filters.offset);
     }
 
-    const result = await pool.query(query, params);
+    const result = await query(query, params);
 
     return { success: true, events: result.rows };
 
@@ -221,7 +221,7 @@ async function getEvents(filters = {}) {
  */
 async function getEventById(eventId) {
   try {
-    const result = await pool.query(`
+    const result = await query(`
       SELECT 
         e.*,
         u1.first_name || ' ' || u1.last_name as created_by_name,
@@ -239,7 +239,7 @@ async function getEventById(eventId) {
     }
 
     // Récupérer les commentaires
-    const commentsResult = await pool.query(`
+    const commentsResult = await query(`
       SELECT 
         ec.*,
         u.first_name || ' ' || u.last_name as user_name
@@ -250,7 +250,7 @@ async function getEventById(eventId) {
     `, [eventId]);
 
     // Récupérer les rappels
-    const remindersResult = await pool.query(`
+    const remindersResult = await query(`
       SELECT * FROM event_reminders
       WHERE event_id = $1
       ORDER BY scheduled_for ASC
@@ -433,7 +433,7 @@ async function updateEventStatus(eventId, status, userId) {
  */
 async function deleteEvent(eventId, userId) {
   try {
-    const result = await pool.query(`
+    const result = await query(`
       UPDATE events
       SET deleted_at = NOW()
       WHERE id = $1 AND deleted_at IS NULL
@@ -445,7 +445,7 @@ async function deleteEvent(eventId, userId) {
     }
 
     // Logger la suppression
-    await pool.query(`
+    await query(`
       INSERT INTO event_history (event_id, user_id, action)
       VALUES ($1, $2, 'deleted')
     `, [eventId, userId]);
@@ -463,7 +463,7 @@ async function deleteEvent(eventId, userId) {
  */
 async function addComment(eventId, userId, comment) {
   try {
-    const result = await pool.query(`
+    const result = await query(`
       INSERT INTO event_comments (event_id, user_id, comment)
       VALUES ($1, $2, $3)
       RETURNING *
@@ -482,7 +482,7 @@ async function addComment(eventId, userId, comment) {
  */
 async function getUpcomingEvents(userId, days = 7) {
   try {
-    const result = await pool.query(`
+    const result = await query(`
       SELECT 
         e.*,
         u1.first_name || ' ' || u1.last_name as created_by_name,
@@ -518,7 +518,7 @@ async function getOverdueEvents(userId, userRole = null) {
     // Récupérer le rôle de l'utilisateur si non fourni
     let role = userRole;
     if (!role) {
-      const userResult = await pool.query('SELECT role FROM users WHERE id = $1', [userId]);
+      const userResult = await query('SELECT role FROM users WHERE id = $1', [userId]);
       role = userResult.rows[0]?.role || 'staff';
     }
 
@@ -528,7 +528,7 @@ async function getOverdueEvents(userId, userRole = null) {
       ? ''
       : 'AND (e.assigned_to = $1 OR e.created_by = $1)';
 
-    const result = await pool.query(`
+    const result = await query(`
       SELECT 
         e.*,
         u1.first_name || ' ' || u1.last_name as created_by_name,
@@ -560,7 +560,7 @@ async function getOverdueEvents(userId, userRole = null) {
  */
 async function getTasksKanban(userId) {
   try {
-    const result = await pool.query(`
+    const result = await query(`
       SELECT 
         e.*,
         u1.first_name || ' ' || u1.last_name as created_by_name,
@@ -623,7 +623,7 @@ async function createStatusChangeNotification(event, recipientId, userId, newSta
 
     const notificationType = 'event_status_changed';
 
-    await pool.query(`
+    await query(`
       INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
       VALUES ($1, $2, $3, $4, $5, false)
     `, [recipientId, title, message, notificationType, event.id]);
@@ -655,7 +655,7 @@ async function createEventUpdateNotification(event, recipientId, updaterId, upda
 
     const notificationType = 'event_updated';
 
-    await pool.query(`
+    await query(`
       INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
       VALUES ($1, $2, $3, $4, $5, false)
     `, [recipientId, title, message, notificationType, event.id]);
@@ -727,7 +727,7 @@ async function createEventNotification(event, recipientId, creatorId) {
     message += ` - ${dateStr}`;
 
     // Insérer la notification
-    await pool.query(`
+    await query(`
       INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
       VALUES ($1, $2, $3, $4, $5, false)
     `, [recipientId, title, message, notificationType, event.id]);
@@ -758,7 +758,7 @@ async function createTaskCompletedNotification(task, recipientId, completedById)
     const notificationType = 'task_completed';
 
     // Insérer la notification
-    await pool.query(`
+    await query(`
       INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
       VALUES ($1, $2, $3, $4, $5, false)
     `, [recipientId, title, message, notificationType, task.id]);
@@ -840,7 +840,7 @@ async function getCalendarEvents(startDate, endDate, userId, types = null, userR
     query += ` ORDER BY e.start_date ASC`;
 
     try {
-      const result = await pool.query(query, params);
+      const result = await query(query, params);
       return { success: true, events: result.rows };
     } catch (queryError) {
       console.error('❌ Erreur SQL Query:', queryError.message);
@@ -873,7 +873,7 @@ function getDefaultColor(type) {
 
 async function getUserById(userId) {
   try {
-    const result = await pool.query(
+    const result = await query(
       'SELECT id, email, first_name, last_name FROM users WHERE id = $1',
       [userId]
     );
@@ -909,7 +909,7 @@ async function createStatusChangeNotification(event, recipientId, userId, newSta
 
     const notificationType = 'event_status_changed';
 
-    await pool.query(`
+    await query(`
       INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
       VALUES ($1, $2, $3, $4, $5, false)
     `, [recipientId, title, message, notificationType, event.id]);
@@ -941,7 +941,7 @@ async function createEventUpdateNotification(event, recipientId, updaterId, upda
 
     const notificationType = 'event_updated';
 
-    await pool.query(`
+    await query(`
       INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
       VALUES ($1, $2, $3, $4, $5, false)
     `, [recipientId, title, message, notificationType, event.id]);
@@ -1013,7 +1013,7 @@ async function createEventNotification(event, recipientId, creatorId) {
     message += ` - ${dateStr}`;
 
     // Insérer la notification
-    await pool.query(`
+    await query(`
       INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
       VALUES ($1, $2, $3, $4, $5, false)
     `, [recipientId, title, message, notificationType, event.id]);
@@ -1044,7 +1044,7 @@ async function createTaskCompletedNotification(task, recipientId, completedById)
     const notificationType = 'task_completed';
 
     // Insérer la notification
-    await pool.query(`
+    await query(`
       INSERT INTO notifications (user_id, title, message, type, related_id, is_read)
       VALUES ($1, $2, $3, $4, $5, false)
     `, [recipientId, title, message, notificationType, task.id]);
