@@ -95,12 +95,12 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
-  // Fonction de connexion
-  const login = async (email, password) => {
+  // Fonction de connexion (email, téléphone ou pseudo)
+  const login = async (identifier, password) => {
     dispatch({ type: 'LOGIN_START' });
 
     try {
-      const response = await authService.login(email, password);
+      const response = await authService.login(identifier, password);
 
       // Sauvegarder le token
       localStorage.setItem('token', response.token);

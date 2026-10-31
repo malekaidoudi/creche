@@ -145,7 +145,7 @@ async function getTodayTasks(userId) {
       FROM tasks t
       LEFT JOIN users u1 ON t.assigned_to = u1.id
       LEFT JOIN users u2 ON t.created_by = u2.id
-      WHERE DATE(t.due_date) = CURRENT_DATE
+      WHERE (DATE(t.due_date) = CURRENT_DATE OR (DATE(t.due_date) < CURRENT_DATE AND t.title LIKE '📋 Compléter dossier%'))
         AND t.status != 'completed'
         AND t.assigned_to = $1
       ORDER BY 
@@ -208,6 +208,7 @@ async function getOverdueTasks(userId = null, userRole = null) {
       LEFT JOIN users u2 ON t.created_by = u2.id
       WHERE DATE(t.due_date) < CURRENT_DATE
         AND t.status != 'completed'
+        AND t.title NOT LIKE '📋 Compléter dossier%'
         ${whereClause}
       ORDER BY 
         CASE t.priority 

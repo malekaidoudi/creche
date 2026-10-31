@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, Bell, User, LogOut, Settings, ChevronDown, Home } from 'lucide-react';
+import { Menu, Bell, User, LogOut, Settings, ChevronDown, Home, Lightbulb } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useNotifications } from '../../hooks/useNotifications';
@@ -9,6 +9,7 @@ import ThemeToggle from '../ui/ThemeToggle';
 import LanguageToggle from '../ui/LanguageToggle';
 import SimpleNotificationCenter from '../dashboard/SimpleNotificationCenter';
 import ErrorBoundary from '../ui/ErrorBoundary';
+import DirectionPwaDrawer from '../pwa/DirectionPwaDrawer';
 
 const DashboardHeader = ({ onMenuClick }) => {
   const { user, logout } = useAuth();
@@ -21,6 +22,7 @@ const DashboardHeader = ({ onMenuClick }) => {
 
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
+  const [directionDrawerOpen, setDirectionDrawerOpen] = useState(false);
   const userMenuRef = useRef(null);
 
   // Fermer le menu utilisateur quand on clique ailleurs
@@ -145,6 +147,19 @@ const DashboardHeader = ({ onMenuClick }) => {
               </button>
             )}
 
+            {/* Guide & Astuces Direction (Admin, Staff & Developer) */}
+            {(user?.role === 'admin' || user?.role === 'staff' || user?.role === 'developer') && (
+              <button
+                type="button"
+                onClick={() => setDirectionDrawerOpen(true)}
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-300 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-800 transition-colors"
+                title={isRTL ? 'دليل ونصائح الإدارة' : 'Guide & Astuces Direction'}
+              >
+                <Lightbulb className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                <span>{isRTL ? 'دليل الإدارة' : 'Guide Direction'}</span>
+              </button>
+            )}
+
             {/* Toggles */}
             <ThemeToggle />
             <LanguageToggle />
@@ -227,6 +242,20 @@ const DashboardHeader = ({ onMenuClick }) => {
                       </Link>
                     )}
 
+                    {(user?.role === 'admin' || user?.role === 'staff' || user?.role === 'developer') && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUserMenuOpen(false);
+                          setDirectionDrawerOpen(true);
+                        }}
+                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      >
+                        <Lightbulb className="w-4 h-4 mr-3 rtl:mr-0 rtl:ml-3 text-amber-500" />
+                        {isRTL ? 'دليل ونصائح التطبيق' : 'Guide & Astuces PWA'}
+                      </button>
+                    )}
+
                     <div className="border-t border-gray-200 dark:border-gray-700">
                       <button
                         onClick={handleLogout}
@@ -254,6 +283,12 @@ const DashboardHeader = ({ onMenuClick }) => {
           onClose={() => setNotificationOpen(false)}
         />
       </ErrorBoundary>
+
+      {/* Drawer Guide & Astuces Direction */}
+      <DirectionPwaDrawer
+        isOpen={directionDrawerOpen}
+        onClose={() => setDirectionDrawerOpen(false)}
+      />
     </header>
   );
 };

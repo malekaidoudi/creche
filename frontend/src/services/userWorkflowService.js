@@ -134,6 +134,19 @@ const userWorkflowService = {
             console.error('Erreur association enfant-parent:', error);
             throw error.response?.data || { error: 'Erreur lors de l\'association' };
         }
+    },
+
+    /**
+     * Vérifier la disponibilité d'un pseudo (actif uniquement)
+     * @param {string} username
+     */
+    async checkUsername(username) {
+        try {
+            const response = await api.get(`/api/auth/check-username?username=${encodeURIComponent(username)}`);
+            return response.data;
+        } catch (error) {
+            return { available: false, error: 'Erreur vérification' };
+        }
     }
 };
 

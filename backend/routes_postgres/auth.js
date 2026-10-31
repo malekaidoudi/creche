@@ -24,9 +24,8 @@ if (!JWT_SECRET) {
 }
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 
-// POST /api/auth/login - Connexion utilisateur
+// POST /api/auth/login - Connexion utilisateur (Email, Téléphone ou Pseudo)
 router.post('/login', [
-  body('email').isEmail().withMessage('Email invalide'),
   body('password').isLength({ min: 1 }).withMessage('Mot de passe requis')
 ], async (req, res) => {
   try {
@@ -39,26 +38,60 @@ router.post('/login', [
       });
     }
 
-    const { email, password } = req.body;
+    const rawIdentifier = (req.body.identifier || req.body.email || '').trim();
+    const { password } = req.body;
 
-    // Rechercher l'utilisateur dans PostgreSQL
+    if (!rawIdentifier) {
+      return res.status(400).json({
+        success: false,
+        error: 'Veuillez saisir votre numéro de téléphone, email ou pseudo'
+      });
+    }
+
+    // Normalisation intelligente pour numéros de téléphone (notamment Tunisie 8 chiffres ex: 98..., 20..., 50...)
+    const cleanPhone = rawIdentifier.replace(/[\s.-]/g, '');
+    const phoneVariants = Array.from(new Set([rawIdentifier, cleanPhone]));
+
+    // Détection format tunisien (8 chiffres)
+    if (/^\d{8}$/.test(cleanPhone)) {
+      phoneVariants.push(`+216${cleanPhone}`);
+      phoneVariants.push(`216${cleanPhone}`);
+      phoneVariants.push(`00216${cleanPhone}`);
+      phoneVariants.push(`+216 ${cleanPhone.slice(0, 2)} ${cleanPhone.slice(2, 5)} ${cleanPhone.slice(5)}`);
+      phoneVariants.push(`${cleanPhone.slice(0, 2)} ${cleanPhone.slice(2, 5)} ${cleanPhone.slice(5)}`);
+    } else if (/^(\+216|00216|216)(\d{8})$/.test(cleanPhone)) {
+      const local8 = cleanPhone.replace(/^(\+216|00216|216)/, '');
+      phoneVariants.push(local8);
+      phoneVariants.push(`+216${local8}`);
+      phoneVariants.push(`+216 ${local8.slice(0, 2)} ${local8.slice(2, 5)} ${local8.slice(5)}`);
+      phoneVariants.push(`${local8.slice(0, 2)} ${local8.slice(2, 5)} ${local8.slice(5)}`);
+    }
+
+    // Rechercher l'utilisateur dans PostgreSQL par email, téléphone ou username (Direction, Staff et Parents)
     const result = await db.query(
-      'SELECT id, email, password, first_name, last_name, role, phone, profile_image, is_active, gender, staff_position FROM users WHERE email = $1',
-      [email]
+      `SELECT id, email, password, first_name, last_name, role, phone, username, profile_image, is_active, gender, staff_position 
+       FROM users 
+       WHERE (email IS NOT NULL AND LOWER(email) = LOWER($1))
+          OR (username IS NOT NULL AND LOWER(username) = LOWER($1))
+          OR (phone IS NOT NULL AND (
+              phone = ANY($2::text[]) 
+              OR REPLACE(REPLACE(phone, ' ', ''), '-', '') = ANY($2::text[])
+          ))`,
+      [rawIdentifier, phoneVariants]
     );
 
     if (result.rows.length === 0) {
-      logLoginFailed(email, 'Utilisateur introuvable', req).catch(err => {
+      logLoginFailed(rawIdentifier, 'Utilisateur introuvable', req).catch(err => {
         console.warn('⚠️ Erreur log échec connexion:', err.message);
       });
-      return res.status(401).json({ success: false, error: 'Email ou mot de passe incorrect' });
+      return res.status(401).json({ success: false, error: 'Identifiant ou mot de passe incorrect' });
     }
 
     const user = result.rows[0];
 
     // Vérifier si l'utilisateur est actif
     if (!user.is_active) {
-      logLoginFailed(email, 'Compte désactivé', req).catch(err => {
+      logLoginFailed(rawIdentifier, 'Compte désactivé', req).catch(err => {
         console.warn('⚠️ Erreur log échec connexion:', err.message);
       });
       return res.status(401).json({ success: false, error: 'Compte désactivé' });
@@ -109,9 +142,9 @@ router.post('/login', [
 // liste de révocation (tokenBlacklistService) — cf. audit documentsV2, anomalie #8.
 router.get('/me', auth.authenticateToken, async (req, res) => {
   try {
-    // Récupérer les informations utilisateur
+    // Récupérer les informations utilisateur incluant username
     const result = await db.query(
-      'SELECT id, email, first_name, last_name, role, phone, profile_image, is_active, gender, staff_position FROM users WHERE id = $1',
+      'SELECT id, email, username, first_name, last_name, role, phone, profile_image, is_active, gender, staff_position FROM users WHERE id = $1',
       [req.user.userId]
     );
 
@@ -119,7 +152,39 @@ router.get('/me', auth.authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, error: 'Utilisateur non trouvé' });
     }
 
-    res.json({ user: result.rows[0] });
+    const user = result.rows[0];
+
+    // Vérifier si un parent a un dossier contacts incomplet (pour afficher la bannière persistante sur mobile)
+    let hasIncompleteContacts = false;
+    if (user.role === 'parent') {
+      const childrenCheck = await db.query(
+        `SELECT emergency_contact_choice, emergency_contact_name, emergency_contact_phone,
+                father_name, father_phone, mother_name, mother_phone
+         FROM children
+         WHERE parent_id = $1 AND (is_active = true OR is_active IS NULL)
+         LIMIT 5`,
+        [user.id]
+      );
+
+      if (childrenCheck.rows.length > 0) {
+        hasIncompleteContacts = childrenCheck.rows.some(child => {
+          // Contact urgence manquant si pas de choix père/mère ET pas de custom renseigné
+          const hasEmergency = ['father', 'mother'].includes(child.emergency_contact_choice) ||
+                               Boolean(child.emergency_contact_phone && child.emergency_contact_phone.trim() !== '');
+          // 2ème parent manquant si titulaire père sans mère ou titulaire mère sans père
+          const isMother = user.gender === 'female';
+          const hasSecondParent = isMother 
+            ? Boolean(child.father_name && child.father_name.trim() !== '')
+            : Boolean(child.mother_name && child.mother_name.trim() !== '');
+
+          return !hasEmergency || !hasSecondParent;
+        });
+      }
+    }
+
+    user.has_incomplete_contacts = hasIncompleteContacts;
+
+    res.json({ user });
 
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {
@@ -127,6 +192,31 @@ router.get('/me', auth.authenticateToken, async (req, res) => {
     }
     console.error('Erreur me:', error);
     res.status(500).json({ success: false, error: 'Erreur interne du serveur' });
+  }
+});
+
+// GET /api/auth/check-username - Vérifier l'unicité du pseudo parmi les comptes actifs
+router.get('/check-username', async (req, res) => {
+  try {
+    const rawUsername = (req.query.username || '').trim().toLowerCase();
+    if (!rawUsername || rawUsername.length < 3) {
+      return res.json({ available: false, error: 'Le pseudo doit comporter au moins 3 caractères' });
+    }
+
+    // Unicité uniquement parmi les comptes actifs (is_active = true)
+    const checkResult = await db.query(
+      'SELECT id FROM users WHERE LOWER(username) = $1 AND is_active = true LIMIT 1',
+      [rawUsername]
+    );
+
+    res.json({
+      success: true,
+      available: checkResult.rows.length === 0,
+      username: rawUsername
+    });
+  } catch (error) {
+    console.error('Erreur check-username:', error);
+    res.status(500).json({ success: false, error: 'Erreur lors de la vérification du pseudo' });
   }
 });
 
@@ -147,11 +237,9 @@ router.post('/logout', async (req, res) => {
   }
 });
 
-// POST /api/auth/create-password - Création mot de passe après approbation
-// Le compte parent est déjà créé lors de l'approbation, cette API met à jour le mot de passe
+// POST /api/auth/create-password - Création mot de passe & pseudo après invitation (WhatsApp/Email)
 router.post('/create-password', [
   body('token').notEmpty().withMessage('Token requis'),
-  body('email').isEmail().withMessage('Email invalide'),
   body('password').isLength({ min: 6 }).withMessage('Mot de passe minimum 6 caractères')
 ], async (req, res) => {
   try {
@@ -164,17 +252,25 @@ router.post('/create-password', [
       });
     }
 
-    const { token, email, password } = req.body;
+    const { token, email, username, password } = req.body;
 
-    // 1. Chercher d'abord dans la table users (nouveau workflow - compte déjà créé)
-    const userResult = await db.query(`
-      SELECT id, email, first_name, last_name, role, password_token_expires, password_set
-      FROM users 
-      WHERE password_token = $1 AND email = $2 AND is_active = true
-    `, [token, email]);
+    // 1. Chercher dans la table users par token (avec email si fourni, sinon par token seul)
+    let userResult;
+    if (email && email.trim() !== '') {
+      userResult = await db.query(`
+        SELECT id, email, username, first_name, last_name, role, password_token_expires, password_set
+        FROM users 
+        WHERE password_token = $1 AND (LOWER(email) = LOWER($2) OR email LIKE '%noemail%') AND is_active = true
+      `, [token, email.trim()]);
+    } else {
+      userResult = await db.query(`
+        SELECT id, email, username, first_name, last_name, role, password_token_expires, password_set
+        FROM users 
+        WHERE password_token = $1 AND is_active = true
+      `, [token]);
+    }
 
     if (userResult.rows.length > 0) {
-      // Nouveau workflow: le compte existe déjà, on met à jour le mot de passe
       const user = userResult.rows[0];
 
       // Vérifier si le token n'est pas expiré
@@ -193,18 +289,35 @@ router.post('/create-password', [
         });
       }
 
-      // Hasher et mettre à jour le mot de passe
+      // Si un username est choisi, vérifier qu'il est disponible parmi les comptes actifs
+      let cleanUsername = null;
+      if (username && typeof username === 'string' && username.trim().length >= 3) {
+        cleanUsername = username.trim().toLowerCase();
+        const usernameCheck = await db.query(
+          'SELECT id FROM users WHERE LOWER(username) = $1 AND is_active = true AND id != $2',
+          [cleanUsername, user.id]
+        );
+        if (usernameCheck.rows.length > 0) {
+          return res.status(400).json({
+            success: false,
+            error: 'Ce pseudo est déjà utilisé par un autre compte actif'
+          });
+        }
+      }
+
+      // Hasher et mettre à jour le mot de passe (et le username si renseigné)
       const hashedPassword = await bcrypt.hash(password, 10);
 
       await db.query(`
         UPDATE users 
         SET password = $1, 
+            username = COALESCE($2, username),
             password_set = true, 
             password_token = NULL, 
             password_token_expires = NULL,
             updated_at = NOW()
-        WHERE id = $2
-      `, [hashedPassword, user.id]);
+        WHERE id = $3
+      `, [hashedPassword, cleanUsername, user.id]);
 
       // Générer un JWT pour connexion automatique
       const jwtToken = jwt.sign(
@@ -213,21 +326,27 @@ router.post('/create-password', [
         { expiresIn: JWT_EXPIRES_IN }
       );
 
-      console.log(`✅ Mot de passe créé pour ${user.email} (ID: ${user.id})`);
+      console.log(`✅ Mot de passe créé pour ${user.first_name} ${user.last_name} (ID: ${user.id})`);
 
       return res.json({
         success: true,
-        message: 'Mot de passe créé avec succès',
+        message: 'Compte activé avec succès',
         token: jwtToken,
         user: {
           id: user.id,
           email: user.email,
+          username: cleanUsername || user.username,
           first_name: user.first_name,
           last_name: user.last_name,
           role: user.role
         }
       });
     }
+
+    return res.status(400).json({
+      success: false,
+      error: 'Lien d\'activation invalide ou expiré'
+    });
 
     // 2. Fallback: ancien workflow via enrollments (pour compatibilité)
     const enrollmentResult = await db.query(`

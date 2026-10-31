@@ -19,7 +19,7 @@
  * />
  */
 
-import { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, useMotionValue, useTransform, AnimatePresence } from 'framer-motion';
 import { RefreshCw } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -100,7 +100,13 @@ const SwipeableListItem = ({
     const x = useMotionValue(0);
     const containerRef = useRef(null);
 
-    const actionWidth = swipeActions.length * 70; // 70px par action
+    const actionWidth = swipeActions.length * 70;
+
+    React.useEffect(() => {
+        if (!isActive) {
+            x.set(0);
+        }
+    }, [isActive, x]); // 70px par action
 
     // Transformer la position pour révéler les actions
     const actionsOpacity = useTransform(

@@ -151,12 +151,17 @@ const StaffPage = () => {
       ? (isRTL ? `هل أنت متأكد من إعادة تفعيل حساب ${member.first_name} ${member.last_name}؟` : `Voulez-vous réactiver le compte de ${member.first_name} ${member.last_name} ?`)
       : (isRTL ? `هل أنت متأكد من تعطيل حساب ${member.first_name} ${member.last_name}؟` : `Voulez-vous désactiver le compte de ${member.first_name} ${member.last_name} ?`);
 
-    const confirmed = await dialog.confirm({
-      title: newActive ? (isRTL ? 'تفعيل الحساب' : 'Réactiver le compte') : (isRTL ? 'تعطيل الحساب' : 'Désactiver le compte'),
-      message: confirmMsg,
-      confirmText: newActive ? (isRTL ? 'تفعيل' : 'Réactiver') : (isRTL ? 'تعطيل' : 'Désactiver'),
-      confirmVariant: newActive ? 'primary' : 'danger'
-    });
+    const confirmTitle = newActive ? (isRTL ? 'تفعيل الحساب' : 'Réactiver le compte') : (isRTL ? 'تعطيل الحساب' : 'Désactiver le compte');
+
+    const confirmed = await dialog.confirm(
+      confirmMsg,
+      confirmTitle,
+      {
+        type: newActive ? 'primary' : 'danger',
+        confirmText: newActive ? (isRTL ? 'تفعيل' : 'Réactiver') : (isRTL ? 'تعطيل' : 'Désactiver'),
+        cancelText: isRTL ? 'إلغاء' : 'Annuler'
+      }
+    );
 
     if (!confirmed) return;
 

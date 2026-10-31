@@ -139,6 +139,19 @@ const HelpSystem = () => {
     setIsOpen(false);
   }, [location?.pathname]);
 
+  // Détection dynamique de la bannière PWA pour éviter toute superposition sur mobile
+  const [hasPwaBar, setHasPwaBar] = useState(() => {
+    return typeof document !== 'undefined' && document.body.classList.contains('has-pwa-bar');
+  });
+
+  useEffect(() => {
+    const handlePwaBarChange = (e) => {
+      setHasPwaBar(Boolean(e.detail?.visible));
+    };
+    window.addEventListener('pwa-bar-change', handlePwaBarChange);
+    return () => window.removeEventListener('pwa-bar-change', handlePwaBarChange);
+  }, []);
+
   // Contextual Help based on active route and role
   const contextualInfo = useMemo(() => {
     return getContextualHelp(location?.pathname || '', user?.role, language);
@@ -515,8 +528,8 @@ const HelpSystem = () => {
       {/* FLOATING ACTION LAUNCHER (Trigger Pill / Button)         */}
       {/* ======================================================== */}
       <div
-        className={`fixed z-40 bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] sm:bottom-6 ${isRTL ? 'left-3 sm:left-6' : 'right-3 sm:right-6'
-          } ${isOpen ? 'hidden sm:block' : 'block'} ${!isDashboardPage ? 'hidden lg:block' : ''}`}
+        className={`fixed z-40 ${hasPwaBar ? 'bottom-[calc(9.25rem+env(safe-area-inset-bottom,0px))]' : 'bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))]'} sm:bottom-6 ${isRTL ? 'left-3 sm:left-6' : 'right-3 sm:right-6'
+          } ${isOpen ? 'hidden sm:block' : 'block'} ${!isDashboardPage ? 'hidden lg:block' : ''} transition-all duration-300 ease-out`}
       >
         {/* Subtle breathing ambient glow (Cyan Diamant & Verre Saphir) */}
         {!isOpen && (
@@ -547,7 +560,7 @@ const HelpSystem = () => {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.92 }}
               transition={{ type: 'spring', damping: 24, stiffness: 320 }}
-              className={`fixed bottom-20 sm:bottom-24 z-50 max-w-[calc(100vw-2rem)] sm:max-w-sm p-3.5 sm:p-4 rounded-2xl shadow-2xl border
+              className={`fixed ${hasPwaBar ? 'bottom-[calc(13.5rem+env(safe-area-inset-bottom,0px))]' : 'bottom-20'} sm:bottom-24 z-50 max-w-[calc(100vw-2rem)] sm:max-w-sm p-3.5 sm:p-4 rounded-2xl shadow-2xl border transition-all duration-300
                 ${isRTL ? 'left-3 sm:left-6' : 'right-3 sm:right-6'}
                 ${!isDashboardPage ? 'hidden lg:block' : ''}
                 ${proactiveNotice.type === 'permission_denied'

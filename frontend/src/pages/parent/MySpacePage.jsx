@@ -20,7 +20,8 @@ import {
   Wallet,
   CheckCircle2,
   Calendar,
-  Sparkles
+  Sparkles,
+  AlertCircle
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -342,6 +343,7 @@ const MySpacePage = () => {
             </div>
           </motion.div>
 
+
           {/* Bandeau Candidature & Préparation RDV Admission */}
           {myApplication && (
             <motion.div
@@ -396,6 +398,44 @@ const MySpacePage = () => {
                   </button>
                 </div>
               </div>
+
+          {/* Bannière persistante: Contacts d'urgence & 2ème parent à compléter */}
+          {user?.has_incomplete_contacts && (
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-4 p-4 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 rounded-2xl text-white shadow-lg flex items-center justify-between gap-4"
+            >
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                  <AlertCircle className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-base leading-tight">
+                    {isRTL ? 'إكمال بيانات الحماية والأمان' : 'Contacts de sécurité à compléter'}
+                  </h4>
+                  <p className="text-xs sm:text-sm text-amber-100 mt-0.5">
+                    {isRTL
+                      ? 'لحماية طفلك، يرجى إدخال بيانات الوالد الثاني وجهة اتصال الطوارئ.'
+                      : 'Pour la sécurité de votre enfant, veuillez renseigner le 2ème parent et le contact d\'urgence.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const firstChild = children && children.length > 0 ? children[0] : null;
+                  if (firstChild) {
+                    navigate(`/mon-espace/child/${firstChild.id}/emergency-contacts`);
+                  } else {
+                    navigate('/mon-espace/profile');
+                  }
+                }}
+                className="px-4 py-2 bg-white text-orange-600 hover:bg-orange-50 active:scale-95 rounded-xl text-xs sm:text-sm font-bold shadow transition-all shrink-0"
+              >
+                {isRTL ? 'إكمال الآن' : 'Compléter'}
+              </button>
+
             </motion.div>
           )}
 

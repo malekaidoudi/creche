@@ -241,18 +241,7 @@ const MobileChildrenList = ({
                     />
                 )}
 
-                {/* Bouton flottant d'ajout */}
-                {onAddChild && (
-                    <motion.button
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={onAddChild}
-                        className="fixed bottom-24 right-4 rtl:right-auto rtl:left-4 w-14 h-14 bg-primary-600 hover:bg-primary-700 text-white rounded-full shadow-lg flex items-center justify-center z-40"
-                    >
-                        <Plus className="w-6 h-6" />
-                    </motion.button>
-                )}
+                {/* Bouton flottant d'ajout supprimé selon la demande */}
             </div>
         </div>
     );

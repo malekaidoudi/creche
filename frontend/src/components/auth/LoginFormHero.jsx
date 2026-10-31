@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { useLanguage } from '../../hooks/useLanguage'
 import { useDialogContext } from '../../contexts/DialogContext'
-import { Mail, Lock, Eye, EyeOff, LogIn, UserPlus, AlertCircle } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, LogIn, UserPlus, AlertCircle, User } from 'lucide-react'
 import JoinUsModal from '../ui/JoinUsModal'
 
 const LoginFormHero = () => {
@@ -54,7 +54,7 @@ const LoginFormHero = () => {
       let errorMessage = ''
 
       if (err.response?.status === 401) {
-        errorMessage = isRTL ? 'بريد إلكتروني أو كلمة مرور خاطئة' : 'Email ou mot de passe incorrect'
+        errorMessage = isRTL ? 'معرّف أو كلمة مرور خاطئة' : 'Identifiant ou mot de passe incorrect'
       } else if (err.response?.status === 500) {
         errorMessage = isRTL ? 'خطأ في الخادم' : 'Erreur serveur'
       } else if (err.code === 'ERR_NETWORK') {
@@ -100,31 +100,33 @@ const LoginFormHero = () => {
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Email */}
+        {/* Identifiant (Email, Téléphone ou Pseudo) */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            {isRTL ? 'البريد الإلكتروني' : 'Email'}
+            {isRTL ? 'الهاتف أو البريد أو اسم المستخدم' : 'Téléphone, Email ou Pseudo'}
           </label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 rtl:left-auto rtl:right-0 pl-3 rtl:pl-0 rtl:pr-3 flex items-center pointer-events-none">
-              <Mail className="w-5 h-5 text-gray-400" />
+              <User className="w-5 h-5 text-gray-400" />
             </div>
             <input
-              type="email"
+              type="text"
               name="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              autoComplete="username"
               value={formData.email}
               onChange={handleChange}
               onKeyDown={(e) => {
                 // Tab -> passer directement au champ mot de passe
-                // (sinon le focus irait sur le lien "Mot de passe oublie ?")
                 if (e.key === 'Tab' && !e.shiftKey) {
                   e.preventDefault()
                   passwordInputRef.current?.focus()
                 }
               }}
               required
-              className="block w-full pl-10 rtl:pl-3 rtl:pr-10 pr-3 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 transition-all"
-              placeholder={isRTL ? 'أدخل بريدك الإلكتروني' : 'Votre email'}
+              className="block w-full pl-10 rtl:pl-3 rtl:pr-10 pr-3 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 transition-all text-base"
+              placeholder={isRTL ? '98... / بريد إلكتروني / اسم المستخدم' : '98... / email / pseudo'}
             />
           </div>
         </div>

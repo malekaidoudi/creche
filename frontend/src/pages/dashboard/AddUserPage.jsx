@@ -1,21 +1,18 @@
 /**
- * Page de création d'utilisateur (Parent/Staff)
+ * Page de création d'utilisateur (Parent / Personnel)
  * 
- * Workflow Parent:
- * 1. Admin sélectionne le rôle "Parent"
- * 2. Admin saisit les informations du parent
- * 3. Admin sélectionne un enfant orphelin
- * 4. Email envoyé au parent avec lien de création de mot de passe
- * 
- * Workflow Staff:
- * 1. Admin sélectionne le rôle "Personnel"
- * 2. Admin saisit les informations + poste
- * 3. Email envoyé au personnel avec lien de création de mot de passe
+ * Version Unifiée & Mobile-First:
+ * - Assistant interactif étape par étape sur smartphone (Wizard tactile)
+ * - Vue ergonomique et complète sur grand écran / desktop
+ * - Civilité adaptative: Mme / M. pour le personnel ; Mère / Père / Tuteur pour les parents
+ * - Onboarding sans email avec pseudo unique vérifié en temps réel
+ * - Association enfant flexible: Enfant orphelin, Inscription express en 20s, ou Associer plus tard
+ * - Envoi instantané d'invitation par WhatsApp (wa.me) sans surcoût d'API
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
     UserPlus,
     Users,
@@ -27,10 +24,22 @@ import {
     Baby,
     Send,
     CheckCircle,
-    Briefcase
+    Briefcase,
+    ArrowRight,
+    ArrowLeft,
+    Sparkles,
+    Copy,
+    MessageCircle,
+    Smartphone,
+    UserCheck,
+    Calendar,
+    ChevronRight,
+    Clock,
+    HeartHandshake
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
+import ToggleSwitch from '../../components/ui/ToggleSwitch';
 import { Button } from '../../components/ui/Button';
 import { useDialogContext } from '../../contexts/DialogContext';
 import userWorkflowService from '../../services/userWorkflowService';
@@ -41,7 +50,19 @@ const AddUserPage = () => {
     const navigate = useNavigate();
     const location = useLocation();
 
+    // Détection écran mobile / tactile
+    const [isMobileScreen, setIsMobileScreen] = useState(
+        typeof window !== 'undefined' ? window.innerWidth < 768 : false
+    );
+
+    useEffect(() => {
+        const handleResize = () => setIsMobileScreen(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
     // État du formulaire
+    const [currentStep, setCurrentStep] = useState(1); // Pour le wizard mobile: 1=Profil, 2=Contact/Pseudo, 3=Enfant/Poste
     const [selectedRole, setSelectedRole] = useState('parent');
     const [loading, setLoading] = useState(false);
     const [loadingChildren, setLoadingChildren] = useState(false);
@@ -50,13 +71,25 @@ const AddUserPage = () => {
     const [showSuccess, setShowSuccess] = useState(false);
     const [createdUser, setCreatedUser] = useState(null);
     const [noEmail, setNoEmail] = useState(false);
+    const [copiedLink, setCopiedLink] = useState(false);
 
+    // Mode enfant pour parent: 'existing' | 'express' | 'later'
+    const [childMode, setChildMode] = useState('existing');
+    const [expressChild, setExpressChild] = useState({
+        first_name: '',
+        birth_date: '',
+        gender: 'female',
+        regime: 'journee'
+    });
+
+    // Données formulaire
     const [formData, setFormData] = useState({
         first_name: '',
         last_name: '',
         email: '',
         phone: '',
-        gender: '',
+        username: '',
+        civility: 'female', // Civilité / Lien (parent: female=Mère, male=Père, guardian=Tuteur; staff: female=Mme, male=M.)
         staff_position: '',
         spouse_name: '',
         spouse_phone: '',
@@ -65,13 +98,21 @@ const AddUserPage = () => {
         emergency_contact_phone: ''
     });
 
+    const [usernameStatus, setUsernameStatus] = useState({ checking: false, available: null, message: '' });
     const [errors, setErrors] = useState({});
 
-    // Pré-sélectionner un enfant et/ou rôle si passé via navigation
+    // Initialisation depuis l'URL ou l'état de navigation
     useEffect(() => {
+        const searchParams = new URLSearchParams(location.search);
+        const queryRole = searchParams.get('role');
+        if (queryRole && ['parent', 'staff'].includes(queryRole)) {
+            setSelectedRole(queryRole);
+        }
+
         if (location.state?.preselectedChild) {
             const child = location.state.preselectedChild;
             setSelectedChildren([child]);
+            setChildMode('existing');
             if (child.last_name) {
                 setFormData(prev => ({
                     ...prev,
@@ -87,9 +128,9 @@ const AddUserPage = () => {
         if (location.state?.preselectedRole) {
             setSelectedRole(location.state.preselectedRole);
         }
-    }, [location.state]);
+    }, [location.state, location.search]);
 
-    // Charger les enfants orphelins (fonction réutilisable)
+    // Chargement des enfants orphelins
     const fetchOrphanChildren = useCallback(async (ignoreState = false) => {
         if (selectedRole !== 'parent') return;
 
@@ -98,7 +139,6 @@ const AddUserPage = () => {
             const response = await userWorkflowService.getOrphanChildren();
             if (response.success) {
                 let children = response.children || [];
-                // N'injecter l'enfant du location.state que si on n'a pas explicitement demandé de l'ignorer
                 if (!ignoreState && location.state?.preselectedChild) {
                     const preChild = location.state.preselectedChild;
                     if (!children.some(c => c.id === preChild.id)) {
@@ -106,6 +146,9 @@ const AddUserPage = () => {
                     }
                 }
                 setOrphanChildren(children);
+                if (children.length === 0 && childMode === 'existing') {
+                    setChildMode('express');
+                }
             }
         } catch (error) {
             console.error('Erreur chargement enfants orphelins:', error);
@@ -113,54 +156,64 @@ const AddUserPage = () => {
         } finally {
             setLoadingChildren(false);
         }
-    }, [selectedRole, location.state]);
+    }, [selectedRole, location.state, childMode]);
 
     useEffect(() => {
         fetchOrphanChildren();
     }, [fetchOrphanChildren]);
 
-    // Options de rôle
-    const roleOptions = [
-        {
-            value: 'parent',
-            label: isRTL ? 'ولي أمر' : 'Parent',
-            description: isRTL
-                ? 'إنشاء حساب ولي أمر وربطه بطفل مسجل'
-                : 'Créer un compte parent et l\'associer à un enfant inscrit',
-            icon: Users,
-            color: 'text-blue-600',
-            bgColor: 'bg-blue-100 dark:bg-blue-900/20'
-        },
-        {
-            value: 'staff',
-            label: isRTL ? 'موظف' : 'Personnel',
-            description: isRTL
-                ? 'إنشاء حساب موظف (مربية، صحة، نظافة...)'
-                : 'Créer un compte personnel (éducateur, santé, entretien...)',
-            icon: Briefcase,
-            color: 'text-green-600',
-            bgColor: 'bg-green-100 dark:bg-green-900/20'
+    // Suggestion et vérification de pseudo unique (uniquement comptes actifs)
+    const handleUsernameCheck = useCallback(async (candidate) => {
+        const clean = candidate?.trim().toLowerCase();
+        if (!clean || clean.length < 3) {
+            setUsernameStatus({ checking: false, available: null, message: '' });
+            return;
         }
-    ];
 
-    // Option admin supprimée - les comptes directeur sont créés manuellement
+        setUsernameStatus({ checking: true, available: null, message: 'Vérification...' });
+        try {
+            const res = await userWorkflowService.checkUsername(clean);
+            if (res.available) {
+                setUsernameStatus({
+                    checking: false,
+                    available: true,
+                    message: isRTL ? 'اسم المستخدم متاح' : 'Pseudo disponible'
+                });
+            } else {
+                setUsernameStatus({
+                    checking: false,
+                    available: false,
+                    message: res.message || (isRTL ? 'اسم المستخدم مستخدم بالفعل' : 'Ce pseudo est déjà utilisé')
+                });
+            }
+        } catch (e) {
+            setUsernameStatus({ checking: false, available: null, message: '' });
+        }
+    }, [isRTL]);
 
-    // Options de poste pour le personnel
-    const staffPositions = [
-        { value: 'director', label: isRTL ? 'مدير/مديرة' : 'Directeur/Directrice' },
-        { value: 'educator', label: isRTL ? 'مربي/مربية' : 'Éducateur/Éducatrice' },
-        { value: 'health', label: isRTL ? 'طبيب متعاقد' : 'Médecin conventionné' },
-        { value: 'cleaning', label: isRTL ? 'موظف نظافة' : 'Personnel d\'entretien' },
-        { value: 'security', label: isRTL ? 'حارس أمن' : 'Agent de sécurité' },
-        { value: 'kitchen', label: isRTL ? 'موظف مطبخ' : 'Personnel de cuisine' },
-        { value: 'other', label: isRTL ? 'آخر' : 'Autre' }
-    ];
+    // Auto-suggérer un pseudo dès la saisie du prénom et nom
+    useEffect(() => {
+        if (!formData.username && formData.first_name && formData.last_name) {
+            const autoSuggested = `${formData.first_name.trim().toLowerCase()}.${formData.last_name.trim().toLowerCase()}`
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-z0-9._]/g, '');
+            if (autoSuggested.length >= 3) {
+                setFormData(prev => ({ ...prev, username: autoSuggested }));
+                handleUsernameCheck(autoSuggested);
+            }
+        }
+    }, [formData.first_name, formData.last_name, formData.username, handleUsernameCheck]);
 
+    // Changement de champs
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
         if (errors[name]) {
             setErrors(prev => ({ ...prev, [name]: '' }));
+        }
+
+        if (name === 'username') {
+            handleUsernameCheck(value);
         }
     };
 
@@ -173,46 +226,57 @@ const AddUserPage = () => {
         }));
     };
 
-    const validateForm = () => {
+    // Validation
+    const validateStep = (step) => {
         const newErrors = {};
 
-        if (!formData.first_name.trim()) {
-            newErrors.first_name = isRTL ? 'الاسم الأول مطلوب' : 'Le prénom est requis';
-        }
-
-        if (!formData.last_name.trim()) {
-            newErrors.last_name = isRTL ? 'اسم العائلة مطلوب' : 'Le nom est requis';
-        }
-
-        // Email : obligatoire pour le personnel, optionnel pour le parent
-        if (selectedRole === 'parent') {
-            if (formData.email.trim() && !/\S+@\S+\.\S+/.test(formData.email.trim())) {
-                newErrors.email = isRTL ? 'البريد الإلكتروني غير صحيح' : 'Format d\'email invalide';
+        if (step === 1) {
+            if (!formData.first_name.trim()) {
+                newErrors.first_name = isRTL ? 'الاسم الأول مطلوب' : 'Le prénom est requis';
             }
-        } else {
-            if (!formData.email.trim()) {
-                newErrors.email = isRTL ? 'البريد الإلكتروني مطلوب' : 'L\'email est requis';
-            } else if (!/\S+@\S+\.\S+/.test(formData.email.trim())) {
-                newErrors.email = isRTL ? 'البريد الإلكتروني غير صحيح' : 'Format d\'email invalide';
+            if (!formData.last_name.trim()) {
+                newErrors.last_name = isRTL ? 'اسم العائلة مطلوب' : 'Le nom est requis';
+            }
+            if (!formData.civility) {
+                newErrors.civility = isRTL ? 'يرجى اختيار الصفة' : 'La civilité est requise';
             }
         }
 
-        if (!formData.phone.trim()) {
-            newErrors.phone = isRTL ? 'رقم الهاتف مطلوب' : 'Le téléphone est requis';
-        }
-
-        if (!formData.gender) {
-            newErrors.gender = isRTL ? 'الجنس مطلوب' : 'Le sexe est requis';
-        }
-
-        // Validation spécifique au rôle
-        if (selectedRole === 'parent') {
-            if (selectedChildren.length === 0) {
-                newErrors.child = isRTL ? 'يجب اختيار طفل واحد على الأقل' : 'Vous devez sélectionner au moins un enfant';
+        if (step === 2) {
+            if (!formData.phone.trim()) {
+                newErrors.phone = isRTL ? 'رقم الهاتف مطلوب' : 'Le numéro de téléphone est requis';
             }
-        } else if (selectedRole === 'staff' || selectedRole === 'admin') {
-            if (!formData.staff_position) {
-                newErrors.staff_position = isRTL ? 'المنصب مطلوب' : 'Le poste est requis';
+
+            if (!noEmail) {
+                if (!formData.email.trim()) {
+                    newErrors.email = isRTL ? 'البريد الإلكتروني مطلوب' : 'L\'email est requis';
+                } else if (formData.email.trim() && !/\S+@\S+\.\S+/.test(formData.email.trim())) {
+                    newErrors.email = isRTL ? 'بريد إلكتروني غير صالح' : 'Format d\'email invalide';
+                }
+            }
+
+            if (usernameStatus.available === false) {
+                newErrors.username = isRTL ? 'اسم المستخدم مستخدم بالفعل' : 'Pseudo déjà utilisé';
+            }
+        }
+
+        if (step === 3) {
+            if (selectedRole === 'parent') {
+                if (childMode === 'existing' && selectedChildren.length === 0) {
+                    newErrors.child = isRTL ? 'يرجى اختيار طفل مسجل' : 'Veuillez sélectionner au moins un enfant';
+                }
+                if (childMode === 'express') {
+                    if (!expressChild.first_name.trim()) {
+                        newErrors.express_first_name = isRTL ? 'اسم الطفل مطلوب' : 'Le prénom de l\'enfant est requis';
+                    }
+                    if (!expressChild.birth_date) {
+                        newErrors.express_birth_date = isRTL ? 'تاريخ الميلاد مطلوب' : 'La date de naissance est requise';
+                    }
+                }
+            } else if (selectedRole === 'staff') {
+                if (!formData.staff_position) {
+                    newErrors.staff_position = isRTL ? 'المنصب مطلوب' : 'Le poste est requis';
+                }
             }
         }
 
@@ -220,10 +284,22 @@ const AddUserPage = () => {
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    const handleNextStep = () => {
+        if (validateStep(currentStep)) {
+            setCurrentStep(prev => Math.min(prev + 1, 3));
+        }
+    };
 
-        if (!validateForm()) {
+    const handlePrevStep = () => {
+        setCurrentStep(prev => Math.max(prev - 1, 1));
+    };
+
+    // Soumission du formulaire
+    const handleSubmit = async (e) => {
+        if (e) e.preventDefault();
+
+        if (!validateStep(1) || !validateStep(2) || !validateStep(3)) {
+            dialog.error(isRTL ? 'يرجى تصحيح الأخطاء في النموذج' : 'Veuillez corriger les champs requis');
             return;
         }
 
@@ -233,40 +309,46 @@ const AddUserPage = () => {
             let response;
 
             if (selectedRole === 'parent') {
-                // Créer un compte parent
-                response = await userWorkflowService.createParent({
-                    first_name: formData.first_name,
-                    last_name: formData.last_name,
-                    email: formData.email,
-                    phone: formData.phone,
-                    gender: formData.gender,
-                    child_ids: selectedChildren.map(c => c.id),
+                const payload = {
+                    first_name: formData.first_name.trim(),
+                    last_name: formData.last_name.trim(),
+                    email: noEmail ? '' : formData.email.trim(),
+                    phone: formData.phone.trim(),
+                    username: formData.username.trim() || undefined,
+                    gender: formData.civility === 'male' ? 'male' : 'female',
+                    child_ids: childMode === 'existing' ? selectedChildren.map(c => c.id) : [],
+                    express_child: childMode === 'express' ? {
+                        first_name: expressChild.first_name.trim(),
+                        birth_date: expressChild.birth_date,
+                        gender: expressChild.gender,
+                        regime: expressChild.regime
+                    } : null,
                     spouse_name: formData.spouse_name?.trim() || '',
                     spouse_phone: formData.spouse_phone?.trim() || '',
                     emergency_contact_choice: formData.emergency_contact_choice || 'custom',
                     emergency_contact_name: formData.emergency_contact_choice === 'custom' ? (formData.emergency_contact_name?.trim() || '') : '',
                     emergency_contact_phone: formData.emergency_contact_choice === 'custom' ? (formData.emergency_contact_phone?.trim() || '') : ''
-                });
+                };
+
+                response = await userWorkflowService.createParent(payload);
             } else {
-                // Créer un compte personnel
                 response = await userWorkflowService.createStaff({
-                    first_name: formData.first_name,
-                    last_name: formData.last_name,
-                    email: formData.email,
-                    phone: formData.phone,
-                    gender: formData.gender,
+                    first_name: formData.first_name.trim(),
+                    last_name: formData.last_name.trim(),
+                    email: noEmail ? '' : formData.email.trim(),
+                    phone: formData.phone.trim(),
+                    username: formData.username.trim() || undefined,
+                    gender: formData.civility === 'male' ? 'male' : 'female',
                     staff_position: formData.staff_position
                 });
             }
 
-            if (response.success) {
-                // Retirer immédiatement les enfants associés de la liste locale des orphelins
-                if (selectedRole === 'parent' && selectedChildren.length > 0) {
-                    const associatedIds = selectedChildren.map(c => c.id);
-                    setOrphanChildren(prev => prev.filter(c => !associatedIds.includes(c.id)));
-                }
-
-                setCreatedUser(response.user);
+            if (response.user || response.success) {
+                const userObj = response.user || {};
+                setCreatedUser({
+                    ...userObj,
+                    password_link: response.passwordLink || response.password_link || response.activation_url
+                });
                 setShowSuccess(true);
                 dialog.success(
                     selectedRole === 'parent'
@@ -276,23 +358,27 @@ const AddUserPage = () => {
             }
         } catch (error) {
             console.error('Erreur création utilisateur:', error);
-            dialog.error(error.error || (isRTL ? 'خطأ في إنشاء الحساب' : 'Erreur lors de la création'));
+            dialog.error(error.error || error.message || (isRTL ? 'خطأ في إنشاء الحساب' : 'Erreur lors de la création'));
         } finally {
             setLoading(false);
         }
     };
 
-    const handleResetForAnotherUser = () => {
+    const handleReset = () => {
         setShowSuccess(false);
         setCreatedUser(null);
         setSelectedChildren([]);
         setNoEmail(false);
+        setCurrentStep(1);
+        setChildMode('existing');
+        setExpressChild({ first_name: '', birth_date: '', gender: 'female', regime: 'journee' });
         setFormData({
             first_name: '',
             last_name: '',
             email: '',
             phone: '',
-            gender: '',
+            username: '',
+            civility: 'female',
             staff_position: '',
             spouse_name: '',
             spouse_phone: '',
@@ -301,644 +387,787 @@ const AddUserPage = () => {
             emergency_contact_phone: ''
         });
         setErrors({});
-        // Purgation de l'état de navigation pour ne plus injecter l'enfant précédent
-        navigate('/dashboard/users/add', { replace: true, state: {} });
-        // Recharger immédiatement la liste fraîche des enfants orphelins depuis l'API
         fetchOrphanChildren(true);
     };
 
-    // Écran de succès
+    // Lien d'activation et envoi WhatsApp / SMS
+    const activationLink = useMemo(() => {
+        if (!createdUser) return '';
+        const link = createdUser.password_link || createdUser.activation_url || `${window.location.origin}/create-password`;
+        // Ensure it has a protocol so WhatsApp renders it as a link
+        if (link.startsWith('http')) return link;
+        return `${window.location.origin}${link.startsWith('/') ? '' : '/'}${link}`;
+    }, [createdUser]);
+
+    // Formatage international E.164 sans zéro pour wa.me (évite que WhatsApp prenne le numéro pour un @pseudo)
+    const whatsAppPhone = useMemo(() => {
+        const raw = (createdUser?.phone || formData.phone || '').trim();
+        if (!raw) return '';
+        let digits = raw.replace(/[^0-9]/g, '');
+
+        // Retirer 00 initial si présent
+        if (digits.startsWith('00')) {
+            digits = digits.slice(2);
+        }
+
+        // 1. Tunisie (8 chiffres, ex: 98123456, 20123456, 50123456) -> ajouter 216
+        if (/^\d{8}$/.test(digits)) {
+            return `216${digits}`;
+        }
+        // 2. Tunisie déjà avec 216
+        if (/^216\d{8}$/.test(digits)) {
+            return digits;
+        }
+
+        // 3. France (10 chiffres commençant par 06 ou 07, ex: 0623446036) -> remplacer le 0 par 33
+        if (/^0[67]\d{8}$/.test(digits)) {
+            return `33${digits.slice(1)}`;
+        }
+        // 4. France déjà avec 33
+        if (/^33[67]\d{8}$/.test(digits)) {
+            return digits;
+        }
+
+        // 5. Tout numéro commençant par 0 : retirer le 0 pour éviter le bug WhatsApp "@pseudo"
+        if (digits.startsWith('0')) {
+            digits = digits.slice(1);
+        }
+
+        return digits;
+    }, [createdUser, formData.phone]);
+
+    const whatsAppMessage = useMemo(() => {
+        if (!createdUser) return '';
+        const name = createdUser.first_name || '';
+        return isRTL
+            ? `مرحباً ${name}،\n\nأهلاً بكم في الحضانة! 🎈\nتم إنشاء حسابكم بنجاح.\n\nيرجى الضغط على الرابط أدناه لتعيين كلمة المرور وتفعيل حسابكم بشكل آمن:\n\n🔗 ${activationLink}\n\nنحن سعداء بانضمامكم إلينا! 🌟`
+            : `Bonjour ${name},\n\nBienvenue à la crèche ! 🎈\nVotre compte a été créé avec succès.\n\nVeuillez cliquer sur le lien ci-dessous pour définir votre mot de passe et activer votre accès sécurisé :\n\n🔗 ${activationLink}\n\nNous sommes ravis de vous compter parmi nous ! 🌟`;
+    }, [createdUser, activationLink, isRTL]);
+
+    const handleCopyActivationLink = () => {
+        if (activationLink) {
+            navigator.clipboard.writeText(activationLink);
+            setCopiedLink(true);
+            dialog.success(isRTL ? 'تم نسخ الرابط' : 'Lien copié dans le presse-papiers');
+            setTimeout(() => setCopiedLink(false), 2500);
+        }
+    };
+
+    const handleSendWhatsApp = () => {
+        if (!whatsAppPhone) {
+            dialog.error(isRTL ? 'رقم الهاتف غير متوفر' : 'Numéro de téléphone non renseigné');
+            return;
+        }
+        const waUrl = `https://wa.me/${whatsAppPhone}?text=${encodeURIComponent(whatsAppMessage)}`;
+        window.open(waUrl, '_blank');
+    };
+
+    const handleSendSms = () => {
+        if (!whatsAppPhone) return;
+        const smsUrl = `sms:${whatsAppPhone}?body=${encodeURIComponent(whatsAppMessage)}`;
+        window.location.href = smsUrl;
+    };
+
+    // Options de poste staff
+    const staffPositions = [
+        { value: 'director', label: isRTL ? 'مدير/مديرة' : 'Directeur/Directrice' },
+        { value: 'educator', label: isRTL ? 'مربي/مربية' : 'Éducateur/Éducatrice' },
+        { value: 'health', label: isRTL ? 'طبيب متعاقد' : 'Médecin conventionné' },
+        { value: 'cleaning', label: isRTL ? 'موظف نظافة' : 'Personnel d\'entretien' },
+        { value: 'security', label: isRTL ? 'حارس أمن' : 'Agent de sécurité' },
+        { value: 'kitchen', label: isRTL ? 'موظف مطبخ' : 'Personnel de cuisine' },
+        { value: 'other', label: isRTL ? 'آخر' : 'Autre' }
+    ];
+
+    // ==========================================
+    // ÉCRAN DE SUCCÈS (Mobile & Desktop)
+    // ==========================================
     if (showSuccess && createdUser) {
-        const isNoEmailUser = !createdUser.email || createdUser.email.includes('@creche.local');
-
         return (
-            <div className="space-y-6">
+            <div className="max-w-xl mx-auto px-4 py-6">
                 <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="max-w-2xl mx-auto"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="bg-white dark:bg-gray-800 rounded-3xl p-6 sm:p-8 shadow-2xl border border-gray-100 dark:border-gray-700 text-center"
                 >
-                    <Card className="border-green-200 dark:border-green-800">
-                        <CardContent className="pt-6">
-                            <div className="text-center mb-6">
-                                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 mb-4">
-                                    <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
-                                </div>
-                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                                    {isRTL ? 'تم إنشاء الحساب بنجاح!' : 'Compte créé avec succès !'}
-                                </h2>
-                                <p className="text-gray-600 dark:text-gray-400 mt-2">
-                                    <strong>{createdUser.first_name} {createdUser.last_name}</strong>
-                                </p>
-                            </div>
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-inner">
+                        <CheckCircle className="w-10 h-10 sm:w-12 sm:h-12" />
+                    </div>
 
-                            {/* Statut Email */}
-                            {isNoEmailUser ? (
-                                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 mb-6">
-                                    <div className="flex items-start gap-3">
-                                        <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-                                        <div>
-                                            <h3 className="font-semibold text-amber-800 dark:text-amber-300">
-                                                {isRTL ? 'ولي أمر مسجل بدون بريد إلكتروني' : 'Parent enregistré sans adresse email'}
-                                            </h3>
-                                            <p className="text-amber-700 dark:text-amber-400 text-sm mt-1">
-                                                {isRTL
-                                                    ? 'لم يتم إرسال رابط دعوة. تم ربط الطفل بالولي بنجاح، ويمكنك إضافة بريد إلكتروني لاحقاً لتفعيل حسابه.'
-                                                    : 'Aucun lien de création de mot de passe n\'a été envoyé. L\'enfant est bien associé, et vous pourrez ajouter un email ultérieurement pour activer son compte.'
-                                                }
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 mb-6">
-                                    <div className="flex items-start gap-3">
-                                        <Mail className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
-                                        <div>
-                                            <h3 className="font-semibold text-blue-800 dark:text-blue-300">
-                                                {isRTL ? 'تم إرسال البريد الإلكتروني' : 'Email envoyé'}
-                                            </h3>
-                                            <p className="text-blue-700 dark:text-blue-400 text-sm mt-1">
-                                                {isRTL
-                                                    ? `تم إرسال رابط إنشاء كلمة المرور إلى ${createdUser.email}`
-                                                    : `Un lien de création de mot de passe a été envoyé à ${createdUser.email}`
-                                                }
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
+                    <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-1">
+                        {isRTL ? 'تم إنشاء الحساب بنجاح!' : 'Compte créé avec succès !'}
+                    </h2>
+                    <p className="text-gray-600 dark:text-gray-300 font-medium text-lg">
+                        {createdUser.first_name} {createdUser.last_name}
+                    </p>
+                    {createdUser.username && (
+                        <p className="text-xs text-primary-600 dark:text-primary-400 font-mono mt-1">
+                            @{createdUser.username}
+                        </p>
+                    )}
 
-                            {/* Info enfants associés (pour parent) */}
-                            {selectedRole === 'parent' && selectedChildren.length > 0 && (
-                                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4 mb-6">
-                                    <div className="flex items-start gap-3">
-                                        <Baby className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5" />
-                                        <div>
-                                            <h3 className="font-semibold text-green-800 dark:text-green-300">
-                                                {isRTL ? 'الأطفال المرتبطون' : 'Enfant(s) associé(s)'}
-                                            </h3>
-                                            <p className="text-green-700 dark:text-green-400 text-sm mt-1">
-                                                {selectedChildren.map(c => `${c.first_name} ${c.last_name}`).join(', ')}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
+                    {/* Bloc invitation WhatsApp Instantanée */}
+                    <div className="mt-6 p-4 sm:p-5 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/10 border-2 border-green-200 dark:border-green-800 rounded-2xl text-left rtl:text-right">
+                        <div className="flex items-center gap-2 mb-2 text-green-800 dark:text-green-300 font-bold text-sm">
+                            <MessageCircle className="w-4 h-4 text-green-600" />
+                            <span>{isRTL ? 'دعوة فورية للوالد' : 'Invitation instantanée'}</span>
+                        </div>
+                        <p className="text-xs text-gray-600 dark:text-gray-300 mb-4 leading-relaxed">
+                            {isRTL
+                                ? 'يمكنك إرسال رابط التفعيل مباشرة للوالد عبر تطبيق واتساب أو الرسائل القصيرة بلمسة واحدة.'
+                                : 'Envoyez immédiatement le lien d\'activation au parent via WhatsApp ou SMS en un seul clic.'}
+                        </p>
 
-                            {/* Actions */}
-                            <div className="flex flex-col sm:flex-row gap-3">
-                                <Button
-                                    onClick={handleResetForAnotherUser}
-                                    className="flex-1"
-                                >
-                                    <UserPlus className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
-                                    {isRTL ? 'إضافة مستخدم آخر' : 'Ajouter un autre utilisateur'}
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    onClick={() => {
-                                        const hasLinkedChild = selectedRole === 'parent' && selectedChildren && selectedChildren.length > 0;
-                                        if (selectedRole === 'parent' && createdUser && !hasLinkedChild) {
-                                            // Le parent n'a pas encore d'enfant associé : pré-remplissage de ce parent et de son nom
-                                            const params = new URLSearchParams();
-                                            if (createdUser.id) params.set('parentId', createdUser.id);
-                                            if (createdUser.last_name) params.set('lastName', createdUser.last_name);
-                                            navigate(`/dashboard/add-child?${params.toString()}`);
-                                        } else {
-                                            // Le parent a déjà son enfant associé (ou autre rôle) : création d'un nouvel enfant indépendant
-                                            navigate('/dashboard/add-child');
-                                        }
-                                    }}
-                                    className="flex-1 border-primary-200 dark:border-primary-800 text-primary-700 dark:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/20"
-                                >
-                                    <Baby className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
-                                    {isRTL ? 'إضافة طفل' : 'Ajouter un enfant'}
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    onClick={() => navigate('/dashboard')}
-                                    className="flex-1"
-                                >
-                                    {isRTL ? 'العودة للوحة التحكم' : 'Retour au dashboard'}
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
+                        <div className="flex flex-col sm:flex-row gap-2.5">
+                            <button
+                                type="button"
+                                onClick={handleSendWhatsApp}
+                                className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white rounded-xl font-semibold shadow-md transition-all"
+                            >
+                                <MessageCircle className="w-5 h-5" />
+                                <span>{isRTL ? 'إرسال عبر واتساب' : 'Envoyer via WhatsApp'}</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleSendSms}
+                                className="flex items-center justify-center gap-2 py-3 px-4 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-xl font-medium transition-all"
+                            >
+                                <Smartphone className="w-4 h-4" />
+                                <span>SMS</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Lien d'activation direct */}
+                    <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center gap-2 text-left rtl:text-right">
+                        <span className="text-xs text-gray-500 font-mono truncate flex-1 select-all">
+                            {activationLink}
+                        </span>
+                        <button
+                            type="button"
+                            onClick={handleCopyActivationLink}
+                            className="p-2 text-gray-600 dark:text-gray-300 hover:text-primary-600 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors shrink-0"
+                            title="Copier le lien"
+                        >
+                            {copiedLink ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+                        </button>
+                    </div>
+
+                    {/* Actions de navigation */}
+                    <div className="mt-6 flex flex-col gap-2.5">
+                        <Button
+                            onClick={handleReset}
+                            className="w-full py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-medium"
+                        >
+                            <UserPlus className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
+                            {isRTL ? 'إضافة مستخدم آخر' : 'Ajouter un autre utilisateur'}
+                        </Button>
+                        <Button
+                            variant="outline"
+                            onClick={() => navigate('/dashboard')}
+                            className="w-full py-3 rounded-xl"
+                        >
+                            {isRTL ? 'العودة للوحة التحكم' : 'Retour au dashboard'}
+                        </Button>
+                    </div>
                 </motion.div>
             </div>
         );
     }
 
+    // ==========================================
+    // RENDU DU FORMULAIRE (WIZARD OU DESKTOP)
+    // ==========================================
     return (
-        <div className="space-y-6 pt-[calc(env(safe-area-inset-top,0px)+0.75rem)] lg:pt-0">
+        <div className="max-w-4xl mx-auto px-4 py-4 sm:py-6 space-y-6">
             {/* En-tête */}
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-            >
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {isRTL ? 'إضافة مستخدم جديد' : 'Ajouter un utilisateur'}
-                </h1>
-                <p className="text-gray-600 dark:text-gray-400 mt-1">
-                    {isRTL
-                        ? 'سيتم إرسال رابط إنشاء كلمة المرور عبر البريد الإلكتروني'
-                        : 'Un lien de création de mot de passe sera envoyé par email'
-                    }
-                </p>
-            </motion.div>
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+                        {isRTL ? 'إضافة مستخدم جديد' : 'Nouvel utilisateur'}
+                    </h1>
+                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                        {isRTL
+                            ? 'تسجيل ولي أمر أو موظف مع دعوة فورية عبر واتساب'
+                            : 'Enregistrement express avec invitation WhatsApp sans surcoût'}
+                    </p>
+                </div>
+            </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Sélection du rôle */}
-                <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.1 }}
-                >
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center text-base">
-                                <Shield className="w-5 h-5 mr-2 rtl:mr-0 rtl:ml-2" />
-                                {isRTL ? 'نوع الحساب' : 'Type de compte'}
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                            {roleOptions.map((option) => (
-                                <div
-                                    key={option.value}
-                                    onClick={() => handleRoleSelect(option.value)}
-                                    className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${selectedRole === option.value
-                                        ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
-                                        }`}
-                                >
-                                    <div className="flex items-start gap-3">
-                                        <div className={`p-2 rounded-lg ${option.bgColor}`}>
-                                            <option.icon className={`w-5 h-5 ${option.color}`} />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <h3 className="font-medium text-gray-900 dark:text-white">
-                                                {option.label}
-                                            </h3>
-                                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                                {option.description}
-                                            </p>
-                                        </div>
-                                        {selectedRole === option.value && (
-                                            <Check className="w-5 h-5 text-primary-500 flex-shrink-0" />
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
-                        </CardContent>
-                    </Card>
-                </motion.div>
+            {/* Stepper Wizard (Particulièrement fluide sur smartphone) */}
+            <div className="flex items-center justify-between bg-white dark:bg-gray-800 rounded-2xl p-2.5 sm:p-4 shadow-sm border border-gray-100 dark:border-gray-700">
+                {[
+                    { step: 1, label: isRTL ? 'الملف' : 'Profil', icon: Users },
+                    { step: 2, label: isRTL ? 'الاتصال' : 'Contact & Pseudo', icon: Phone },
+                    { step: 3, label: selectedRole === 'parent' ? (isRTL ? 'الطفل' : 'Enfant') : (isRTL ? 'المنصب' : 'Poste'), icon: selectedRole === 'parent' ? Baby : Briefcase }
+                ].map(({ step, label, icon: StepIcon }) => {
+                    const isActive = currentStep === step;
+                    const isPassed = currentStep > step;
+                    return (
+                        <div
+                            key={step}
+                            onClick={() => {
+                                if (step < currentStep) setCurrentStep(step);
+                                else if (step === currentStep + 1 && validateStep(currentStep)) setCurrentStep(step);
+                            }}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-xl cursor-pointer transition-all ${
+                                isActive
+                                    ? 'bg-primary-50 dark:bg-primary-950/40 text-primary-600 dark:text-primary-400 font-semibold shadow-sm'
+                                    : isPassed
+                                    ? 'text-green-600 dark:text-green-400 font-medium'
+                                    : 'text-gray-400 dark:text-gray-500'
+                            }`}
+                        >
+                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold ${
+                                isActive
+                                    ? 'bg-primary-600 text-white'
+                                    : isPassed
+                                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-500'
+                            }`}>
+                                {isPassed ? <Check className="w-4 h-4" /> : step}
+                            </div>
+                            <span className="text-xs sm:text-sm hidden sm:inline">{label}</span>
+                        </div>
+                    );
+                })}
+            </div>
 
-                {/* Formulaire */}
-                <motion.div
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className="lg:col-span-2"
-                >
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center text-base">
-                                <UserPlus className="w-5 h-5 mr-2 rtl:mr-0 rtl:ml-2" />
-                                {isRTL ? 'معلومات المستخدم' : 'Informations utilisateur'}
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <form onSubmit={handleSubmit} className="space-y-6">
-                                {/* Nom et prénom */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                            {isRTL ? 'الاسم الأول' : 'Prénom'} *
-                                        </label>
-                                        <input
-                                            type="text"
-                                            name="first_name"
-                                            value={formData.first_name}
-                                            onChange={handleInputChange}
-                                            className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${errors.first_name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                                                }`}
-                                            placeholder={isRTL ? 'أدخل الاسم الأول' : 'Entrez le prénom'}
-                                        />
-                                        {errors.first_name && (
-                                            <p className="text-red-500 text-sm mt-1 flex items-center">
-                                                <AlertCircle className="w-4 h-4 mr-1" />
-                                                {errors.first_name}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                            {isRTL ? 'اسم العائلة' : 'Nom'} *
-                                        </label>
-                                        <input
-                                            type="text"
-                                            name="last_name"
-                                            value={formData.last_name}
-                                            onChange={handleInputChange}
-                                            className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${errors.last_name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                                                }`}
-                                            placeholder={isRTL ? 'أدخل اسم العائلة' : 'Entrez le nom'}
-                                        />
-                                        {errors.last_name && (
-                                            <p className="text-red-500 text-sm mt-1 flex items-center">
-                                                <AlertCircle className="w-4 h-4 mr-1" />
-                                                {errors.last_name}
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Email et téléphone */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                            {isRTL ? 'البريد الإلكتروني' : 'Email'} {selectedRole === 'parent' ? (
-                                                <span className="text-gray-400 font-normal text-xs">({isRTL ? 'اختياري' : 'optionnel'})</span>
-                                            ) : '*'}
-                                        </label>
-                                        <div className="relative">
-                                            <Mail className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                                            <input
-                                                type="email"
-                                                name="email"
-                                                value={formData.email}
-                                                disabled={noEmail}
-                                                onChange={handleInputChange}
-                                                className={`w-full pl-10 rtl:pl-3 rtl:pr-10 pr-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-100 disabled:dark:bg-gray-800 disabled:text-gray-400 ${errors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                                                    }`}
-                                                placeholder={noEmail
-                                                    ? (isRTL ? 'بدون بريد إلكتروني' : 'Sans adresse email')
-                                                    : (isRTL ? 'أدخل البريد الإلكتروني' : 'Entrez l\'email')
-                                                }
-                                            />
-                                        </div>
-                                        {errors.email && (
-                                            <p className="text-red-500 text-sm mt-1 flex items-center">
-                                                <AlertCircle className="w-4 h-4 mr-1" />
-                                                {errors.email}
-                                            </p>
-                                        )}
-
-                                        {/* Option parent sans email */}
-                                        {selectedRole === 'parent' && (
-                                            <div className="mt-2">
-                                                <label className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 cursor-pointer select-none">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={noEmail}
-                                                        onChange={(e) => {
-                                                            setNoEmail(e.target.checked);
-                                                            if (e.target.checked) {
-                                                                setFormData(prev => ({ ...prev, email: '' }));
-                                                                if (errors.email) setErrors(prev => ({ ...prev, email: '' }));
-                                                            }
-                                                        }}
-                                                        className="w-4 h-4 rounded text-primary-600 border-gray-300 focus:ring-primary-500"
-                                                    />
-                                                    <span>{isRTL ? 'ولي الأمر ليس لديه بريد إلكتروني حالياً' : 'Le parent n\'a pas d\'adresse email actuellement'}</span>
-                                                </label>
-
-                                                
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                            {isRTL ? 'رقم الهاتف' : 'Téléphone'} *
-                                        </label>
-                                        <div className="relative">
-                                            <Phone className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                                            <input
-                                                type="tel"
-                                                name="phone"
-                                                value={formData.phone}
-                                                onChange={handleInputChange}
-                                                className={`w-full pl-10 rtl:pl-3 rtl:pr-10 pr-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${errors.phone ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                                                    }`}
-                                                placeholder={isRTL ? 'أدخل رقم الهاتف' : 'Entrez le téléphone'}
-                                                dir="ltr"
-                                            />
-                                        </div>
-                                        {errors.phone && (
-                                            <p className="text-red-500 text-sm mt-1 flex items-center">
-                                                <AlertCircle className="w-4 h-4 mr-1" />
-                                                {errors.phone}
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Lien avec l'enfant (parent) / Sexe (staff) */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                        {selectedRole === 'parent'
-                                            ? (isRTL ? 'صلة القرابة بالطفل' : 'Lien avec l\'enfant')
-                                            : (isRTL ? 'الجنس' : 'Sexe')} *
-                                    </label>
-                                    <div className="flex gap-4">
-                                        <label className="flex items-center">
-                                            <input
-                                                type="radio"
-                                                name="gender"
-                                                value="male"
-                                                checked={formData.gender === 'male'}
-                                                onChange={handleInputChange}
-                                                className="mr-2 rtl:mr-0 rtl:ml-2"
-                                            />
-                                            {selectedRole === 'parent'
-                                                ? (isRTL ? 'بابا' : 'Papa')
-                                                : (isRTL ? 'ذكر' : 'Homme')}
-                                        </label>
-                                        <label className="flex items-center">
-                                            <input
-                                                type="radio"
-                                                name="gender"
-                                                value="female"
-                                                checked={formData.gender === 'female'}
-                                                onChange={handleInputChange}
-                                                className="mr-2 rtl:mr-0 rtl:ml-2"
-                                            />
-                                            {selectedRole === 'parent'
-                                                ? (isRTL ? 'ماما' : 'Maman')
-                                                : (isRTL ? 'أنثى' : 'Femme')}
-                                        </label>
-                                    </div>
-                                    {errors.gender && (
-                                        <p className="text-red-500 text-sm mt-1 flex items-center">
-                                            <AlertCircle className="w-4 h-4 mr-1" />
-                                            {errors.gender}
-                                        </p>
-                                    )}
-                                </div>
-
-                                {/* Conjoint(e) — optionnel (pour parent) */}
-                                {selectedRole === 'parent' && (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                                {formData.gender === 'female'
-                                                    ? (isRTL ? 'اسم بابا (الزوج)' : 'Nom complet de Papa (conjoint)')
-                                                    : (isRTL ? 'اسم ماما (الزوجة)' : 'Nom complet de Maman (conjointe)')
-                                                }
-                                                <span className="text-gray-400 font-normal"> ({isRTL ? 'اختياري' : 'optionnel'})</span>
-                                            </label>
-                                            <input
-                                                type="text"
-                                                name="spouse_name"
-                                                value={formData.spouse_name}
-                                                onChange={handleInputChange}
-                                                className="w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"
-                                                placeholder={isRTL ? 'الاسم الكامل' : 'Nom complet'}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                                {isRTL ? 'هاتف الزوج/الزوجة' : 'Téléphone du conjoint'}
-                                                <span className="text-gray-400 font-normal"> ({isRTL ? 'اختياري' : 'optionnel'})</span>
-                                            </label>
-                                            <input
-                                                type="tel"
-                                                name="spouse_phone"
-                                                value={formData.spouse_phone}
-                                                onChange={handleInputChange}
-                                                className="w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"
-                                                placeholder="+216 XX XXX XXX"
-                                            />
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Poste (pour staff/admin) */}
-                                {(selectedRole === 'staff' || selectedRole === 'admin') && (
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                            {isRTL ? 'المنصب' : 'Poste'} *
-                                        </label>
-                                        <select
-                                            name="staff_position"
-                                            value={formData.staff_position}
-                                            onChange={handleInputChange}
-                                            className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white ${errors.staff_position ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-                                                }`}
+            {/* Contenu de l'étape active */}
+            <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 sm:p-8 shadow-xl border border-gray-100 dark:border-gray-700">
+                <AnimatePresence mode="wait">
+                    {/* ==========================================
+                        ÉTAPE 1 : RÔLE & IDENTITÉ (CIVILITÉ ADAPTATIVE)
+                    ========================================== */}
+                    {currentStep === 1 && (
+                        <motion.div
+                            key="step1"
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            className="space-y-6"
+                        >
+                            {/* Choix du rôle */}
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
+                                    {isRTL ? 'نوع الحساب' : 'Type de compte'}
+                                </label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {[
+                                        { value: 'parent', label: isRTL ? 'ولي أمر' : 'Parent', icon: Users, color: 'border-blue-500 bg-blue-50/50 dark:bg-blue-900/10' },
+                                        { value: 'staff', label: isRTL ? 'موظف' : 'Personnel', icon: Briefcase, color: 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-900/10' }
+                                    ].map(r => (
+                                        <div
+                                            key={r.value}
+                                            onClick={() => handleRoleSelect(r.value)}
+                                            className={`p-4 rounded-2xl border-2 cursor-pointer flex flex-col items-center justify-center gap-2 transition-all ${
+                                                selectedRole === r.value
+                                                    ? `${r.color} border-primary-600 shadow-sm font-bold text-gray-900 dark:text-white`
+                                                    : 'border-gray-200 dark:border-gray-700 text-gray-500 hover:border-gray-300'
+                                            }`}
                                         >
-                                            <option value="">{isRTL ? 'اختر المنصب' : 'Sélectionner le poste'}</option>
-                                            {staffPositions.map(pos => (
-                                                <option key={pos.value} value={pos.value}>{pos.label}</option>
-                                            ))}
-                                        </select>
-                                        {errors.staff_position && (
-                                            <p className="text-red-500 text-sm mt-1 flex items-center">
-                                                <AlertCircle className="w-4 h-4 mr-1" />
-                                                {errors.staff_position}
-                                            </p>
-                                        )}
-                                    </div>
-                                )}
+                                            <r.icon className={`w-6 h-6 ${selectedRole === r.value ? 'text-primary-600' : 'text-gray-400'}`} />
+                                            <span className="text-sm">{r.label}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
 
-                                {/* Sélection enfant (pour parent) */}
-                                {selectedRole === 'parent' && (
-                                    <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-                                        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4 flex items-center">
-                                            <Baby className="w-5 h-5 mr-2 rtl:mr-0 rtl:ml-2" />
-                                            {isRTL ? 'اختيار الطفل' : 'Sélectionner l\'enfant'} *
-                                        </h3>
-
-                                        {loadingChildren ? (
-                                            <div className="text-center py-8 text-gray-500">
-                                                {isRTL ? 'جاري التحميل...' : 'Chargement...'}
-                                            </div>
-                                        ) : orphanChildren.length === 0 ? (
-                                            <div className="text-center py-8 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                                                <Baby className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                                                <p>{isRTL ? 'لا يوجد أطفال بدون ولي أمر' : 'Aucun enfant sans parent'}</p>
-                                                <p className="text-sm mt-2">
-                                                    {isRTL
-                                                        ? 'يجب أولاً تسجيل طفل قبل إنشاء حساب ولي الأمر'
-                                                        : 'Vous devez d\'abord inscrire un enfant avant de créer un compte parent'
-                                                    }
-                                                </p>
-                                                <Button
-                                                    type="button"
-                                                    variant="outline"
-                                                    onClick={() => navigate('/dashboard/add-child')}
-                                                    className="mt-4"
-                                                >
-                                                    {isRTL ? 'تسجيل طفل' : 'Inscrire un enfant'}
-                                                </Button>
-                                            </div>
-                                        ) : (
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                {orphanChildren.map(child => {
-                                                    const isSelected = selectedChildren.some(c => c.id === child.id);
-                                                    return (
-                                                        <div
-                                                            key={child.id}
-                                                            onClick={() => {
-                                                                if (isSelected) {
-                                                                    setSelectedChildren(prev => prev.filter(c => c.id !== child.id));
-                                                                } else {
-                                                                    setSelectedChildren(prev => [...prev, child]);
-                                                                }
-                                                            }}
-                                                            className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${isSelected
-                                                                ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                                                                : 'border-gray-200 dark:border-gray-700 hover:border-primary-300'
-                                                                }`}
-                                                        >
-                                                            <div className="flex items-center justify-between">
-                                                                <div>
-                                                                    <p className="font-medium text-gray-900 dark:text-white">
-                                                                        {child.first_name} {child.last_name}
-                                                                    </p>
-                                                                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                                                                        {child.age_display || `${child.age_years || 0} ans`}
-                                                                    </p>
-                                                                </div>
-                                                                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center ${isSelected
-                                                                    ? 'border-primary-500 bg-primary-500'
-                                                                    : 'border-gray-300'
-                                                                    }`}>
-                                                                    {isSelected && (
-                                                                        <Check className="w-3 h-3 text-white" />
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        )}
-
-                                        {errors.child && (
-                                            <p className="text-red-500 text-sm mt-2 flex items-center">
-                                                <AlertCircle className="w-4 h-4 mr-1" />
-                                                {errors.child}
-                                            </p>
-                                        )}
-                                    </div>
-                                )}
-
-                                {/* Contact d'urgence (optionnel pour parent) */}
-                                {selectedRole === 'parent' && (
-                                    <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-                                        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                                            {isRTL ? 'جهة اتصال الطوارئ (اختياري)' : 'Contact d\'urgence (optionnel)'}
-                                        </h3>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                                            {isRTL
-                                                ? 'من يجب الاتصال به أولاً في حالة طارئة؟'
-                                                : 'Qui doit être contacté en priorité en cas d\'urgence ?'
-                                            }
-                                        </p>
-                                        <div className="grid grid-cols-3 gap-2.5 mb-4">
+                            {/* Civilité Adaptative (Règle métier stricte: Mme/M. pour staff; Mère/Père/Tuteur pour parent) */}
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
+                                    {selectedRole === 'parent'
+                                        ? (isRTL ? 'صلة القرابة بالطفل' : 'Lien avec l\'enfant (Civilité)')
+                                        : (isRTL ? 'اللقب والصفة' : 'Civilité')} *
+                                </label>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                                    {selectedRole === 'parent' ? (
+                                        <>
                                             {[
-                                                { value: 'father', label: isRTL ? 'الأب' : 'Le Père' },
-                                                { value: 'mother', label: isRTL ? 'الأم' : 'La Mère' },
-                                                { value: 'custom', label: isRTL ? 'شخص آخر' : 'Autre personne' }
-                                            ].map((opt) => (
+                                                { value: 'female', label: isRTL ? 'الأم (ماما)' : 'Mère (Maman)', emoji: '👩' },
+                                                { value: 'male', label: isRTL ? 'الأب (بابا)' : 'Père (Papa)', emoji: '👨' },
+                                                { value: 'guardian', label: isRTL ? 'تuteur légal' : 'Tuteur légal', emoji: '🛡️' }
+                                            ].map(c => (
                                                 <button
-                                                    key={opt.value}
+                                                    key={c.value}
                                                     type="button"
-                                                    onClick={() => setFormData(prev => ({ ...prev, emergency_contact_choice: opt.value }))}
-                                                    className={`p-2.5 rounded-lg border text-sm font-medium text-center transition-all ${
-                                                        formData.emergency_contact_choice === opt.value
-                                                            ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-950/40 dark:text-primary-300 ring-2 ring-primary-500/20'
-                                                            : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
+                                                    onClick={() => setFormData(p => ({ ...p, civility: c.value }))}
+                                                    className={`py-3 px-3 rounded-xl border text-sm font-semibold flex items-center justify-center gap-2 transition-all ${
+                                                        formData.civility === c.value
+                                                            ? 'border-primary-600 bg-primary-50 dark:bg-primary-950/40 text-primary-700 dark:text-primary-300 ring-2 ring-primary-500/20'
+                                                            : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50'
                                                     }`}
                                                 >
-                                                    {opt.label}
+                                                    <span>{c.emoji}</span>
+                                                    <span>{c.label}</span>
                                                 </button>
                                             ))}
+                                        </>
+                                    ) : (
+                                        <>
+                                            {[
+                                                { value: 'female', label: isRTL ? 'سيدة (Mme)' : 'Madame (Mme)', emoji: '👩' },
+                                                { value: 'male', label: isRTL ? 'سيد (M.)' : 'Monsieur (M.)', emoji: '👨' }
+                                            ].map(c => (
+                                                <button
+                                                    key={c.value}
+                                                    type="button"
+                                                    onClick={() => setFormData(p => ({ ...p, civility: c.value }))}
+                                                    className={`py-3 px-3 rounded-xl border text-sm font-semibold flex items-center justify-center gap-2 transition-all ${
+                                                        formData.civility === c.value
+                                                            ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 ring-2 ring-emerald-500/20'
+                                                            : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50'
+                                                    }`}
+                                                >
+                                                    <span>{c.emoji}</span>
+                                                    <span>{c.label}</span>
+                                                </button>
+                                            ))}
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Prénom et Nom */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                                        {isRTL ? 'الاسم الأول' : 'Prénom'} *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="first_name"
+                                        value={formData.first_name}
+                                        onChange={handleInputChange}
+                                        placeholder={isRTL ? 'مثال: سارة' : 'Ex: Sarah'}
+                                        className={`w-full px-4 py-3 border rounded-xl bg-gray-50/50 dark:bg-gray-700 text-gray-900 dark:text-white transition-all text-base ${
+                                            errors.first_name ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-primary-500'
+                                        }`}
+                                    />
+                                    {errors.first_name && <p className="text-red-500 text-xs mt-1">{errors.first_name}</p>}
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                                        {isRTL ? 'اسم العائلة' : 'Nom de famille'} *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="last_name"
+                                        value={formData.last_name}
+                                        onChange={handleInputChange}
+                                        placeholder={isRTL ? 'مثال: بن علي' : 'Ex: Ben Ali'}
+                                        className={`w-full px-4 py-3 border rounded-xl bg-gray-50/50 dark:bg-gray-700 text-gray-900 dark:text-white transition-all text-base ${
+                                            errors.last_name ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-primary-500'
+                                        }`}
+                                    />
+                                    {errors.last_name && <p className="text-red-500 text-xs mt-1">{errors.last_name}</p>}
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {/* ==========================================
+                        ÉTAPE 2 : CONTACT & IDENTIFIANTS (SANS EMAIL / PSEUDO UNIQUE)
+                    ========================================== */}
+                    {currentStep === 2 && (
+                        <motion.div
+                            key="step2"
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            className="space-y-6"
+                        >
+                            {/* Téléphone (obligatoire) */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                                    {isRTL ? 'رقم الهاتف (الأساسي لتسجيل الدخول وواتساب)' : 'Numéro de téléphone (WhatsApp & Login)'} *
+                                </label>
+                                <div className="relative">
+                                    <Phone className="absolute left-3.5 rtl:left-auto rtl:right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                    <input
+                                        type="tel"
+                                        name="phone"
+                                        value={formData.phone}
+                                        onChange={handleInputChange}
+                                        placeholder="Ex: 98 123 456 / +216 98 123 456"
+                                        dir="ltr"
+                                        className={`w-full pl-11 rtl:pl-4 rtl:pr-11 pr-4 py-3 border rounded-xl bg-gray-50/50 dark:bg-gray-700 text-gray-900 dark:text-white text-base font-mono ${
+                                            errors.phone ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-primary-500'
+                                        }`}
+                                    />
+                                </div>
+                                {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
+                            </div>
+
+                            {/* Option sans email (toggle switch) */}
+                            <div className="p-4 bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                                <div className="flex-1 pr-4 rtl:pr-0 rtl:pl-4">
+                                    <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                                        {isRTL ? 'بدون بريد إلكتروني' : 'Pas d\'adresse e-mail'}
+                                    </p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                        {isRTL
+                                            ? 'سيتمكن المستخدم من تسجيل الدخول برقم هاتفه أو اسمه المستعار'
+                                            : 'L\'utilisateur se connectera avec son téléphone ou son pseudo'}
+                                    </p>
+                                </div>
+                                <ToggleSwitch 
+                                    checked={noEmail} 
+                                    onChange={(checked) => {
+                                        setNoEmail(checked);
+                                        if (checked) setFormData(p => ({ ...p, email: '' }));
+                                    }} 
+                                    size="md" 
+                                />
+                            </div>
+
+                            {/* Email si activé */}
+                            {!noEmail && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                                        {isRTL ? 'البريد الإلكتروني' : 'Adresse e-mail'} <span className="text-gray-400 font-normal">({isRTL ? 'اختياري' : 'optionnel'})</span>
+                                    </label>
+                                    <div className="relative">
+                                        <Mail className="absolute left-3.5 rtl:left-auto rtl:right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                        <input
+                                            type="email"
+                                            name="email"
+                                            value={formData.email}
+                                            onChange={handleInputChange}
+                                            placeholder="contact@exemple.com"
+                                            className={`w-full pl-11 rtl:pl-4 rtl:pr-11 pr-4 py-3 border rounded-xl bg-gray-50/50 dark:bg-gray-700 text-gray-900 dark:text-white text-base ${
+                                                errors.email ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-primary-500'
+                                            }`}
+                                        />
+                                    </div>
+                                    {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+                                </div>
+                            )}
+
+                            {/* Pseudo / Nom d'utilisateur unique */}
+                            <div>
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                        {isRTL ? 'اسم المستخدم / اللقب (تسجيل دخول سريع)' : 'Pseudo de connexion'}
+                                    </label>
+                                    {usernameStatus.checking ? (
+                                        <span className="text-xs text-gray-400 animate-pulse">Vérification...</span>
+                                    ) : usernameStatus.available === true ? (
+                                        <span className="text-xs text-green-600 font-semibold flex items-center gap-1">
+                                            <Check className="w-3.5 h-3.5" /> {isRTL ? 'متاح' : 'Disponible'}
+                                        </span>
+                                    ) : usernameStatus.available === false ? (
+                                        <span className="text-xs text-red-500 font-semibold flex items-center gap-1">
+                                            <AlertCircle className="w-3.5 h-3.5" /> {usernameStatus.message}
+                                        </span>
+                                    ) : null}
+                                </div>
+                                <div className="relative">
+                                    <span className="absolute left-3.5 rtl:left-auto rtl:right-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold">@</span>
+                                    <input
+                                        type="text"
+                                        name="username"
+                                        value={formData.username}
+                                        onChange={handleInputChange}
+                                        autoCapitalize="none"
+                                        placeholder="sarah.b"
+                                        className={`w-full pl-9 rtl:pl-4 rtl:pr-9 pr-4 py-3 border rounded-xl bg-gray-50/50 dark:bg-gray-700 text-gray-900 dark:text-white font-mono text-base ${
+                                            usernameStatus.available === false ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-primary-500'
+                                        }`}
+                                    />
+                                </div>
+                                <p className="text-xs text-gray-400 mt-1">
+                                    {isRTL
+                                        ? 'يسمح بالاتصال بدون بريد إلكتروني (يتم التحقق من الحسابات النشطة فقط)'
+                                        : 'Permet la connexion sans e-mail (vérifié parmi les comptes actifs uniquement)'}
+                                </p>
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {/* ==========================================
+                        ÉTAPE 3 : ASSOCIATION ENFANT OU POSTE STAFF
+                    ========================================== */}
+                    {currentStep === 3 && (
+                        <motion.div
+                            key="step3"
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            className="space-y-6"
+                        >
+                            {selectedRole === 'parent' ? (
+                                <>
+                                    {/* Onglets des 3 modes enfant */}
+                                    <div className="grid grid-cols-3 gap-2 p-1.5 bg-gray-100 dark:bg-gray-900/60 rounded-2xl">
+                                        {[
+                                            { id: 'existing', label: isRTL ? 'طفل مسجل' : 'Enfant existant', icon: Baby },
+                                            { id: 'express', label: isRTL ? 'تسجيل سريع' : 'Express (20s)', icon: Sparkles },
+                                            { id: 'later', label: isRTL ? 'لاحقاً' : 'Associer plus tard', icon: Clock }
+                                        ].map(tab => (
+                                            <button
+                                                key={tab.id}
+                                                type="button"
+                                                onClick={() => setChildMode(tab.id)}
+                                                className={`py-2.5 px-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                                                    childMode === tab.id
+                                                        ? 'bg-white dark:bg-gray-800 text-primary-600 dark:text-primary-400 shadow-sm'
+                                                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-800'
+                                                }`}
+                                            >
+                                                <tab.icon className="w-4 h-4" />
+                                                <span className="whitespace-normal text-center leading-tight sm:truncate">{tab.label}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* Mode 1: Enfant orphelin existant */}
+                                    {childMode === 'existing' && (
+                                        <div className="space-y-3">
+                                            {loadingChildren ? (
+                                                <div className="py-8 text-center text-gray-400">Chargement...</div>
+                                            ) : orphanChildren.length === 0 ? (
+                                                <div className="text-center py-6 bg-gray-50 dark:bg-gray-900/40 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
+                                                    <Baby className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                                                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                                        {isRTL ? 'لا يوجد أطفال بدون أولياء حالياً' : 'Aucun enfant sans parent actuellement'}
+                                                    </p>
+                                                    <p className="text-xs text-gray-500 mt-1">
+                                                        {isRTL
+                                                            ? 'استخدم التسجيل السريع لإنشاء ملف الطفل في 20 ثانية'
+                                                            : 'Utilisez le mode "Express" pour créer l\'enfant instantanément.'}
+                                                    </p>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setChildMode('express')}
+                                                        className="mt-3 px-4 py-2 bg-primary-50 text-primary-700 dark:bg-primary-950/40 dark:text-primary-300 rounded-xl text-xs font-bold"
+                                                    >
+                                                        Passer en mode Express (20s)
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                                    {orphanChildren.map(child => {
+                                                        const isSelected = selectedChildren.some(c => c.id === child.id);
+                                                        return (
+                                                            <div
+                                                                key={child.id}
+                                                                onClick={() => {
+                                                                    setSelectedChildren(prev =>
+                                                                        isSelected ? prev.filter(c => c.id !== child.id) : [...prev, child]
+                                                                    );
+                                                                }}
+                                                                className={`p-3.5 rounded-2xl border-2 cursor-pointer flex items-center justify-between transition-all ${
+                                                                    isSelected
+                                                                        ? 'border-primary-600 bg-primary-50/50 dark:bg-primary-950/30'
+                                                                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                                                                }`}
+                                                            >
+                                                                <div>
+                                                                    <p className="font-bold text-gray-900 dark:text-white text-sm">
+                                                                        {child.first_name} {child.last_name}
+                                                                    </p>
+                                                                    <p className="text-xs text-gray-500">
+                                                                        {child.age_display || 'Enfant inscrit'}
+                                                                    </p>
+                                                                </div>
+                                                                <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
+                                                                    isSelected ? 'bg-primary-600 text-white' : 'border border-gray-300'
+                                                                }`}>
+                                                                    {isSelected && <Check className="w-4 h-4" />}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                            {errors.child && <p className="text-red-500 text-xs">{errors.child}</p>}
                                         </div>
-                                        {formData.emergency_contact_choice !== 'custom' && (
-                                            <p className="text-xs text-gray-500 dark:text-gray-400 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/40 rounded-lg p-2.5 mb-4">
-                                                {isRTL
-                                                    ? 'سيُستخدم رقم هاتف هذا الوالد المسجل في ملف الطفل.'
-                                                    : 'Le numéro déjà enregistré pour ce parent sera utilisé.'}
-                                            </p>
-                                        )}
-                                        {formData.emergency_contact_choice === 'custom' && (
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    )}
+
+                                    {/* Mode 2: Inscription express 20s */}
+                                    {childMode === 'express' && (
+                                        <div className="p-4 bg-primary-50/40 dark:bg-primary-950/20 rounded-2xl border border-primary-100 dark:border-primary-900/40 space-y-4">
+                                            <div className="flex items-center gap-2 text-primary-700 dark:text-primary-300 font-bold text-sm">
+                                                <Sparkles className="w-4 h-4" />
+                                                <span>{isRTL ? 'تسجيل طفل فوري' : 'Fiche express de l\'enfant'}</span>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                 <div>
-                                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                                        {isRTL ? 'اسم جهة الاتصال' : 'Nom du contact'}
+                                                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                        {isRTL ? 'اسم الطفل' : 'Prénom de l\'enfant'} *
                                                     </label>
                                                     <input
                                                         type="text"
-                                                        name="emergency_contact_name"
-                                                        value={formData.emergency_contact_name}
-                                                        onChange={handleInputChange}
-                                                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                                        placeholder={isRTL ? 'مثال: الجد، العم، الجار' : 'Ex: grand-parent, oncle, voisin'}
+                                                        value={expressChild.first_name}
+                                                        onChange={(e) => setExpressChild(p => ({ ...p, first_name: e.target.value }))}
+                                                        placeholder={isRTL ? 'مثال: يوسف' : 'Ex: Youssef'}
+                                                        className="w-full px-3 py-2.5 border rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm border-gray-200"
                                                     />
+                                                    {errors.express_first_name && <p className="text-red-500 text-xs mt-1">{errors.express_first_name}</p>}
                                                 </div>
+
                                                 <div>
-                                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                                        {isRTL ? 'هاتف جهة الاتصال' : 'Téléphone du contact'}
+                                                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                        {isRTL ? 'تاريخ الميلاد' : 'Date de naissance'} *
                                                     </label>
                                                     <input
-                                                        type="tel"
-                                                        name="emergency_contact_phone"
-                                                        value={formData.emergency_contact_phone}
-                                                        onChange={handleInputChange}
-                                                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                                                        placeholder={isRTL ? 'رقم الهاتف' : 'Numéro de téléphone'}
-                                                        dir="ltr"
+                                                        type="date"
+                                                        value={expressChild.birth_date}
+                                                        onChange={(e) => setExpressChild(p => ({ ...p, birth_date: e.target.value }))}
+                                                        className="w-full px-3 py-2.5 border rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm border-gray-200"
                                                     />
+                                                    {errors.express_birth_date && <p className="text-red-500 text-xs mt-1">{errors.express_birth_date}</p>}
                                                 </div>
                                             </div>
-                                        )}
-                                    </div>
-                                )}
 
-                                {/* Boutons */}
-                                <div className="flex justify-end gap-3 pt-6 border-t border-gray-200 dark:border-gray-700">
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() => navigate('/dashboard')}
-                                    >
-                                        {isRTL ? 'إلغاء' : 'Annuler'}
-                                    </Button>
-                                    <Button
-                                        type="submit"
-                                        disabled={loading || (selectedRole === 'parent' && orphanChildren.length === 0)}
-                                        className="bg-primary-600 hover:bg-primary-700"
-                                    >
-                                        {loading ? (
-                                            <span className="flex items-center">
-                                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                                                {isRTL ? 'جاري الإنشاء...' : 'Création...'}
-                                            </span>
-                                        ) : (
-                                            <span className="flex items-center">
-                                                {noEmail ? (
-                                                    <>
-                                                        <UserPlus className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
-                                                        {isRTL ? 'إنشاء' : 'Créer'}
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <Send className="w-4 h-4 mr-2 rtl:mr-0 rtl:ml-2" />
-                                                        {isRTL ? 'إنشاء وإرسال الدعوة' : 'Créer et envoyer l\'invitation'}
-                                                    </>
-                                                )}
-                                            </span>
-                                        )}
-                                    </Button>
+                                            {/* Ajout du régime */}
+                                            <div>
+                                                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                    {isRTL ? 'نظام الحضانة' : 'Régime de garde'} *
+                                                </label>
+                                                <div className="flex gap-3">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setExpressChild(p => ({ ...p, regime: 'journee' }))}
+                                                        className={`flex-1 py-2 rounded-xl text-sm font-medium border ${expressChild.regime === 'journee' ? 'bg-primary-600 text-white border-primary-600' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700'}`}
+                                                    >
+                                                        {isRTL ? 'يوم كامل' : 'Journée complète'}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setExpressChild(p => ({ ...p, regime: 'demi' }))}
+                                                        className={`flex-1 py-2 rounded-xl text-sm font-medium border ${expressChild.regime === 'demi' ? 'bg-primary-600 text-white border-primary-600' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700'}`}
+                                                    >
+                                                        {isRTL ? 'نصف يوم' : 'Demi-journée'}
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                    {isRTL ? 'الجنس' : 'Sexe de l\'enfant'}
+                                                </label>
+                                                <div className="flex gap-3">
+                                                    {[
+                                                        { value: 'female', label: isRTL ? 'بنت' : 'Fille', emoji: '👧' },
+                                                        { value: 'male', label: isRTL ? 'ولد' : 'Garçon', emoji: '👦' }
+                                                    ].map(g => (
+                                                        <button
+                                                            key={g.value}
+                                                            type="button"
+                                                            onClick={() => setExpressChild(p => ({ ...p, gender: g.value }))}
+                                                            className={`flex-1 py-2 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 ${
+                                                                expressChild.gender === g.value
+                                                                    ? 'bg-white dark:bg-gray-700 border-primary-600 text-primary-700 dark:text-primary-300 ring-1 ring-primary-500'
+                                                                    : 'border-gray-200 text-gray-500'
+                                                            }`}
+                                                        >
+                                                            <span>{g.emoji}</span>
+                                                            <span>{g.label}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Mode 3: Associer plus tard */}
+                                    {childMode === 'later' && (
+                                        <div className="p-4 bg-amber-50 dark:bg-amber-950/20 rounded-2xl border border-amber-200 dark:border-amber-800 text-center space-y-2">
+                                            <Clock className="w-8 h-8 text-amber-600 mx-auto" />
+                                            <p className="text-sm font-bold text-amber-900 dark:text-amber-200">
+                                                {isRTL ? 'سيتم ربط الطفل لاحقاً' : 'Association ultérieure'}
+                                            </p>
+                                            <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
+                                                {isRTL
+                                                    ? 'سيتم تفعيل حساب الولي فوراً وتوليد مهمة إدارية لإكمال ملف الطفل لاحقاً.'
+                                                    : 'Le compte du parent sera créé immédiatement. Une tâche automatique de haute priorité sera créée sur le tableau de bord de la direction pour compléter le dossier.'}
+                                            </p>
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                /* Rôle Personnel : Sélection du poste */
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        {isRTL ? 'المنصب الوظيفي' : 'Poste dans la crèche'} *
+                                    </label>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                        {staffPositions.map(pos => {
+                                            const isSelected = formData.staff_position === pos.value;
+                                            return (
+                                                <button
+                                                    key={pos.value}
+                                                    type="button"
+                                                    onClick={() => setFormData(p => ({ ...p, staff_position: pos.value }))}
+                                                    className={`p-3.5 rounded-xl border text-sm font-semibold flex items-center justify-between transition-all ${
+                                                        isSelected
+                                                            ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 ring-2 ring-emerald-500/20'
+                                                            : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50'
+                                                    }`}
+                                                >
+                                                    <span>{pos.label}</span>
+                                                    {isSelected && <Check className="w-4 h-4 text-emerald-600" />}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    {errors.staff_position && <p className="text-red-500 text-xs mt-1.5">{errors.staff_position}</p>}
                                 </div>
-                            </form>
-                        </CardContent>
-                    </Card>
-                </motion.div>
+                            )}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {/* Boutons de navigation Wizard */}
+                <div className="flex items-center justify-between pt-6 mt-6 border-t border-gray-100 dark:border-gray-700">
+                    {currentStep > 1 ? (
+                        <button
+                            type="button"
+                            onClick={handlePrevStep}
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-all"
+                        >
+                            <ArrowLeft className="w-4 h-4 rtl:rotate-180" />
+                            <span>{isRTL ? 'السابق' : 'Précédent'}</span>
+                        </button>
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={() => navigate('/dashboard')}
+                            className="px-4 py-2.5 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                        >
+                            {isRTL ? 'إلغاء' : 'Annuler'}
+                        </button>
+                    )}
+
+                    {currentStep < 3 ? (
+                        <button
+                            type="button"
+                            onClick={handleNextStep}
+                            className="flex items-center gap-2 px-6 py-3 bg-primary-600 hover:bg-primary-700 active:scale-98 text-white rounded-xl font-semibold shadow-md transition-all text-sm"
+                        >
+                            <span>{isRTL ? 'التالي' : 'Suivant'}</span>
+                            <ArrowRight className="w-4 h-4 rtl:rotate-180" />
+                        </button>
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={handleSubmit}
+                            disabled={loading}
+                            className="flex items-center gap-2 px-7 py-3 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 active:scale-98 text-white rounded-xl font-bold shadow-lg shadow-green-600/20 transition-all text-sm disabled:opacity-50"
+                        >
+                            {loading ? (
+                                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                            ) : (
+                                <Send className="w-4 h-4" />
+                            )}
+                            <span>{isRTL ? 'إنشاء وتجهيز الدعوة' : 'Créer & Générer invitation'}</span>
+                        </button>
+                    )}
+                </div>
             </div>
         </div>
     );

@@ -1,10 +1,11 @@
 import api from './api';
 
 class AuthService {
-  // Connexion
-  async login(email, password) {
+  // Connexion (identifiant: email, téléphone ou pseudo)
+  async login(identifier, password) {
     const response = await api.post('/api/auth/login', {
-      email,
+      identifier,
+      email: identifier, // Rétrocompatibilité
       password
     });
     

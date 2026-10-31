@@ -305,6 +305,43 @@ const MobileParentSpace = ({
                 initial="hidden"
                 animate="visible"
             >
+                {/* Bannière persistante: Contacts d'urgence & 2ème parent à compléter */}
+                {user?.has_incomplete_contacts && (
+                    <motion.div
+                        variants={itemVariants}
+                        className="p-4 bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl text-white shadow-lg flex items-start gap-3.5"
+                    >
+                        <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0 mt-0.5">
+                            <AlertCircle className="w-6 h-6 text-white" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <h4 className="font-bold text-sm leading-tight">
+                                {isRTL ? 'إكمال ملف الأمان والحماية' : 'Contacts de sécurité à compléter'}
+                            </h4>
+                            <p className="text-xs text-amber-100 mt-1 leading-relaxed">
+                                {isRTL
+                                    ? 'لحماية طفلك، يرجى إدخال بيانات الوالد الثاني وجهة اتصال الطوارئ.'
+                                    : 'Pour la sécurité de votre enfant, veuillez renseigner le 2ème parent et le contact d\'urgence.'}
+                            </p>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const firstChild = children && children.length > 0 ? children[0] : null;
+                                    if (firstChild) {
+                                        navigate(`/mon-espace/child/${firstChild.id}/emergency-contacts`);
+                                    } else {
+                                        navigate('/mon-espace/profile');
+                                    }
+                                }}
+                                className="mt-2.5 px-3.5 py-1.5 bg-white text-orange-600 rounded-xl text-xs font-bold shadow hover:bg-orange-50 transition-all inline-flex items-center gap-1.5 active:scale-95"
+                            >
+                                <span>{isRTL ? 'إكمال الآن' : 'Compléter maintenant'}</span>
+                                <ChevronRight className="w-3.5 h-3.5 rtl:rotate-180" />
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+
                 {/* Actions rapides */}
                 <motion.div
                     variants={itemVariants}

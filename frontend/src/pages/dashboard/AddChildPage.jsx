@@ -42,8 +42,14 @@ const AddChildPage = () => {
   const [parentSearch, setParentSearch] = useState('');
   const preselectedParentId = searchParams.get('parentId');
 
-  // Détection mobile
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  // Redirection sur mobile vers l'onboarding unifié
+  useEffect(() => {
+    const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
+    if (isMobileDevice) {
+      navigate('/dashboard/add-user?role=parent', { replace: true });
+    }
+  }, [navigate]);
+
   const isPersonal = searchParams.get('personal') === 'true';
 
   const {
@@ -609,18 +615,13 @@ const AddChildPage = () => {
             )}
 
 
-            {/* Documents (optionnel - scanner sur mobile) */}
+            {/* Documents (optionnel) */}
             <div className="space-y-4">
               <div className="flex items-center gap-2 mb-3">
                 <FileText className="w-5 h-5 text-gray-500" />
                 <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   {isRTL ? 'المستندات (اختياري)' : 'Documents (optionnel)'}
                 </h3>
-                {isMobile && (
-                  <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full">
-                    {isRTL ? 'المسح متاح' : 'Scan disponible'}
-                  </span>
-                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -642,10 +643,7 @@ const AddChildPage = () => {
               </div>
 
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                {isMobile
-                  ? (isRTL ? 'يمكنك مسح المستندات مباشرة باستخدام كاميرا هاتفك' : 'Vous pouvez scanner les documents directement avec la caméra de votre téléphone')
-                  : (isRTL ? 'يمكنك تحميل المستندات من جهازك' : 'Vous pouvez télécharger les documents depuis votre appareil')
-                }
+                {isRTL ? 'يمكنك مسح أو تحميل المستندات مباشرة' : 'Vous pouvez numériser ou importer les documents du dossier'}
               </p>
             </div>
 

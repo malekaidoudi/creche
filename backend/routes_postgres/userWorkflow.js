@@ -37,7 +37,7 @@ router.post('/create-parent', auth.authenticateToken, auth.requireRole('admin'),
     body('last_name').notEmpty().withMessage('Nom requis'),
     body('email').optional({ checkFalsy: true }).isEmail().withMessage('Email invalide'),
     body('phone').notEmpty().withMessage('Téléphone requis'),
-    body('child_ids').isArray({ min: 1 }).withMessage('Au moins un enfant requis'),
+    body('child_ids').optional().isArray(),
     body('spouse_name').optional({ checkFalsy: true }).isLength({ max: 100 }).withMessage('Nom du conjoint trop long'),
     body('spouse_phone').optional({ checkFalsy: true }).isLength({ max: 20 }).withMessage('Téléphone du conjoint trop long')
 ], async (req, res) => {
@@ -58,7 +58,9 @@ router.post('/create-parent', auth.authenticateToken, auth.requireRole('admin'),
             last_name,
             email,
             phone,
-            child_ids, // Tableau d'IDs d'enfants
+            child_ids = [],
+            express_child,
+            associate_later,
             emergency_contact_name,
             emergency_contact_phone,
             emergency_contact_choice,
@@ -95,8 +97,26 @@ router.post('/create-parent', auth.authenticateToken, auth.requireRole('admin'),
             finalEmail = `parent.noemail.${cleanPhone}.${randomSuffix}@creche.local`;
         }
 
-        // 2. Vérifier que tous les enfants existent et sont orphelins
-        for (const child_id of child_ids) {
+        let activeChildIds = Array.isArray(child_ids) ? [...child_ids] : [];
+
+        // Si création express de l'enfant en direct
+        if (express_child && express_child.first_name && express_child.first_name.trim() !== '') {
+            const expBirthDate = express_child.birth_date ? express_child.birth_date.split('T')[0] : '2023-01-01';
+            const newChildRes = await client.query(`
+                INSERT INTO children (first_name, last_name, birth_date, gender, status, enrollment_status, is_active, created_at)
+                VALUES ($1, $2, $3, $4, 'enrolled', 'enrolled', true, NOW())
+                RETURNING id, first_name, last_name
+            `, [
+                express_child.first_name.trim(),
+                last_name.trim(),
+                expBirthDate,
+                ['male', 'female'].includes(express_child.gender) ? express_child.gender : 'male'
+            ]);
+            activeChildIds.push(newChildRes.rows[0].id);
+        }
+
+        // 2. Vérifier que tous les enfants existants sélectionnés sont orphelins
+        for (const child_id of activeChildIds) {
             const childCheck = await client.query(
                 'SELECT id, first_name, last_name, parent_id FROM children WHERE id = $1 AND is_active = true',
                 [child_id]
@@ -134,7 +154,7 @@ router.post('/create-parent', auth.authenticateToken, auth.requireRole('admin'),
         const newUser = userResult.rows[0];
 
         // 5. Associer tous les enfants au parent
-        for (const child_id of child_ids) {
+        for (const child_id of activeChildIds) {
             await client.query(
                 'UPDATE children SET parent_id = $1, updated_at = NOW() WHERE id = $2',
                 [newUser.id, child_id]
@@ -172,7 +192,7 @@ router.post('/create-parent', auth.authenticateToken, auth.requireRole('admin'),
                                         ELSE COALESCE(NULLIF(mother_phone, ''), $6) END,
                     updated_at = NOW()
                 WHERE id = ANY($4)
-            `, [holderRole, holderName, phone || null, child_ids, spouseName, spousePhone, holderRole]);
+            `, [holderRole, holderName, phone || null, activeChildIds, spouseName, spousePhone, holderRole]);
         }
 
         // 6. Contact d'urgence — modèle unifié : 'father' | 'mother' | 'custom'
@@ -190,7 +210,7 @@ router.post('/create-parent', auth.authenticateToken, auth.requireRole('admin'),
                     emergency_contact_name = NULL, emergency_contact_phone = NULL,
                     updated_at = NOW()
                 WHERE id = ANY($2)
-            `, [ecChoice, child_ids]);
+            `, [ecChoice, activeChildIds]);
         } else {
             const cleanEmergencyName = (emergency_contact_name || '').trim();
             const cleanEmergencyPhone = (emergency_contact_phone || '').trim();
@@ -202,37 +222,38 @@ router.post('/create-parent', auth.authenticateToken, auth.requireRole('admin'),
                     SET emergency_contact_name = $1, emergency_contact_phone = $2,
                         emergency_contact_choice = 'custom', updated_at = NOW()
                     WHERE id = ANY($3)
-                `, [cleanEmergencyName, cleanEmergencyPhone || null, child_ids]);
+                `, [cleanEmergencyName, cleanEmergencyPhone || null, activeChildIds]);
             }
         }
 
         await client.query('COMMIT');
 
         // 7. Récupérer les enfants associés
-        const childrenResult = await pool.query(
-            'SELECT id, first_name, last_name FROM children WHERE id = ANY($1)',
-            [child_ids]
-        );
-        const children = childrenResult.rows;
+        let children = [];
+        if (activeChildIds.length > 0) {
+            const childrenResult = await pool.query(
+                'SELECT id, first_name, last_name FROM children WHERE id = ANY($1)',
+                [activeChildIds]
+            );
+            children = childrenResult.rows;
+        }
 
-        let createPasswordUrl = null;
+        // 8. Générer systématiquement un token d'activation (pour WhatsApp ou Email)
+        const passwordToken = crypto.randomBytes(32).toString('hex');
+        const tokenExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 jours
+
+        await pool.query(`
+            UPDATE users 
+            SET password_token = $1, password_token_expires = $2, password_set = false
+            WHERE id = $3
+        `, [passwordToken, tokenExpires, newUser.id]);
+
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        const createPasswordUrl = `${frontendUrl}/create-password?token=${passwordToken}&email=${encodeURIComponent(finalEmail)}`;
 
         if (hasRealEmail) {
-            // 8. Générer un token pour la création de mot de passe si email réel
-            const passwordToken = crypto.randomBytes(32).toString('hex');
-            const tokenExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 jours
-
-            // Sauvegarder le token dans la base
-            await pool.query(`
-                UPDATE users 
-                SET password_token = $1, password_token_expires = $2, password_set = false
-                WHERE id = $3
-            `, [passwordToken, tokenExpires, newUser.id]);
-
-            // 9. Envoyer l'email avec le lien de création de mot de passe
-            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-            createPasswordUrl = `${frontendUrl}/create-password?token=${passwordToken}&email=${encodeURIComponent(finalEmail)}`;
-            const childName = children.map(c => `${c.first_name} ${c.last_name}`).join(', ');
+            // Envoyer l'email si un email réel est fourni
+            const childName = children.map(c => `${c.first_name} ${c.last_name}`).join(', ') || 'votre enfant';
 
             try {
                 await emailService.sendEmail('PARENT_WELCOME', finalEmail, {
@@ -245,13 +266,28 @@ router.post('/create-parent', auth.authenticateToken, auth.requireRole('admin'),
             } catch (emailError) {
                 console.error('⚠️ Erreur envoi email:', emailError);
             }
-        } else {
-            // Marquer explicitement que le mot de passe n'est pas encore défini
+        }
+
+        // 9. Créer automatiquement la tâche HAUTE PRIORITÉ sur le bureau de l'admin
+        try {
+            const adminRes = await pool.query("SELECT id FROM users WHERE role = 'admin' LIMIT 1");
+            const adminId = adminRes.rows[0]?.id || req.user.userId;
+            const childNamesList = children.map(c => `${c.first_name} ${c.last_name}`).join(', ') || 'nouvel enfant';
+            
             await pool.query(`
-                UPDATE users 
-                SET password_set = false
-                WHERE id = $1
-            `, [newUser.id]);
+                INSERT INTO tasks (
+                    title, description, assigned_to, created_by, 
+                    due_date, priority, status, created_at
+                ) VALUES ($1, $2, $3, $4, CURRENT_DATE, 'high', 'pending', NOW())
+            `, [
+                `📋 Compléter dossier admin & cotisation : ${childNamesList}`,
+                `Compte créé via mobile pour ${first_name} ${last_name}.\n\n` + (express_child?.regime ? `📌 Régime pré-sélectionné : ${express_child.regime === 'demi' ? 'Demi-journée' : 'Journée complète'}\n` : '') + `Veuillez vérifier les informations et définir la cotisation mensuelle.`,
+                adminId,
+                req.user.userId
+            ]);
+            console.log(`✅ Tâche haute priorité créée pour admin ID: ${adminId}`);
+        } catch (taskErr) {
+            console.warn('⚠️ Erreur création tâche haute priorité:', taskErr.message);
         }
 
         res.status(201).json({
@@ -292,7 +328,7 @@ router.post('/create-parent', auth.authenticateToken, auth.requireRole('admin'),
 router.post('/create-staff', auth.authenticateToken, auth.requireRole('admin'), [
     body('first_name').notEmpty().withMessage('Prénom requis'),
     body('last_name').notEmpty().withMessage('Nom requis'),
-    body('email').isEmail().withMessage('Email invalide'),
+    body('email').optional({ checkFalsy: true }).isEmail().withMessage('Email invalide'),
     body('phone').notEmpty().withMessage('Téléphone requis'),
     body('gender').isIn(['male', 'female']).withMessage('Sexe invalide'),
     body('staff_position').isIn(['director', 'educator', 'health', 'cleaning', 'security', 'kitchen', 'other']).withMessage('Poste invalide')
@@ -316,17 +352,27 @@ router.post('/create-staff', auth.authenticateToken, auth.requireRole('admin'), 
             staff_position
         } = req.body;
 
-        // 1. Vérifier que l'email n'existe pas déjà
-        const emailCheck = await pool.query(
-            'SELECT id FROM users WHERE email = $1',
-            [email]
-        );
+        const hasRealEmail = Boolean(email && typeof email === 'string' && email.trim() !== '');
+        let finalEmail;
 
-        if (emailCheck.rows.length > 0) {
-            return res.status(409).json({
-                success: false,
-                error: 'Cet email est déjà utilisé'
-            });
+        if (hasRealEmail) {
+            finalEmail = email.trim().toLowerCase();
+            // 1. Vérifier que l'email n'existe pas déjà
+            const emailCheck = await pool.query(
+                'SELECT id FROM users WHERE email = $1',
+                [finalEmail]
+            );
+
+            if (emailCheck.rows.length > 0) {
+                return res.status(409).json({
+                    success: false,
+                    error: 'Cet email est déjà utilisé'
+                });
+            }
+        } else {
+            const cleanPhone = (phone || '').replace(/\D/g, '') || Date.now();
+            const randomSuffix = crypto.randomBytes(4).toString('hex');
+            finalEmail = `staff.noemail.${cleanPhone}.${randomSuffix}@creche.local`;
         }
 
         // 2. Générer un token pour la création du mot de passe
@@ -344,7 +390,7 @@ router.post('/create-staff', auth.authenticateToken, auth.requireRole('admin'), 
       ) VALUES ($1, $2, $3, $4, $5, $6, 'staff', $7, $8, $9, false, true, NOW())
       RETURNING id, email, first_name, last_name, phone, role, staff_position
     `, [
-            email, tempPassword, first_name, last_name, phone, gender, staff_position,
+            finalEmail, tempPassword, first_name, last_name, phone, gender, staff_position,
             passwordToken, tokenExpires
         ]);
 
@@ -368,24 +414,29 @@ router.post('/create-staff', auth.authenticateToken, auth.requireRole('admin'), 
             other: 'Autre'
         };
 
-        try {
-            // Utiliser la bonne signature: sendEmail(emailType, recipient, variables)
-            await emailService.sendEmail('STAFF_WELCOME', email, {
-                staffName: `${first_name} ${last_name}`,
-                position: positionLabels[staff_position] || staff_position,
-                createPasswordUrl,
-                expiresIn: '7 jours'
-            });
-            console.log(`✅ Email envoyé à ${email}`);
-        } catch (emailError) {
-            console.error('⚠️ Erreur envoi email:', emailError);
+        if (hasRealEmail) {
+            try {
+                await emailService.sendEmail('STAFF_WELCOME', finalEmail, {
+                    staffName: `${first_name} ${last_name}`,
+                    position: positionLabels[staff_position] || staff_position,
+                    createPasswordUrl,
+                    expiresIn: '7 jours'
+                });
+                console.log(`✅ Email envoyé à ${finalEmail}`);
+            } catch (emailError) {
+                console.error('⚠️ Erreur envoi email:', emailError);
+            }
         }
 
         res.status(201).json({
             success: true,
-            message: 'Compte personnel créé avec succès',
-            user: newUser,
-            passwordLink: createPasswordUrl // Pour debug/test uniquement
+            has_email: hasRealEmail,
+            message: hasRealEmail ? 'Compte personnel créé avec succès' : 'Compte personnel enregistré avec succès sans email.',
+            user: {
+                ...newUser,
+                email: hasRealEmail ? newUser.email : null
+            },
+            passwordLink: createPasswordUrl
         });
 
     } catch (error) {

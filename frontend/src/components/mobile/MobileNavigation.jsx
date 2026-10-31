@@ -36,6 +36,7 @@ import { useLanguage } from '../../hooks/useLanguage';
 import { useAuth } from '../../contexts/AuthContext';
 import { useProfileImage } from '../../hooks/useProfileImage';
 import { useAccess } from '../../access';
+import PwaMobileBar from '../pwa/PwaMobileBar';
 
 const MobileNavigation = ({ hideSpacer = false }) => {
     const { isRTL } = useLanguage();
@@ -144,6 +145,12 @@ const MobileNavigation = ({ hideSpacer = false }) => {
             path: '/dashboard/activities',
             roles: ['admin', 'staff', 'developer']
         },
+        {
+            icon: UserPlus,
+            label: isRTL ? 'إضافة مستخدم' : 'Ajouter un compte',
+            path: '/dashboard/add-user',
+            roles: ['admin', 'developer']
+        },
         // Paramètres de l'établissement (Admin / Développeur uniquement)
         {
             icon: Settings,
@@ -206,6 +213,9 @@ const MobileNavigation = ({ hideSpacer = false }) => {
 
     return (
         <>
+            {/* Barre d'installation PWA au-dessus de la navigation */}
+            <PwaMobileBar bottomOffsetClass="bottom-16" />
+
             {/* Bottom Navigation Bar */}
             <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 safe-area-inset-bottom">
                 <div className="flex justify-around items-center h-16">

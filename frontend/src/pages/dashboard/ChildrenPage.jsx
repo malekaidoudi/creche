@@ -887,7 +887,7 @@ const ChildrenPage = () => {
             onViewChild={(child) => handleViewChild(child)}
             onEditChild={(child) => handleEditChild(child)}
             onDeleteChild={(child) => handleDelete(child.id)}
-            onAddChild={() => navigate('/dashboard/add-child')}
+            onAddChild={() => navigate('/dashboard/add-user?role=parent')}
             onRefresh={() => loadChildren()}
           />
           <MobileNavigation />

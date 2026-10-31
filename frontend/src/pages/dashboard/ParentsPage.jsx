@@ -186,13 +186,21 @@ const ParentsPage = () => {
     }
   };
 
-  const handleStatusToggle = (parentId) => {
-    setParents(prev => prev.map(parent =>
-      parent.id === parentId
-        ? { ...parent, status: parent.status === 'active' ? 'inactive' : 'active' }
-        : parent
-    ));
-    dialog.success(isRTL ? 'تم تحديث حالة الولي' : 'Statut du parent mis à jour');
+  const handleStatusToggle = async (parentId, currentStatus) => {
+    try {
+      const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+      await api.put(`/api/users/${parentId}`, { is_active: newStatus === 'active' });
+      
+      setParents(prev => prev.map(parent =>
+        parent.id === parentId
+          ? { ...parent, status: newStatus }
+          : parent
+      ));
+      dialog.success(isRTL ? 'تم تحديث حالة الولي' : 'Statut du parent mis à jour');
+    } catch (error) {
+      console.error('Erreur changement statut:', error);
+      dialog.error(isRTL ? 'خطأ في تحديث الحالة' : 'Erreur lors de la mise à jour du statut');
+    }
   };
 
   const handleDelete = async (parentId) => {
@@ -705,7 +713,7 @@ const ParentsPage = () => {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => handleStatusToggle(parent.id)}
+                                onClick={() => handleStatusToggle(parent.id, parent.status)}
                               >
                                 {parent.status === 'active' ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
                               </Button>
@@ -813,7 +821,7 @@ const ParentsPage = () => {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => handleStatusToggle(parent.id)}
+                            onClick={() => handleStatusToggle(parent.id, parent.status)}
                             className="h-8 px-2"
                           >
                             {parent.status === 'active' ? (
@@ -1072,7 +1080,7 @@ const ParentsPage = () => {
                       size="sm"
                       variant="outline"
                       onClick={() => {
-                        handleStatusToggle(selectedParent.id);
+                        handleStatusToggle(selectedParent.id, selectedParent.status);
                         setShowDetails(false);
                       }}
                       className="w-full justify-start"
