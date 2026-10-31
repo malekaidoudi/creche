@@ -108,6 +108,51 @@ Format suggéré : `- [ ] Description de l'idée` (laisser `[ ]`, passer à `[x]
   - Notification in-app et Push à la direction lors de la complétion d'une tâche par une éducatrice.
   - Correction du routage d'API de complétion de tâche (`/api/tasks/:id/status` avec repli de sécurité sur `/api/events/:id/status`).
   - Redirection immédiate de la bannière d'alerte des tâches en retard du mobile vers la modale des tâches en retard (`openFocusMode('overdue')`) plutôt que vers le planning général.
+- [ ] **Système de Tarification, Régimes d'accueil (Journée / Demi-journée 13h) & Gestion des Paiements / Alertes** :
+  - **Contexte & Règles métier validées** :
+    - La crèche accueille des enfants selon 2 formules :
+      - **Journée complète** (garde toute la journée jusqu'à la fermeture normale, ex: 18h).
+      - **Demi-journée** (garde matinale uniquement, départ au plus tard à 13h00).
+    - Grille tarifaire paramétrable et indexable par l'administration (tarifs de référence pour l'année en cours) :
+      - Formule Journée complète : **130 DT / mois**
+      - Formule Demi-journée : **100 DT / mois**
+      - Option Présence le Samedi : **20 DT / mois** (s'appuie sur `saturday_attendance`, prise d'effet le mois suivant si modifiée en cours de route)
+      - Frais d'assurance annuelle : **60 DT / an** par **année scolaire** (exigible à l'inscription initiale, puis renouvelable à chaque rentrée scolaire de septembre)
+    - **Remise exceptionnelle fixe (DT)** : Possibilité pour l'administrateur d'accorder une remise fixe en dinars tunisiens (montant fixe, non basé sur un pourcentage) dès l'inscription ou ultérieurement sur la fiche enfant.
+    - **Prorata en cours de mois** : Calcul automatique suggéré au prorata des jours ouvrés restants pour une inscription en cours de mois, tout en laissant l'administrateur libre d'ajuster ou valider le montant final.
+    - **Encaissement** : Principalement géré en **espèces** avec émission et traçabilité d'un reçu d'encaissement.
+  - **Transparence des prix vs Gestion comptable (Feature Flag)** :
+    - **Affichage des tarifs dans le formulaire d'inscription** : Les tarifs de la crèche (Journée complète, Demi-journée, Samedi, Assurance) sont **toujours affichés de manière transparente pour les parents**, que la gestion comptable soit activée ou non par l'administration.
+    - **Interrupteur d'activation Admin (`nursery_settings.billing_enabled`)** : Active la *gestion active des paiements* (génération des échéances mensuelles, historique des règlements espèces, remises fixes, alertes de paiement ciblées et espace cotisations parent).
+  - **Décorticage du workflow & Gestion des données** :
+    1. **Configuration Admin (`/dashboard/settings`)** :
+       - Interrupteur d'activation de la gestion comptable : `billing_enabled` (booléen).
+       - Grille tarifaire annuelle : `tariff_full_day_monthly` (130 DT), `tariff_half_day_monthly` (100 DT), `tariff_saturday_monthly` (20 DT), `tariff_insurance_annual` (60 DT), `billing_due_day` (ex: le 5 du mois).
+    2. **Inscription (`EnrollmentPage.jsx` public & `AddChildPage.jsx` dashboard)** :
+       - Sélection obligatoire du régime d'accueil : `Journée complète` ou `Demi-journée (départ max 13h)`.
+       - Option Samedi déjà existante (`saturday_attendance`) affichant clairement le supplément (+20 DT/mois).
+       - Récapitulatif tarifaire automatique et instantané pour les parents (Mensualité + Assurance annuelle 60 DT).
+       - Côté admin : champ optionnel pour renseigner une remise exceptionnelle fixe en DT dès l'inscription.
+    3. **Persistance & Cycle de vie (`children`, `enrollments`, `enrollments_archive`)** :
+       - Nouvelles colonnes durables : `care_schedule` (`full_day` | `half_day`) et `monthly_discount` (NUMERIC DEFAULT 0).
+       - Prise en charge par `childLifecycleService.createChild` lors de la validation du dossier.
+       - Édition souple dans la modale enfant (`ChildrenPage.jsx`).
+    4. **Refonte intégrale du système d'alerte et suivi des paiements (Zéro code mort)** :
+       - *Élimination des bugs et du code orphelin existant* :
+         - Remplacement de l'ancienne route tronquée `paymentAlerts.js` (qui plantait avec `deleted_at`) et de la modale manuelle `PaymentAlertModal.jsx`.
+       - *Table dédiée de suivi financier (`child_bills` / `payments`)* :
+         - Historise chaque mois dû : `child_id`, `parent_id`, `period_month`, `period_year`, `school_year`, `base_amount`, `saturday_amount`, `insurance_amount`, `discount_amount`, `total_due`, `amount_paid`, `status` (`pending`, `paid`, `overdue`), `paid_at`, `payment_method` (`cash`), `receipt_number`.
+         - Interface Admin : Tableau de bord des cotisations, validation des encaissements en espèces en 1 clic avec génération du reçu.
+         - Relances et alertes ciblées : Envoi d'alerte de paiement Push & in-app pré-remplie avec le montant réel calculé pour l'enfant.
+         - Espace Parent (`/mon-espace`) : Consultation claire des cotisations réglées en espèces et du solde à payer.
+    5. **Impact direct sur les présences (`attendanceAutoCheckoutService.js`)** :
+       - Pour les enfants en formule `half_day`, la clôture automatique en semaine se déclenche dès **13h00** s'ils n'ont pas été pointés en sortie par l'éducatrice. Les enfants en `full_day` restent jusqu'à l'heure normale (18h00).
+    6. **Évolutivité future garantie : Module Trésorerie & Dépenses de la crèche** :
+       - **Architecture pensée en double volet dès la conception** :
+         - *Volet Recettes* : Cotisations des enfants, options samedi, assurances annuelles (`child_invoices`).
+         - *Volet Dépenses* (extension future immédiate) : Table `nursery_expenses` catégorisée (salaires, loyer, électricité STEG / eau SONEDE, alimentation/goûters, matériel pédagogique, entretien).
+         - *Bilan & Rentabilité* : Agrégation mensuelle et annuelle automatisée : `Total Recettes encaissées - Total Dépenses = Bénéfice net / Solde de trésorerie` de la crèche.
+       - **Modularité** : Le module backend et le schéma DB sont structurés sous le domaine `finance` pour accueillir le volet dépenses sans jamais devoir refactoriser ou casser la facturation des enfants.
 - [ ] *(ajouter ici)*
 
 ## 🚀 Performance & Technique

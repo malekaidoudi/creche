@@ -161,8 +161,8 @@ const TodayAppointmentsWidget = () => {
                                         {/* Titre */}
                                         <h4 className="font-semibold text-gray-900 dark:text-white text-sm truncate">
                                             {isInscription(appt)
-                                                ? `RDV Inscription: ${appt.child_name || 'Enfant'}`
-                                                : (appt.subject || 'Rendez-vous')}
+                                                ? (isRTL ? `موعد تسجيل : ${appt.child_name || 'الطفل'}` : `RDV Inscription: ${appt.child_name || 'Enfant'}`)
+                                                : (appt.subject || (isRTL ? 'موعد' : 'Rendez-vous'))}
                                         </h4>
 
                                         {/* Parent */}
@@ -186,6 +186,7 @@ const TodayAppointmentsWidget = () => {
             {showActionModal && selectedAppointment && (
                 <AppointmentActionModal
                     isOpen={showActionModal}
+                    defaultAction="validate"
                     onClose={() => setShowActionModal(false)}
                     appointment={selectedAppointment}
                     onSuccess={handleActionSuccess}

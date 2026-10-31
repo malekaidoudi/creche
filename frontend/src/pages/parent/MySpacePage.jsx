@@ -15,7 +15,12 @@ import {
   Phone,
   ClipboardList,
   Pill,
-  X
+  X,
+  Receipt,
+  Wallet,
+  CheckCircle2,
+  Calendar,
+  Sparkles
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -30,7 +35,6 @@ import MyAppointmentsWidget from '../../components/widgets/MyAppointmentsWidget'
 import RequestAppointmentModal from '../../components/modals/RequestAppointmentModal';
 import RescheduleAppointmentModal from '../../components/modals/RescheduleAppointmentModal';
 import SideMenu from '../../components/ui/SideMenu';
-import FloatingActionButton from '../../components/ui/FloatingActionButton';
 import MobileParentSpace from '../../components/mobile/MobileParentSpace';
 import MobileNavigation from '../../components/mobile/MobileNavigation';
 import { useDialogContext } from '../../contexts/DialogContext';
@@ -38,7 +42,8 @@ import NewsWidget from '../../components/NewsWidget';
 import HolidaysList from '../../components/HolidaysList';
 import TestimonialForm from '../../components/testimonials/TestimonialForm';
 import { getEmergencyContactDisplay } from '../../utils/emergencyContacts';
-import PushNotificationCard from '../../components/notifications/PushNotificationCard';
+import PreInterviewPreparationModal from '../../components/modals/PreInterviewPreparationModal';
+import enrollmentsService from '../../services/enrollmentsService';
 
 // Cache mémoire pour affichage instantané lors du retour à l'espace parent
 let cachedParentChildren = null;
@@ -68,17 +73,62 @@ const MySpacePage = () => {
   const [selectedChildForModal, setSelectedChildForModal] = useState(null);
   const [showChildModal, setShowChildModal] = useState(false);
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);
+  const [myInvoices, setMyInvoices] = useState([]);
+  const [loadingInvoices, setLoadingInvoices] = useState(false);
+  const [myApplication, setMyApplication] = useState(null);
+  const [showPreparationModal, setShowPreparationModal] = useState(false);
 
   useEffect(() => {
     loadChildren();
     loadUnreadCount();
     loadAppointments();
     loadChildrenCount();
+    loadParentInvoices();
+    loadMyApplication();
 
     // Rafraîchir le compteur toutes les 30 secondes
     const interval = setInterval(loadUnreadCount, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  const loadMyApplication = async () => {
+    try {
+      const res = await enrollmentsService.getMyApplication();
+      if (res?.success) {
+        setMyApplication(res.application);
+      }
+    } catch (err) {
+      console.log('Info candidature parent:', err.message);
+    }
+  };
+
+  const loadParentInvoices = async () => {
+    try {
+      setLoadingInvoices(true);
+      const res = await api.get('/api/billing/my-invoices');
+      if (res.data?.success) {
+        setMyInvoices(res.data.invoices || []);
+      }
+    } catch (err) {
+      console.log('Factures non disponibles pour le parent:', err.message);
+    } finally {
+      setLoadingInvoices(false);
+    }
+  };
+
+  const handleOpenReceipt = async (inv) => {
+    try {
+      const res = await api.get(`/api/billing/invoices/${inv.id}/receipt`, {
+        responseType: 'blob'
+      });
+      const file = new Blob([res.data], { type: 'application/pdf' });
+      const fileURL = URL.createObjectURL(file);
+      window.open(fileURL, '_blank');
+    } catch (err) {
+      console.error('Erreur ouverture reçu:', err);
+      dialog.error(isRTL ? 'تعذر فتح وصل الخلاص' : 'Impossible de consulter le reçu PDF');
+    }
+  };
 
   const loadChildrenCount = async () => {
     try {
@@ -292,6 +342,63 @@ const MySpacePage = () => {
             </div>
           </motion.div>
 
+          {/* Bandeau Candidature & Préparation RDV Admission */}
+          {myApplication && (
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.03 }}
+              className="mb-6 p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-primary-600 via-indigo-600 to-purple-600 text-white shadow-xl relative overflow-hidden"
+            >
+              <div className="absolute -right-10 -bottom-10 w-44 h-44 rounded-full bg-white/10 blur-xl pointer-events-none" />
+              <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+                <div className="space-y-2 max-w-xl">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-semibold">
+                    <Calendar className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                    <span>
+                      {myApplication.proposed_date
+                        ? (isRTL ? 'موعد القبول المحدد : ' : 'Votre rendez-vous d\'admission : ') +
+                          new Date(myApplication.proposed_date).toLocaleDateString(isRTL ? 'ar-TN' : 'fr-FR', {
+                            weekday: 'long',
+                            day: 'numeric',
+                            month: 'long',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })
+                        : (isRTL ? 'طلب تسجيل قيد المتابعة' : 'Dossier d\'inscription en cours d\'examen')}
+                    </span>
+                  </div>
+                  <h2 className="text-xl font-bold">
+                    {isRTL
+                      ? `مرحباً بكم ! لنُحضّر معاً ملف ${myApplication.child_first_name}`
+                      : `Bienvenue ! Préparons l'accueil de ${myApplication.child_first_name}`}
+                  </h2>
+                  <p className="text-xs sm:text-sm text-blue-100 leading-relaxed">
+                    {isRTL
+                      ? 'لربح الوقت يوم الموعد : املأ معلومات الطبيب والأشخاص الموثوقين وصوّر الوثائق مباشرة من هاتفك.'
+                      : 'Gagnez du temps le jour de votre rendez-vous : renseignez dès maintenant le pédiatre, vos personnes de confiance et les photos des documents.'}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2.5 shrink-0 w-full md:w-auto">
+                  <Link
+                    to="/mon-espace/activities"
+                    className="flex-1 md:flex-none justify-center px-4 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-semibold backdrop-blur-md transition-all flex items-center gap-1.5"
+                  >
+                    <span>{isRTL ? 'أنشطة الروضة 🎨' : 'Découvrir la crèche 🎨'}</span>
+                  </Link>
+                  <button
+                    onClick={() => setShowPreparationModal(true)}
+                    className="flex-1 md:flex-none justify-center px-5 py-2.5 rounded-xl bg-white text-primary-700 hover:bg-blue-50 text-xs font-bold shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2"
+                  >
+                    <Sparkles className="w-4 h-4 text-amber-500" />
+                    <span>{isRTL ? 'تحضير الملف الآن' : 'Préparer mon rendez-vous'}</span>
+                    <ChevronLeft className={`w-4 h-4 ${isRTL ? '' : 'rotate-180'}`} />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
           {/* Bouton Témoignage */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -388,10 +495,36 @@ const MySpacePage = () => {
                 loading={loading}
               >
                 {children.length === 0 ? (
-                  <WidgetEmptyState
-                    icon={Baby}
-                    message={isRTL ? 'لا يوجد أطفال مسجلين' : 'Aucun enfant enregistré'}
-                  />
+                  myApplication ? (
+                    <div
+                      onClick={() => setShowPreparationModal(true)}
+                      className="p-3.5 rounded-xl bg-primary-50/70 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 flex items-center justify-between cursor-pointer hover:bg-primary-100/70 dark:hover:bg-primary-900/40 transition-all group"
+                      title={isRTL ? 'إكمال تفاصيل الملف والمقابلة' : 'Compléter la fiche préparatoire'}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-800/60 text-primary-600 dark:text-primary-300 flex items-center justify-center font-bold shrink-0">
+                          {myApplication.child_first_name?.charAt(0) || '👶'}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-gray-900 dark:text-white truncate">
+                            {myApplication.child_first_name} {myApplication.child_last_name}
+                          </p>
+                          <span className="inline-flex items-center gap-1.5 text-xs text-primary-700 dark:text-primary-300 font-medium">
+                            <span className="w-2 h-2 rounded-full bg-primary-600 animate-ping"></span>
+                            {isRTL ? 'ملف قيد التحضير (موعد القبول)' : 'Dossier d\'inscription (RDV prévu)'}
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-xs font-semibold text-primary-600 dark:text-primary-400 bg-white dark:bg-gray-800 px-2.5 py-1 rounded-lg border border-primary-200 dark:border-primary-800 shadow-sm shrink-0 group-hover:bg-primary-600 group-hover:text-white transition-colors">
+                        {isRTL ? 'إكمال الملف' : 'Préparer'}
+                      </span>
+                    </div>
+                  ) : (
+                    <WidgetEmptyState
+                      icon={Baby}
+                      message={isRTL ? 'لا يوجد أطفال مسجلين' : 'Aucun enfant enregistré'}
+                    />
+                  )
                 ) : (
                   <div className="space-y-3">
                     {children.map((child) => (
@@ -494,15 +627,256 @@ const MySpacePage = () => {
             </motion.div>
           </div>
 
-          {/* Notifications sur cet appareil */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="mb-8"
-          >
-            <PushNotificationCard />
-          </motion.div>
+          {/* Section Cotisations & Reçus (si facturation active) */}
+          {myInvoices.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.45 }}
+              className="mb-8"
+            >
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
+                <div className="flex items-center justify-between mb-4 border-b border-gray-100 dark:border-gray-700 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
+                      <Receipt className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-gray-900 dark:text-white text-base">
+                        {isRTL ? 'اشتراكات أطفالي وإيصالات الدفع' : 'Mes Cotisations & Reçus de Paiement'}
+                      </h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {isRTL ? 'متابعة الدفع نقداً والإيصالات الرسمية المستلمة' : 'Suivi des mensualités et encaissements en espèces'}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-semibold border border-emerald-200 dark:border-emerald-800/40">
+                    {myInvoices.length} {myInvoices.length > 1 ? (isRTL ? 'اشتراكات' : 'cotisations') : (isRTL ? 'اشتراك' : 'cotisation')}
+                  </span>
+                </div>
+
+                {/* Cartes de cotisations (Regroupées par reçu / fratrie si applicable) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {(() => {
+                    const groups = [];
+                    const processedIds = new Set();
+
+                    myInvoices.forEach(inv => {
+                      if (processedIds.has(inv.id)) return;
+
+                      // Détecter si d'autres factures partagent le même reçu ou la même période
+                      const siblings = myInvoices.filter(other => 
+                        other.id !== inv.id &&
+                        !processedIds.has(other.id) &&
+                        (
+                          (inv.receipt_number && other.receipt_number && other.receipt_number === inv.receipt_number) ||
+                          (parseInt(other.period_month, 10) === parseInt(inv.period_month, 10) && parseInt(other.period_year, 10) === parseInt(inv.period_year, 10))
+                        )
+                      );
+
+                      if (siblings.length > 0) {
+                        const allFamily = [inv, ...siblings];
+                        allFamily.forEach(f => processedIds.add(f.id));
+
+                        const totalDueFamily = allFamily.reduce((sum, f) => sum + (parseFloat(f.amount_due ?? f.total_due ?? f.amount ?? 0) || 0), 0);
+                        const totalPaidFamily = allFamily.reduce((sum, f) => sum + (parseFloat(f.amount_paid || 0) || 0), 0);
+                        const isFamilyPaid = allFamily.every(f => f.status === 'paid' || (parseFloat(f.amount_paid || 0) >= parseFloat(f.total_due || 0) && parseFloat(f.total_due || 0) > 0));
+                        const sharedReceipt = allFamily.find(f => f.receipt_number)?.receipt_number || inv.receipt_number;
+
+                        groups.push({
+                          type: 'family',
+                          id: `family-${inv.period_year}-${inv.period_month}`,
+                          period_month: inv.period_month,
+                          period_year: inv.period_year,
+                          receipt_number: sharedReceipt,
+                          isPaid: isFamilyPaid,
+                          totalDue: totalDueFamily,
+                          totalPaid: totalPaidFamily,
+                          invoices: allFamily,
+                          primaryInvoice: inv
+                        });
+                      } else {
+                        processedIds.add(inv.id);
+                        const invDue = parseFloat(inv.amount_due ?? inv.total_due ?? inv.amount ?? 0) || 0;
+                        const invPaid = parseFloat(inv.amount_paid || 0) || 0;
+                        const isPaid = inv.status === 'paid' || (invPaid >= invDue && invDue > 0);
+
+                        groups.push({
+                          type: 'single',
+                          id: inv.id,
+                          period_month: inv.period_month,
+                          period_year: inv.period_year,
+                          receipt_number: inv.receipt_number,
+                          isPaid,
+                          totalDue: invDue,
+                          totalPaid: invPaid,
+                          invoices: [inv],
+                          primaryInvoice: inv
+                        });
+                      }
+                    });
+
+                    return groups.map((group) => {
+                      if (group.type === 'family') {
+                        return (
+                          <div
+                            key={group.id}
+                            className="p-4 rounded-xl border border-gray-200 dark:border-gray-700/80 bg-gray-50/70 dark:bg-gray-800 flex flex-col justify-between gap-3 shadow-xs"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold text-gray-900 dark:text-white text-sm">
+                                    {isRTL ? 'اشتراك العائلة (إخوة)' : 'Cotisation Famille (Fratrie)'}
+                                  </span>
+                                  <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
+                                    👨‍👩‍👧‍👦 {group.invoices.length} {isRTL ? 'أطفال' : 'enfants'}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                  {isRTL ? 'شهر' : 'Mois'} {group.period_month}/{group.period_year}
+                                </p>
+                              </div>
+                              {group.isPaid ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  {isRTL ? 'مدفوع' : 'Payé'}
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                                  <Wallet className="w-3.5 h-3.5" />
+                                  {isRTL ? 'في انتظار الدفع' : 'À régler'}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Liste détaillée des enfants */}
+                            <div className="space-y-1.5 py-2 border-y border-gray-200/60 dark:border-gray-700 text-xs">
+                              {group.invoices.map((item) => (
+                                <div key={item.id} className="flex items-center justify-between text-gray-700 dark:text-gray-300">
+                                  <span>
+                                    • <strong className="text-gray-900 dark:text-white">{item.child_first_name} {item.child_last_name}</strong> ({item.care_schedule === 'half_day' ? (isRTL ? 'نصف يوم' : 'Demi-journée') : (isRTL ? 'Journée complète' : 'Journée complète')})
+                                  </span>
+                                  <span className="font-semibold text-gray-900 dark:text-white">
+                                    {(parseFloat(item.amount_due ?? item.total_due ?? item.amount ?? 0) || 0).toFixed(0)} DT
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Bas de carte : Un seul reçu familial, un seul bouton, total combiné */}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-2 pt-1">
+                              <div>
+                                {group.receipt_number || group.isPaid ? (
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    {group.receipt_number && (
+                                      <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                                        N° Reçu: {group.receipt_number}
+                                      </span>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenReceipt(group.primaryInvoice)}
+                                      className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800 rounded-lg transition-colors shadow-xs cursor-pointer"
+                                      title={isRTL ? 'معاينة وتنزيل الوصل العائلي الموحد' : 'Consulter et télécharger le reçu familial officiel'}
+                                    >
+                                      <FileText className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                                      <span>{isRTL ? 'وصل الخلاص العائلي PDF' : 'Consulter le reçu PDF'}</span>
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-500">
+                                    {isRTL ? 'الدفع نقداً في مقر الروضة' : 'Paiement en espèces à la crèche'}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-sm font-bold text-gray-900 dark:text-white sm:text-right">
+                                <span className="text-xs font-normal text-gray-500 mr-1">{isRTL ? 'المجموع :' : 'Total :'}</span>
+                                {group.totalDue.toFixed(0)} <span className="text-xs text-gray-400 font-normal">DT</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // Enfant individuel
+                      const inv = group.primaryInvoice;
+                      return (
+                        <div
+                          key={inv.id}
+                          className="p-3.5 rounded-xl border border-gray-100 dark:border-gray-700/80 bg-gray-50/60 dark:bg-gray-750 flex flex-col justify-between gap-2"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-semibold text-gray-900 dark:text-white text-sm">
+                                {inv.child_first_name} {inv.child_last_name}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                {isRTL ? 'شهر' : 'Mois'} {inv.period_month}/{inv.period_year} • {inv.care_schedule === 'half_day' ? '🌤️ Demi-journée 13h' : '☀️ Journée complète'}
+                              </p>
+                            </div>
+                            {group.isPaid ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                {isRTL ? 'مدفوع' : 'Payé'}
+                              </span>
+                            ) : inv.status === 'partial' || parseFloat(inv.amount_paid || 0) > 0 ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
+                                <Clock className="w-3.5 h-3.5" />
+                                {isRTL ? 'دفع جزئي' : 'Partiel'} ({parseFloat(inv.amount_paid).toFixed(0)}/{parseFloat(inv.total_due).toFixed(0)} DT)
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                                <Wallet className="w-3.5 h-3.5" />
+                                {isRTL ? 'في انتظار الدفع' : 'À régler'}
+                              </span>
+                            )}
+                          </div>
+
+                          {parseFloat(inv.previous_arrears || 0) > 0 && (
+                            <div className="text-[11px] text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/30 px-2 py-0.5 rounded flex justify-between">
+                              <span>{isRTL ? 'يتضمن متخلدات من شهر سابق:' : 'Inclut report mois précédent :'}</span>
+                              <span className="font-semibold">+{parseFloat(inv.previous_arrears).toFixed(0)} DT</span>
+                            </div>
+                          )}
+
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-2 border-t border-gray-200/60 dark:border-gray-700 text-xs gap-2">
+                            <div>
+                              {inv.receipt_number || group.isPaid ? (
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  {inv.receipt_number && (
+                                    <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                                      N° Reçu: {inv.receipt_number}
+                                    </span>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenReceipt(inv)}
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800 rounded-lg transition-colors shadow-xs cursor-pointer"
+                                    title={isRTL ? 'معاينة وتنزيل الوصل الرسمي بصيغة PDF' : 'Consulter et télécharger le reçu officiel en PDF'}
+                                  >
+                                    <FileText className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                                    <span>{isRTL ? 'وصل الخلاص PDF' : 'Consulter le reçu PDF'}</span>
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="text-gray-500">
+                                  {isRTL ? 'الدفع نقداً في مقر الروضة' : 'Paiement en espèces à la crèche'}
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-sm font-bold text-gray-900 dark:text-white sm:text-right">
+                              {group.totalDue.toFixed(0)} <span className="text-xs text-gray-400 font-normal">DT</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
+            </motion.div>
+          )}
 
         </div>
 
@@ -845,14 +1219,21 @@ const MySpacePage = () => {
               </motion.div>
             </motion.div>
           )}
+
+          {/* Modal de préparation du RDV pour le parent */}
+          {myApplication && (
+            <PreInterviewPreparationModal
+              isOpen={showPreparationModal}
+              onClose={() => setShowPreparationModal(false)}
+              application={myApplication}
+              onUpdated={loadMyApplication}
+            />
+          )}
         </AnimatePresence>
 
-        {/* Menu latéral sur grand écran, bouton flottant sur petit écran */}
+        {/* Menu latéral sur grand écran */}
         <div className="hidden lg:block">
           <SideMenu />
-        </div>
-        <div className="block lg:hidden">
-          <FloatingActionButton />
         </div>
       </div>
     </div>

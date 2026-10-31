@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { motion } from 'framer-motion';
-import { Baby, User, Calendar, Phone, AlertTriangle, Save, ArrowLeft, CheckCircle, UserPlus, ArrowRight, FileText, Search, Users, Lock } from 'lucide-react';
+import { Baby, User, Calendar, Phone, AlertTriangle, Save, ArrowLeft, CheckCircle, UserPlus, ArrowRight, FileText, Search, Users, Lock, Sun, Clock, Tag, CreditCard, Receipt, Calculator, Info } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useAccess, FEATURES } from '../../access';
@@ -16,6 +16,7 @@ import userService from '../../services/userService';
 import { convertToISO, calculateAge } from '../../utils/dateUtils';
 import DocumentScanner from '../../components/ui/DocumentScanner';
 import { uploadToEndpoint } from '../../services/api';
+import BillingManagementModal from '../../components/modals/BillingManagementModal';
 
 const AddChildPage = () => {
   const { user } = useAuth();
@@ -28,6 +29,9 @@ const AddChildPage = () => {
   const [parents, setParents] = useState([]);
   const [showSuccessInfo, setShowSuccessInfo] = useState(false);
   const [createdChild, setCreatedChild] = useState(null);
+  const [showBillingModal, setShowBillingModal] = useState(false);
+  const [prorataChoice, setProrataChoice] = useState('prorata'); // 'prorata' | 'full' | 'custom'
+  const [customProrataAmount, setCustomProrataAmount] = useState('');
   const [documents, setDocuments] = useState({
     carnet_medical: null,
     acte_naissance: null,
@@ -73,11 +77,70 @@ const AddChildPage = () => {
     const today = new Date();
     const formattedDate = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
     setValue('enrollment_date', formattedDate);
+    setValue('care_schedule', 'full_day');
     const preselectedLastName = searchParams.get('lastName');
     if (preselectedLastName) {
       setValue('last_name', preselectedLastName);
     }
   }, [setValue, searchParams]);
+
+  // Surveillance des champs financiers et date d'inscription
+  const watchedCareSchedule = watch('care_schedule') || 'full_day';
+  const watchedSaturday = watch('saturday_attendance');
+  const watchedMonthlyDiscount = watch('monthly_discount');
+  const watchedEnrollmentDate = watch('enrollment_date');
+
+  // Détection et calcul automatique du prorata si l'enfant s'inscrit en cours de mois
+  const prorataInfo = useMemo(() => {
+    if (!watchedEnrollmentDate) return null;
+    let enrollDate;
+    if (typeof watchedEnrollmentDate === 'string' && watchedEnrollmentDate.includes('/')) {
+      const parts = watchedEnrollmentDate.split('/');
+      enrollDate = new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+    } else {
+      enrollDate = new Date(watchedEnrollmentDate);
+    }
+    if (isNaN(enrollDate.getTime())) return null;
+
+    const day = enrollDate.getDate();
+    // Si l'enfant commence le 1er du mois, facturation mensuelle classique
+    if (day <= 1) return null;
+
+    const year = enrollDate.getFullYear();
+    const month = enrollDate.getMonth();
+    const totalDaysInMonth = new Date(year, month + 1, 0).getDate();
+    const remainingDays = totalDaysInMonth - day + 1;
+
+    const baseTariff = watchedCareSchedule === 'half_day' ? 100 : 130;
+    const calculatedProrata = Math.round((baseTariff / totalDaysInMonth) * remainingDays);
+
+    return {
+      day,
+      month: month + 1,
+      year,
+      totalDaysInMonth,
+      remainingDays,
+      baseTariff,
+      calculatedProrata
+    };
+  }, [watchedEnrollmentDate, watchedCareSchedule]);
+
+  // Tarif de base retenu pour le premier mois selon le choix de l'administrateur
+  const effectiveFirstMonthBase = useMemo(() => {
+    if (!prorataInfo) {
+      return watchedCareSchedule === 'half_day' ? 100 : 130;
+    }
+    if (prorataChoice === 'prorata') {
+      return prorataInfo.calculatedProrata;
+    }
+    if (prorataChoice === 'full') {
+      return prorataInfo.baseTariff;
+    }
+    if (prorataChoice === 'custom') {
+      return parseFloat(customProrataAmount) || 0;
+    }
+    return prorataInfo.calculatedProrata;
+  }, [prorataInfo, prorataChoice, customProrataAmount, watchedCareSchedule]);
 
   const onSubmit = async (data) => {
     setLoading(true);
@@ -94,6 +157,9 @@ const AddChildPage = () => {
         parent_id: data.parent_id || null,
         enrollment_date: convertToISO(data.enrollment_date) || new Date().toISOString().split('T')[0],
         saturday_attendance: !!data.saturday_attendance,
+        care_schedule: data.care_schedule || 'full_day',
+        monthly_discount: parseFloat(data.monthly_discount) || 0,
+        first_month_prorata: prorataInfo ? effectiveFirstMonthBase : null,
       };
 
       const response = await childrenService.createChild(childData);
@@ -160,7 +226,7 @@ const AddChildPage = () => {
               </div>
 
               {/* Info Box */}
-              <div className={`border rounded-xl p-4 mb-6 ${createdChild.parent_id ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'}`}>
+              <div className={`border rounded-xl p-4 mb-4 ${createdChild.parent_id ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'}`}>
                 <h3 className={`font-semibold mb-2 ${createdChild.parent_id ? 'text-green-800 dark:text-green-300' : 'text-blue-800 dark:text-blue-300'}`}>
                   {createdChild.parent_id
                     ? (isRTL ? 'تم الربط بنجاح' : 'Association réussie')
@@ -180,6 +246,34 @@ const AddChildPage = () => {
                   }
                 </p>
               </div>
+
+              {/* Billing Alert & Receipt Section (Option B) */}
+              {createdChild.parent_id && (
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/60 rounded-xl p-4 mb-6 text-start">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 shrink-0 mt-0.5">
+                      <CreditCard className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-amber-900 dark:text-amber-200 text-sm">
+                        {isRTL ? 'معلوم التسجيل والشهر الأول (في الانتظار)' : 'Frais d\'inscription & 1ère mensualité (À régler)'}
+                      </h4>
+                      <p className="text-xs text-amber-800/90 dark:text-amber-300/90 mt-1 leading-relaxed">
+                        {isRTL
+                          ? 'تم إنشاء فاتورة التسجيل والشهر الأول تلقائياً بحالة "في الانتظار". يمكنك استخلاص المبلغ الآن وتسليم الوصل للولي، أو تسويته لاحقاً عبر إدارة الاشتراكات.'
+                          : 'La cotisation d\'inscription et du premier mois a été générée automatiquement avec le statut "À régler". Vous pouvez encaisser le règlement maintenant et remettre le reçu officiel, ou le faire plus tard.'}
+                      </p>
+                      <Button
+                        onClick={() => setShowBillingModal(true)}
+                        className="mt-3 bg-amber-600 hover:bg-amber-700 text-white text-xs h-9 px-3.5 shadow-sm inline-flex items-center"
+                      >
+                        <Receipt className="w-4 h-4 mr-1.5 rtl:mr-0 rtl:ml-1.5" />
+                        {isRTL ? 'استخلاص معلوم التسجيل وإصدار الوصل' : 'Encaisser le règlement & Émettre le reçu'}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Actions */}
               <div className="space-y-3">
@@ -555,19 +649,190 @@ const AddChildPage = () => {
               </p>
             </div>
 
-            {/* Options */}
-            <div className="space-y-4">
-              <div className="flex items-center">
+            {/* Modalités d'accueil & Tarification */}
+            <div className="space-y-4 pt-2 border-t border-gray-100 dark:border-gray-700">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <Sun className="w-4 h-4 text-primary-600" />
+                {isRTL ? 'نظام الحضور والخصم' : 'Modalités d\'accueil & Remise'}
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Formule d'accueil */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {isRTL ? 'نظام الحضور' : 'Formule d\'accueil'} *
+                  </label>
+                  <select
+                    {...register('care_schedule')}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="full_day">☀️ {isRTL ? 'يوم كامل (حتى 18:00)' : 'Journée complète (jusqu\'à 18h00)'}</option>
+                    <option value="half_day">🌤️ {isRTL ? 'نصف يوم (خروج أقصاه 13:00)' : 'Demi-journée (départ max 13h00)'}</option>
+                  </select>
+                </div>
+
+                {/* Remise exceptionnelle fixe */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-1">
+                    <Tag className="w-3.5 h-3.5 text-primary-600" />
+                    {isRTL ? 'تخفيض استثنائي قار (د.ت)' : 'Remise exceptionnelle fixe (DT)'}
+                  </label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    placeholder="Ex: 20"
+                    {...register('monthly_discount')}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
+                  />
+                  <p className="text-[11px] text-teal-600 dark:text-teal-400 mt-1 flex items-center gap-1">
+                    <Info className="w-3.5 h-3.5 inline shrink-0" />
+                    {isRTL
+                      ? 'مبلغ قار يطرح كل شهر بصفة آلية، ويمكن تعديله أو حذفه في أي وقت.'
+                      : 'Remise récurrente appliquée chaque mois automatiquement. Modifiable ou supprimable à tout moment.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Présence le samedi */}
+              <div className="flex items-center pt-1">
                 <input
                   type="checkbox"
+                  id="dash_saturday_attendance"
                   {...register('saturday_attendance')}
                   className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                 />
-                <label className="ml-2 rtl:ml-0 rtl:mr-2 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                <label htmlFor="dash_saturday_attendance" className="ml-2 rtl:ml-0 rtl:mr-2 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
                   <Calendar className="w-4 h-4 text-primary-600" />
-                  {isRTL ? 'الحضور يوم السبت' : 'Présence le samedi'}
+                  {isRTL ? 'الحضور يوم السبت (+20 د.ت/شهر)' : 'Présence le samedi (+20 DT/mois)'}
                 </label>
               </div>
+
+              {/* Encadré d'aide & Choix Prorata en cas d'arrivée en cours de mois */}
+              {prorataInfo && (
+                <div className="p-4 rounded-xl border border-blue-200 dark:border-blue-800/80 bg-blue-50/70 dark:bg-blue-950/30 text-start space-y-3 animate-fadeIn">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-blue-900 dark:text-blue-200 text-xs font-bold">
+                      <Calculator className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      <span>
+                        {isRTL
+                          ? `تسجيل في وسط الشهر (${prorataInfo.day}/${prorataInfo.month}) — تبقى ${prorataInfo.remainingDays} يوم من أصل ${prorataInfo.totalDaysInMonth}`
+                          : `Arrivée en cours de mois (${prorataInfo.day}/${prorataInfo.month}) — Reste ${prorataInfo.remainingDays} j / ${prorataInfo.totalDaysInMonth} j`}
+                      </span>
+                    </div>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-200/70 dark:bg-blue-900/60 text-blue-800 dark:text-blue-300 font-semibold">
+                      {isRTL ? 'تعديل معلوم الشهر الأول' : 'Choix du 1er mois'}
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-blue-800/90 dark:text-blue-300/90">
+                    {isRTL
+                      ? 'حدد المبلغ المتفق عليه مع الولي بالنسبة للشهر الأول :'
+                      : 'Choisissez la formule convenue avec le parent pour ce premier mois :'}
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                    {/* Option 1: Prorata calculé */}
+                    <label className={`p-2.5 rounded-lg border cursor-pointer flex flex-col justify-between transition-all ${
+                      prorataChoice === 'prorata'
+                        ? 'bg-white dark:bg-gray-800 border-blue-500 shadow-sm ring-1 ring-blue-500'
+                        : 'bg-white/50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 hover:bg-white'
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="prorata_mode"
+                          checked={prorataChoice === 'prorata'}
+                          onChange={() => setProrataChoice('prorata')}
+                          className="text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="font-semibold text-gray-900 dark:text-white">
+                          {isRTL ? 'تناسبي (Prorata)' : 'Prorata calculé'}
+                        </span>
+                      </div>
+                      <span className="text-base font-extrabold text-blue-600 dark:text-blue-400 mt-1.5">
+                        {prorataInfo.calculatedProrata} DT
+                      </span>
+                      <span className="text-[10px] text-gray-500">
+                        ({prorataInfo.remainingDays} {isRTL ? 'أيام متبقية' : 'jours restants'})
+                      </span>
+                    </label>
+
+                    {/* Option 2: Plein mois */}
+                    <label className={`p-2.5 rounded-lg border cursor-pointer flex flex-col justify-between transition-all ${
+                      prorataChoice === 'full'
+                        ? 'bg-white dark:bg-gray-800 border-blue-500 shadow-sm ring-1 ring-blue-500'
+                        : 'bg-white/50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 hover:bg-white'
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="prorata_mode"
+                          checked={prorataChoice === 'full'}
+                          onChange={() => setProrataChoice('full')}
+                          className="text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="font-semibold text-gray-900 dark:text-white">
+                          {isRTL ? 'شهر كامل' : 'Mois complet'}
+                        </span>
+                      </div>
+                      <span className="text-base font-extrabold text-gray-900 dark:text-white mt-1.5">
+                        {prorataInfo.baseTariff} DT
+                      </span>
+                      <span className="text-[10px] text-gray-500">
+                        ({isRTL ? 'معلوم كامل' : 'Tarif plein'})
+                      </span>
+                    </label>
+
+                    {/* Option 3: Montant personnalisé */}
+                    <label className={`p-2.5 rounded-lg border cursor-pointer flex flex-col justify-between transition-all ${
+                      prorataChoice === 'custom'
+                        ? 'bg-white dark:bg-gray-800 border-blue-500 shadow-sm ring-1 ring-blue-500'
+                        : 'bg-white/50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 hover:bg-white'
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="prorata_mode"
+                          checked={prorataChoice === 'custom'}
+                          onChange={() => setProrataChoice('custom')}
+                          className="text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="font-semibold text-gray-900 dark:text-white">
+                          {isRTL ? 'مبلغ متفق عليه' : 'Montant convenu'}
+                        </span>
+                      </div>
+                      {prorataChoice === 'custom' ? (
+                        <div className="mt-1">
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.5"
+                            value={customProrataAmount}
+                            onChange={(e) => setCustomProrataAmount(e.target.value)}
+                            placeholder="Ex: 80"
+                            className="w-full px-2 py-1 text-xs border rounded bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white font-bold"
+                          />
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400 mt-2 italic">
+                          {isRTL ? 'تحديد حر' : 'Saisie libre'}
+                        </span>
+                      )}
+                    </label>
+                  </div>
+
+                  {/* Estimation du 1er règlement complet */}
+                  <div className="pt-2 border-t border-blue-200 dark:border-blue-800/60 flex items-center justify-between text-xs font-medium">
+                    <span className="text-blue-900 dark:text-blue-200">
+                      {isRTL ? 'المجموع التقديري لأول وصل (معلوم التسجيل 60 د.ت + الشهر الأول - التخفيض) :' : 'Total estimé 1ère facture (60 DT assurance + 1er mois - remise) :'}
+                    </span>
+                    <span className="font-extrabold text-sm text-emerald-700 dark:text-emerald-400 bg-emerald-100/70 dark:bg-emerald-950/60 px-2.5 py-0.5 rounded-lg border border-emerald-300 dark:border-emerald-800">
+                      {Math.max(0, effectiveFirstMonthBase + (watchedSaturday ? 20 : 0) + 60 - (parseFloat(watchedMonthlyDiscount) || 0)).toFixed(0)} DT
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Boutons */}
@@ -596,6 +861,11 @@ const AddChildPage = () => {
           </form>
         </CardContent>
       </Card>
+      {/* Modale de gestion des cotisations et reçus */}
+      <BillingManagementModal
+        isOpen={showBillingModal}
+        onClose={() => setShowBillingModal(false)}
+      />
     </div>
   );
 };

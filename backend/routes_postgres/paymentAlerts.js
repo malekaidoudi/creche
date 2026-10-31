@@ -30,7 +30,7 @@ router.post('/', auth.authenticateToken, auth.requireRole('admin', 'staff'), asy
     if (recipient_type === 'all') {
       // Récupérer tous les parents
       const result = await pool.query(
-        'SELECT id FROM users WHERE role = $1 AND deleted_at IS NULL',
+        'SELECT id FROM users WHERE role = $1 AND is_active = true',
         ['parent']
       );
       recipientIds = result.rows.map(row => row.id);

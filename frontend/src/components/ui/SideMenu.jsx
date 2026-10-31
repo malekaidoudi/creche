@@ -1,16 +1,33 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { MessageSquare, StickyNote, Calendar, CheckSquare, Bell, DollarSign, CalendarCheck, Settings, Mail, Megaphone, FileText, Zap, Clock, ChevronDown, ChevronUp, CalendarX } from 'lucide-react';
+import { useLanguage } from '../../hooks/useLanguage';
+import {
+  MessageSquare,
+  StickyNote,
+  Calendar,
+  CheckSquare,
+  CalendarCheck,
+  Settings,
+  Megaphone,
+  FileText,
+  Zap,
+  Clock,
+  ChevronDown,
+  ChevronUp,
+  CalendarX,
+  Receipt
+} from 'lucide-react';
 import MemoModal from '../modals/MemoModal';
 import EventModal from '../modals/EventModal';
 import TaskModal from '../modals/TaskModal';
-import PaymentAlertModal from '../modals/PaymentAlertModal';
+import BillingManagementModal from '../modals/BillingManagementModal';
 import CreateAppointmentModal from '../modals/CreateAppointmentModal';
 import RequestAppointmentModal from '../modals/RequestAppointmentModal';
 
 export default function SideMenu() {
   const { user } = useAuth();
+  const { isRTL } = useLanguage();
   const navigate = useNavigate();
   const [showMemoModal, setShowMemoModal] = useState(false);
   const [showEventModal, setShowEventModal] = useState(false);
@@ -38,19 +55,19 @@ export default function SideMenu() {
     {
       id: 'attendance-today',
       icon: Clock,
-      label: 'Enregistrer présence',
+      label: isRTL ? 'تسجيل الحضور' : 'Enregistrer présence',
       onClick: () => navigate('/dashboard/attendance/today')
     },
     {
       id: 'absence-management',
       icon: Calendar,
-      label: 'Gestion absences',
+      label: isRTL ? 'إدارة الغيابات' : 'Gestion absences',
       onClick: () => navigate('/dashboard/absence-management')
     },
     {
       id: 'pending-enrollments',
       icon: FileText,
-      label: 'Réviser demandes',
+      label: isRTL ? 'مراجعة المطالب' : 'Réviser demandes',
       onClick: () => navigate('/dashboard/pending-enrollments')
     }
   ];
@@ -60,7 +77,7 @@ export default function SideMenu() {
     {
       id: 'create-appointment',
       icon: CalendarCheck,
-      label: 'Rendez-vous',
+      label: isRTL ? 'المواعيد' : 'Rendez-vous',
       color: 'from-blue-500 to-cyan-500',
       hoverColor: 'hover:from-blue-600 hover:to-cyan-600',
       show: user?.role === 'admin',
@@ -70,7 +87,7 @@ export default function SideMenu() {
     {
       id: 'task',
       icon: CheckSquare,
-      label: 'Tâche',
+      label: isRTL ? 'مهمة' : 'Tâche',
       color: 'from-green-500 to-emerald-500',
       hoverColor: 'hover:from-green-600 hover:to-emerald-600',
       show: canCreateTask,
@@ -80,7 +97,7 @@ export default function SideMenu() {
     {
       id: 'memo',
       icon: StickyNote,
-      label: 'Mémo',
+      label: isRTL ? 'مذكرة' : 'Mémo',
       color: 'from-purple-500 to-pink-500',
       hoverColor: 'hover:from-purple-600 hover:to-pink-600',
       show: canCreateMemo,
@@ -90,19 +107,19 @@ export default function SideMenu() {
     {
       id: 'event',
       icon: Calendar,
-      label: 'Événement',
+      label: isRTL ? 'حدث / مناسبة' : 'Événement',
       color: 'from-orange-500 to-amber-500',
       hoverColor: 'hover:from-orange-600 hover:to-amber-600',
       show: canCreateEvent,
       onClick: () => setShowEventModal(true)
     },
-    // Admin: Alerte Paiement
+    // Admin: Cotisations & Paiements
     {
       id: 'payment',
-      icon: DollarSign,
-      label: 'Alerte Paiement',
-      color: 'from-red-500 to-rose-500',
-      hoverColor: 'hover:from-red-600 hover:to-rose-600',
+      icon: Receipt,
+      label: isRTL ? 'الاشتراكات والمدفوعات' : 'Cotisations & Paiements',
+      color: 'from-emerald-600 to-teal-600',
+      hoverColor: 'hover:from-emerald-700 hover:to-teal-700',
       show: canCreatePaymentAlert,
       onClick: () => setShowPaymentModal(true)
     },
@@ -110,7 +127,7 @@ export default function SideMenu() {
     {
       id: 'quick-actions',
       icon: Zap,
-      label: 'Actions rapides',
+      label: isRTL ? 'إجراءات سريعة' : 'Actions rapides',
       color: 'from-indigo-500 to-purple-500',
       hoverColor: 'hover:from-indigo-600 hover:to-purple-600',
       show: user?.role === 'admin' || user?.role === 'staff',
@@ -121,7 +138,7 @@ export default function SideMenu() {
     {
       id: 'settings',
       icon: Settings,
-      label: 'Paramètres',
+      label: isRTL ? 'الإعدادات' : 'Paramètres',
       color: 'from-gray-500 to-slate-600',
       hoverColor: 'hover:from-gray-600 hover:to-slate-700',
       show: user?.role === 'admin' || user?.role === 'staff' || user?.role === 'developer',
@@ -131,7 +148,7 @@ export default function SideMenu() {
     {
       id: 'parent-messages',
       icon: MessageSquare,
-      label: 'Messages',
+      label: isRTL ? 'الرسائل' : 'Messages',
       color: 'from-purple-500 to-pink-500',
       hoverColor: 'hover:from-purple-600 hover:to-pink-600',
       show: isParent,
@@ -141,7 +158,7 @@ export default function SideMenu() {
     {
       id: 'parent-announcements',
       icon: Megaphone,
-      label: 'Annonces',
+      label: isRTL ? 'الإعلانات' : 'Annonces',
       color: 'from-blue-500 to-cyan-500',
       hoverColor: 'hover:from-blue-600 hover:to-cyan-600',
       show: isParent,
@@ -151,7 +168,7 @@ export default function SideMenu() {
     {
       id: 'parent-calendar',
       icon: Calendar,
-      label: 'Calendrier',
+      label: isRTL ? 'التقويم' : 'Calendrier',
       color: 'from-purple-500 to-indigo-500',
       hoverColor: 'hover:from-purple-600 hover:to-indigo-600',
       show: isParent,
@@ -161,7 +178,7 @@ export default function SideMenu() {
     {
       id: 'parent-attendance',
       icon: FileText,
-      label: 'Rapport de présence',
+      label: isRTL ? 'تقرير الحضور' : 'Rapport de présence',
       color: 'from-green-500 to-emerald-500',
       hoverColor: 'hover:from-green-600 hover:to-emerald-600',
       show: isParent,
@@ -171,7 +188,7 @@ export default function SideMenu() {
     {
       id: 'parent-request-appointment',
       icon: CalendarCheck,
-      label: 'Demander un RDV',
+      label: isRTL ? 'طلب موعد' : 'Demander un RDV',
       color: 'from-orange-500 to-red-500',
       hoverColor: 'hover:from-orange-600 hover:to-red-600',
       show: isParent,
@@ -181,7 +198,7 @@ export default function SideMenu() {
     {
       id: 'parent-absence-request',
       icon: CalendarX,
-      label: 'Demande d\'absence',
+      label: isRTL ? 'طلب غياب' : 'Demande d\'absence',
       color: 'from-red-500 to-pink-500',
       hoverColor: 'hover:from-red-600 hover:to-pink-600',
       show: isParent,
@@ -191,10 +208,14 @@ export default function SideMenu() {
 
   return (
     <>
-      {/* Menu latéral moderne fixé à droite */}
-      <div className="fixed right-0 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-2">
+      {/* Menu latéral moderne fixé : à gauche en Arabe (RTL) pour ne pas chevaucher la barre latérale qui est à droite, et à droite en Français (LTR) */}
+      <div className={`fixed ${isRTL ? 'left-0' : 'right-0'} top-1/2 -translate-y-1/2 z-40 flex flex-col gap-2`}>
         {/* Conteneur avec effet de verre */}
-        <div className="bg-white/10 backdrop-blur-md rounded-l-3xl p-3 shadow-2xl border-l-4 border-white/20 space-y-3">
+        <div
+          className={`bg-white/10 dark:bg-gray-800/40 backdrop-blur-md ${
+            isRTL ? 'rounded-r-3xl border-r-4' : 'rounded-l-3xl border-l-4'
+          } p-3 shadow-2xl border-white/20 dark:border-gray-700/50 space-y-3`}
+        >
           {menuItems.map((item, index) => {
             const Icon = item.icon;
             const isHovered = hoveredItem === item.id;
@@ -207,15 +228,15 @@ export default function SideMenu() {
                 onMouseLeave={() => setHoveredItem(null)}
                 style={{ animationDelay: `${index * 50}ms` }}
               >
-                {/* Label au survol avec animation */}
+                {/* Label au survol avec animation orienté vers l'intérieur de l'écran */}
                 <div
                   className={`
-                    absolute right-full mr-4 top-1/2 -translate-y-1/2
+                    absolute ${isRTL ? 'left-full ml-4' : 'right-full mr-4'} top-1/2 -translate-y-1/2
                     px-4 py-2.5 bg-gradient-to-r ${item.color}
                     text-white text-sm font-semibold rounded-xl
                     whitespace-nowrap shadow-2xl
-                    transition-all duration-300 ease-out
-                    ${isHovered ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4 pointer-events-none'}
+                    transition-all duration-300 ease-out z-50
+                    ${isHovered ? 'opacity-100 translate-x-0' : `opacity-0 ${isRTL ? '-translate-x-4' : 'translate-x-4'} pointer-events-none`}
                   `}
                 >
                   <div className="flex items-center gap-2">
@@ -224,12 +245,15 @@ export default function SideMenu() {
                       showQuickActionsSubmenu ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
                     )}
                   </div>
-                  {/* Flèche moderne */}
-                  <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full">
-                    <div className={`w-0 h-0 border-t-[8px] border-t-transparent border-b-[8px] border-b-transparent border-l-[10px] bg-gradient-to-r ${item.color}`}
+                  {/* Flèche moderne pointant vers le bouton */}
+                  <div className={`absolute ${isRTL ? 'left-0 -translate-x-full' : 'right-0 translate-x-full'} top-1/2 -translate-y-1/2`}>
+                    <div
+                      className={`w-0 h-0 border-t-[8px] border-t-transparent border-b-[8px] border-b-transparent ${
+                        isRTL ? 'border-r-[10px]' : 'border-l-[10px]'
+                      }`}
                       style={{
-                        borderLeftColor: 'currentColor',
-                        filter: 'drop-shadow(2px 0 4px rgba(0,0,0,0.1))'
+                        [isRTL ? 'borderRightColor' : 'borderLeftColor']: 'currentColor',
+                        filter: isRTL ? 'drop-shadow(-2px 0 4px rgba(0,0,0,0.1))' : 'drop-shadow(2px 0 4px rgba(0,0,0,0.1))'
                       }}
                     ></div>
                   </div>
@@ -243,7 +267,7 @@ export default function SideMenu() {
                     bg-gradient-to-br ${item.color}
                     flex items-center justify-center
                     transition-all duration-300 ease-out
-                    hover:scale-110 hover:-translate-x-2
+                    hover:scale-110 ${isRTL ? 'hover:translate-x-2' : 'hover:-translate-x-2'}
                     shadow-lg hover:shadow-2xl
                     before:absolute before:inset-0 before:rounded-xl
                     before:bg-white/20 before:opacity-0 hover:before:opacity-100
@@ -251,7 +275,7 @@ export default function SideMenu() {
                     after:absolute after:inset-0 after:rounded-xl
                     after:shadow-inner after:opacity-0 hover:after:opacity-100
                     after:transition-opacity after:duration-300
-                    group-hover:rotate-3
+                    ${isRTL ? 'group-hover:-rotate-3' : 'group-hover:rotate-3'}
                   `}
                 >
                   <Icon className="w-5 h-5 text-white relative z-10 drop-shadow-lg" />
@@ -261,16 +285,24 @@ export default function SideMenu() {
                 </button>
 
                 {/* Indicateur de position */}
-                <div className={`
-                  absolute -left-1 top-1/2 -translate-y-1/2 w-1 h-8 rounded-full
-                  bg-gradient-to-b ${item.color}
-                  transition-all duration-300
-                  ${isHovered ? 'opacity-100 scale-y-100' : 'opacity-0 scale-y-50'}
-                `}></div>
+                <div
+                  className={`
+                    absolute ${isRTL ? '-right-1' : '-left-1'} top-1/2 -translate-y-1/2 w-1 h-8 rounded-full
+                    bg-gradient-to-b ${item.color}
+                    transition-all duration-300
+                    ${isHovered ? 'opacity-100 scale-y-100' : 'opacity-0 scale-y-50'}
+                  `}
+                ></div>
 
                 {/* Sous-menu Actions rapides */}
                 {item.hasSubmenu && showQuickActionsSubmenu && (
-                  <div className="absolute right-full mr-16 top-0 bg-white dark:bg-gray-800 rounded-lg shadow-2xl p-2 min-w-[220px] border border-gray-200 dark:border-gray-700 animate-in slide-in-from-right-5 fade-in">
+                  <div
+                    className={`absolute ${
+                      isRTL ? 'left-full ml-16' : 'right-full mr-16'
+                    } top-0 bg-white dark:bg-gray-800 rounded-lg shadow-2xl p-2 min-w-[220px] border border-gray-200 dark:border-gray-700 animate-in ${
+                      isRTL ? 'slide-in-from-left-5' : 'slide-in-from-right-5'
+                    } fade-in z-50`}
+                  >
                     {quickActionsSubmenu.map((subItem) => {
                       const SubIcon = subItem.icon;
                       return (
@@ -280,7 +312,9 @@ export default function SideMenu() {
                             subItem.onClick();
                             setShowQuickActionsSubmenu(false);
                           }}
-                          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left"
+                          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
+                            isRTL ? 'text-right' : 'text-left'
+                          }`}
                         >
                           <SubIcon className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                           <span className="text-sm font-medium text-gray-900 dark:text-white">
@@ -332,7 +366,7 @@ export default function SideMenu() {
       )}
 
       {showPaymentModal && (
-        <PaymentAlertModal
+        <BillingManagementModal
           isOpen={showPaymentModal}
           onClose={() => setShowPaymentModal(false)}
           onSuccess={() => {

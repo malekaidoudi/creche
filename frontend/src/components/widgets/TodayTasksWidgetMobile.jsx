@@ -101,7 +101,7 @@ const MobileTaskCard = ({ task, index, isRTL, onTaskClick, onValidate, onComplet
                             className="flex items-center gap-1 px-2.5 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium rounded-md transition-colors"
                         >
                             <ClipboardCheck className="w-3 h-3" />
-                            {isRTL ? 'تحقق' : 'Valider'}
+                            {isRTL ? 'مقابلة القبول' : 'Entretien d\'admission'}
                         </button>
                     )}
 
@@ -368,21 +368,40 @@ const TodayTasksWidgetMobile = () => {
                 }}
                 task={selectedTask}
                 onComplete={handleCompleteFromModal}
+                onStartAdmission={(t) => {
+                    setShowDetailModal(false);
+                    setSelectedTask(null);
+                    const apptId = t.metadata?.appointment_id || t.id.replace('appt-', '');
+                    setSelectedAppointment({
+                        id: parseInt(apptId),
+                        child_name: t.metadata?.child_name || t.title,
+                        parent_name: t.metadata?.parent_name,
+                        parent_phone: t.metadata?.parent_phone,
+                        parent_email: t.metadata?.parent_email,
+                        proposed_date: t.start_date,
+                        appointment_type: 'inscription',
+                        enrollment_id: t.metadata?.enrollment_id
+                    });
+                    setShowActionModal(true);
+                }}
             />
 
             {/* Modal action RDV d'inscription */}
-            <AppointmentActionModal
-                isOpen={showActionModal}
-                onClose={() => {
-                    setShowActionModal(false);
-                    setSelectedAppointment(null);
-                }}
-                appointment={selectedAppointment}
-                onSuccess={() => {
-                    loadTodayTasks();
-                    window.dispatchEvent(new Event('taskUpdated'));
-                }}
-            />
+            {showActionModal && selectedAppointment && (
+                <AppointmentActionModal
+                    isOpen={showActionModal}
+                    defaultAction="validate"
+                    onClose={() => {
+                        setShowActionModal(false);
+                        setSelectedAppointment(null);
+                    }}
+                    appointment={selectedAppointment}
+                    onSuccess={() => {
+                        loadTodayTasks();
+                        window.dispatchEvent(new Event('taskUpdated'));
+                    }}
+                />
+            )}
         </div>
     );
 };

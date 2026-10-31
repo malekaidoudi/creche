@@ -93,15 +93,19 @@ const autoCloseExpiredAttendances = async () => {
 
     // 1. CLÔTURE DES DATES PASSÉES (date < todayStr)
     const pastUnclosed = await db.query(`
-      SELECT id, date, child_id, check_in_time, notes
-      FROM attendance
-      WHERE date < $1 AND check_in_time IS NOT NULL AND check_out_time IS NULL
+      SELECT a.id, a.date, a.child_id, a.check_in_time, a.notes, c.care_schedule
+      FROM attendance a
+      LEFT JOIN children c ON a.child_id = c.id
+      WHERE a.date < $1 AND a.check_in_time IS NOT NULL AND a.check_out_time IS NULL
     `, [todayStr]);
 
     if (pastUnclosed.rows.length > 0) {
       for (const row of pastUnclosed.rows) {
-        const closingTime = getClosingTimeForDate(row.date, schedule);
-        const autoNote = `[Départ automatique - fin de journée non pointée (fermeture ${closingTime})]`;
+        const isHalfDay = row.care_schedule === 'half_day';
+        const closingTime = isHalfDay ? '13:00' : getClosingTimeForDate(row.date, schedule);
+        const autoNote = isHalfDay
+          ? `[Départ automatique - fin de demi-journée non pointée (13:00)]`
+          : `[Départ automatique - fin de journée non pointée (fermeture ${closingTime})]`;
         const newNotes = row.notes ? `${row.notes} | ${autoNote}` : autoNote;
 
         await db.query(`
@@ -114,7 +118,36 @@ const autoCloseExpiredAttendances = async () => {
       console.log(`⏰ [Auto-Checkout] ${pastUnclosed.rows.length} présence(s) de date(s) passée(s) clôturée(s) automatiquement`);
     }
 
-    // 2. CLÔTURE D'AUJOURD'HUI (si heure courante >= heure de fermeture)
+    // 2. CLÔTURE D'AUJOURD'HUI
+    // 2.A : Clôture spécifique des demi-journées dès 13h00
+    if (currentTimeStr >= '13:00') {
+      const halfDayUnclosed = await db.query(`
+        SELECT a.id, a.date, a.child_id, a.check_in_time, a.notes
+        FROM attendance a
+        JOIN children c ON a.child_id = c.id
+        WHERE a.date = $1 
+          AND a.check_in_time IS NOT NULL 
+          AND a.check_out_time IS NULL
+          AND c.care_schedule = 'half_day'
+      `, [todayStr]);
+
+      if (halfDayUnclosed.rows.length > 0) {
+        for (const row of halfDayUnclosed.rows) {
+          const autoNote = `[Départ automatique - fin de demi-journée (13:00)]`;
+          const newNotes = row.notes ? `${row.notes} | ${autoNote}` : autoNote;
+
+          await db.query(`
+            UPDATE attendance
+            SET check_out_time = (date + '13:00:00'::time)::timestamp, notes = $1, updated_at = CURRENT_TIMESTAMP
+            WHERE id = $2
+          `, [newNotes, row.id]);
+          totalClosed++;
+        }
+        console.log(`⏰ [Auto-Checkout] ${halfDayUnclosed.rows.length} demi-journée(s) d'aujourd'hui clôturée(s) à 13h00`);
+      }
+    }
+
+    // 2.B : Clôture générale à l'heure de fermeture de la crèche (ex: 18h00)
     const todayClosingTime = getClosingTimeForDate(todayStr, schedule);
     const isPastClosing = currentTimeStr >= todayClosingTime;
 

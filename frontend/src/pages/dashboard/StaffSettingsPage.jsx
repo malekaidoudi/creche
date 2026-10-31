@@ -24,9 +24,6 @@ const StaffSettingsPage = () => {
     const { theme, toggleTheme } = useTheme();
     const { user } = useAuth();
     const dialog = useDialogContext();
-    const [menuType, setMenuType] = useState(() => {
-        return localStorage.getItem('menuType') || 'side';
-    });
     const [settings, setSettings] = useState({
         // Notifications
         emailNotifications: true,
@@ -131,33 +128,6 @@ const StaffSettingsPage = () => {
                                         {currentLanguage === 'fr' ? 'Français' : 'العربية'}
                                     </span>
                                 </button>
-                            </div>
-
-                            {/* Menu Latéral */}
-                            <div className="flex items-center justify-between border-t border-gray-200 dark:border-gray-700 pt-6">
-                                <div>
-                                    <p className="font-medium text-gray-900 dark:text-white">
-                                        {isRTL ? 'القائمة الجانبية' : 'Menu Latéral'}
-                                    </p>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                                        {isRTL ? 'عرض القائمة الجانبية بدلاً من الزر العائم' : 'Afficher le menu latéral au lieu du bouton flottant'}
-                                    </p>
-                                </div>
-                                <ToggleSwitch
-                                    checked={menuType === 'side'}
-                                    onChange={() => {
-                                        const newType = menuType === 'side' ? 'floating' : 'side';
-                                        setMenuType(newType);
-                                        localStorage.setItem('menuType', newType);
-                                        dialog.success(
-                                            isRTL
-                                                ? 'تم حفظ التفضيل! جاري إعادة التحميل...'
-                                                : 'Préférence enregistrée ! Rechargement...'
-                                        );
-                                        setTimeout(() => window.location.reload(), 500);
-                                    }}
-                                    ariaLabel={isRTL ? 'القائمة الجانبية' : 'Menu Latéral'}
-                                />
                             </div>
                         </CardContent>
                     </Card>

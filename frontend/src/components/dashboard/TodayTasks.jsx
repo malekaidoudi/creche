@@ -283,19 +283,21 @@ const TodayTasks = () => {
                           {task.contact.phone && (
                             <a
                               href={`tel:${task.contact.phone}`}
+                              dir="ltr"
                               className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 rounded-full text-xs font-medium hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
                             >
                               <Phone className="w-3 h-3" />
-                              {task.contact.phone}
+                              <span>{task.contact.phone}</span>
                             </a>
                           )}
                           {task.contact.email && (
                             <a
                               href={`mailto:${task.contact.email}`}
+                              dir="ltr"
                               className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-full text-xs font-medium hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
                             >
                               <Mail className="w-3 h-3" />
-                              {task.contact.email}
+                              <span>{task.contact.email}</span>
                             </a>
                           )}
                         </>
