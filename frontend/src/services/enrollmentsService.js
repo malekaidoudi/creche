@@ -138,6 +138,44 @@ const enrollmentsService = {
       console.error('Erreur finalisation dev:', error)
       throw error
     }
+  },
+
+  // Récupérer le dossier de candidature actif du parent connecté
+  getMyApplication: async () => {
+    try {
+      const response = await api.get('/api/enrollments/my-application')
+      return response.data
+    } catch (error) {
+      console.error('Erreur récupération candidature parent:', error)
+      throw error
+    }
+  },
+
+  // Préparer/enrichir la fiche avant le rendez-vous (pédiatre, personnes de confiance, etc.)
+  prepareMyApplication: async (data) => {
+    try {
+      const response = await api.patch('/api/enrollments/my-preparation', data)
+      return response.data
+    } catch (error) {
+      console.error('Erreur mise à jour fiche préparatoire:', error)
+      throw error
+    }
+  },
+
+  // Téléverser un document pour la candidature en cours
+  uploadMyDocument: async (file, documentType = 'carnet_medical') => {
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('document_type', documentType)
+      const response = await api.post('/api/enrollments/my-documents', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+      return response.data
+    } catch (error) {
+      console.error('Erreur téléversement document candidature:', error)
+      throw error
+    }
   }
 }
 

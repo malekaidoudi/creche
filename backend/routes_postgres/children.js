@@ -72,6 +72,7 @@ const ensureFamilyAndContactColumns = async () => {
       ALTER TABLE children ADD COLUMN IF NOT EXISTS account_holder VARCHAR(20) DEFAULT 'father';
       ALTER TABLE children ADD COLUMN IF NOT EXISTS emergency_contact_choice VARCHAR(20) DEFAULT 'custom';
       ALTER TABLE children ADD COLUMN IF NOT EXISTS trusted_contacts JSONB DEFAULT '[]'::jsonb;
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS habits_notes TEXT;
     `);
   } catch (err) {
     console.warn('⚠️ Note: vérification colonnes famille et contacts children:', err.message);
@@ -859,6 +860,7 @@ router.get('/', auth.authenticateToken, async (req, res) => {
         c.emergency_contact_name, c.emergency_contact_phone, c.photo_url,
         COALESCE(c.photo_shared_with_staff, true) as photo_shared_with_staff,
         c.saturday_attendance,
+        c.care_schedule, c.monthly_discount,
         c.is_active, c.created_at, c.updated_at, c.parent_id,
         COALESCE(c.status, 'active') as status,
         c.suspension_reason, c.suspended_at, c.expected_return_date,
@@ -941,7 +943,7 @@ router.get('/', auth.authenticateToken, async (req, res) => {
              c.allergies, c.medical_notes, c.doctor_name, c.doctor_phone, c.blood_type,
              c.weight_kg, c.height_cm, c.growth_measured_at,
              c.emergency_contact_name, c.emergency_contact_phone, c.photo_url, 
-             c.photo_shared_with_staff, c.saturday_attendance, c.is_active, c.created_at, c.updated_at, c.parent_id,
+             c.photo_shared_with_staff, c.saturday_attendance, c.care_schedule, c.monthly_discount, c.is_active, c.created_at, c.updated_at, c.parent_id,
              c.status, c.suspension_reason, c.suspended_at, c.expected_return_date,
              c.father_name, c.father_phone, c.mother_name, c.mother_phone, c.account_holder,
              c.emergency_contact_choice, c.trusted_contacts,
@@ -1047,7 +1049,7 @@ router.get('/:id', auth.authenticateToken, auth.requireChildAccess, async (req, 
               c.allergies, c.medical_notes, c.doctor_name, c.doctor_phone, c.blood_type,
               c.weight_kg, c.height_cm, c.growth_measured_at,
               c.emergency_contact_name, c.emergency_contact_phone, c.photo_url, c.photo_shared_with_staff,
-              c.saturday_attendance,
+              c.saturday_attendance, c.care_schedule, c.monthly_discount,
               c.is_active, c.created_at, c.updated_at, c.parent_id,
               COALESCE(c.status, 'active') as status,
               c.suspension_reason, c.suspended_at, c.expected_return_date,
@@ -1167,7 +1169,10 @@ router.post('/', [
       photo_url,
       parent_id,
       enrollment_date,
-      saturday_attendance
+      saturday_attendance,
+      care_schedule,
+      monthly_discount,
+      first_month_prorata
     } = req.body;
 
     // Protection médicale : vérifier la permission medical.view pour le staff si medical_info est fourni
@@ -1197,14 +1202,18 @@ router.post('/', [
         emergency_contact_choice,
         photo_url,
         parent_id,
-        saturday_attendance
+        saturday_attendance,
+        care_schedule,
+        monthly_discount
       },
       {
         created_by: req.user?.id,
         transfer_documents: false, // Pas de documents à transférer (création directe)
         create_birthday_event: true,
         create_notification: !!parent_id, // Notification seulement si parent associé
-        archive_enrollment: false // Pas d'inscription à archiver
+        archive_enrollment: false, // Pas d'inscription à archiver
+        enrollment_date: enrollment_date || null,
+        first_month_prorata: first_month_prorata !== undefined && first_month_prorata !== null && first_month_prorata !== '' ? parseFloat(first_month_prorata) : null
       }
     );
 
@@ -1667,6 +1676,18 @@ router.put('/:id', [
       paramCount++;
       updates.push(`saturday_attendance = $${paramCount}`);
       params.push(!!saturday_attendance);
+    }
+
+    if (req.body.care_schedule !== undefined) {
+      paramCount++;
+      updates.push(`care_schedule = $${paramCount}`);
+      params.push(req.body.care_schedule === 'half_day' ? 'half_day' : 'full_day');
+    }
+
+    if (req.body.monthly_discount !== undefined) {
+      paramCount++;
+      updates.push(`monthly_discount = $${paramCount}`);
+      params.push(parseFloat(req.body.monthly_discount) || 0);
     }
 
     if (updates.length === 0) {

@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useLanguage } from '../../hooks/useLanguage'
 import { useAuth } from '../../hooks/useAuth'
 import { useDialogContext } from '../../contexts/DialogContext'
-import { Baby, User, Phone, FileText, Send, CheckCircle, AlertCircle, ChevronRight, ChevronLeft, CalendarCheck, Upload, Download, Mail, Lock, Eye, EyeOff, Search, X, ArrowLeft } from 'lucide-react'
+import { Baby, User, Phone, FileText, Send, CheckCircle, AlertCircle, ChevronRight, ChevronLeft, CalendarCheck, Upload, Download, Mail, Lock, Eye, EyeOff, Search, X, ArrowLeft, Sun, Clock, CreditCard, Sparkles } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
 import { Button } from '../../components/ui/Button'
@@ -82,8 +82,31 @@ const EnrollmentPage = () => {
     setValue
   } = useForm()
 
-  // Initialiser la date d'inscription souhaitée au prochain jour ouvré
+  // Tarifs publics transparents de la crèche
+  const [tariffs, setTariffs] = useState({
+    full_day: 130,
+    half_day: 100,
+    saturday: 20,
+    insurance: 60
+  });
+
   useEffect(() => {
+    const fetchTariffs = async () => {
+      try {
+        const res = await api.get('/api/billing/public-tariffs');
+        if (res.data?.success && res.data?.tariffs) {
+          setTariffs(res.data.tariffs);
+        }
+      } catch (err) {
+        // Tarifs par défaut utilisés en repli
+      }
+    };
+    fetchTariffs();
+  }, []);
+
+  // Initialiser la date d'inscription souhaitée et la formule par défaut
+  useEffect(() => {
+    setValue('care_schedule', 'full_day');
     getNextWorkingDayFormatted().then(date => {
       setValue('enrollment_date', date);
     });
@@ -342,7 +365,10 @@ const EnrollmentPage = () => {
           emergency_contact_phone: emergencyChoice === 'custom' ? data.emergency_contact_phone : null,
 
           // Présence le samedi (la crèche ouvre le samedi avec des horaires réduits)
-          saturday_attendance: !!data.saturday_attendance
+          saturday_attendance: !!data.saturday_attendance,
+
+          // Formule d'accueil choisie (journée complète ou demi-journée jusqu'à 13h)
+          care_schedule: data.care_schedule || 'full_day'
         };
 
         console.log('📤 Envoi au backend:', enrollmentData);
@@ -425,15 +451,7 @@ const EnrollmentPage = () => {
         return
       }
 
-      // Contact d'urgence : choix obligatoire (Père / Mère / Autre)
-      if (!emergencyChoice) {
-        dialog.error(isRTL ? 'يرجى تحديد جهة اتصال الطوارئ' : 'Veuillez désigner le contact d\'urgence (Père, Mère ou Autre personne)')
-        return
-      }
-      if (emergencyChoice === 'custom' && (!watch('emergency_contact_name')?.trim() || !watch('emergency_contact_phone')?.trim())) {
-        dialog.error(isRTL ? 'يرجى إدخال اسم وهاتف جهة اتصال الطوارئ' : 'Veuillez saisir le nom et le téléphone du contact d\'urgence')
-        return
-      }
+
 
       // Convertir la date dd/mm/yyyy en yyyy-mm-dd pour l'API
       const convertToISO = (dateStr) => {
@@ -1121,94 +1139,19 @@ const EnrollmentPage = () => {
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      {isRTL ? 'معلومات طبية' : 'Informations médicales'}
-                    </label>
-                    <textarea
-                      rows={3}
-                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                      placeholder={isRTL ? 'أي معلومات طبية مهمة...' : 'Toute information médicale importante...'}
-                      {...register('medical_info')}
-                    />
-                  </div>
-
-                  {/* Contact d'urgence — choix unifié : Père / Mère / Autre */}
-                  <div className="mb-6">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                      {isRTL ? 'جهة الاتصال للطوارئ' : 'Contact d\'urgence'} *
-                    </h3>
-
-                    <div className="grid grid-cols-3 gap-3 mb-4">
-                      {[
-                        { value: 'father', label: isRTL ? 'الأب' : 'Le Père' },
-                        { value: 'mother', label: isRTL ? 'الأم' : 'La Mère' },
-                        { value: 'custom', label: isRTL ? 'شخص آخر' : 'Autre personne' }
-                      ].map((opt) => (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() => setEmergencyChoice(opt.value)}
-                          className={`px-3 py-3 rounded-lg border text-sm font-medium text-center transition-all ${
-                            emergencyChoice === opt.value
-                              ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-950/40 dark:text-primary-300 ring-2 ring-primary-500/20'
-                              : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600'
-                          }`}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
+                  <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl p-4 flex items-start gap-3 mt-4">
+                    <Sparkles className="w-5 h-5 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
+                    <div>
+                      <h4 className="font-semibold text-emerald-900 dark:text-emerald-300 text-sm">
+                        {isRTL ? 'تسجيل مبسط وسريع' : 'Pré-inscription simplifiée'}
+                      </h4>
+                      <p className="text-xs text-emerald-800 dark:text-emerald-200 mt-1 leading-relaxed">
+                        {isRTL
+                          ? 'المعلومات الصحية (طبيب الأطفال، الحساسيات) والأشخاص الموثوقين سيتم إكمالها لاحقاً عبر فضاء الولي أو خلال مقابلة القبول في الحضانة.'
+                          : 'Les informations de santé (pédiatre, allergies, rituels) et les personnes de confiance autorisées seront complétées en toute tranquillité depuis votre Espace Parent ou lors de l\'entretien d\'admission.'}
+                      </p>
                     </div>
-
-                    {['father', 'mother'].includes(emergencyChoice) && (
-                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-                        <p className="text-sm text-blue-800 dark:text-blue-200">
-                          {isRTL
-                            ? 'سيتم استخدام رقم هاتف هذا الوالد كجهة اتصال للطوارئ'
-                            : 'Le numéro de téléphone de ce parent sera utilisé comme contact d\'urgence'}
-                        </p>
-                      </div>
-                    )}
                   </div>
-
-                  {/* Champs contact d'urgence (uniquement si « Autre personne ») */}
-                  {emergencyChoice === 'custom' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          {isRTL ? 'اسم جهة الاتصال للطوارئ' : 'Contact d\'urgence - Nom'} *
-                        </label>
-                        <input
-                          type="text"
-                          className={`w-full px-4 py-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent ${errors.emergency_contact_name ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
-                          placeholder={isRTL ? 'اسم الشخص للاتصال' : 'Nom de la personne à contacter'}
-                          {...register('emergency_contact_name', {
-                            required: emergencyChoice === 'custom' ? (isRTL ? 'اسم جهة الاتصال مطلوب' : 'Le nom du contact est requis') : false
-                          })}
-                        />
-                        {errors.emergency_contact_name && (
-                          <p className="text-red-500 text-sm mt-1">{errors.emergency_contact_name.message}</p>
-                        )}
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          {isRTL ? 'هاتف جهة الاتصال للطوارئ' : 'Contact d\'urgence - Téléphone'} *
-                        </label>
-                        <input
-                          type="tel"
-                          className={`w-full px-4 py-3 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent ${errors.emergency_contact_phone ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
-                          placeholder={isRTL ? 'رقم الهاتف' : 'Numéro de téléphone'}
-                          {...register('emergency_contact_phone', {
-                            required: emergencyChoice === 'custom' ? (isRTL ? 'رقم الهاتف مطلوب' : 'Le numéro de téléphone est requis') : false
-                          })}
-                        />
-                        {errors.emergency_contact_phone && (
-                          <p className="text-red-500 text-sm mt-1">{errors.emergency_contact_phone.message}</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
 
@@ -1358,8 +1301,72 @@ const EnrollmentPage = () => {
                     readOnlyInput={true}
                   />
 
+                  {/* Formule d'accueil & Tarification */}
+                  <div className="space-y-3 pt-2">
+                    <label className="block text-sm font-semibold text-gray-900 dark:text-white">
+                      {isRTL ? 'نظام الحضور والتعريفة' : 'Formule d\'accueil & Régime'} *
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Journée complète */}
+                      <button
+                        type="button"
+                        onClick={() => setValue('care_schedule', 'full_day')}
+                        className={`p-4 rounded-xl border-2 text-left rtl:text-right transition-all flex flex-col justify-between ${
+                          watch('care_schedule') !== 'half_day'
+                            ? 'border-primary-600 bg-primary-50/70 dark:bg-primary-950/40 shadow-sm'
+                            : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between w-full mb-2">
+                          <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
+                            <Sun className="w-5 h-5" />
+                          </div>
+                          <span className="text-xs font-bold px-2 py-1 rounded-full bg-primary-100 text-primary-800 dark:bg-primary-900/50 dark:text-primary-300">
+                            {tariffs.full_day} DT / {isRTL ? 'شهر' : 'mois'}
+                          </span>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900 dark:text-white text-base">
+                            {isRTL ? 'يوم كامل' : 'Journée complète'}
+                          </h4>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            {isRTL ? 'كامل اليوم حتى موعد الغلق (18:00)' : 'Garde toute la journée jusqu\'à la fermeture (18h00)'}
+                          </p>
+                        </div>
+                      </button>
+
+                      {/* Demi-journée */}
+                      <button
+                        type="button"
+                        onClick={() => setValue('care_schedule', 'half_day')}
+                        className={`p-4 rounded-xl border-2 text-left rtl:text-right transition-all flex flex-col justify-between ${
+                          watch('care_schedule') === 'half_day'
+                            ? 'border-primary-600 bg-primary-50/70 dark:bg-primary-950/40 shadow-sm'
+                            : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between w-full mb-2">
+                          <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+                            <Clock className="w-5 h-5" />
+                          </div>
+                          <span className="text-xs font-bold px-2 py-1 rounded-full bg-primary-100 text-primary-800 dark:bg-primary-900/50 dark:text-primary-300">
+                            {tariffs.half_day} DT / {isRTL ? 'شهر' : 'mois'}
+                          </span>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900 dark:text-white text-base">
+                            {isRTL ? 'نصف يوم' : 'Demi-journée'}
+                          </h4>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            {isRTL ? 'حصة صباحية - المغادرة على أقصى تقدير في حدود 13:00' : 'Matinée uniquement - départ au plus tard à 13h00'}
+                          </p>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Présence le samedi */}
-                  <div>
+                  <div className="pt-1">
                     <div className="flex items-center space-x-3 rtl:space-x-reverse">
                       <input
                         type="checkbox"
@@ -1368,21 +1375,42 @@ const EnrollmentPage = () => {
                         {...register('saturday_attendance')}
                       />
                       <label htmlFor="saturday_attendance" className="flex-1 cursor-pointer">
-                        <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                          <CalendarCheck className="w-5 h-5 text-primary-600" />
-                          <div>
-                            <h3 className="font-semibold text-gray-900 dark:text-white">
-                              {isRTL ? 'الحضور يوم السبت' : 'Présence le samedi'}
-                            </h3>
-                            <p className="text-sm text-gray-600 dark:text-gray-300">
-                              {isRTL
-                                ? 'طفلي سيحضر إلى الحضانة أيام السبت'
-                                : 'Mon enfant sera présent à la crèche le samedi'
-                              }
-                            </p>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                            <CalendarCheck className="w-5 h-5 text-primary-600" />
+                            <div>
+                              <h3 className="font-semibold text-gray-900 dark:text-white">
+                                {isRTL ? 'الحضور يوم السبت' : 'Présence le samedi'}
+                              </h3>
+                              <p className="text-sm text-gray-600 dark:text-gray-300">
+                                {isRTL
+                                  ? 'طفلي سيحضر إلى الحضانة أيام السبت (حتى 13:00)'
+                                  : 'Mon enfant sera présent à la crèche le samedi (jusqu\'à 13h00)'
+                                }
+                              </p>
+                            </div>
                           </div>
+                          <span className="text-xs font-bold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 px-2 py-1 rounded-lg">
+                            +{tariffs.saturday} DT / {isRTL ? 'شهر' : 'mois'}
+                          </span>
                         </div>
                       </label>
+                    </div>
+                  </div>
+
+                  {/* Récapitulatif tarifaire transparent */}
+                  <div className="rounded-xl border border-primary-200 dark:border-primary-900/50 bg-gradient-to-br from-primary-50/60 to-blue-50/60 dark:from-primary-950/30 dark:to-gray-800/40 p-4 space-y-2 mt-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-700 dark:text-gray-300 font-medium">
+                        {isRTL ? 'المعلوم الشهري للروضة :' : 'Cotisation mensuelle crèche :'}
+                      </span>
+                      <span className="text-base font-bold text-primary-700 dark:text-primary-300">
+                        {((watch('care_schedule') === 'half_day' ? tariffs.half_day : tariffs.full_day) + (watch('saturday_attendance') ? tariffs.saturday : 0))} DT / {isRTL ? 'شهر' : 'mois'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 pt-2 border-t border-primary-100 dark:border-gray-700">
+                      <span>{isRTL ? 'التأمين السنوي الإجباري (للسنة الدراسية) :' : 'Assurance annuelle obligatoire (année scolaire) :'}</span>
+                      <span className="font-semibold text-gray-700 dark:text-gray-300">{tariffs.insurance} DT / {isRTL ? 'سنة' : 'an'}</span>
                     </div>
                   </div>
                 </div>
@@ -1407,8 +1435,8 @@ const EnrollmentPage = () => {
                         </h3>
                         <p className="text-sm text-blue-800 dark:text-blue-200 mt-1">
                           {isRTL
-                            ? 'الوثائق اختيارية باستثناء النظام الداخلي. الملفات المقبولة: PDF, JPG, PNG (حتى 5MB)'
-                            : 'Les documents sont optionnels sauf le règlement intérieur. Formats acceptés : PDF, JPG, PNG (max 5MB)'
+                            ? 'الوثائق اختيارية في هذه المرحلة. يمكنكم إرفاقها الآن أو التقاط صور لها بهاتفكم عبر فضاء الولي قبل موعد المقابلة (PDF, JPG, PNG).'
+                            : 'Les documents sont optionnels à cette étape. Vous pouvez les joindre maintenant ou les prendre en photo avec votre smartphone depuis votre Espace Parent avant le rendez-vous (PDF, JPG, PNG).'
                           }
                         </p>
                       </div>
@@ -1775,16 +1803,35 @@ const EnrollmentPage = () => {
                     </div>
                   </div>
 
-                  {/* Options sélectionnées */}
+                  {/* Options sélectionnées & Tarifs */}
                   <div className="bg-primary-50 dark:bg-primary-900/20 rounded-lg p-6 space-y-4">
-                    <h3 className="font-semibold text-gray-900 dark:text-white">
-                      {isRTL ? 'الخيارات المحددة:' : 'Options sélectionnées :'}
+                    <h3 className="font-semibold text-gray-900 dark:text-white flex items-center justify-between">
+                      <span>{isRTL ? 'الخيارات المحددة والتعريفة:' : 'Options sélectionnées & Tarifs :'}</span>
+                      <span className="text-primary-700 dark:text-primary-300 font-bold text-base">
+                        {((watch('care_schedule') === 'half_day' ? tariffs.half_day : tariffs.full_day) + (watch('saturday_attendance') ? tariffs.saturday : 0))} DT / {isRTL ? 'شهر' : 'mois'}
+                      </span>
                     </h3>
                     <div className="space-y-2 text-sm">
                       <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                        <CheckCircle className="w-4 h-4 text-primary-600" />
+                        <span className="text-primary-900 dark:text-primary-200 font-medium">
+                          {isRTL ? 'نظام الحضور: ' : 'Formule : '}
+                          {watch('care_schedule') === 'half_day'
+                            ? (isRTL ? 'نصف يوم (خروج حتى 13:00)' : 'Demi-journée (départ max 13h00)')
+                            : (isRTL ? 'يوم كامل (حتى 18:00)' : 'Journée complète (jusqu\'à 18h00)')
+                          }
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2 rtl:space-x-reverse">
                         <CheckCircle className={`w-4 h-4 ${watch('saturday_attendance') ? 'text-green-600' : 'text-gray-400'}`} />
                         <span className={watch('saturday_attendance') ? 'text-green-800 dark:text-green-300 font-medium' : 'text-gray-600 dark:text-gray-400'}>
-                          {isRTL ? 'الحضور يوم السبت' : 'Présence le samedi'}
+                          {isRTL ? 'الحضور يوم السبت' : 'Présence le samedi'} {watch('saturday_attendance') ? `(+${tariffs.saturday} DT)` : ''}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                        <CheckCircle className="w-4 h-4 text-blue-600" />
+                        <span className="text-blue-800 dark:text-blue-300 font-medium">
+                          {isRTL ? `التأمين السنوي الإجباري: ${tariffs.insurance} دينار / سنة` : `Assurance annuelle : ${tariffs.insurance} DT / an`}
                         </span>
                       </div>
                       <div className="flex items-center space-x-2 rtl:space-x-reverse">

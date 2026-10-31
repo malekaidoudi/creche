@@ -93,7 +93,14 @@ const TaskCard = ({ task, index, isRTL, onTaskClick, onValidate, onComplete, onS
               {task.metadata?.parent_phone && (
                 <div className="flex items-center gap-2">
                   <Phone className="w-3.5 h-3.5 text-gray-400" />
-                  <span>{task.metadata.parent_phone}</span>
+                  <a
+                    href={`tel:${task.metadata.parent_phone}`}
+                    dir="ltr"
+                    className="hover:underline text-gray-700 dark:text-gray-300"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {task.metadata.parent_phone}
+                  </a>
                 </div>
               )}
             </div>
@@ -125,14 +132,14 @@ const TaskCard = ({ task, index, isRTL, onTaskClick, onValidate, onComplete, onS
               </>
             )}
 
-            {/* Bouton Valider pour RDV inscription */}
+            {/* Bouton pour RDV inscription */}
             {task.type === 'appointment' && task.metadata?.is_inscription && task.status !== 'completed' && (
               <button
                 onClick={(e) => { e.stopPropagation(); onValidate(task); }}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white text-xs font-medium rounded-lg transition-all shadow-sm hover:shadow"
               >
                 <ClipboardCheck className="w-3.5 h-3.5" />
-                {isRTL ? 'التحقق' : 'Valider'}
+                {isRTL ? 'مقابلة القبول' : 'Entretien d\'admission'}
               </button>
             )}
 
@@ -252,10 +259,10 @@ const TodayTasksWidget = ({ onOpenMemoModal, onOpenTaskModal, onOpenAppointmentM
             id: `appt-${appt.id}`,
             type: 'appointment',
             title: isInscription
-              ? `📋 RDV Inscription: ${appt.child_name || 'Enfant'}`
+              ? (isRTL ? `📋 موعد تسجيل : ${appt.child_name || 'الطفل'}` : `📋 RDV Inscription: ${appt.child_name || 'Enfant'}`)
               : (appt.subject || (isRTL ? 'موعد' : 'Rendez-vous')),
             description: isInscription
-              ? `Validation du dossier d'inscription`
+              ? (isRTL ? 'استكمال وتثبيت ملف التسجيل والقبول' : `Validation du dossier d'inscription`)
               : appt.description,
             start_date: appt.confirmed_date || appt.proposed_date,
             priority: 'high',
@@ -572,6 +579,22 @@ const TodayTasksWidget = ({ onOpenMemoModal, onOpenTaskModal, onOpenAppointmentM
         }}
         task={selectedTask}
         onComplete={handleCompleteTask}
+        onStartAdmission={(t) => {
+          setShowDetailModal(false);
+          setSelectedTask(null);
+          const apptId = t.metadata?.appointment_id || t.id.replace('appt-', '');
+          setSelectedAppointment({
+            id: parseInt(apptId),
+            child_name: t.metadata?.child_name || t.title,
+            parent_name: t.metadata?.parent_name,
+            parent_phone: t.metadata?.parent_phone,
+            parent_email: t.metadata?.parent_email,
+            proposed_date: t.start_date,
+            appointment_type: 'inscription',
+            enrollment_id: t.metadata?.enrollment_id
+          });
+          setShowActionModal(true);
+        }}
       />
 
       {/* Modal création RDV pour tâches urgentes */}
@@ -593,18 +616,21 @@ const TodayTasksWidget = ({ onOpenMemoModal, onOpenTaskModal, onOpenAppointmentM
       }
 
       {/* Modal action RDV d'inscription (valider/échouer) */}
-      <AppointmentActionModal
-        isOpen={showActionModal}
-        onClose={() => {
-          setShowActionModal(false);
-          setSelectedAppointment(null);
-        }}
-        appointment={selectedAppointment}
-        onSuccess={() => {
-          loadTodayTasks();
-          window.dispatchEvent(new Event('taskUpdated'));
-        }}
-      />
+      {showActionModal && selectedAppointment && (
+        <AppointmentActionModal
+          isOpen={showActionModal}
+          defaultAction="validate"
+          onClose={() => {
+            setShowActionModal(false);
+            setSelectedAppointment(null);
+          }}
+          appointment={selectedAppointment}
+          onSuccess={() => {
+            loadTodayTasks();
+            window.dispatchEvent(new Event('taskUpdated'));
+          }}
+        />
+      )}
 
       {/* Modal proposition nouvelle date pour RDV en attente */}
       <RejectWithProposalModal

@@ -56,7 +56,16 @@ async function createChild(childData, options = {}) {
         mother_phone,
         account_holder,
         photo_url,
-        saturday_attendance
+        saturday_attendance,
+        care_schedule,
+        monthly_discount,
+        doctor_name,
+        doctor_phone,
+        allergies,
+        habits_notes,
+        weight_kg,
+        height_cm,
+        trusted_contacts
     } = childData;
 
     const {
@@ -97,6 +106,28 @@ async function createChild(childData, options = {}) {
             };
         }
 
+        const parsedWeight = (weight_kg !== undefined && weight_kg !== null && weight_kg !== '') ? parseFloat(weight_kg) : null;
+        const parsedHeight = (height_cm !== undefined && height_cm !== null && height_cm !== '') ? parseFloat(height_cm) : null;
+        const safeTrustedContacts = Array.isArray(trusted_contacts) ? JSON.stringify(trusted_contacts.slice(0, 2)) : (trusted_contacts ? JSON.stringify(trusted_contacts) : '[]');
+
+        let safeAllergies = '[]';
+        if (typeof allergies === 'string') {
+            const trimmed = allergies.trim();
+            if (trimmed) {
+                try {
+                    JSON.parse(trimmed);
+                    safeAllergies = trimmed;
+                } catch (_) {
+                    const items = trimmed.split(',').map(s => s.trim()).filter(Boolean);
+                    safeAllergies = JSON.stringify(items);
+                }
+            }
+        } else if (Array.isArray(allergies)) {
+            safeAllergies = JSON.stringify(allergies);
+        } else if (allergies) {
+            safeAllergies = JSON.stringify(allergies);
+        }
+
         // 3. Créer l'enfant
         const childResult = await db.query(`
             INSERT INTO children (
@@ -104,8 +135,15 @@ async function createChild(childData, options = {}) {
                 medical_info, parent_id, emergency_contact_name,
                 emergency_contact_phone, emergency_contact_choice,
                 father_name, father_phone, mother_name, mother_phone, account_holder,
-                photo_url, saturday_attendance, is_active, created_at
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, true, NOW())
+                photo_url, saturday_attendance, care_schedule, monthly_discount,
+                doctor_name, doctor_phone, allergies, habits_notes, weight_kg, height_cm,
+                trusted_contacts, growth_measured_at, is_active, created_at
+            ) VALUES (
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
+                $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25,
+                CASE WHEN $23::numeric IS NOT NULL OR $24::numeric IS NOT NULL THEN NOW() ELSE NULL END,
+                true, NOW()
+            )
             RETURNING *
         `, [
             first_name,
@@ -131,12 +169,33 @@ async function createChild(childData, options = {}) {
             mother_phone || null,
             account_holder || 'father',
             photo_url || null,
-            !!saturday_attendance
+            !!saturday_attendance,
+            care_schedule === 'half_day' ? 'half_day' : 'full_day',
+            parseFloat(monthly_discount) || 0.00,
+            doctor_name || null,
+            doctor_phone || null,
+            safeAllergies,
+            habits_notes || null,
+            parsedWeight,
+            parsedHeight,
+            safeTrustedContacts
         ]);
 
         const child = childResult.rows[0];
         const childId = child.id;
         console.log(`✅ [ChildLifecycle] Enfant créé avec ID: ${childId}`);
+
+        // 3b. Enregistrer la mesure de croissance initiale si disponible
+        if (parsedWeight !== null || parsedHeight !== null) {
+            try {
+                await db.query(`
+                    INSERT INTO child_growth_records (child_id, weight_kg, height_cm, recorded_by)
+                    VALUES ($1, $2, $3, $4)
+                `, [childId, parsedWeight, parsedHeight, created_by || null]);
+            } catch (growthErr) {
+                console.warn('⚠️ [ChildLifecycle] Avertissement enregistrement croissance:', growthErr.message);
+            }
+        }
 
         // 4. Transférer les documents d'inscription si applicable
         if (enrollment_id && transfer_documents) {
@@ -163,12 +222,40 @@ async function createChild(childData, options = {}) {
             await createDocumentPlaceholder(childId, first_name, last_name);
         }
 
+        // 9. Générer la première cotisation lors de l'admission
+        let generatedInvoice = null;
+        try {
+            const billingService = require('./billingService');
+            const billingSettings = await billingService.getSettings();
+            if (billingSettings.billing_enabled || options.enrollment_id) {
+                const enrollDate = options.enrollment_date ? new Date(options.enrollment_date) : new Date();
+                const targetMonth = (!isNaN(enrollDate.getTime())) ? enrollDate.getMonth() + 1 : (new Date().getMonth() + 1);
+                const targetYear = (!isNaN(enrollDate.getTime())) ? enrollDate.getFullYear() : (new Date().getFullYear());
+
+                const prorataAmount = (options.first_month_prorata !== undefined && options.first_month_prorata !== null && options.first_month_prorata !== '')
+                    ? parseFloat(options.first_month_prorata)
+                    : null;
+
+                generatedInvoice = await billingService.generateInvoiceForChild(child, targetMonth, targetYear, {
+                    isFirstEnrollment: true,
+                    includeInsurance: true,
+                    prorataAmount: prorataAmount,
+                    customDiscount: parseFloat(child.monthly_discount) || 0,
+                    createdBy: created_by
+                });
+                console.log(`💳 [ChildLifecycle] Cotisation initiale générée pour ${first_name} (${targetMonth}/${targetYear}, prorata: ${prorataAmount}, remise: ${child.monthly_discount})`);
+            }
+        } catch (billingErr) {
+            console.warn('⚠️ [ChildLifecycle] Avertissement génération facture initiale:', billingErr.message);
+        }
+
         console.log(`🎉 [ChildLifecycle] Inscription complète pour ${first_name} ${last_name} (ID: ${childId})`);
 
         return {
             success: true,
             childId,
-            child
+            child,
+            invoice: generatedInvoice
         };
 
     } catch (error) {
@@ -505,12 +592,14 @@ async function archiveEnrollment(enrollmentId, childId, parentId, enrollmentData
         await db.query(`
             INSERT INTO enrollments_archive (
                 id, parent_id, child_id, enrollment_date, status, new_status,
-                saturday_attendance, regulation_accepted, admin_notes,
+                saturday_attendance, care_schedule, monthly_discount, regulation_accepted, admin_notes,
+                doctor_name, doctor_phone, allergies, habits_notes, weight_kg, height_cm, trusted_contacts,
                 created_at, updated_at, applicant_first_name,
                 applicant_last_name, applicant_email, approved_by, approved_at
             ) SELECT 
                 id, COALESCE($2, parent_id), $3, COALESCE(enrollment_date, NOW()), 'approved', 'approved',
-                saturday_attendance, regulation_accepted, admin_notes,
+                saturday_attendance, COALESCE(care_schedule, 'full_day'), COALESCE(monthly_discount, 0), regulation_accepted, admin_notes,
+                doctor_name, doctor_phone, allergies, habits_notes, weight_kg, height_cm, COALESCE(trusted_contacts, '[]'::jsonb),
                 created_at, NOW(), applicant_first_name,
                 applicant_last_name, applicant_email, $4, NOW()
             FROM enrollments WHERE id = $1

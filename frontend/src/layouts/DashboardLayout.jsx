@@ -5,7 +5,6 @@ import { useAuth } from '../contexts/AuthContext';
 import useIsMobile from '../hooks/useIsMobile';
 import DashboardSidebar from '../components/layout/DashboardSidebar';
 import DashboardHeader from '../components/layout/DashboardHeader';
-import FloatingActionButton from '../components/ui/FloatingActionButton';
 import SideMenu from '../components/ui/SideMenu';
 import HelpSystem from '../components/help/HelpSystem';
 
@@ -15,9 +14,6 @@ const DashboardLayout = () => {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [menuType, setMenuType] = useState(() => {
-    return localStorage.getItem('menuType') || 'side';
-  });
 
   return (
     <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 ${isRTL ? 'font-arabic' : 'font-sans'}`}>
@@ -53,14 +49,10 @@ const DashboardLayout = () => {
         />
       )}
 
-      {/* Note: la navigation mobile en bas est deja rendue par chaque page
-          (voir les composants dans src/pages) pour garder le controle
-          page par page ; ne pas la dupliquer ici. */}
-
-      {/* Desktop: Menu latéral OU Floating Action Button selon la préférence */}
+      {/* Desktop: Menu latéral d'actions rapides */}
       {!isMobile && (
         <div className="hidden lg:block">
-          {menuType === 'side' ? <SideMenu /> : <FloatingActionButton />}
+          <SideMenu />
         </div>
       )}
 

@@ -21,18 +21,16 @@ import {
 import { useLanguage } from '../../hooks/useLanguage';
 import { useDialogContext } from '../../contexts/DialogContext';
 import api from '../../services/api';
-import AppointmentActionModal from './AppointmentActionModal';
 
 /**
  * Modal de détails d'une tâche/mémo/RDV/événement
  * Permet de voir les détails, marquer comme terminé ou accéder au planning
  */
-const TaskDetailModal = ({ isOpen, onClose, task, onComplete }) => {
+const TaskDetailModal = ({ isOpen, onClose, task, onComplete, onStartAdmission }) => {
     const { isRTL } = useLanguage();
     const navigate = useNavigate();
     const dialog = useDialogContext();
     const [completing, setCompleting] = useState(false);
-    const [showActionModal, setShowActionModal] = useState(false);
 
     // Vérifier si c'est un RDV d'inscription
     const isInscriptionAppointment = task?.type === 'appointment' && task?.metadata?.is_inscription;
@@ -43,7 +41,7 @@ const TaskDetailModal = ({ isOpen, onClose, task, onComplete }) => {
     const formatDate = (dateString) => {
         if (!dateString) return '';
         const date = new Date(dateString);
-        return date.toLocaleDateString('fr-FR', {
+        return date.toLocaleDateString(isRTL ? 'ar-TN' : 'fr-FR', {
             weekday: 'long',
             day: 'numeric',
             month: 'long',
@@ -55,7 +53,7 @@ const TaskDetailModal = ({ isOpen, onClose, task, onComplete }) => {
     const formatTime = (dateString) => {
         if (!dateString) return '';
         const date = new Date(dateString);
-        return date.toLocaleTimeString('fr-FR', {
+        return date.toLocaleTimeString(isRTL ? 'ar-TN' : 'fr-FR', {
             hour: '2-digit',
             minute: '2-digit'
         });
@@ -217,7 +215,11 @@ const TaskDetailModal = ({ isOpen, onClose, task, onComplete }) => {
                                         </div>
                                         <div>
                                             <span className="text-sm opacity-80">{getTypeLabel()}</span>
-                                            <h2 className="text-xl font-bold">{task.title}</h2>
+                                            <h2 className="text-xl font-bold">
+                                                {isRTL && isInscriptionAppointment
+                                                    ? `📋 موعد تسجيل : ${task.metadata?.child_name || task.metadata?.child_first_name || ''}`
+                                                    : task.title}
+                                            </h2>
                                         </div>
                                     </div>
                                     <button
@@ -235,7 +237,9 @@ const TaskDetailModal = ({ isOpen, onClose, task, onComplete }) => {
                                 {task.description && (
                                     <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
                                         <p className="text-gray-700 dark:text-gray-300">
-                                            {task.description}
+                                            {isRTL && (task.description === "Validation du dossier d'inscription" || isInscriptionAppointment)
+                                                ? 'استكمال وتثبيت ملف التسجيل والقبول'
+                                                : task.description}
                                         </p>
                                     </div>
                                 )}
@@ -382,11 +386,14 @@ const TaskDetailModal = ({ isOpen, onClose, task, onComplete }) => {
                                     {/* Bouton spécial pour RDV d'inscription */}
                                     {isInscriptionAppointment ? (
                                         <button
-                                            onClick={() => setShowActionModal(true)}
+                                            onClick={() => {
+                                                onClose();
+                                                onStartAdmission && onStartAdmission(task);
+                                            }}
                                             className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white font-medium rounded-xl transition-all hover:shadow-lg"
                                         >
                                             <ClipboardCheck className="w-5 h-5" />
-                                            {isRTL ? 'التحقق من الموعد' : 'Valider le RDV'}
+                                            {isRTL ? 'بدء مقابلة القبول' : 'Entretien d\'admission'}
                                         </button>
                                     ) : (
                                         <button
@@ -406,34 +413,12 @@ const TaskDetailModal = ({ isOpen, onClose, task, onComplete }) => {
                                         className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-primary-500 to-purple-500 hover:from-primary-600 hover:to-purple-600 text-white font-medium rounded-xl transition-all hover:shadow-lg"
                                     >
                                         <CalendarDays className="w-5 h-5" />
-                                        {isRTL ? 'عرض التخطيط' : 'Voir le planning'}
+                                        {isRTL ? 'جدول المواعيد' : 'Voir le planning'}
                                     </button>
                                 </div>
                             </div>
                         </div>
                     </motion.div>
-
-                    {/* Modal d'action pour RDV d'inscription */}
-                    {showActionModal && isInscriptionAppointment && (
-                        <AppointmentActionModal
-                            isOpen={showActionModal}
-                            onClose={() => setShowActionModal(false)}
-                            appointment={{
-                                id: parseInt(task.metadata?.appointment_id || task.id.replace('appt-', '')),
-                                child_name: task.metadata?.child_name || task.title,
-                                parent_name: task.metadata?.parent_name,
-                                parent_phone: task.metadata?.parent_phone,
-                                parent_email: task.metadata?.parent_email,
-                                proposed_date: task.start_date,
-                                appointment_type: 'inscription',
-                                enrollment_id: task.metadata?.enrollment_id
-                            }}
-                            onSuccess={() => {
-                                onComplete && onComplete(task.id);
-                                onClose();
-                            }}
-                        />
-                    )}
                 </>
             )}
         </AnimatePresence>

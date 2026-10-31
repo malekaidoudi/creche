@@ -63,7 +63,7 @@ const enrollmentsController = {
         applicant_first_name, applicant_last_name, applicant_email, applicant_phone,
         child_first_name, child_last_name, child_birth_date, child_gender,
         emergency_contact_name, emergency_contact_phone, emergency_contact_choice,
-        saturday_attendance
+        saturday_attendance, care_schedule, monthly_discount
       } = req.body;
 
       // Validation
@@ -79,18 +79,21 @@ const enrollmentsController = {
       const ecName = ecChoice === 'custom' ? (emergency_contact_name || '').trim() || null : null;
       const ecPhone = ecChoice === 'custom' ? (emergency_contact_phone || '').trim() || null : null;
 
+      const schedule = care_schedule === 'half_day' ? 'half_day' : 'full_day';
+      const discount = parseFloat(monthly_discount) || 0;
+
       // Créer enrollment
       const result = await db.query(`
         INSERT INTO enrollments (
           applicant_first_name, applicant_last_name, applicant_email, applicant_phone,
           child_first_name, child_last_name, child_birth_date, child_gender,
           emergency_contact_name, emergency_contact_phone, emergency_contact_choice,
-          saturday_attendance, status, created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'pending', NOW())
+          saturday_attendance, care_schedule, monthly_discount, status, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'pending', NOW())
         RETURNING id, status
       `, [applicant_first_name, applicant_last_name, applicant_email, applicant_phone,
         child_first_name, child_last_name, child_birth_date, child_gender,
-        ecName, ecPhone, ecChoice, !!saturday_attendance]);
+        ecName, ecPhone, ecChoice, !!saturday_attendance, schedule, discount]);
 
       const enrollment = result.rows[0];
 
@@ -417,6 +420,7 @@ const enrollmentsController = {
               e.admin_notes, e.approved_by, e.approved_at,
               e.active_appointment_id, e.failed_appointments_count,
               e.saturday_attendance,
+              e.care_schedule, e.monthly_discount,
               COALESCE((SELECT COUNT(*) FROM enrollment_documents ed WHERE ed.enrollment_id = e.id), 0) as documents_count,
               'active' as source
             FROM enrollments e
@@ -438,6 +442,7 @@ const enrollmentsController = {
               ea.admin_notes, ea.approved_by, ea.approved_at,
               NULL as active_appointment_id, NULL as failed_appointments_count,
               ea.saturday_attendance,
+              ea.care_schedule, ea.monthly_discount,
               0 as documents_count,
               'archived' as source
             FROM enrollments_archive ea
@@ -455,6 +460,7 @@ const enrollmentsController = {
             e.admin_notes, e.approved_by, e.approved_at,
             e.active_appointment_id, e.failed_appointments_count,
             e.saturday_attendance,
+            e.care_schedule, e.monthly_discount,
             -- Priorité: données de la table children, sinon données de enrollments
             COALESCE(c.first_name, e.child_first_name) as child_first_name,
             COALESCE(c.last_name, e.child_last_name) as child_last_name,
@@ -799,6 +805,190 @@ const enrollmentsController = {
         error: 'Erreur lors de l\'upload des documents',
         details: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
+    }
+  },
+
+  // GET /api/enrollments/my-application
+  // Récupérer le dossier de candidature actif du parent connecté (avec ses documents et RDV)
+  getMyApplication: async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const userEmail = req.user.email;
+
+      const result = await db.query(`
+        SELECT e.*,
+               a.id as appointment_id, a.proposed_date, a.confirmed_date,
+               a.status as appointment_status, a.location as appointment_location,
+               a.staff_notes as appointment_notes, a.pending_response_from
+        FROM enrollments e
+        LEFT JOIN appointments a ON (e.active_appointment_id = a.id OR a.enrollment_id = e.id)
+        WHERE (e.created_parent_user_id = $1 OR e.applicant_email = $2)
+          AND e.status IN ('pending', 'in_progress')
+        ORDER BY e.created_at DESC
+        LIMIT 1
+      `, [userId, userEmail]);
+
+      if (result.rows.length === 0) {
+        return res.json({ success: true, application: null });
+      }
+
+      const enrollment = result.rows[0];
+
+      // Charger les documents déjà téléversés
+      const docsResult = await db.query(`
+        SELECT id, filename, original_filename, document_type, mime_type, file_size, uploaded_at, cloudinary_url
+        FROM enrollment_documents
+        WHERE enrollment_id = $1
+        ORDER BY uploaded_at DESC
+      `, [enrollment.id]);
+
+      res.json({
+        success: true,
+        application: {
+          ...enrollment,
+          documents: docsResult.rows
+        }
+      });
+    } catch (error) {
+      console.error('❌ Erreur récupération dossier parent:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  },
+
+  // PATCH /api/enrollments/my-preparation
+  // Mettre à jour la fiche préparatoire de l'enfant avant le rendez-vous (pédiatre, personnes de confiance, rituels, poids/taille)
+  prepareMyApplication: async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const userEmail = req.user.email;
+      const {
+        doctor_name,
+        doctor_phone,
+        allergies,
+        habits_notes,
+        weight_kg,
+        height_cm,
+        trusted_contacts
+      } = req.body;
+
+      const checkResult = await db.query(`
+        SELECT id FROM enrollments
+        WHERE (created_parent_user_id = $1 OR applicant_email = $2)
+          AND status IN ('pending', 'in_progress')
+        ORDER BY created_at DESC
+        LIMIT 1
+      `, [userId, userEmail]);
+
+      if (checkResult.rows.length === 0) {
+        return res.status(404).json({ success: false, error: 'Aucun dossier actif en attente de rendez-vous' });
+      }
+
+      const enrollmentId = checkResult.rows[0].id;
+      const parsedWeight = (weight_kg !== undefined && weight_kg !== null && weight_kg !== '') ? parseFloat(weight_kg) : null;
+      const parsedHeight = (height_cm !== undefined && height_cm !== null && height_cm !== '') ? parseFloat(height_cm) : null;
+      const safeTrustedContacts = Array.isArray(trusted_contacts) ? JSON.stringify(trusted_contacts.slice(0, 2)) : '[]';
+
+      const updateResult = await db.query(`
+        UPDATE enrollments
+        SET 
+          doctor_name = COALESCE($1, doctor_name),
+          doctor_phone = COALESCE($2, doctor_phone),
+          allergies = COALESCE($3, allergies),
+          habits_notes = COALESCE($4, habits_notes),
+          weight_kg = COALESCE($5, weight_kg),
+          height_cm = COALESCE($6, height_cm),
+          trusted_contacts = $7::jsonb,
+          updated_at = NOW()
+        WHERE id = $8
+        RETURNING *
+      `, [
+        doctor_name !== undefined ? doctor_name : null,
+        doctor_phone !== undefined ? doctor_phone : null,
+        allergies !== undefined ? allergies : null,
+        habits_notes !== undefined ? habits_notes : null,
+        parsedWeight,
+        parsedHeight,
+        safeTrustedContacts,
+        enrollmentId
+      ]);
+
+      res.json({
+        success: true,
+        message: 'Fiche préparatoire enregistrée avec succès',
+        application: updateResult.rows[0]
+      });
+    } catch (error) {
+      console.error('❌ Erreur préparation dossier parent:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  },
+
+  // POST /api/enrollments/my-documents
+  // Téléverser un document pour le dossier en cours du parent connecté
+  uploadMyDocument: async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const userEmail = req.user.email;
+      const file = req.file;
+      const { document_type = 'carnet_medical' } = req.body;
+
+      if (!file) {
+        return res.status(400).json({ success: false, error: 'Aucun fichier fourni' });
+      }
+
+      const checkResult = await db.query(`
+        SELECT id FROM enrollments
+        WHERE (created_parent_user_id = $1 OR applicant_email = $2)
+          AND status IN ('pending', 'in_progress')
+        ORDER BY created_at DESC
+        LIMIT 1
+      `, [userId, userEmail]);
+
+      if (checkResult.rows.length === 0) {
+        return res.status(404).json({ success: false, error: 'Aucun dossier d\'inscription actif trouvé' });
+      }
+
+      const enrollmentId = checkResult.rows[0].id;
+
+      let cloudinaryUrl = null;
+      let cloudinaryPublicId = null;
+
+      if (cloudinaryService.isConfigured()) {
+        const uploadRes = await cloudinaryService.uploadEnrollmentDocument(file.path, enrollmentId, document_type);
+        if (uploadRes.success) {
+          cloudinaryUrl = uploadRes.secure_url;
+          cloudinaryPublicId = uploadRes.public_id;
+        }
+      }
+
+      const docResult = await db.query(`
+        INSERT INTO enrollment_documents (
+          enrollment_id, filename, original_filename, file_path,
+          mime_type, file_size, document_type, uploaded_by, uploaded_at,
+          cloudinary_url, cloudinary_public_id
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), $9, $10)
+        RETURNING *
+      `, [
+        enrollmentId,
+        file.filename,
+        file.originalname,
+        file.path,
+        file.mimetype,
+        file.size,
+        document_type,
+        userId,
+        cloudinaryUrl,
+        cloudinaryPublicId
+      ]);
+
+      res.status(201).json({
+        success: true,
+        message: 'Document téléversé avec succès',
+        document: docResult.rows[0]
+      });
+    } catch (error) {
+      console.error('❌ Erreur téléversement document parent:', error);
+      res.status(500).json({ success: false, error: error.message });
     }
   }
 };

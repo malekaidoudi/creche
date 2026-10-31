@@ -327,19 +327,27 @@ exports.completeAppointment = async (req, res) => {
 
     try {
         const { id } = req.params;
-        const { staff_notes } = req.body;
+        const notesToSave = req.body.staff_notes || req.body.notes || null;
 
-        // 1. Récupérer le RDV et l'inscription complète avec TOUTES les données de l'enfant
+        // 1. Récupérer le RDV et l'inscription complète avec TOUTES les données enrichies
         const appointmentCheck = await db.query(`
             SELECT a.*, 
                    e.id as enrollment_id, e.status as enrollment_status,
-                   e.parent_id, e.child_id, e.enrollment_date, e.saturday_attendance,
+                   e.child_first_name as e_child_first_name,
+                   e.child_last_name as e_child_last_name,
+                   e.child_birth_date as e_child_birth_date,
+                   e.child_gender as e_child_gender,
+                   e.parent_id as e_parent_id, e.child_id as e_child_id, e.enrollment_date, e.saturday_attendance,
                    e.regulation_accepted, e.admin_notes as e_admin_notes,
                    e.created_at as e_created_at, e.applicant_first_name,
-                   e.applicant_last_name, e.applicant_email, e.approved_by, e.approved_at,
-                   e.child_first_name, e.child_last_name, e.child_birth_date, e.child_gender,
+                   e.applicant_last_name, e.applicant_email, e.applicant_phone, e.approved_by, e.approved_at,
                    e.child_medical_info, e.created_parent_user_id,
-                   e.emergency_contact_name, e.emergency_contact_phone, e.emergency_contact_choice
+                   e.emergency_contact_name, e.emergency_contact_phone, e.emergency_contact_choice,
+                   e.care_schedule, e.monthly_discount,
+                   e.doctor_name as e_doctor_name, e.doctor_phone as e_doctor_phone,
+                   e.allergies as e_allergies, e.habits_notes as e_habits_notes,
+                   e.weight_kg as e_weight_kg, e.height_cm as e_height_cm,
+                   e.trusted_contacts as e_trusted_contacts
             FROM appointments a
             LEFT JOIN enrollments e ON a.enrollment_id = e.id
             WHERE a.id = $1
@@ -354,43 +362,62 @@ exports.completeAppointment = async (req, res) => {
 
         const appointment = appointmentCheck.rows[0];
 
-        // 2. Mettre à jour le RDV
-        const result = await db.query(`
-            UPDATE appointments
-            SET 
-                status = 'completed',
-                appointment_outcome = 'success',
-                staff_notes = COALESCE($2, staff_notes),
-                confirmed_date = NOW(),
-                updated_at = NOW()
-            WHERE id = $1
-            RETURNING *
-        `, [id, staff_notes]);
-
         let createdChildId = null;
+        let createdChild = null;
+        let createdInvoice = null;
 
-        // 3. Si c'est un RDV d'inscription, utiliser le service centralisé pour créer l'enfant
+        // 2. Si c'est un RDV d'inscription, utiliser le service centralisé pour créer l'enfant
         if (appointment.enrollment_id && appointment.appointment_type === 'inscription') {
-            const parentId = appointment.created_parent_user_id || appointment.parent_id;
+            const parentId = appointment.created_parent_user_id || appointment.parent_id || appointment.e_parent_id;
+            const childFirstName = req.body.child_first_name || appointment.child_first_name || appointment.e_child_first_name;
+            const childLastName = req.body.child_last_name || appointment.child_last_name || appointment.e_child_last_name;
+            const rawBirthDate = req.body.child_birth_date || appointment.e_child_birth_date;
+            const childBirthDate = rawBirthDate instanceof Date ? rawBirthDate.toISOString().split('T')[0] : (rawBirthDate ? String(rawBirthDate).split('T')[0] : null);
+            const childGender = req.body.child_gender || appointment.e_child_gender || 'male';
 
-            if (appointment.child_first_name) {
+            if (childFirstName) {
+                // Données enrichies fournies lors de l'entretien (avec repli sur les données pré-saisies)
+                const doctorName = req.body.doctor_name !== undefined ? req.body.doctor_name : appointment.e_doctor_name;
+                const doctorPhone = req.body.doctor_phone !== undefined ? req.body.doctor_phone : appointment.e_doctor_phone;
+                const allergies = req.body.allergies !== undefined ? req.body.allergies : appointment.e_allergies;
+                const habitsNotes = req.body.habits_notes !== undefined ? req.body.habits_notes : appointment.e_habits_notes;
+                const weightKg = req.body.weight_kg !== undefined ? req.body.weight_kg : appointment.e_weight_kg;
+                const heightCm = req.body.height_cm !== undefined ? req.body.height_cm : appointment.e_height_cm;
+                const trustedContacts = req.body.trusted_contacts !== undefined ? req.body.trusted_contacts : appointment.e_trusted_contacts;
+                const careSchedule = req.body.care_schedule || appointment.care_schedule || 'full_day';
+                const saturdayAttendance = req.body.saturday_attendance !== undefined ? !!req.body.saturday_attendance : !!appointment.saturday_attendance;
+                const monthlyDiscount = req.body.monthly_discount !== undefined ? (parseFloat(req.body.monthly_discount) || 0) : (parseFloat(appointment.monthly_discount) || 0);
+                const enrollmentDate = req.body.enrollment_date || appointment.enrollment_date || new Date().toISOString().split('T')[0];
+                const firstMonthProrata = req.body.first_month_prorata;
+
                 // Utiliser le service centralisé childLifecycleService
                 const createResult = await childLifecycleService.createChild(
                     {
-                        first_name: appointment.child_first_name,
-                        last_name: appointment.child_last_name,
-                        birth_date: appointment.child_birth_date,
-                        gender: appointment.child_gender,
-                        medical_info: appointment.child_medical_info,
+                        first_name: childFirstName,
+                        last_name: childLastName,
+                        birth_date: childBirthDate,
+                        gender: childGender,
+                        medical_info: req.body.child_medical_info || appointment.child_medical_info,
                         parent_id: parentId,
-                        emergency_contact_name: appointment.emergency_contact_name,
-                        emergency_contact_phone: appointment.emergency_contact_phone,
-                        emergency_contact_choice: appointment.emergency_contact_choice,
-                        saturday_attendance: appointment.saturday_attendance
+                        emergency_contact_name: req.body.emergency_contact_name || appointment.emergency_contact_name,
+                        emergency_contact_phone: req.body.emergency_contact_phone || appointment.emergency_contact_phone,
+                        emergency_contact_choice: req.body.emergency_contact_choice || appointment.emergency_contact_choice,
+                        saturday_attendance: saturdayAttendance,
+                        care_schedule: careSchedule,
+                        monthly_discount: monthlyDiscount,
+                        doctor_name: doctorName,
+                        doctor_phone: doctorPhone,
+                        allergies: allergies,
+                        habits_notes: habitsNotes,
+                        weight_kg: weightKg,
+                        height_cm: heightCm,
+                        trusted_contacts: trustedContacts
                     },
                     {
                         enrollment_id: appointment.enrollment_id,
                         created_by: req.user?.id,
+                        enrollment_date: enrollmentDate,
+                        first_month_prorata: firstMonthProrata,
                         transfer_documents: true,
                         create_birthday_event: true,
                         create_notification: true,
@@ -400,27 +427,45 @@ exports.completeAppointment = async (req, res) => {
 
                 if (createResult.success) {
                     createdChildId = createResult.childId;
-
-                    // Mettre à jour le RDV avec le child_id
-                    await db.query(`
-                        UPDATE appointments SET child_id = $1 WHERE id = $2
-                    `, [createdChildId, id]);
+                    createdChild = createResult.child;
+                    createdInvoice = createResult.invoice;
 
                     console.log(`✅ Inscription #${appointment.enrollment_id} finalisée via childLifecycleService - Enfant #${createdChildId} créé`);
                 } else {
                     console.error(`❌ Erreur création enfant via service:`, createResult.error);
-                    // Continuer quand même pour ne pas bloquer le RDV
+                    return res.status(400).json({
+                        success: false,
+                        error: createResult.error || "Erreur lors de la création de l'enfant"
+                    });
                 }
             }
         }
 
+        // 3. Mettre à jour le RDV en base
+        const updateResult = await db.query(`
+            UPDATE appointments
+            SET 
+                status = 'completed',
+                appointment_outcome = 'success',
+                staff_notes = COALESCE($2, staff_notes),
+                confirmed_date = NOW(),
+                child_id = COALESCE($3, child_id),
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING *
+        `, [id, notesToSave, createdChildId]);
+
+        const displayName = req.body.child_first_name || appointment.child_first_name || appointment.e_child_first_name || '';
+
         res.json({
             success: true,
             message: createdChildId
-                ? `Rendez-vous validé - Enfant ${appointment.child_first_name} ajouté à la crèche !`
+                ? `Rendez-vous validé - Enfant ${displayName} ajouté à la crèche !`
                 : 'Rendez-vous validé avec succès',
-            appointment: result.rows[0],
+            appointment: updateResult.rows[0],
             childId: createdChildId,
+            child: createdChild,
+            invoice: createdInvoice,
             archived: true
         });
 

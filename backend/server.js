@@ -81,6 +81,7 @@ const dashboardStatsRoutes = require('./routes_postgres/dashboardStats');
 const contactMessagesRoutes = require('./routes_postgres/contactMessages');
 const virtualTourRoutes = require('./routes_postgres/virtualTour');
 const paymentAlertsRoutes = require('./routes_postgres/paymentAlerts');
+const billingRoutes = require('./routes_postgres/billing');
 const documentsRoutes = require('./routes_postgres/documents');
 const cloudinaryRoutes = require('./routes_postgres/cloudinary');
 const cloudinaryExplorerRoutes = require('./routes_postgres/cloudinaryExplorer');
@@ -380,6 +381,10 @@ console.log('  ✓ /api/virtual-tour (images visite virtuelle) 🖼️');
 
 app.use('/api/payment-alerts', paymentAlertsRoutes);
 console.log('  ✓ /api/payment-alerts (alertes de paiement) 💰');
+
+app.use('/api/billing', billingRoutes);
+app.use('/api/finance', billingRoutes);
+console.log('  ✓ /api/billing & /api/finance (facturation, cotisations & dépenses) 💳');
 
 app.use('/api/documents', documentsRoutes);
 console.log('  ✓ /api/documents (gestion documents) 📄');

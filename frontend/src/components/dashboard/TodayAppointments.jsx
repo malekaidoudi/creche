@@ -186,6 +186,7 @@ const TodayAppointments = () => {
                       <Phone className="w-4 h-4 text-gray-400" />
                       <a
                         href={`tel:${apt.parent_phone}`}
+                        dir="ltr"
                         className="hover:text-blue-600 transition-colors"
                       >
                         {apt.parent_phone}
@@ -198,6 +199,7 @@ const TodayAppointments = () => {
                       <Mail className="w-4 h-4 text-gray-400" />
                       <a
                         href={`mailto:${apt.parent_email}`}
+                        dir="ltr"
                         className="hover:text-blue-600 transition-colors truncate"
                       >
                         {apt.parent_email}

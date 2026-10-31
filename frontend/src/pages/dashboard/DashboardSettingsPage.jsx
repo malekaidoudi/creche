@@ -20,7 +20,9 @@ import {
   Image,
   Eye,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Banknote,
+  Receipt
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useTheme } from '../../hooks/useTheme';
@@ -48,9 +50,6 @@ const DashboardSettingsPage = () => {
   const dialog = useDialogContext();
   const pushNotifications = usePushNotifications();
   const [loading, setLoading] = useState(false);
-  const [menuType, setMenuType] = useState(() => {
-    return localStorage.getItem('menuType') || 'side';
-  });
 
   // Défilement automatique vers la section Jours Fériés si ancre URL présente
   useEffect(() => {
@@ -104,6 +103,14 @@ const DashboardSettingsPage = () => {
     saturdayOpen: false,
     saturdayOpeningTime: '08:00',
     saturdayClosingTime: '13:00',
+
+    // Tarification et Gestion des Cotisations
+    billingEnabled: false,
+    tariffFullDayMonthly: 130,
+    tariffHalfDayMonthly: 100,
+    tariffSaturdayMonthly: 20,
+    tariffInsuranceAnnual: 60,
+    billingDueDay: 5,
 
     // Vacances annuelles
     annualVacationEnabled: false,
@@ -209,6 +216,25 @@ const DashboardSettingsPage = () => {
             }
           } catch (vacationError) {
             console.log('⚠️ Pas de vacances annuelles configurées');
+          }
+
+          // Charger les paramètres de facturation
+          try {
+            const billingRes = await api.get('/api/billing/settings');
+            if (billingRes.data.success && billingRes.data.settings) {
+              const bSet = billingRes.data.settings;
+              setSettings(prev => ({
+                ...prev,
+                billingEnabled: bSet.billing_enabled === 'true' || bSet.billing_enabled === true,
+                tariffFullDayMonthly: parseFloat(bSet.tariff_full_day_monthly) || 130,
+                tariffHalfDayMonthly: parseFloat(bSet.tariff_half_day_monthly) || 100,
+                tariffSaturdayMonthly: parseFloat(bSet.tariff_saturday_monthly) || 20,
+                tariffInsuranceAnnual: parseFloat(bSet.tariff_insurance_annual) || 60,
+                billingDueDay: parseInt(bSet.billing_due_day) || 5
+              }));
+            }
+          } catch (billingErr) {
+            console.log('⚠️ Erreur chargement paramètres facturation:', billingErr);
           }
 
           setLoading(false);
@@ -871,6 +897,22 @@ const DashboardSettingsPage = () => {
         }
       }
 
+      // Sauvegarder les paramètres de facturation
+      try {
+        await api.put('/api/billing/settings', {
+          billing_enabled: settings.billingEnabled,
+          tariff_full_day_monthly: settings.tariffFullDayMonthly,
+          tariff_half_day_monthly: settings.tariffHalfDayMonthly,
+          tariff_saturday_monthly: settings.tariffSaturdayMonthly,
+          tariff_insurance_annual: settings.tariffInsuranceAnnual,
+          billing_due_day: settings.billingDueDay
+        });
+        clearApiCache('/api/billing/public-tariffs');
+        clearApiCache('/api/billing/settings');
+      } catch (billingErr) {
+        console.error('❌ Erreur sauvegarde paramètres facturation:', billingErr);
+      }
+
       // Invalider le cache partagé (footer, contact, calendriers) pour que
       // les autres pages reflètent immédiatement les nouveaux paramètres
       clearApiCache('/api/nursery-settings')
@@ -1203,6 +1245,132 @@ const DashboardSettingsPage = () => {
                   )}
                 </div>
 
+                {/* Tarification et Gestion des Cotisations */}
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Banknote className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                      <h4 className="font-semibold text-gray-900 dark:text-white">
+                        {isRTL ? 'تسعير الحضانة ومتابعة الاشتراكات' : 'Tarification & Gestion des Cotisations'}
+                      </h4>
+                    </div>
+                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 font-medium">
+                      {settings.billingEnabled
+                        ? (isRTL ? 'مفعل' : 'Activé')
+                        : (isRTL ? 'غير مفعل' : 'Désactivé')}
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                    {isRTL
+                      ? 'الأسعار تُعرض دائمًا لأولياء الأمور في استمارة التسجيل. تفعيل هذا الخيار يتيح التوليد الآلي للإيصالات ومتابعة المدفوعات النقدية والتنبيهات.'
+                      : 'Les tarifs sont toujours affichés aux parents lors de l\'inscription. Activer cette option active la génération des factures, le suivi des encaissements en espèces et les rappels.'}
+                  </p>
+
+                  <div className="flex items-center justify-between p-3 bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 rounded-xl mb-4">
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white text-sm">
+                        {isRTL ? 'تفعيل نظام إدارة الاشتراكات' : 'Activer le système de facturation & cotisations'}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {isRTL ? 'إصدار إيصالات شهرية ومتابعة الدفع نقداً' : 'Suivi mensuel, encaissements et rappels parents'}
+                      </p>
+                    </div>
+                    <ToggleSwitch
+                      checked={settings.billingEnabled}
+                      onChange={(value) => handleSettingChange('billingEnabled', value)}
+                      ariaLabel={isRTL ? 'تفعيل الاشتراكات' : 'Activer facturation'}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-1">
+                        {isRTL ? '☀️ يوم كامل (د.ت / شهر)' : '☀️ Journée complète (DT / mois)'}
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={settings.tariffFullDayMonthly}
+                          onChange={(e) => handleSettingChange('tariffFullDayMonthly', parseFloat(e.target.value) || 0)}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm font-semibold"
+                        />
+                        <span className="absolute right-3 top-2 text-xs font-bold text-gray-400 dark:text-gray-400 pointer-events-none">DT</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-1">
+                        {isRTL ? '🌤️ نصف يوم حتى 13:00 (د.ت / شهر)' : '🌤️ Demi-journée max 13h (DT / mois)'}
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={settings.tariffHalfDayMonthly}
+                          onChange={(e) => handleSettingChange('tariffHalfDayMonthly', parseFloat(e.target.value) || 0)}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm font-semibold"
+                        />
+                        <span className="absolute right-3 top-2 text-xs font-bold text-gray-400 dark:text-gray-400 pointer-events-none">DT</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-1">
+                        {isRTL ? '📅 خيار السبت (د.ت / شهر)' : '📅 Option Samedi (DT / mois)'}
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={settings.tariffSaturdayMonthly}
+                          onChange={(e) => handleSettingChange('tariffSaturdayMonthly', parseFloat(e.target.value) || 0)}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm font-semibold"
+                        />
+                        <span className="absolute right-3 top-2 text-xs font-bold text-gray-400 dark:text-gray-400 pointer-events-none">DT</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-1">
+                        {isRTL ? '🛡️ التأمين السنوي (د.ت / سنة دراسية)' : '🛡️ Assurance annuelle (DT / an)'}
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={settings.tariffInsuranceAnnual}
+                          onChange={(e) => handleSettingChange('tariffInsuranceAnnual', parseFloat(e.target.value) || 0)}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm font-semibold"
+                        />
+                        <span className="absolute right-3 top-2 text-xs font-bold text-gray-400 dark:text-gray-400 pointer-events-none">DT</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-1">
+                        {isRTL ? '📆 يوم استحقاق الشهر' : '📆 Jour d\'échéance mensuelle'}
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min="1"
+                          max="28"
+                          value={settings.billingDueDay}
+                          onChange={(e) => handleSettingChange('billingDueDay', parseInt(e.target.value) || 5)}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm font-semibold"
+                        />
+                        <span className="absolute right-3 top-2 text-xs text-gray-400 pointer-events-none">du mois</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Bouton de sauvegarde */}
                 <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
                   <Button
@@ -1272,31 +1440,6 @@ const DashboardSettingsPage = () => {
                     </span>
                   </button>
                 </div>
-
-                {/* Menu Latéral (Admin, Staff & Developer) */}
-                {(user?.role === 'admin' || user?.role === 'staff' || user?.role === 'developer') && (
-                  <div className="flex items-center justify-between border-t border-gray-200 dark:border-gray-700 pt-6">
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-white">
-                        {isRTL ? 'القائمة الجانبية' : 'Menu Latéral'}
-                      </p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {isRTL ? 'عرض القائمة الجانبية بدلاً من الزر العائم' : 'Afficher le menu latéral au lieu du bouton flottant'}
-                      </p>
-                    </div>
-                    <ToggleSwitch
-                      checked={menuType === 'side'}
-                      onChange={() => {
-                        const newType = menuType === 'side' ? 'floating' : 'side';
-                        setMenuType(newType);
-                        localStorage.setItem('menuType', newType);
-                        console.log('✅ Préférence menu enregistrée:', newType);
-                        setTimeout(() => window.location.reload(), 500);
-                      }}
-                      ariaLabel={isRTL ? 'القائمة الجانبية' : 'Menu Latéral'}
-                    />
-                  </div>
-                )}
               </CardContent>
             </Card>
 

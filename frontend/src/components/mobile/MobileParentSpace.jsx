@@ -29,7 +29,8 @@ import {
     PhoneCall,
     Image,
     CalendarX,
-    UserCheck
+    UserCheck,
+    Download
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -41,6 +42,7 @@ import api from '../../services/api';
 import API_CONFIG from '../../config/api';
 import { getEmergencyContactDisplay } from '../../utils/emergencyContacts';
 import PushNotificationCard from '../notifications/PushNotificationCard';
+import PWAInstallGuide from './PWAInstallGuide';
 
 // Fonction pour construire l'URL complète de la photo
 const getChildPhotoUrl = (photoUrl) => {
@@ -74,6 +76,7 @@ const MobileParentSpace = ({
     const [showHolidaysModal, setShowHolidaysModal] = useState(false);
     const [showFeedbackModal, setShowFeedbackModal] = useState(false);
     const [showNewsModal, setShowNewsModal] = useState(false);
+    const [newsModalTab, setNewsModalTab] = useState('news'); // 'news' | 'install'
     const [nurseryPhone, setNurseryPhone] = useState(null);
     const [holidays, setHolidays] = useState([]);
     const [news, setNews] = useState([]);
@@ -1339,11 +1342,39 @@ const MobileParentSpace = ({
                                         <X className="w-5 h-5 text-gray-500" />
                                     </button>
                                 </div>
+
+                                {/* Onglets : Actualités / Installer l'app */}
+                                <div className="flex items-center gap-2 mt-4">
+                                    <button
+                                        onClick={() => setNewsModalTab('news')}
+                                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                            newsModalTab === 'news'
+                                                ? 'bg-blue-600 text-white'
+                                                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                                        }`}
+                                    >
+                                        <Bell className="w-4 h-4" />
+                                        {isRTL ? 'الأخبار' : 'Actualités'}
+                                    </button>
+                                    <button
+                                        onClick={() => setNewsModalTab('install')}
+                                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-colors ${
+                                            newsModalTab === 'install'
+                                                ? 'bg-blue-600 text-white'
+                                                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                                        }`}
+                                    >
+                                        <Download className="w-4 h-4" />
+                                        {isRTL ? 'تثبيت التطبيق' : "Installer l'app"}
+                                    </button>
+                                </div>
                             </div>
 
-                            {/* Liste des nouveautés */}
+                            {/* Contenu : liste des nouveautés OU guide d'installation PWA */}
                             <div className="p-4 overflow-y-auto max-h-[60vh]">
-                                {news.length === 0 ? (
+                                {newsModalTab === 'install' ? (
+                                    <PWAInstallGuide />
+                                ) : news.length === 0 ? (
                                     <div className="text-center py-8">
                                         <Bell className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                                         <p className="text-gray-500 dark:text-gray-400">

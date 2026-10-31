@@ -9,6 +9,32 @@ const path = require('path');
 const fs = require('fs');
 const taskService = require('../services/taskService');
 
+// Vérification et ajout au démarrage des colonnes d'enrichissement d'inscription
+const ensureEnrollmentEnrichmentColumns = async () => {
+  try {
+    await db.query(`
+      ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS trusted_contacts JSONB DEFAULT '[]'::jsonb;
+      ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS doctor_name VARCHAR(100);
+      ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS doctor_phone VARCHAR(20);
+      ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS allergies TEXT;
+      ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS habits_notes TEXT;
+      ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS weight_kg NUMERIC(5,2);
+      ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS height_cm NUMERIC(5,2);
+
+      ALTER TABLE enrollments_archive ADD COLUMN IF NOT EXISTS trusted_contacts JSONB DEFAULT '[]'::jsonb;
+      ALTER TABLE enrollments_archive ADD COLUMN IF NOT EXISTS doctor_name VARCHAR(100);
+      ALTER TABLE enrollments_archive ADD COLUMN IF NOT EXISTS doctor_phone VARCHAR(20);
+      ALTER TABLE enrollments_archive ADD COLUMN IF NOT EXISTS allergies TEXT;
+      ALTER TABLE enrollments_archive ADD COLUMN IF NOT EXISTS habits_notes TEXT;
+      ALTER TABLE enrollments_archive ADD COLUMN IF NOT EXISTS weight_kg NUMERIC(5,2);
+      ALTER TABLE enrollments_archive ADD COLUMN IF NOT EXISTS height_cm NUMERIC(5,2);
+    `);
+  } catch (err) {
+    console.warn('⚠️ Note: vérification colonnes enrichissement enrollments:', err.message);
+  }
+};
+ensureEnrollmentEnrichmentColumns();
+
 // =====================================================
 // ROUTES PUBLIQUES (VISITEURS)
 // Version: 2025-11-03 - Fix 404 route not found
@@ -444,6 +470,34 @@ router.get('/appointments/today',
       });
     }
   }
+);
+
+/**
+ * GET /api/enrollments/my-application
+ * Récupérer le dossier de candidature en cours du parent connecté
+ */
+router.get('/my-application',
+  auth.authenticateToken,
+  enrollmentsController.getMyApplication
+);
+
+/**
+ * PATCH /api/enrollments/my-preparation
+ * Enrichir la fiche de l'enfant avant le rendez-vous (pédiatre, personnes de confiance, rituels, etc.)
+ */
+router.patch('/my-preparation',
+  auth.authenticateToken,
+  enrollmentsController.prepareMyApplication
+);
+
+/**
+ * POST /api/enrollments/my-documents
+ * Téléverser des photos/documents pour le dossier du parent connecté
+ */
+router.post('/my-documents',
+  auth.authenticateToken,
+  upload.single('file'),
+  enrollmentsController.uploadMyDocument
 );
 
 /**
