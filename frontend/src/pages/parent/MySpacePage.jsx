@@ -398,6 +398,8 @@ const MySpacePage = () => {
                   </button>
                 </div>
               </div>
+            </motion.div>
+          )}
 
           {/* Bannière persistante: Contacts d'urgence & 2ème parent à compléter */}
           {user?.has_incomplete_contacts && (
