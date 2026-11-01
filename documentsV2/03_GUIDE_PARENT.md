@@ -61,18 +61,44 @@ Depuis « Mon Espace », menu **« Ajouter un enfant »** (`/mon-espace/ajouter-
 ## 9. Calendrier
 `/mon-espace/calendar` : vue calendrier des événements/rendez-vous concernant votre enfant.
 
-## 10. Gérer votre profil
+## 10. Célébrer l'anniversaire de votre enfant & Diaporama Souvenir (J-30 à J+30)
+Dès **J-30** avant la date d'anniversaire officielle de votre enfant, une bannière festive apparaît automatiquement en haut de « Mon Espace » (`/mon-espace`). En cliquant sur **« Organiser »** (ou via `/mon-espace/child/:id/birthday` ou `/anniversaire/:id`), vous accédez à l'assistant interactif de célébration.
+
+### 10.1 Le parcours en 3 étapes
+1. **Étape 1 — Votre choix** :
+   - Indiquez si vous souhaitez fêter l'anniversaire de votre enfant à la crèche (**Oui 🎂** ou **Non 🎈**).
+   - Un bouton d'inversion vous permet de modifier votre réponse à tout moment pendant la configuration.
+2. **Étape 2 — Validation & Personnalisation** :
+   - Horaires : La fête a lieu le Jour J lors du goûter de **15h30**.
+   - Instructions logistiques : Vous apportez le gâteau (ou cupcakes individuels), le jus de fruits et les bougies. L'équipe se charge de l'ambiance, des photos et du service.
+   - Message personnalisé pour l'équipe (facultatif) : allergies particulières, parfum du gâteau, chansons préférées.
+   - **Contrôle de la confidentialité (Calendrier)** : Vous décidez souverainement si l'événement apparaîtra dans le calendrier public partagé de la crèche (visible de tous les parents) ou uniquement dans votre planning privé. La crèche ne peut jamais imposer un événement public sans votre accord.
+3. **Étape 3 — Envoi & Confirmation** :
+   - Enregistrement immédiat dans le système.
+   - Un bouton **« Envoyer sur WhatsApp »** pré-remplit automatiquement un message récapitulatif pour la direction (+216 98 765 432).
+
+### 10.2 Règle des 5 jours (Délai de prévenance)
+- **Délai respecté (`J-29 ≥ 5 jours`)** : L'organisation est ouverte de droit, la validation est immédiate.
+- **Demande tardive (`< 5 jours`)** : Si vous vous décidez entre J-4 et J-1, la demande reste possible mais est soumise à confirmation exceptionnelle de la direction afin de s'assurer de la disponibilité du personnel.
+- **Modification jusqu'à J-1 23h59** : Tant que l'événement n'est pas passé, vous pouvez modifier votre organisation ou l'annuler. En cas d'annulation, l'événement est retiré du calendrier crèche sans aucune pénalité.
+
+### 10.3 Diaporama Souvenir interactif (J+1 à J+30)
+- Du lendemain de la fête jusqu'au **30ème jour** suivant l'anniversaire, la bannière de « Mon Espace » se transforme en **« Souvenirs d'anniversaire 📸 »**.
+- En cliquant dessus, vous accédez à un diaporama haute définition des photos prises par les éducatrices pendant la fête.
+- Vous pouvez visionner les photos en grand écran, lire les légendes rédigées par l'équipe et télécharger chaque photo directement sur votre téléphone ou ordinateur.
+
+## 11. Gérer votre profil
 `/profile` : modifier vos informations personnelles, votre mot de passe, votre photo de profil.
 
-## 11. Témoignage
+## 12. Témoignage
 Vous pouvez soumettre un témoignage sur votre expérience à la crèche ; il sera publié sur le site public après modération par la direction.
 
-## 12. Ce qui vous est interdit
+## 13. Ce qui vous est interdit
 - Modifier les informations d'un enfant qui ne vous est pas rattaché.
 - Accéder au tableau de bord du personnel/direction.
 - Voir les coordonnées (téléphone/e-mail) d'autres parents ou les permissions internes du personnel.
 - Approuver/rejeter vous-même une inscription (y compris la vôtre) ou modifier le statut de présence directement (saisi par le personnel).
 
-## 13. Limites connues et cas particuliers
+## 14. Limites connues et cas particuliers
 - Le parcours exact entre « inscription libre » (`/register`) et « inscription via dossier enfant » (`/inscription`) peut prêter à confusion : privilégiez le formulaire d'inscription d'enfant pour toute nouvelle demande, qui est le parcours métier principal observé dans le code (voir [10_AUTHENTIFICATION.md](./10_AUTHENTIFICATION.md) §4).
 - En cas de documents manquants, veillez à utiliser le lien reçu par e-mail avant son expiration.

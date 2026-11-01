@@ -71,3 +71,4 @@ Bannière interactive    Demande tardive si après J-5   Accueil, couronne, phot
   - `frontend/src/pages/BirthdayEventPage.jsx` : Page maîtresse avec adaptation dynamique selon le rôle (Parent, Staff, Admin).
   - `frontend/src/components/widgets/ParentBirthdayBanner.jsx` : Bannière festive animée dans Mon Espace.
   - `frontend/src/components/widgets/TodayTasksWidget.jsx` & `TodayTasksWidgetMobile.jsx` : Actions dédiées `🎂 Organiser & Assigner` et `🎀 Voir & Préparer`.
+

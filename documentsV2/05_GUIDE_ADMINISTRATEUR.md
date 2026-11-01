@@ -30,28 +30,36 @@ Piloter l'établissement : décider des inscriptions, gérer les comptes (parent
 - **Boîte de réception des messages de contact** (`/dashboard/mailbox`) : répondre aux messages envoyés via le formulaire public, changer leur statut.
 - **Modération des témoignages** (`/dashboard/testimonials`) : approuver, rejeter, mettre en avant un témoignage parent.
 
-## 6. Sauvegardes
+## 6. Superviser et arbitrer les anniversaires d'enfants (J-30 à Jour J)
+- **Surveillance anticipée (J-30)** : Les anniversaires à venir sont listés dans le widget dédié du tableau de bord (`/dashboard`), permettant d'anticiper les effectifs et le calendrier.
+- **Arbitrage des demandes tardives (< 5 jours)** : Lorsqu'un parent soumet ou modifie son choix entre J-4 et J-1, la direction reçoit une notification pour valider ou refuser exceptionnellement l'organisation du goûter.
+- **Gestion des co-anniversaires** : Si plusieurs enfants ont leur anniversaire le même jour, le système signale le chevauchement. La direction peut coordonner un goûter festif commun à 15h30.
+- **Délégation opérationnelle** : La direction assigne une éducatrice référente (`staff`) pour la préparation de la salle, l'accueil du gâteau et la prise de photos.
+- **Respect absolu de la vie privée (RGPD)** : Le choix du parent concernant la visibilité (privée ou publique dans le calendrier crèche) est strictement respecté ; la direction ne peut pas forcer un événement en public sans le consentement du responsable légal.
+- **Annulation fluide** : Si le parent annule sa fête jusqu'à J-1 23h59, l'événement calendrier est automatiquement supprimé et la tâche du personnel est archivée de manière transparente.
+
+## 7. Sauvegardes
 Depuis les paramètres (gestionnaire de sauvegarde) : déclencher une sauvegarde manuelle, lister les sauvegardes existantes, télécharger ou restaurer une sauvegarde. Une sauvegarde automatique a lieu chaque nuit à 02h00, sans action de votre part.
 
-## 7. Ce que vous ne pouvez PAS faire (réservé au rôle `developer`)
+## 8. Ce que vous ne pouvez PAS faire (réservé au rôle `developer`)
 - Accéder au **journal d'activité technique** (`/dashboard/activity-logs`) : traçabilité détaillée, alertes de sécurité, rapports périodiques.
 - Accéder à l'**explorateur de stockage Cloudinary** (`/dashboard/storage`).
 
 Ces deux restrictions sont confirmées et désormais appliquées **aussi côté API** (correction #64) : même en tant qu'administrateur, les pages et les endpoints correspondants vous restent inaccessibles si votre compte n'a pas le rôle technique `developer` (voir [11_AUTORISATION_ET_PERMISSIONS.md](./11_AUTORISATION_ET_PERMISSIONS.md)).
 
-## 8. Restrictions sur les données
+## 9. Restrictions sur les données
 Vous avez accès à l'ensemble des données de tous les enfants et parents (pas de restriction de propriété comme pour un parent). Cet accès large doit être exercé avec discernement : toute action de modification/suppression est tracée dans le journal d'activité technique.
 
-## 9. Différences avec le personnel
+## 10. Différences avec le personnel
 Contrairement au personnel, vous n'avez pas besoin d'activer de permission individuelle : vous en disposez automatiquement de toutes. Vous seul (avec le développeur) pouvez créer des comptes, gérer les paramètres globaux, approuver/rejeter une inscription, et gérer les sauvegardes.
 
-## 10. Parcours utilisateur courant (exemple)
+## 11. Parcours utilisateur courant (exemple)
 1. Connexion → Tableau de bord → consultation des nouvelles inscriptions en attente.
 2. Étude d'un dossier, vérification des documents.
 3. Approbation avec proposition de rendez-vous.
 4. Suivi du rendez-vous (confirmé/reprogrammé par le parent).
 5. Après le rendez-vous : clôture du rendez-vous, l'enfant apparaît dans la liste des enfants actifs.
 
-## 11. Limites connues
+## 12. Limites connues
 - La suppression d'un enfant ou d'un utilisateur entraîne, au niveau de la base de données, la suppression en cascade de son historique associé (présences, rapports, documents) — à utiliser avec prudence (voir [12_MODELE_DONNEES.md](./12_MODELE_DONNEES.md) §6).
 - Certaines tables historiques signalées obsolètes par un audit interne (`contacts`, `documents`, `uploads`) restent présentes en base sans impact direct sur votre usage quotidien de l'interface.

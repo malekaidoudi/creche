@@ -45,6 +45,7 @@ Statuts utilisés : **Implémentée** (route frontend + API confirmées), **Part
 | Calendrier parent | `/mon-espace/calendar` | `parent` | Implémentée | `pages/parent/ParentCalendarPage.jsx` |
 | Messagerie avec le personnel | `/mon-espace/messages` | `parent` | Implémentée | `pages/messages/MessagesPage.jsx`, `routes_postgres/staff-messages.js` |
 | Fil d'activités (vue parent) | `/mon-espace/activities` | `parent` | Implémentée | `pages/activities/ActivitiesPage.jsx` |
+| Célébration d'anniversaire & Diaporama souvenirs | `/mon-espace/child/:id/birthday`, `/anniversaire/:id` | `parent` (propriétaire) | Implémentée | `pages/BirthdayEventPage.jsx`, `components/widgets/ParentBirthdayBanner.jsx`, `routes_postgres/birthdays.js` |
 | Profil unifié (modification de ses propres informations) | `/profile` | `parent`, `staff`, `admin`, `developer` | Implémentée | `pages/UnifiedProfilePage.jsx`, `routes_postgres/profile.js` |
 | Soumettre un témoignage | — (intégré) | `parent` | Implémentée | `POST /api/testimonials` |
 
@@ -66,6 +67,7 @@ Statuts utilisés : **Implémentée** (route frontend + API confirmées), **Part
 | Fil d'activités (publication) | `/dashboard/activities` | Implémentée (publication restreinte par permission `activities.photos.publish`) | `pages/activities/ActivitiesPage.jsx` |
 | Bilans journaliers des enfants | `/dashboard/daily-reports` | Implémentée (restreinte par permission `daily_reports.manage`) | `pages/dashboard/DailyReportsPage.jsx` |
 | Traitements médicaux à administrer | `/dashboard/treatments` | Implémentée (restreinte par rôle `staff/admin/developer` + permission `medical.treatments.manage`) | `pages/dashboard/TreatmentsPage.jsx` |
+| Organisation d'anniversaire & Dépôt souvenirs | `/dashboard/children/:id/birthday` | Implémentée | `pages/BirthdayEventPage.jsx`, `POST /api/birthdays/child/:id/memories` |
 | Paramètres personnels du personnel | `/dashboard/staff-settings` | Présente non vérifiée | `pages/dashboard/StaffSettingsPage.jsx` |
 
 ### C.2 Réservé à `admin`/`developer`
@@ -83,6 +85,7 @@ Statuts utilisés : **Implémentée** (route frontend + API confirmées), **Part
 | Fil d'activité agrégé (vue direction) | `/dashboard/activity-feed` | Implémentée | `pages/dashboard/ActivityFeedPage.jsx` |
 | Messagerie — boîte de réception des messages de contact | `/dashboard/mailbox` | Implémentée | `pages/dashboard/MailboxPage.jsx`, `routes_postgres/contactMessages.js` |
 | Modération des témoignages | `/dashboard/testimonials` | Implémentée | `pages/dashboard/TestimonialsManagementPage.jsx` |
+| Arbitrage des demandes tardives & Supervision anniversaires | `/dashboard/children/:id/birthday` | Implémentée | `pages/BirthdayEventPage.jsx`, `POST /api/birthdays/child/:id/admin-action` |
 | Sauvegardes (créer, lister, restaurer) | intégré aux paramètres (composant `BackupManager.jsx`) | Implémentée | `routes_postgres/backup.js` |
 
 ### C.3 Réservé exclusivement à `developer`

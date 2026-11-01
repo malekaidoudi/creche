@@ -53,6 +53,7 @@ Chaque domaine est monté sous `/api/<préfixe>`. Table complète :
 | `/api/testimonials` | `routes_postgres/testimonials.js` |
 | `/api/treatments` | `routes_postgres/treatments.js` |
 | `/api/staff-permissions` | `routes_postgres/staffPermissions.js` |
+| `/api/birthdays` | `routes_postgres/birthdays.js` |
 
 ## Authentification (`/api/auth`)
 Voir le détail complet en [10_AUTHENTIFICATION.md](./10_AUTHENTIFICATION.md).
@@ -170,6 +171,20 @@ Toutes les routes authentifiées, restreintes implicitement à l'auteur du mémo
 
 ## Activités / fil pédagogique (`/api/activities`)
 Lecture authentifiée ; création avec validation (upload média, cf. `routes_postgres/activities.js` ligne 107) ; suppression, réactions et commentaires authentifiés.
+
+## Anniversaires et Célébrations (`/api/birthdays`)
+Module complet de gestion du cycle de vie des anniversaires (J-30 à J+30).
+
+| Méthode | Chemin | Auth / Périmètre | Description |
+|---|---|---|---|
+| GET | `/upcoming` | `admin`, `staff`, `developer` | Récupère la liste des anniversaires à venir sur 30 jours avec statut d'organisation et détection des co-anniversaires. |
+| GET | `/my-children` | `parent` (authentifié) | Liste les anniversaires des enfants rattachés au parent avec statut de prévenance (`is_within_notice_period`, J-30). |
+| GET | `/child/:childId` | authentifié (parent propriétaire ou `staff`/`admin`) | Détails complets de l'anniversaire d'un enfant : jours restants, décision, événement associé, co-anniversaires et diaporama souvenirs. |
+| POST | `/child/:childId/decision` | `parent` (propriétaire) | Enregistre le choix du parent (`celebrate: true/false`, message, visibilité privée/publique). Si `celebrate=false`, annule l'événement et notifie silencieusement. |
+| PATCH | `/child/:childId/visibility` | `parent` (propriétaire) | Modifie la visibilité dans le calendrier de la crèche (privée vs partagée avec les parents). |
+| POST | `/child/:childId/admin-action` | `admin`, `developer` | Validation d'une demande tardive (< 5 jours), report de date ou assignation d'un membre du personnel référent. |
+| POST | `/child/:childId/memories` | `staff`, `admin`, `developer` | Téléversement des photos souvenirs (JPG, PNG, WebP) et création de l'album souvenir actif pendant 30 jours (verrouillé avant le Jour J). |
+| POST | `/child/:childId/share-activity` | `staff`, `admin`, `developer` | Publication directe des photos d'anniversaire dans le fil d'activités pédagogiques (`/activites`). |
 
 ## Permissions du personnel (`/api/staff-permissions`)
 | GET `/catalog`, GET/PUT `/:userId` | `admin`, `developer` |

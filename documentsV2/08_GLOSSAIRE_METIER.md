@@ -33,6 +33,11 @@ Définir les termes métier employés dans l'application, tels qu'ils sont réel
 | **Personne de confiance (Trusted contact)** | Tiers autorisé à récupérer un enfant en l'absence des parents. | Colonne `children.trusted_contacts` (JSONB, maximum 2 personnes selon le commentaire de la migration 003). |
 | **Jour férié / Politique de fermeture** | Date ou règle de fermeture de la crèche. | Tables `holidays` (dates concrètes) et `holiday_policies` (règles récurrentes, ex. fêtes nationales tunisiennes). Voir `utils/tunisianHolidays.js`. |
 | **Paramètres de la crèche (Nursery settings)** | Informations générales configurables (nom, adresse, horaires, vacances annuelles), bilingues FR/AR. | Table `nursery_settings`, clé-valeur par `setting_key`. |
+| **Célébration d'anniversaire (Birthday celebration)** | Fête organisée à la crèche lors du goûter de 15h30 le Jour J avec gâteau, bougies et animation pédagogique. | Tables `events`, `tasks`, route `/api/birthdays`. Parcours en 3 étapes de J-30 à J-5 (et jusqu'à J-1 23h59). |
+| **Délai de prévenance (Règle des 5 jours)** | Règle métier stipulant qu'une fête doit être confirmée au moins 5 jours à l'avance (`J-29 ≥ 5 jours`). | Déclenche une validation automatique si respecté, ou une demande d'arbitrage directionnelle si tardif (`< 5 jours`). |
+| **Co-anniversaire** | Célébration simultanée de deux enfants ayant leur date d'anniversaire le même jour. | Détection automatique par le backend, goûter partagé coordonné à 15h30 avec accord des parents. |
+| **Visibilité calendrier (Privée vs Publique)** | Consentement RGPD du parent quant au partage de l'événement dans le calendrier partagé de l'établissement. | Choix exclusif du parent (`events.is_private`), la crèche ne peut pas forcer un statut public. |
+| **Diaporama Souvenir (J+1 à J+30)** | Rétrospective photo éphémère accessible pendant 30 jours calendaires suivant la célébration. | Consultation plein écran et téléchargement des clichés HD pris par le personnel lors du goûter. |
 
 ## Limites et points à vérifier
 - Définition précise et usage de `parent_children` (table référencée dans le code mais non localisée dans les scripts de création consultés, voir [12_MODELE_DONNEES.md](./12_MODELE_DONNEES.md)).

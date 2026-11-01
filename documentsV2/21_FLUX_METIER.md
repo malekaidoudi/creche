@@ -78,7 +78,57 @@ Voir [10_AUTHENTIFICATION.md](./10_AUTHENTIFICATION.md) §6 pour le détail tech
 2. Publication visible sur `/activites` (réservée aux utilisateurs connectés depuis la correction du 11/10/2026, voir [07_CATALOGUE_FONCTIONNALITES.md](./07_CATALOGUE_FONCTIONNALITES.md)) et `/mon-espace/activities`/`/dashboard/activities`.
 3. Réactions et commentaires ouverts à tout utilisateur authentifié.
 
-## 8. Limites et points à vérifier
+## 8. Flux de célébration d'un anniversaire et diaporama souvenir (J-30 à J+30)
+
+```mermaid
+sequenceDiagram
+    participant P as Parent (Mon Espace)
+    participant F as Frontend (BirthdayEventPage)
+    participant B as API /api/birthdays
+    participant D as PostgreSQL (events, tasks)
+    participant S as Éducatrice (Staff)
+    participant A as Direction (Admin)
+
+    Note over P,B: J-30 : Détection automatique et bannière festive
+    P->>F: Accède à /mon-espace/child/:id/birthday (ou /anniversaire/:id)
+    F->>B: GET /api/birthdays/child/:id
+    B-->>F: Jours restants, règle des 5j, options logistiques
+    P->>F: Étape 1 : Choix (Oui/Non) -> Étape 2 : Validation (visibilité, message) -> Étape 3 : Envoi
+    F->>B: POST /child/:id/decision { celebrate: true, is_private, parent_message }
+    B->>D: INSERT/UPDATE events (type='birthday', start_date, is_private)
+    B->>D: INSERT tasks (organisation goûter 15h30, vérification allergies)
+    B-->>F: Enregistrement confirmé + lien WhatsApp Direction
+    Note over S,D: Jour J (15h30) : Goûter festif à la crèche
+    S->>D: Vérification obligatoire des allergies de la section
+    S->>B: POST /child/:id/memories (photos, légende) [Déverrouillé le Jour J]
+    B->>D: UPDATE events (memories, status='completed')
+    B->>D: UPDATE tasks (status='completed')
+    Note over P,B: J+1 à J+30 : Diaporama Souvenir
+    P->>F: Consultation de l'album souvenir dans Mon Espace (actif 30 jours)
+    F-->>P: Lecteur diaporama immersif et téléchargement individuel HD
+```
+
+### Étapes détaillées
+1. **Notification d'anticipation (J-30)** : Une bannière festive animée apparaît sur « Mon Espace » pour les parents dont l'enfant fête son anniversaire dans les 30 jours suivants.
+2. **Assistant en 3 étapes** (`BirthdayEventPage.jsx`) :
+   - *Étape 1* : Choix d'organisation (Oui ou Non). Possibilité d'inverser son choix à tout moment.
+   - *Étape 2* : Précisions logistiques (goûter à 15h30, gâteau et bougies fournis par les parents, message à la crèche) et sélection du consentement de visibilité calendrier (privée pour la famille/crèche ou publique dans le calendrier général de la crèche).
+   - *Étape 3* : Enregistrement immédiat dans la base (`POST /api/birthdays/child/:id/decision`) et bouton d'envoi d'un message pré-formaté vers le WhatsApp de la Direction.
+3. **Règle des 5 jours et arbitrage** :
+   - Si la demande est formulée avant J-5 (`J-29 ≥ 5 jours`), la confirmation est automatique.
+   - Si la demande est formulée à moins de 5 jours (`< 5 jours`), la direction reçoit une alerte pour validation expresse (`POST /child/:id/admin-action`).
+4. **Affectation et sécurité sanitaire (Staff)** :
+   - Une tâche d'organisation est générée pour l'éducatrice référente de la section.
+   - La fiche staff rappelle la vérification obligatoire des fiches médicales et allergies avant tout service de nourriture.
+5. **Dépôt des souvenirs le Jour J et publication** :
+   - La zone de dépôt de photos est activée le Jour J. L'éducatrice ou la direction téléverse les clichés du goûter (`POST /child/:id/memories`).
+   - L'album peut être partagé en un clic dans le fil d'activités pédagogiques de la crèche (`POST /child/:id/share-activity`).
+6. **Diaporama Souvenir (J+1 à J+30)** :
+   - Dès le lendemain du goûter et pendant 30 jours, le parent dispose d'une bannière souvenir dans « Mon Espace » donnant accès au diaporama avec visionneuse et téléchargement HD.
+7. **Droit d'annulation jusqu'à J-1 23h59** :
+   - Le parent peut annuler sa décision jusqu'à la veille de l'événement à 23h59. Le système supprime alors l'événement associé en base et clôture silencieusement la tâche de l'équipe sans spammer les utilisateurs.
+
+## 9. Limites et points à vérifier
 - Étape exacte de « finalisation » de l'inscription (création définitive de la fiche `children` à partir des champs `enrollments.child_*`) : fonction non identifiée avec certitude dans `enrollmentsController.js` au-delà de `approveEnrollment`/`rejectEnrollment` — probablement déclenchée à la confirmation du rendez-vous (`appointmentsController.confirmAppointment`, mentionné en commentaire ligne 358 de `enrollmentsController.js`) ; non auditée en détail.
 - Comportement exact du job de clôture automatique des présences (`attendanceJob.js`).
 - Mécanisme précis de déclenchement des rappels de traitement (`treatmentEvents`).

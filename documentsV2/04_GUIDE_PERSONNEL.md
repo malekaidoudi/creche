@@ -54,6 +54,19 @@ Si une action vous semble manquante, demandez à un administrateur de l'activer 
 ### 3.8 Communiquer avec un parent
 `/dashboard/messages`, `/dashboard/staff/send-message` : nécessite la permission « Échanger des messages avec les parents ».
 
+### 3.9 Préparer une célébration d'anniversaire & Déposer les photos souvenirs
+1. **Accès et suivi** :
+   - Fiche dédiée accessible depuis le calendrier de la crèche, les alertes dashboard ou l'URL `/dashboard/children/:id/birthday` (badge distinctif « 👩‍🏫 VUE STAFF ASSIGNÉ À LA PRÉPARATION »).
+   - Une tâche interne d'organisation vous est automatiquement attribuée par la direction dès que les parents confirment la fête (contenant prénom, âge fêté, numéro de contact parent, heure du goûter 15h30).
+2. **Vérification sanitaire et allergies** :
+   - Avant de couper ou de servir le gâteau apporté par la famille, consultation obligatoire des fiches médicales et allergies signalées pour tous les enfants de la section.
+3. **Gestion du statut de la tâche** :
+   - Une fois la fête d'anniversaire terminée et rangée, vous pouvez valider la tâche via le bouton « Terminer ».
+4. **Dépôt des photos souvenirs (Jour J)** :
+   - Le formulaire de dépôt de photos est activé le Jour J de la célébration (sécurisé contre les dépôts anticipés).
+   - Vous pouvez sélectionner plusieurs photos simultanément (JPG, PNG, WebP), vérifier leur prévisualisation et ajouter une légende festive (ex: « Omar souffle ses 4 bougies 🎂 »).
+   - Les photos déposées alimentent instantanément le **Diaporama Souvenir (actif 30 jours)** de la famille et peuvent être publiées d'un clic dans le fil d'activités pédagogiques de la crèche (`/activites`).
+
 ## 4. Ce qui vous est interdit (par rôle, indépendamment des permissions)
 - Créer, approuver ou rejeter une inscription.
 - Créer un compte utilisateur (parent ou personnel) ou modifier les permissions d'un collègue.

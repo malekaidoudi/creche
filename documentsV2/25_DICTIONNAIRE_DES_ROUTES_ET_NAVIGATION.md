@@ -52,6 +52,7 @@ Ce document constitue le **référentiel canonique absolu** de toutes les routes
 | `/mon-espace/child/:id/details` | `ChildDetailsPage.jsx` | `parent` | Détails d'état civil et habitudes de l'enfant. |
 | `/mon-espace/child/:id/medical` | `ChildMedicalPage.jsx` | `parent` | Dossier médical, allergies et carnet vaccinal. |
 | `/mon-espace/child/:id/emergency-contacts` | `ChildEmergencyContactsPage.jsx` | `parent` | Gestion des personnes de confiance autorisées (jusqu'à 2 personnes majeures). |
+| `/mon-espace/child/:id/birthday` | `BirthdayEventPage.jsx` | `parent` | **Célébration d'anniversaire & Diaporama souvenirs** : Assistant en 3 étapes (choix oui/non de J-30 à J-5, personnalisation, visibilité calendrier crèche privée/publique, message WhatsApp Direction) et diaporama photo souvenir interactif (J+1 à J+30) avec téléchargement HD. |
 
 ---
 
@@ -72,6 +73,7 @@ Ce document constitue le **référentiel canonique absolu** de toutes les routes
 | `/dashboard/messages` | `MessagesPage.jsx` | `staff`, `admin`, `developer` | Messagerie interne d'établissement. |
 | `/dashboard/announcements`| `AnnouncementsPage.jsx` | `staff`, `admin`, `developer` | Publication des avis et annonces à destination des familles. |
 | `/dashboard/tasks` | `TasksPage.jsx` | `staff`, `admin`, `developer` | Gestion des tâches internes de l'équipe. |
+| `/dashboard/children/:id/birthday` | `BirthdayEventPage.jsx` | `staff`, `admin`, `developer` | **Organisation d'anniversaire & Dépôt souvenirs** : Suivi de la fête (Jour J à 15h30), vérification des allergies, téléversement des photos souvenir le Jour J et publication dans les activités. |
 | `/dashboard/staff-settings`| `UnifiedProfilePage.jsx` (redirection)| `staff`, `admin`, `developer`, `parent` | Redirige vers `/profile` (Mon Compte & Préférences unifié). |
 
 ---
@@ -147,6 +149,10 @@ Le validateur intercepte les alias informels et les redirige automatiquement ver
 | `/login` ou `/connexion` | Tous | `/` (formulaire d'authentification) |
 | `/activities` | `parent` | `/mon-espace/activities` |
 | `/activities` | `staff`, `admin`, `dev` | `/dashboard/activities` (ou `/activites`) |
+| `/anniversaire/:id` | `parent` | `/mon-espace/child/:id/birthday` (redirection automatique) |
+| `/anniversaire/:id` | `staff`, `admin`, `dev` | `/dashboard/children/:id/birthday` (redirection automatique) |
+| `/anniversaire` ou `/birthday` | `parent` | `/mon-espace` |
+| `/anniversaire` ou `/birthday` | `staff`, `admin`, `dev` | `/dashboard` |
 
 ### B. Filtrage Préventif avant Affichage (`filterValidActions`)
 Avant d'afficher un bouton d'action dans le chat du Centre d'Aide :
