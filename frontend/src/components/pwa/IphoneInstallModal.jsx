@@ -34,6 +34,30 @@ const CHROME_STEPS = [
         x: 84.4,
         y: 12.5,
         badge: "Ajouter"
+    },
+{
+        title: "5. Allez dans le menu 'Plus'",
+        desc: "Ouvrez l'application Mima Elghalia depuis votre écran d'accueil, puis touchez le menu 'Plus' en bas à droite.",
+        image: "/guide-pwa/iphone-step4-plus.png?v=1",
+        x: 86.4,
+        y: 90.6,
+        badge: "Plus"
+    },
+    {
+        title: "6. Touchez 'Gérer' votre profil",
+        desc: "Dans le menu, appuyez sur le bouton 'Gérer' à côté de votre nom pour accéder à vos préférences.",
+        image: "/guide-pwa/iphone-step5-gerer.png?v=1",
+        x: 86.5,
+        y: 69.2,
+        badge: "Gérer"
+    },
+    {
+        title: "7. Activez les notifications 🔔",
+        desc: "Descendez en bas de la page et activez l'interrupteur 'Notifications sur cet appareil' pour être alerté en temps réel.",
+        image: "/guide-pwa/iphone-step6-notifications.png?v=1",
+        x: 78.8,
+        y: 51.4,
+        badge: "Notifications"
     }
 ];
 
@@ -77,6 +101,30 @@ const SAFARI_STEPS = [
         x: 84.4,
         y: 12.5,
         badge: "Ajouter"
+    },
+{
+        title: "6. Allez dans le menu 'Plus'",
+        desc: "Ouvrez l'application Mima Elghalia depuis votre écran d'accueil, puis touchez le menu 'Plus' en bas à droite.",
+        image: "/guide-pwa/iphone-step4-plus.png?v=1",
+        x: 86.4,
+        y: 90.6,
+        badge: "Plus"
+    },
+    {
+        title: "7. Touchez 'Gérer' votre profil",
+        desc: "Dans le menu, appuyez sur le bouton 'Gérer' à côté de votre nom pour accéder à vos préférences.",
+        image: "/guide-pwa/iphone-step5-gerer.png?v=1",
+        x: 86.5,
+        y: 69.2,
+        badge: "Gérer"
+    },
+    {
+        title: "8. Activez les notifications 🔔",
+        desc: "Descendez en bas de la page et activez l'interrupteur 'Notifications sur cet appareil' pour être alerté en temps réel.",
+        image: "/guide-pwa/iphone-step6-notifications.png?v=1",
+        x: 78.8,
+        y: 51.4,
+        badge: "Notifications"
     }
 ];
 

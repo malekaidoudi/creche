@@ -1,9 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Cake, Calendar, Users, PartyPopper } from 'lucide-react';
+import { Cake, Calendar, Users, PartyPopper, Baby } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../../contexts/LanguageContext';
 import api from '../../services/api';
+import API_CONFIG from '../../config/api';
 import WidgetCard, { WidgetEmptyState } from '../ui/WidgetCard';
+
+const resolveChildPhotoUrl = (photoUrl) => {
+  if (!photoUrl) return null;
+  if (photoUrl.startsWith('http') || photoUrl.startsWith('data:')) return photoUrl;
+  return `${API_CONFIG.BASE_URL}${photoUrl.startsWith('/') ? '' : '/'}${photoUrl}`;
+};
 
 // Cache mémoire pour affichage instantané des anniversaires et événements
 let cachedBirthdays = null;
@@ -16,6 +23,7 @@ const EventsWidget = ({ isMobileView = false }) => {
   const [events, setEvents] = useState(() => cachedEvents || []);
   const [loading, setLoading] = useState(() => cachedBirthdays === null && cachedEvents === null);
   const [filter, setFilter] = useState('all'); // 'all', 'events', 'birthdays'
+  const [failedImages, setFailedImages] = useState({});
 
   useEffect(() => {
     loadData();
@@ -50,7 +58,7 @@ const EventsWidget = ({ isMobileView = false }) => {
 
       if (eventsResult.status === 'fulfilled' && eventsResult.value.data.success) {
         const filteredEvents = (eventsResult.value.data.events || [])
-          .filter(e => ['meeting', 'celebration', 'event'].includes(e.type))
+          .filter(e => ['meeting', 'celebration', 'event', 'birthday'].includes(e.type))
           .map(e => ({
             ...e,
             itemType: 'event',
@@ -100,6 +108,7 @@ const EventsWidget = ({ isMobileView = false }) => {
     switch (type) {
       case 'meeting': return Users;
       case 'celebration': return PartyPopper;
+      case 'birthday': return Cake;
       default: return Calendar;
     }
   };
@@ -108,6 +117,7 @@ const EventsWidget = ({ isMobileView = false }) => {
     switch (type) {
       case 'meeting': return 'bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400 border-blue-200 dark:border-blue-800';
       case 'celebration': return 'bg-purple-100 text-purple-600 dark:bg-purple-900/50 dark:text-purple-400 border-purple-200 dark:border-purple-800';
+      case 'birthday': return 'bg-pink-100 text-pink-600 dark:bg-pink-900/50 dark:text-pink-400 border-pink-200 dark:border-pink-800';
       default: return 'bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-400 border-green-200 dark:border-green-800';
     }
   };
@@ -164,9 +174,11 @@ const EventsWidget = ({ isMobileView = false }) => {
       }
     >
       {/* Filtres */}
-      <div className="flex gap-1 mb-3 flex-wrap">
-        <FilterButton value="events" label={isRTL ? 'أحداث' : 'Événements'} count={events.length} icon={Calendar} />
-        <FilterButton value="birthdays" label={isRTL ? 'أعياد' : 'Anniversaires'} count={birthdays.length} icon={Cake} />
+      <div className="flex gap-1 mb-3 flex-wrap items-center justify-between">
+        <div className="flex gap-1 flex-wrap">
+          <FilterButton value="events" label={isRTL ? 'أحداث' : 'Événements'} count={events.length} icon={Calendar} />
+          <FilterButton value="birthdays" label={isRTL ? 'أعياد' : 'Anniversaires'} count={birthdays.length} icon={Cake} />
+        </div>
       </div>
 
       {filteredItems.length === 0 ? (
@@ -185,24 +197,30 @@ const EventsWidget = ({ isMobileView = false }) => {
                     ? 'border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20'
                     : 'border-pink-200 dark:border-pink-800 bg-gradient-to-r from-pink-50 to-purple-50 dark:from-pink-900/20 dark:to-purple-900/20'
                   }`}
-                onClick={() => navigate(`/dashboard/children/${item.child_id}`)}
+                onClick={() => navigate(`/dashboard/children/${item.child_id}/birthday`)}
               >
                 <div className="absolute top-0 right-0 text-3xl opacity-10">🎂</div>
                 <div className="relative flex items-center gap-2">
                   <div className="flex-shrink-0">
-                    {item.child_photo_url ? (
+                    {resolveChildPhotoUrl(item.child_photo_url) && !failedImages[item.child_id || item.id] ? (
                       <img
-                        src={item.child_photo_url}
+                        src={resolveChildPhotoUrl(item.child_photo_url)}
                         alt={item.child_name}
+                        onError={() =>
+                          setFailedImages((prev) => ({
+                            ...prev,
+                            [item.child_id || item.id]: true
+                          }))
+                        }
                         className={`w-9 h-9 rounded-full object-cover border-2 ${item.child_gender === 'male' ? 'border-blue-300' : 'border-pink-300'
                           }`}
                       />
                     ) : (
-                      <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold ${item.child_gender === 'male'
-                          ? 'bg-gradient-to-br from-blue-400 to-cyan-400'
-                          : 'bg-gradient-to-br from-pink-400 to-purple-400'
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${item.child_gender === 'male'
+                          ? 'bg-blue-100 text-blue-600'
+                          : 'bg-pink-100 text-pink-500'
                         }`}>
-                        {item.child_name?.charAt(0) || '👶'}
+                        <Baby className="w-5 h-5" />
                       </div>
                     )}
                   </div>
@@ -227,15 +245,22 @@ const EventsWidget = ({ isMobileView = false }) => {
                 </div>
               </div>
             ) : (
-              // Affichage événement (réunion, célébration)
+              // Affichage événement (réunion, célébration, ou fête d'anniversaire confirmée dans la table events)
               <div
                 key={`event-${item.id}-${index}`}
                 className={`relative overflow-hidden rounded-lg border p-2 hover:shadow-md transition-shadow cursor-pointer ${getEventColor(item.type)}`}
-                onClick={() => navigate('/dashboard/calendar')}
+                onClick={() => {
+                  if (item.type === 'birthday' && item.child_id) {
+                    navigate(`/dashboard/children/${item.child_id}/birthday`);
+                  } else {
+                    navigate('/dashboard/calendar');
+                  }
+                }}
               >
                 <div className="flex items-center gap-2">
                   <div className={`w-9 h-9 rounded-full flex items-center justify-center ${item.type === 'meeting' ? 'bg-blue-200 dark:bg-blue-800' :
                       item.type === 'celebration' ? 'bg-purple-200 dark:bg-purple-800' :
+                      item.type === 'birthday' ? 'bg-pink-200 dark:bg-pink-800' :
                         'bg-green-200 dark:bg-green-800'
                     }`}>
                     {React.createElement(getEventIcon(item.type), { className: 'w-4 h-4' })}
@@ -244,18 +269,28 @@ const EventsWidget = ({ isMobileView = false }) => {
                     <h4 className="font-semibold text-gray-900 dark:text-white text-sm truncate">
                       {item.title}
                     </h4>
-                    <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                    <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 flex-wrap">
                       <span className="font-medium">{getDaysUntil(item.start_date)}</span>
                       <span>•</span>
                       <span>{formatDate(item.start_date)}</span>
+                      {item.type === 'birthday' && (
+                        <>
+                          <span>•</span>
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-white/80 dark:bg-gray-800 text-pink-700 dark:text-pink-300">
+                            {item.metadata?.notify_other_parents ? '🌍 Tous les parents' : '🔒 Parent + Équipe'}
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
                   <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${item.type === 'meeting' ? 'bg-blue-200 text-blue-700 dark:bg-blue-800 dark:text-blue-200' :
                       item.type === 'celebration' ? 'bg-purple-200 text-purple-700 dark:bg-purple-800 dark:text-purple-200' :
+                      item.type === 'birthday' ? 'bg-pink-200 text-pink-700 dark:bg-pink-800 dark:text-pink-200' :
                         'bg-green-200 text-green-700 dark:bg-green-800 dark:text-green-200'
                     }`}>
                     {item.type === 'meeting' ? (isRTL ? 'اجتماع' : 'Réunion') :
                       item.type === 'celebration' ? (isRTL ? 'احتفال' : 'Célébration') :
+                      item.type === 'birthday' ? (isRTL ? 'حفل عيد ميلاد' : 'Fête Crèche') :
                         (isRTL ? 'حدث' : 'Événement')}
                   </span>
                 </div>

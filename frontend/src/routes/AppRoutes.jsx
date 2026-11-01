@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useParams } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 
 // Layouts (chargés immédiatement, nécessaires à la structure de toute page)
@@ -37,6 +37,7 @@ const ChildEmergencyContactsPage = lazy(() => import('../pages/parent/ChildEmerg
 const ChildDailyReportsPage = lazy(() => import('../pages/parent/ChildDailyReportsPage'))
 const AddChildPage = lazy(() => import('../pages/parent/AddChildPage'))
 const ParentTreatmentsPage = lazy(() => import('../pages/parent/TreatmentsPage'))
+const BirthdayEventPage = lazy(() => import('../pages/BirthdayEventPage'))
 
 // Pages staff
 const AbsenceManagementPage = lazy(() => import('../pages/staff/AbsenceManagementPage'))
@@ -107,6 +108,15 @@ const SmartSettingsRoute = () => {
         return <DashboardSettingsPage />;
     }
     return <Navigate to="/profile" replace />;
+};
+
+const SmartBirthdayRedirect = () => {
+    const { id } = useParams();
+    const { user } = useAuth();
+    if (user?.role === 'parent') {
+        return <Navigate to={`/mon-espace/child/${id}/birthday`} replace />;
+    }
+    return <Navigate to={`/dashboard/children/${id}/birthday`} replace />;
 };
 
 const AppRoutes = () => {
@@ -276,6 +286,14 @@ const AppRoutes = () => {
                                 </ProtectedRoute>
                             }
                         />
+                        <Route
+                            path="mon-espace/child/:id/birthday"
+                            element={
+                                <ProtectedRoute roles={['parent', 'admin', 'staff', 'developer']}>
+                                    <BirthdayEventPage />
+                                </ProtectedRoute>
+                            }
+                        />
                     </Route>
 
                     {/* Routes dashboard */}
@@ -290,6 +308,8 @@ const AppRoutes = () => {
                         <Route index element={<DashboardHome />} />
                         <Route path="children" element={<ChildrenPage />} />
                         <Route path="children/add" element={<Navigate to="/dashboard/add-child" replace />} />
+                        <Route path="children/:id" element={<BirthdayEventPage />} />
+                        <Route path="children/:id/birthday" element={<BirthdayEventPage />} />
                         <Route path="add-child" element={
                             <ProtectedRoute roles={['admin', 'developer']}>
                                 <DashboardAddChildPage />
@@ -401,6 +421,16 @@ const AppRoutes = () => {
                             </ProtectedRoute>
                         } />
                     </Route>
+
+                    {/* Raccourci universel /anniversaire/:id */}
+                    <Route
+                        path="/anniversaire/:id"
+                        element={
+                            <ProtectedRoute roles={['parent', 'admin', 'staff', 'developer']}>
+                                <SmartBirthdayRedirect />
+                            </ProtectedRoute>
+                        }
+                    />
 
                     {/* Pages d'erreur */}
                     <Route path="/403" element={<ForbiddenPage />} />

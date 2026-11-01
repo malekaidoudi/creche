@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import useIsMobile from '../../hooks/useIsMobile';
+import { useAuth } from '../../hooks/useAuth';
 import MobileNavigation from '../../components/mobile/MobileNavigation';
 import { useDialogContext } from '../../contexts/DialogContext';
 import api from '../../services/api';
@@ -30,6 +31,7 @@ const ChildEmergencyContactsPage = () => {
     const navigate = useNavigate();
     const { isRTL } = useLanguage();
     const isMobile = useIsMobile();
+    const { updateUser } = useAuth();
     const dialog = useDialogContext();
 
     const [child, setChild] = useState(null);
@@ -137,6 +139,14 @@ const ChildEmergencyContactsPage = () => {
             };
 
             await api.put(`/api/children/${id}/emergency-contacts`, payload);
+            try {
+                const meRes = await api.get('/api/auth/me');
+                if (meRes.data?.user && updateUser) {
+                    updateUser(meRes.data.user);
+                }
+            } catch {
+                // ignore
+            }
             dialog.success(
                 isRTL
                     ? 'تم حفظ وسائل الاتصال وجهات الثقة بنجاح'

@@ -13,9 +13,31 @@ import AppointmentActionModal from '../modals/AppointmentActionModal';
  * Composant de carte mobile unifié pour toutes les tâches
  * Design compact adapté aux petits écrans
  */
+const isBirthdayRelatedTask = (task) =>
+    Boolean(
+        task?.type === 'birthday' ||
+            task?.birthday_child_id ||
+            /anniversaire/i.test(task?.title || '') ||
+            /\/anniversaire\/\d+/.test(task?.description || '')
+    );
+
+const cleanTaskCardDescription = (desc) => {
+    if (!desc) return '';
+    return String(desc)
+        .replace(/🔗\s*Lien\s*:\s*\/[^\s]+/gi, '')
+        .replace(/^[ \t]*•[ \t]*Vérifier les allergies[^\n]*\n?/gim, '')
+        .replace(/Notes médicales\/allergies\s*:\s*[^.\n]+\.?\s*/gi, '')
+        .trim();
+};
+
 const MobileTaskCard = ({ task, index, isRTL, onTaskClick, onValidate, onComplete }) => {
+    const isBirthdayTask = isBirthdayRelatedTask(task);
+
     // Couleurs selon le type
     const getTypeConfig = () => {
+        if (isBirthdayTask && task.type === 'task') {
+            return { border: 'border-rose-500', badge: 'bg-rose-500', icon: '🎂', label: isRTL ? 'عيد ميلاد' : 'Tâche Anniv.' };
+        }
         switch (task.type) {
             case 'appointment':
                 return task.metadata?.is_inscription
@@ -36,7 +58,14 @@ const MobileTaskCard = ({ task, index, isRTL, onTaskClick, onValidate, onComplet
     };
 
     const config = getTypeConfig();
-    const time = task.start_date ? new Date(task.start_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : null;
+    const rawTime = task.start_date ? new Date(task.start_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : null;
+    const showTimeBadge =
+        Boolean(rawTime) &&
+        task.type !== 'birthday' &&
+        task.source !== 'tasks' &&
+        rawTime !== '00:00' &&
+        rawTime !== '01:00';
+    const cleanedDescription = cleanTaskCardDescription(task.description);
 
     return (
         <div>
@@ -49,16 +78,16 @@ const MobileTaskCard = ({ task, index, isRTL, onTaskClick, onValidate, onComplet
                     <span className={`text-xs px-2 py-0.5 rounded-full ${config.badge} text-white font-medium`}>
                         {config.icon} {config.label}
                     </span>
-                    {time && task.type !== 'birthday' && (
+                    {showTimeBadge && (
                         <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
                             <Clock className="w-3 h-3" />
-                            {time}
+                            {rawTime}
                         </div>
                     )}
                 </div>
 
                 {/* Badge URGENT */}
-                {task.metadata?.is_urgent_appointment && (
+                {(task.metadata?.is_urgent_appointment || task.priority === 'urgent') && (
                     <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 font-bold mb-2">
                         🚨 URGENT
                     </span>
@@ -86,14 +115,26 @@ const MobileTaskCard = ({ task, index, isRTL, onTaskClick, onValidate, onComplet
                 )}
 
                 {/* Description pour autres types */}
-                {task.type !== 'appointment' && task.description && (
+                {task.type !== 'appointment' && cleanedDescription && (
                     <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1 mb-2">
-                        {task.description}
+                        {cleanedDescription}
                     </p>
                 )}
 
                 {/* Boutons d'action */}
-                <div className="flex items-center gap-2 mt-2">
+                <div className="flex flex-wrap items-center gap-2 mt-2">
+                    {isBirthdayTask && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onTaskClick(task);
+                            }}
+                            className="flex items-center gap-1 px-2.5 py-1 bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold rounded-md transition-colors"
+                        >
+                            <span>🎂 Gérer</span>
+                        </button>
+                    )}
+
                     {/* Bouton Valider pour RDV inscription */}
                     {task.type === 'appointment' && task.metadata?.is_inscription && task.status !== 'completed' && (
                         <button
@@ -105,8 +146,8 @@ const MobileTaskCard = ({ task, index, isRTL, onTaskClick, onValidate, onComplet
                         </button>
                     )}
 
-                    {/* Bouton Terminer pour autres types */}
-                    {task.type !== 'birthday' && task.status !== 'completed' && !(task.type === 'appointment' && task.metadata?.is_inscription) && (
+                    {/* Bouton Terminer pour autres types (masqué pour les tâches d'anniversaire) */}
+                    {!isBirthdayTask && task.type !== 'birthday' && task.status !== 'completed' && !(task.type === 'appointment' && task.metadata?.is_inscription) && (
                         <button
                             onClick={(e) => { e.stopPropagation(); onComplete(task); }}
                             className="flex items-center gap-1 px-2.5 py-1 bg-green-500 hover:bg-green-600 text-white text-xs font-medium rounded-md transition-colors"

@@ -176,6 +176,20 @@ async function getEvents(filters = {}) {
       paramCount++;
       sql += ` AND (e.type != 'memo' OR e.created_by = $${paramCount})`;
       params.push(filters.user_id);
+
+      // Règle visibilité Anniversaire pour le rôle parent :
+      // Un événement `type = 'birthday'` est affiché au parent concerné (c.parent_id = user_id ou e.created_by = user_id),
+      // au staff et à l'admin. Il n'est affiché aux autres parents QUE si le toggle `notify_other_parents` est activé (true).
+      if (filters.user_role === 'parent') {
+        paramCount++;
+        sql += ` AND (
+          e.type != 'birthday'
+          OR c.parent_id = $${paramCount}
+          OR e.created_by = $${paramCount}
+          OR COALESCE((e.metadata->>'notify_other_parents')::boolean, false) = true
+        )`;
+        params.push(filters.user_id);
+      }
     }
 
     if (filters.start_date) {
@@ -779,14 +793,19 @@ async function getCalendarEvents(startDate, endDate, userId, types = null, userR
       SELECT 
         e.id,
         e.title,
+        e.description,
         e.type,
         e.start_date as start,
         e.end_date as end,
         e.all_day as "allDay",
         e.color,
         e.status,
-        e.priority
+        e.priority,
+        e.child_id,
+        e.metadata,
+        c.first_name || ' ' || c.last_name as child_name
       FROM events e
+      LEFT JOIN children c ON e.child_id = c.id
       WHERE e.deleted_at IS NULL
         AND e.start_date >= $1
         AND e.start_date <= $2
@@ -796,9 +815,9 @@ async function getCalendarEvents(startDate, endDate, userId, types = null, userR
     let paramIndex = 3;
 
     // Filtres selon le rôle
-    if (userRole === 'admin') {
-      // Admin voit tout ce qui lui est assigné ou créé par lui SAUF les mémos
-      sql += ` AND (e.assigned_to = $${paramIndex} OR e.created_by = $${paramIndex}) AND e.type != 'memo'`;
+    if (userRole === 'admin' || userRole === 'developer') {
+      // Admin voit tout ce qui lui est assigné ou créé par lui + tous les anniversaires SAUF les mémos privés d'autrui
+      sql += ` AND (e.assigned_to = $${paramIndex} OR e.created_by = $${paramIndex} OR e.type = 'birthday') AND e.type != 'memo'`;
       params.push(userId);
       paramIndex++;
     } else if (userRole === 'staff') {
@@ -806,6 +825,7 @@ async function getCalendarEvents(startDate, endDate, userId, types = null, userR
       // - Les mémos de l'admin (type='memo' ET created_by != staff)
       // - Les RDV non assignés à lui
       // - Les tâches non assignées à lui
+      // (Les événements `type = 'birthday'` sont donc tous visibles par le staff)
       sql += ` AND (
         (e.type NOT IN ('memo', 'rdv', 'task'))
         OR (e.type = 'memo' AND e.created_by = $${paramIndex})
@@ -815,16 +835,23 @@ async function getCalendarEvents(startDate, endDate, userId, types = null, userR
       params.push(userId);
       paramIndex++;
     } else if (userRole === 'parent') {
-      // Parent voit uniquement:
-      // - Les événements généraux (type='event')
-      // - Les anniversaires (type='birthday')
+      // Parent voit :
+      // - Les événements généraux (type='event' / 'custom')
       // - Les vacances (type='vacation_reminder')
       // - Les RDV liés à lui (assigned_to)
+      // - Les anniversaires (type='birthday') UNIQUEMENT s'il est le parent concerné (c.parent_id = userId ou e.created_by = userId)
+      //   OU si le parent concerné a activé le toggle `notify_other_parents` (auquel cas l'événement est affiché à tout le monde)
       sql += ` AND (
-        e.type = 'event'
-        OR e.type = 'birthday'
-        OR e.type = 'vacation_reminder'
+        e.type IN ('event', 'custom', 'vacation_reminder')
         OR (e.type = 'rdv' AND e.assigned_to = $${paramIndex})
+        OR (
+          e.type = 'birthday'
+          AND (
+            c.parent_id = $${paramIndex}
+            OR e.created_by = $${paramIndex}
+            OR COALESCE((e.metadata->>'notify_other_parents')::boolean, false) = true
+          )
+        )
       )`;
       params.push(userId);
       paramIndex++;

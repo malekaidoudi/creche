@@ -15,9 +15,37 @@ import WidgetCard, { WidgetEmptyState } from '../ui/WidgetCard';
  * Composant de carte unifié pour toutes les tâches
  * Design inspiré des cartes de RDV avec bordure colorée à gauche
  */
+const isBirthdayRelatedTask = (task) =>
+  Boolean(
+    task?.type === 'birthday' ||
+      task?.birthday_child_id ||
+      /anniversaire/i.test(task?.title || '') ||
+      /\/anniversaire\/\d+/.test(task?.description || '')
+  );
+
+const cleanTaskCardDescription = (desc) => {
+  if (!desc) return '';
+  return String(desc)
+    .replace(/🔗\s*Lien\s*:\s*\/[^\s]+/gi, '')
+    .replace(/^[ \t]*•[ \t]*Vérifier les allergies[^\n]*\n?/gim, '')
+    .replace(/Notes médicales\/allergies\s*:\s*[^.\n]+\.?\s*/gi, '')
+    .trim();
+};
+
 const TaskCard = ({ task, index, isRTL, onTaskClick, onValidate, onComplete, onSchedule, onConfirmAppointment, onProposeNewDate }) => {
+  const isBirthdayTask = isBirthdayRelatedTask(task);
+
   // Couleurs selon le type
   const getTypeConfig = () => {
+    if (isBirthdayTask && task.type === 'task') {
+      return {
+        bg: 'from-pink-50 to-amber-50',
+        border: 'border-rose-500',
+        badge: 'bg-rose-500',
+        icon: '🎂',
+        label: isRTL ? 'مهمة عيد ميلاد' : 'Tâche Anniversaire'
+      };
+    }
     switch (task.type) {
       case 'appointment':
         return task.metadata?.is_inscription
@@ -40,7 +68,16 @@ const TaskCard = ({ task, index, isRTL, onTaskClick, onValidate, onComplete, onS
   };
 
   const config = getTypeConfig();
-  const time = task.start_date ? new Date(task.start_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : null;
+  const rawTime = task.start_date
+    ? new Date(task.start_date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+    : null;
+  const showTimeBadge =
+    Boolean(rawTime) &&
+    task.type !== 'birthday' &&
+    task.source !== 'tasks' &&
+    rawTime !== '00:00' &&
+    rawTime !== '01:00';
+  const cleanedDescription = cleanTaskCardDescription(task.description);
 
   return (
     <motion.div
@@ -53,19 +90,19 @@ const TaskCard = ({ task, index, isRTL, onTaskClick, onValidate, onComplete, onS
         className={`group relative bg-gradient-to-r ${config.bg} dark:from-gray-800 dark:to-gray-750 border-l-4 ${config.border} rounded-xl p-4 hover:shadow-md transition-all cursor-pointer`}
       >
         {/* Badge heure en haut à droite */}
-        {time && task.type !== 'birthday' && (
+        {showTimeBadge && (
           <div className="absolute top-3 right-3">
             <div className={`flex items-center gap-1 px-2.5 py-1 ${config.badge} text-white text-xs font-bold rounded-full shadow`}>
               <Clock className="w-3 h-3" />
-              {time}
+              {rawTime}
             </div>
           </div>
         )}
 
         {/* Contenu principal */}
-        <div className={time && task.type !== 'birthday' ? 'pr-20' : ''}>
+        <div className={showTimeBadge ? 'pr-20' : ''}>
           {/* Badge URGENT */}
-          {task.metadata?.is_urgent_appointment && (
+          {(task.metadata?.is_urgent_appointment || task.priority === 'urgent') && (
             <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 font-bold mb-2">
               🚨 URGENT
             </span>
@@ -104,14 +141,32 @@ const TaskCard = ({ task, index, isRTL, onTaskClick, onValidate, onComplete, onS
                 </div>
               )}
             </div>
-          ) : task.description ? (
+          ) : cleanedDescription ? (
             <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-              {task.description}
+              {cleanedDescription}
             </p>
           ) : null}
 
           {/* Boutons d'action */}
-          <div className="flex items-center gap-2 mt-3">
+          <div className="flex flex-wrap items-center gap-2 mt-3">
+            {/* Boutons dédiés pour les tâches d'anniversaire */}
+            {isBirthdayTask && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onTaskClick(task);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-rose-500 to-amber-500 hover:from-rose-600 hover:to-amber-600 text-white text-xs font-bold rounded-lg transition-all shadow-sm hover:shadow"
+              >
+                <Cake className="w-3.5 h-3.5" />
+                {isRTL
+                  ? 'إدارة عيد الميلاد'
+                  : /préparer/i.test(task.title || '')
+                  ? '🎀 Voir & Préparer'
+                  : '🎂 Organiser & Assigner'}
+              </button>
+            )}
+
             {/* Boutons Valider/Autre date pour RDV en attente de réponse admin */}
             {task.type === 'pending_appointment' && (
               <>
@@ -143,8 +198,8 @@ const TaskCard = ({ task, index, isRTL, onTaskClick, onValidate, onComplete, onS
               </button>
             )}
 
-            {/* Bouton Terminer pour autres types */}
-            {task.type !== 'birthday' && task.type !== 'pending_appointment' && task.status !== 'completed' && !(task.type === 'appointment' && task.metadata?.is_inscription) && (
+            {/* Bouton Terminer pour autres types (masqué pour les tâches d'anniversaire afin d'éviter un clic accidentel sans organisation) */}
+            {!isBirthdayTask && task.type !== 'birthday' && task.type !== 'pending_appointment' && task.status !== 'completed' && !(task.type === 'appointment' && task.metadata?.is_inscription) && (
               <button
                 onClick={(e) => { e.stopPropagation(); onComplete(task); }}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white text-xs font-medium rounded-lg transition-all shadow-sm hover:shadow"
@@ -240,6 +295,11 @@ const TodayTasksWidget = ({ onOpenMemoModal, onOpenTaskModal, onOpenAppointmentM
           assigned_to_role: task.assigned_to_role,
           created_by: task.created_by,
           created_by_name: task.created_by_name,
+          birthday_child_id: task.birthday_child_id || null,
+          birthday_decision: task.birthday_decision || null,
+          birthday_admin_status: task.birthday_admin_status || null,
+          birthday_assigned_staff_id: task.birthday_assigned_staff_id || null,
+          birthday_celebration_date: task.birthday_celebration_date || null,
           source: 'tasks' // Pour identifier la source
         }));
       } else if (tasksResult.status === 'rejected') {

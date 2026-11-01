@@ -189,7 +189,7 @@ html.dark .datepicker-view button,
 
   /* Boutons de formulaire sur mobile */
   button[type="submit"],
-  button[type="button"] {
+  button[type="button"]:not([role="switch"]):not(.compact-btn) {
     min-height: 44px;
     /* Taille minimale tactile */
   }

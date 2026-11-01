@@ -65,8 +65,9 @@ router.get('/', authenticateToken, async (req, res) => {
       end_date: req.query.end_date,
       limit: req.query.limit ? parseInt(req.query.limit) : 50,
       offset: req.query.offset ? parseInt(req.query.offset) : 0,
-      // 🆕 Toujours passer l'ID utilisateur pour filtrer les mémos automatiquement
-      user_id: req.user.id,
+      // 🆕 Toujours passer l'ID et le rôle utilisateur pour filtrer les mémos et la visibilité des anniversaires
+      user_id: req.user.id || req.user.userId,
+      user_role: req.user.role,
       created_by: req.query.created_by
     };
 
@@ -259,7 +260,10 @@ router.get('/views/overdue', authenticateToken, async (req, res) => {
  * GET /api/events/calendar
  * Récupérer les événements pour le calendrier
  */
-router.get('/views/calendar', authenticateToken, requirePlanningAccess, async (req, res) => {
+router.get('/views/calendar', authenticateToken, async (req, res, next) => {
+  if (req.user?.role === 'parent') return next();
+  return requirePlanningAccess(req, res, next);
+}, async (req, res) => {
   try {
     const { start, end, type } = req.query;
 
@@ -274,7 +278,8 @@ router.get('/views/calendar', authenticateToken, requirePlanningAccess, async (r
     const types = type ? type.split(',') : null;
 
     // Passer le rôle de l'utilisateur pour les permissions
-    const result = await eventService.getCalendarEvents(start, end, req.user.id, types, req.user.role);
+    const userId = req.user.id || req.user.userId;
+    const result = await eventService.getCalendarEvents(start, end, userId, types, req.user.role);
     res.json(result);
 
   } catch (error) {

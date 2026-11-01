@@ -83,9 +83,15 @@ async function getUserTasks(userId, filters = {}) {
     let sql = `
       SELECT 
         t.*,
-        u.first_name || ' ' || u.last_name as created_by_name
+        u.first_name || ' ' || u.last_name as created_by_name,
+        bc.child_id as birthday_child_id,
+        bc.decision as birthday_decision,
+        bc.admin_status as birthday_admin_status,
+        bc.assigned_staff_id as birthday_assigned_staff_id,
+        COALESCE(bc.celebration_iso_date, bc.preferred_date) as birthday_celebration_date
       FROM tasks t
       LEFT JOIN users u ON t.created_by = u.id
+      LEFT JOIN birthday_celebrations bc ON bc.task_id = t.id
       WHERE t.assigned_to = $1
     `;
 
@@ -141,13 +147,25 @@ async function getTodayTasks(userId) {
         'task' as type,
         u1.first_name || ' ' || u1.last_name as assigned_to_name,
         u1.role as assigned_to_role,
-        u2.first_name || ' ' || u2.last_name as created_by_name
+        u2.first_name || ' ' || u2.last_name as created_by_name,
+        bc.child_id as birthday_child_id,
+        bc.decision as birthday_decision,
+        bc.admin_status as birthday_admin_status,
+        bc.assigned_staff_id as birthday_assigned_staff_id,
+        COALESCE(bc.celebration_iso_date, bc.preferred_date) as birthday_celebration_date
       FROM tasks t
       LEFT JOIN users u1 ON t.assigned_to = u1.id
       LEFT JOIN users u2 ON t.created_by = u2.id
-      WHERE (DATE(t.due_date) = CURRENT_DATE OR (DATE(t.due_date) < CURRENT_DATE AND t.title LIKE '📋 Compléter dossier%'))
+      LEFT JOIN birthday_celebrations bc ON bc.task_id = t.id
+      WHERE (
+        DATE(t.due_date) = CURRENT_DATE
+        OR (DATE(t.due_date) < CURRENT_DATE AND t.title LIKE '📋 Compléter dossier%')
+        OR t.title LIKE '🎂%'
+        OR t.title LIKE '🚨 Demande Anniversaire%'
+      )
         AND t.status != 'completed'
         AND t.assigned_to = $1
+        AND (bc.decision IS NULL OR bc.decision = 'yes')
       ORDER BY 
         CASE t.priority 
           WHEN 'urgent' THEN 1 

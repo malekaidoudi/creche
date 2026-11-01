@@ -79,6 +79,12 @@ export const glossaryData = {
       details: "Exemples de permissions individuelles : administration médicaments, accès aux numéros des parents, traitement des absences."
     },
     {
+      term: "Fête d'Anniversaire à la Crèche (Workflow)",
+      category: "Quotidien",
+      definition: "Module interactif permettant aux parents de choisir de célébrer l'anniversaire de leur enfant à la crèche (de J-30 à J-5). L'administration valide et assigne une éducatrice à la préparation, avec notification et création automatique de l'événement au calendrier.",
+      details: "Le parent décide seul de partager l'événement avec les autres parents ou de le réserver à sa famille et à l'équipe. Dès J+1, les photos souvenirs sont consultables en diaporama et publiées dans les Activités pendant 30 jours."
+    },
+    {
       term: "Jours Fériés & Fermetures",
       category: "Organisation",
       definition: "Calendrier officiel des 28 jours de fermeture en Tunisie (fêtes nationales, religieuses islamiques et congés scolaires).",
@@ -175,6 +181,12 @@ export const glossaryData = {
       category: "الأمان",
       definition: "نسخ احتياطي تلقائي كل ليلة على الساعة 02:00. الجلسات غير النشطة تنتهي بعد 7 أيام وتُبطل فورياً عند تسجيل الخروج.",
       details: "روابط تعيين كلمة السر صالحة لمدة ساعة واحدة فقط لضمان السلامة التامة."
+    },
+    {
+      term: "الاحتفال بعيد الميلاد في الروضة",
+      category: "اليوميات",
+      definition: "منظومة متكاملة تتيح للولي اختيار الاحتفال بعيد ميلاد طفله بالحضانة (بين 30 و5 أيام قبل الموعد). تقوم الإدارة بتعيين مربية للتحضير وإدراج المناسبة في التقويم تلقائياً.",
+      details: "يملك الولي وحده حق مشاركة المناسبة مع بقية الأولياء أو إبقائها خاصة. ابتداءً من اليوم الموالي، تتاح صور الذكريات في عرض تفاعلي وتُنشر في صفحة الأنشطة لمدة 30 يوماً."
     }
   ]
 };
@@ -556,6 +568,12 @@ export const helpData = {
           category: "staff",
           question: "Comment publier des photos et activités de la crèche ?",
           answer: "Dans Activités > Nouvelle activité, rédigez une description et ajoutez des photos ou courtes vidéos. Dès la publication, ces photos apparaissent dans le fil pédagogique accessible aux parents connectés."
+        },
+        {
+          id: "faq-16-anniv",
+          category: "general",
+          question: "Comment organiser l'anniversaire d'un enfant à la crèche ?",
+          answer: "Entre J-30 et J-5 avant la date, une bannière festive apparaît dans l'espace parent. Le parent choisit s'il souhaite fêter l'anniversaire à la crèche, indique le jour souhaité, et décide seul s'il souhaite informer les autres parents ou réserver l'événement à la famille et au personnel. L'administration valide la demande, assigne une éducatrice à la préparation, et dès le lendemain de la fête (J+1), le diaporama de souvenirs est accessible pendant 30 jours et partagé dans les Activités."
         },
         {
           id: "faq-17",
@@ -1044,6 +1062,18 @@ export const chatBotResponses = {
       followUps: [
         "Un certificat médical est-il obligatoire ?",
         "Comment annuler une absence signalée ?"
+      ]
+    },
+    {
+      keywords: ["anniversaire", "fête", "gâteau", "bougies", "diaporama", "souvenirs", "birthday"],
+      answer: "🎂 Organisation d'un Anniversaire à la Crèche :\n1. Entre 30 et 5 jours avant la date, une bannière festive apparaît dans votre Espace Parent.\n2. Vous choisissez de célébrer ou non à la crèche, le jour souhaité, et si vous souhaitez partager l'événement avec les autres parents.\n3. La direction valide la demande et assigne une éducatrice à la préparation (couronne, décoration, accueil).\n4. Dès le lendemain (J+1), le diaporama de souvenirs est disponible 30 jours dans votre espace et partagé dans les Activités !",
+      actions: [
+        { label: "🎂 Mon Espace", path: "/mon-espace" },
+        { label: "📸 Activités & Souvenirs", path: "/activites" }
+      ],
+      followUps: [
+        "Jusqu'à quand puis-je modifier mon choix ?",
+        "Les autres parents voient-ils l'événement ?"
       ]
     },
     {

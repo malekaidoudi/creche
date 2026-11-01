@@ -91,6 +91,7 @@ const treatmentsRoutes = require('./routes_postgres/treatments');
 const staffPermissionsRoutes = require('./routes_postgres/staffPermissions');
 const aiAssistantRoutes = require('./routes_postgres/aiAssistant');
 const pushSubscriptionsRoutes = require('./routes_postgres/pushSubscriptions');
+const birthdaysRoutes = require('./routes_postgres/birthdays');
 console.log('✅ Routes chargées\n');
 
 const app = express();
@@ -413,6 +414,9 @@ console.log('  ✓ /api/ai & /ai (assistant intelligent Google Gemini) 🤖');
 
 app.use('/api/push', pushSubscriptionsRoutes);
 console.log('  ✓ /api/push (notifications push OS Web Push/VAPID) 🔔');
+
+app.use('/api/birthdays', birthdaysRoutes);
+console.log('  ✓ /api/birthdays (workflow anniversaires & souvenirs) 🎂');
 
 console.log('\n✅ Toutes les routes montées avec succès\n');
 

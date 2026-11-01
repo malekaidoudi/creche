@@ -10,8 +10,6 @@ export const initTestAuthListener = () => {
     console.log('🧪 Test Auth Listener: Initialisation...');
 
     window.addEventListener('message', (event) => {
-        console.log('📨 Message reçu:', event.origin, event.data);
-
         // Accepter tous les messages en développement (fichiers locaux = origin null)
         // En production, ce code ne s'exécute pas
 

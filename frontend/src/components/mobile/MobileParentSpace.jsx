@@ -43,6 +43,7 @@ import API_CONFIG from '../../config/api';
 import { getEmergencyContactDisplay } from '../../utils/emergencyContacts';
 import PushNotificationCard from '../notifications/PushNotificationCard';
 import PWAInstallGuide from './PWAInstallGuide';
+import ParentBirthdayBanner from '../widgets/ParentBirthdayBanner';
 
 // Fonction pour construire l'URL complète de la photo
 const getChildPhotoUrl = (photoUrl) => {
@@ -305,42 +306,60 @@ const MobileParentSpace = ({
                 initial="hidden"
                 animate="visible"
             >
+                {/* Bandeau Anniversaires & Souvenirs (Parent Mobile) */}
+                <ParentBirthdayBanner compact />
+
                 {/* Bannière persistante: Contacts d'urgence & 2ème parent à compléter */}
-                {user?.has_incomplete_contacts && (
-                    <motion.div
-                        variants={itemVariants}
-                        className="p-4 bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl text-white shadow-lg flex items-start gap-3.5"
-                    >
-                        <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0 mt-0.5">
-                            <AlertCircle className="w-6 h-6 text-white" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <h4 className="font-bold text-sm leading-tight">
-                                {isRTL ? 'إكمال ملف الأمان والحماية' : 'Contacts de sécurité à compléter'}
-                            </h4>
-                            <p className="text-xs text-amber-100 mt-1 leading-relaxed">
-                                {isRTL
-                                    ? 'لحماية طفلك، يرجى إدخال بيانات الوالد الثاني وجهة اتصال الطوارئ.'
-                                    : 'Pour la sécurité de votre enfant, veuillez renseigner le 2ème parent et le contact d\'urgence.'}
-                            </p>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    const firstChild = children && children.length > 0 ? children[0] : null;
-                                    if (firstChild) {
-                                        navigate(`/mon-espace/child/${firstChild.id}/emergency-contacts`);
-                                    } else {
-                                        navigate('/mon-espace/profile');
-                                    }
-                                }}
-                                className="mt-2.5 px-3.5 py-1.5 bg-white text-orange-600 rounded-xl text-xs font-bold shadow hover:bg-orange-50 transition-all inline-flex items-center gap-1.5 active:scale-95"
-                            >
-                                <span>{isRTL ? 'إكمال الآن' : 'Compléter maintenant'}</span>
-                                <ChevronRight className="w-3.5 h-3.5 rtl:rotate-180" />
-                            </button>
-                        </div>
-                    </motion.div>
-                )}
+                {user?.has_incomplete_contacts && (() => {
+                    const isMother = user?.gender === 'female';
+                    const incompleteChild = (children || []).find((c) => {
+                        const hasEmergency =
+                            ['father', 'mother'].includes(c.emergency_contact_choice) ||
+                            Boolean(c.emergency_contact_phone && String(c.emergency_contact_phone).trim() !== '');
+                        const hasSecondParent = isMother
+                            ? Boolean(c.father_name && String(c.father_name).trim() !== '')
+                            : Boolean(c.mother_name && String(c.mother_name).trim() !== '');
+                        return !hasEmergency || !hasSecondParent;
+                    });
+                    const targetChild = incompleteChild || (children && children.length > 0 ? children[0] : null);
+
+                    return (
+                        <motion.div
+                            variants={itemVariants}
+                            className="p-4 bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl text-white shadow-lg flex items-start gap-3.5"
+                        >
+                            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0 mt-0.5">
+                                <AlertCircle className="w-6 h-6 text-white" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <h4 className="font-bold text-sm leading-tight">
+                                    {isRTL
+                                        ? `إكمال ملف الأمان والحماية${incompleteChild ? ` (${incompleteChild.first_name})` : ''}`
+                                        : `Contacts de sécurité à compléter${incompleteChild ? ` (${incompleteChild.first_name})` : ''}`}
+                                </h4>
+                                <p className="text-xs text-amber-100 mt-1 leading-relaxed">
+                                    {isRTL
+                                        ? 'لحماية طفلك، يرجى إدخال بيانات الوالد الثاني وجهة اتصال الطوارئ.'
+                                        : `Pour la sécurité de ${incompleteChild ? incompleteChild.first_name : 'votre enfant'}, veuillez renseigner le 2ème parent et le contact d'urgence.`}
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (targetChild) {
+                                            navigate(`/mon-espace/child/${targetChild.id}/emergency-contacts`);
+                                        } else {
+                                            navigate('/mon-espace/profile');
+                                        }
+                                    }}
+                                    className="mt-2.5 px-3.5 py-1.5 bg-white text-orange-600 rounded-xl text-xs font-bold shadow hover:bg-orange-50 transition-all inline-flex items-center gap-1.5 active:scale-95"
+                                >
+                                    <span>{isRTL ? 'إكمال الآن' : 'Compléter maintenant'}</span>
+                                    <ChevronRight className="w-3.5 h-3.5 rtl:rotate-180" />
+                                </button>
+                            </div>
+                        </motion.div>
+                    );
+                })()}
 
                 {/* Actions rapides */}
                 <motion.div
@@ -457,14 +476,25 @@ const MobileParentSpace = ({
                                         }}
                                         className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm flex items-center gap-4 active:scale-[0.98] transition-transform cursor-pointer"
                                     >
-                                        {/* Photo ou initiales */}
-                                        <div className="w-14 h-14 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                        {/* Photo ou icône bébé (rose fille / bleu garçon) */}
+                                        <div
+                                            className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 overflow-hidden ${
+                                                ['female', 'f', 'fille', 'girl'].includes(String(child.gender || '').trim().toLowerCase())
+                                                    ? 'bg-pink-100 text-pink-500 dark:bg-pink-900/40 dark:text-pink-400'
+                                                    : 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400'
+                                            }`}
+                                        >
                                             {getChildPhotoUrl(child.photo_url) ? (
-                                                <img src={getChildPhotoUrl(child.photo_url)} alt="" className="w-full h-full object-cover" />
+                                                <img
+                                                    src={getChildPhotoUrl(child.photo_url)}
+                                                    alt=""
+                                                    className="w-full h-full object-cover"
+                                                    onError={(e) => {
+                                                        e.currentTarget.style.display = 'none';
+                                                    }}
+                                                />
                                             ) : (
-                                                <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                                                    {child.first_name?.charAt(0)}{child.last_name?.charAt(0)}
-                                                </span>
+                                                <Baby className="w-7 h-7" />
                                             )}
                                         </div>
                                         {/* Info */}

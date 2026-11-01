@@ -42,6 +42,7 @@ import { useDialogContext } from '../../contexts/DialogContext';
 import NewsWidget from '../../components/NewsWidget';
 import HolidaysList from '../../components/HolidaysList';
 import TestimonialForm from '../../components/testimonials/TestimonialForm';
+import ParentBirthdayBanner from '../../components/widgets/ParentBirthdayBanner';
 import { getEmergencyContactDisplay } from '../../utils/emergencyContacts';
 import PreInterviewPreparationModal from '../../components/modals/PreInterviewPreparationModal';
 import enrollmentsService from '../../services/enrollmentsService';
@@ -344,6 +345,9 @@ const MySpacePage = () => {
           </motion.div>
 
 
+          {/* Bandeau Anniversaires & Souvenirs (Parent Desktop) */}
+          <ParentBirthdayBanner />
+
           {/* Bandeau Candidature & Préparation RDV Admission */}
           {myApplication && (
             <motion.div
@@ -402,44 +406,58 @@ const MySpacePage = () => {
           )}
 
           {/* Bannière persistante: Contacts d'urgence & 2ème parent à compléter */}
-          {user?.has_incomplete_contacts && (
-            <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-4 p-4 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 rounded-2xl text-white shadow-lg flex items-center justify-between gap-4"
-            >
-              <div className="flex items-center gap-3.5 min-w-0">
-                <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-                  <AlertCircle className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-base leading-tight">
-                    {isRTL ? 'إكمال بيانات الحماية والأمان' : 'Contacts de sécurité à compléter'}
-                  </h4>
-                  <p className="text-xs sm:text-sm text-amber-100 mt-0.5">
-                    {isRTL
-                      ? 'لحماية طفلك، يرجى إدخال بيانات الوالد الثاني وجهة اتصال الطوارئ.'
-                      : 'Pour la sécurité de votre enfant, veuillez renseigner le 2ème parent et le contact d\'urgence.'}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  const firstChild = children && children.length > 0 ? children[0] : null;
-                  if (firstChild) {
-                    navigate(`/mon-espace/child/${firstChild.id}/emergency-contacts`);
-                  } else {
-                    navigate('/mon-espace/profile');
-                  }
-                }}
-                className="px-4 py-2 bg-white text-orange-600 hover:bg-orange-50 active:scale-95 rounded-xl text-xs sm:text-sm font-bold shadow transition-all shrink-0"
-              >
-                {isRTL ? 'إكمال الآن' : 'Compléter'}
-              </button>
+          {user?.has_incomplete_contacts && (() => {
+            const isMother = user?.gender === 'female';
+            const incompleteChild = (children || []).find((c) => {
+              const hasEmergency =
+                ['father', 'mother'].includes(c.emergency_contact_choice) ||
+                Boolean(c.emergency_contact_phone && String(c.emergency_contact_phone).trim() !== '');
+              const hasSecondParent = isMother
+                ? Boolean(c.father_name && String(c.father_name).trim() !== '')
+                : Boolean(c.mother_name && String(c.mother_name).trim() !== '');
+              return !hasEmergency || !hasSecondParent;
+            });
+            const targetChild = incompleteChild || (children && children.length > 0 ? children[0] : null);
 
-            </motion.div>
-          )}
+            return (
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-4 p-4 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 rounded-2xl text-white shadow-lg flex items-center justify-between gap-4"
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                    <AlertCircle className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-base leading-tight">
+                      {isRTL
+                        ? `إكمال بيانات الحماية والأمان${incompleteChild ? ` (${incompleteChild.first_name})` : ''}`
+                        : `Contacts de sécurité à compléter${incompleteChild ? ` (${incompleteChild.first_name})` : ''}`}
+                    </h4>
+                    <p className="text-xs sm:text-sm text-amber-100 mt-0.5">
+                      {isRTL
+                        ? 'لحماية طفلك، يرجى إدخال بيانات الوالد الثاني وجهة اتصال الطوارئ.'
+                        : `Pour la sécurité de ${incompleteChild ? incompleteChild.first_name : 'votre enfant'}, veuillez renseigner le 2ème parent et le contact d'urgence.`}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (targetChild) {
+                      navigate(`/mon-espace/child/${targetChild.id}/emergency-contacts`);
+                    } else {
+                      navigate('/mon-espace/profile');
+                    }
+                  }}
+                  className="px-4 py-2 bg-white text-orange-600 hover:bg-orange-50 active:scale-95 rounded-xl text-xs sm:text-sm font-bold shadow transition-all shrink-0"
+                >
+                  {isRTL ? 'إكمال الآن' : 'Compléter'}
+                </button>
+              </motion.div>
+            );
+          })()}
 
           {/* Bouton Témoignage */}
           <motion.div
@@ -580,8 +598,16 @@ const MySpacePage = () => {
                         title={isRTL ? 'اضغط لعرض الخيارات' : 'Cliquer pour gérer la fiche et la santé'}
                       >
                         <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <div className="w-11 h-11 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                            <Baby className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                          <div
+                            className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform ${
+                              ['female', 'f', 'fille', 'girl'].includes(
+                                String(child.gender || '').trim().toLowerCase()
+                              )
+                                ? 'bg-pink-100 dark:bg-pink-900/30 text-pink-500 dark:text-pink-400'
+                                : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                            }`}
+                          >
+                            <Baby className="w-6 h-6" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="font-semibold text-gray-900 dark:text-white truncate group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">

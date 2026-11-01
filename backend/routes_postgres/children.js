@@ -537,6 +537,7 @@ router.get('/birthdays/month', auth.authenticateToken, auth.requireStaff, async 
         c.gender,
         c.photo_url,
         c.parent_id,
+        EXTRACT(MONTH FROM c.birth_date) as birth_month,
         EXTRACT(DAY FROM c.birth_date) as birth_day,
         EXTRACT(YEAR FROM AGE(c.birth_date)) as age,
         u.first_name as parent_first_name,
@@ -551,10 +552,12 @@ router.get('/birthdays/month', auth.authenticateToken, auth.requireStaff, async 
     const result = await pool.query(sql, [currentMonth]);
 
     // Calculer les jours restants et formater les données
+    const todayZero = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const children = result.rows.map(child => {
+      const birthMonth = parseInt(child.birth_month) || currentMonth;
       const birthDay = parseInt(child.birth_day);
-      const today = now.getDate();
-      let daysUntil = birthDay - today;
+      const bdayThisYear = new Date(now.getFullYear(), birthMonth - 1, birthDay);
+      const daysUntil = Math.round((bdayThisYear - todayZero) / 86400000);
 
       // Si l'anniversaire est passé ce mois, il est dans le passé
       const isPast = daysUntil < 0;
@@ -570,7 +573,7 @@ router.get('/birthdays/month', auth.authenticateToken, auth.requireStaff, async 
         days_until: daysUntil,
         is_today: isToday,
         is_past: isPast,
-        start_date: `${now.getFullYear()}-${String(currentMonth).padStart(2, '0')}-${String(birthDay).padStart(2, '0')}`
+        start_date: `${now.getFullYear()}-${String(birthMonth).padStart(2, '0')}-${String(birthDay).padStart(2, '0')}`
       };
     });
 
@@ -2354,6 +2357,26 @@ router.put('/:id/emergency-contacts', auth.authenticateToken, async (req, res) =
         siblingUpdates.push(`trusted_contacts = $${sCount}`);
         const validTrusted = Array.isArray(trusted_contacts) ? trusted_contacts.slice(0, 2) : [];
         siblingParams.push(JSON.stringify(validTrusted));
+      }
+      if (father_name && father_name.trim() !== '') {
+        sCount++;
+        siblingUpdates.push(`father_name = COALESCE(NULLIF(TRIM(father_name), ''), $${sCount})`);
+        siblingParams.push(father_name.trim());
+      }
+      if (father_phone && father_phone.trim() !== '') {
+        sCount++;
+        siblingUpdates.push(`father_phone = COALESCE(NULLIF(TRIM(father_phone), ''), $${sCount})`);
+        siblingParams.push(father_phone.trim());
+      }
+      if (mother_name && mother_name.trim() !== '') {
+        sCount++;
+        siblingUpdates.push(`mother_name = COALESCE(NULLIF(TRIM(mother_name), ''), $${sCount})`);
+        siblingParams.push(mother_name.trim());
+      }
+      if (mother_phone && mother_phone.trim() !== '') {
+        sCount++;
+        siblingUpdates.push(`mother_phone = COALESCE(NULLIF(TRIM(mother_phone), ''), $${sCount})`);
+        siblingParams.push(mother_phone.trim());
       }
 
       if (siblingUpdates.length > 0) {
