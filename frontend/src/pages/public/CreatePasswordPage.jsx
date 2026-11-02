@@ -44,7 +44,7 @@ export default function CreatePasswordPage() {
     // Validation
     const newErrors = {};
 
-    if (!token || !email) {
+    if (!token) {
       dialog.error(isRTL ? 'رابط غير صالح' : 'Lien invalide');
       return;
     }
