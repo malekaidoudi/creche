@@ -46,6 +46,86 @@ const resolveChildPhotoUrl = (photoUrl) => {
 const isGirlGender = (gender) =>
   ['female', 'f', 'fille', 'girl'].includes(String(gender || '').trim().toLowerCase());
 
+/**
+ * Formate un jour suggéré (dayOption) pour l'affichage en français ou en arabe.
+ */
+const formatDayOptionDisplay = (dayOption, isRTL) => {
+  if (!dayOption) return { label: '', icon: '📅' };
+  if (!isRTL) {
+    return {
+      label: (dayOption.label || dayOption.date || '').replace(/^[📅💬]\s*/, '').trim(),
+      icon: dayOption.id === 'custom' ? '💬' : '📅'
+    };
+  }
+
+  // Formatage en arabe
+  const dateObj = dayOption.date ? new Date(`${dayOption.date}T12:00:00`) : null;
+  const formattedDate =
+    dateObj && !isNaN(dateObj.getTime())
+      ? dateObj.toLocaleDateString('ar-TN', {
+          weekday: 'short',
+          day: 'numeric',
+          month: 'short'
+        })
+      : dayOption.date;
+
+  const hasCoBirthday = dayOption.label && dayOption.label.includes('anniv');
+  const coSuffix = hasCoBirthday ? ' 🎂' : '';
+
+  let suffix = '';
+  let icon = '📅';
+
+  switch (dayOption.id) {
+    case 'same_day':
+      suffix = `(يوم العيد الساعة 15:30${coSuffix})`;
+      icon = '📅';
+      break;
+    case 'before':
+      suffix = `(قبل يوم${coSuffix})`;
+      icon = '📅';
+      break;
+    case 'after':
+      suffix = `(يوم بعد${coSuffix})`;
+      icon = '📅';
+      break;
+    case 'custom':
+      suffix = '(أو يوم آخر بالاتفاق)';
+      icon = '💬';
+      break;
+    default:
+      suffix = coSuffix ? `(${coSuffix})` : '';
+      icon = '📅';
+      break;
+  }
+
+  return {
+    label: `${formattedDate} ${suffix}`.trim(),
+    icon
+  };
+};
+
+/**
+ * Formate le label d'une date choisie à partir de la liste des jours suggérés.
+ */
+const formatChosenDayLabel = (dateStr, suggestedDaysList, isRTL) => {
+  if (!dateStr) return '';
+  const cleanDateStr = String(dateStr).slice(0, 10);
+  const matched = suggestedDaysList?.find((s) => s.date === cleanDateStr);
+  if (matched) {
+    const disp = formatDayOptionDisplay(matched, isRTL);
+    return disp.label;
+  }
+  const dateObj = new Date(`${cleanDateStr}T12:00:00`);
+  if (!isNaN(dateObj.getTime())) {
+    return dateObj.toLocaleDateString(isRTL ? 'ar-TN' : 'fr-FR', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short'
+    });
+  }
+  return cleanDateStr;
+};
+
 const BirthdayEventPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -141,20 +221,32 @@ const BirthdayEventPage = () => {
           setCelebrationDay(defaultDay);
 
           // Pre-fill message
-          const selectedDayLabel =
-            d.suggested_days?.find((s) => s.date === defaultDay)?.label || defaultDay;
-          const coNote =
-            d.co_birthdays?.length > 0
-              ? ` (nous avons vu que ${d.co_birthdays.map((c) => c.first_name).join(' et ')} fête aussi son anniversaire !)`
+          const selectedDayLabel = formatChosenDayLabel(defaultDay, d.suggested_days, isRTL);
+          if (isRTL) {
+            const coNote =
+              d.co_birthdays?.length > 0
+                ? ` (لاحظنا أن ${d.co_birthdays.map((c) => c.first_name).join(' و ')} يحتفل أيضاً بعيد ميلاده !)`
+                : '';
+            const lateNote = d.birthday?.is_late_window
+              ? ' (طلب متأخر بأقل من 5 أيام، بانتظار موافقتكم الكريمة)'
               : '';
-          const lateNote = d.birthday?.is_late_window
-            ? ' (demande tardive à moins de 5 jours, sous réserve de votre accord)'
-            : '';
-
-          setParentNotes(
-            d.celebration?.parent_notes ||
-              `Bonjour la crèche 👋 ! Nous aimerions fêter les ${d.birthday?.turning_age} ans de ${d.child?.first_name} à la crèche le ${selectedDayLabel}${coNote}${lateNote}. Pouvez-vous nous dire comment on s'organise (gâteau, jus, bougies) ? Merci beaucoup ! 🎂🎈`
-          );
+            setParentNotes(
+              d.celebration?.parent_notes ||
+                `مرحباً بإدارة الروضة 👋 ! نود الاحتفال بعيد ميلاد ${d.child?.first_name} (${d.birthday?.turning_age} سنوات) في الروضة يوم ${selectedDayLabel}${coNote}${lateNote}. هل يمكنكم إعلامنا بكيفية التنظيم (الكعكة، العصير، الشموع) ؟ شكراً جزيلاً ! 🎂🎈`
+            );
+          } else {
+            const coNote =
+              d.co_birthdays?.length > 0
+                ? ` (nous avons vu que ${d.co_birthdays.map((c) => c.first_name).join(' et ')} fête aussi son anniversaire !)`
+                : '';
+            const lateNote = d.birthday?.is_late_window
+              ? ' (demande tardive à moins de 5 jours, sous réserve de votre accord)'
+              : '';
+            setParentNotes(
+              d.celebration?.parent_notes ||
+                `Bonjour la crèche 👋 ! Nous aimerions fêter les ${d.birthday?.turning_age} ans de ${d.child?.first_name} à la crèche le ${selectedDayLabel}${coNote}${lateNote}. Pouvez-vous nous dire comment on s'organise (gâteau, jus, bougies) ? Merci beaucoup ! 🎂🎈`
+            );
+          }
 
           // Pre-fill admin task text & staff
           if (d.staff_list?.length > 0) {
@@ -185,7 +277,7 @@ const BirthdayEventPage = () => {
         setLoading(false);
       }
     },
-    [id]
+    [id, isRTL]
   );
 
   useEffect(() => {
@@ -196,8 +288,7 @@ const BirthdayEventPage = () => {
   const handleDayChange = (newDate) => {
     setCelebrationDay(newDate);
     if (!data) return;
-    const selectedDayLabel =
-      data.suggested_days?.find((s) => s.date === newDate)?.label || newDate;
+    const selectedDayLabel = formatChosenDayLabel(newDate, data.suggested_days, isRTL);
     if (isRTL) {
       const coNote =
         data.co_birthdays?.length > 0
@@ -1036,9 +1127,11 @@ const BirthdayEventPage = () => {
                         </span>
                         <span className="font-extrabold text-stone-900 text-sm">
                           📅{' '}
-                          {suggested_days?.find((s) => s.date === celebrationDay)?.label ||
-                            celebration?.celebration_date ||
-                            celebrationDay}
+                          {formatChosenDayLabel(
+                            celebrationDay || celebration?.celebration_date,
+                            suggested_days,
+                            isRTL
+                          )}
                         </span>
                       </div>
 
@@ -1167,9 +1260,32 @@ const BirthdayEventPage = () => {
                 ) : (
                   /* CAS 3 : WIZARD EN 3 ÉTAPES SUR UNE SEULE LIGNE */
                   <div className="space-y-3">
+                    {/* Bannière de modification en cours si changingMind */}
+                    {changingMind && (
+                      <div className="flex items-center justify-between gap-2 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl px-3 py-2 text-xs">
+                        <span className="font-bold flex items-center gap-1.5 min-w-0 truncate">
+                          <span>✏️</span>
+                          <span className="truncate">
+                            {isRTL ? 'تعديل الاختيار قيد التنفيذ' : 'Modification du choix en cours'}
+                          </span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setChangingMind(false);
+                            setWizardStep(1);
+                          }}
+                          className="compact-btn inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-amber-300 hover:bg-amber-100 text-amber-900 text-xs font-extrabold whitespace-nowrap shrink-0 shadow-sm transition"
+                          style={{ minHeight: 'auto', padding: '0.25rem 0.6rem' }}
+                        >
+                          <span>{isRTL ? 'إلغاء التعديل' : 'Annuler la modification'}</span>
+                        </button>
+                      </div>
+                    )}
+
                     {/* Barre de progression 3 étapes sur une seule ligne */}
-                    <div className="flex items-center justify-between gap-2 bg-stone-50 border border-stone-200/80 rounded-xl px-3 py-2 overflow-x-auto">
-                      <div className="flex items-center gap-1.5 sm:gap-2 text-xs font-extrabold whitespace-nowrap min-w-0">
+                    <div className="flex items-center justify-between sm:justify-start gap-2 bg-stone-50 border border-stone-200/80 rounded-xl px-3 py-2 overflow-x-auto">
+                      <div className="flex items-center justify-between w-full sm:w-auto sm:justify-start gap-1.5 sm:gap-2.5 text-xs font-extrabold whitespace-nowrap min-w-0">
                         {/* Étape 1 : Choisir */}
                         <button
                           type="button"
@@ -1263,20 +1379,6 @@ const BirthdayEventPage = () => {
                           </span>
                         </button>
                       </div>
-
-                      {changingMind && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setChangingMind(false);
-                            setWizardStep(1);
-                          }}
-                          className="compact-btn inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white border border-stone-300 hover:bg-stone-100 text-stone-600 text-[11px] font-bold whitespace-nowrap shrink-0 transition"
-                          style={{ minHeight: 'auto', padding: '0.2rem 0.5rem' }}
-                        >
-                          <span>{isRTL ? 'إلغاء' : 'Annuler'}</span>
-                        </button>
-                      )}
                     </div>
 
                     {/* ÉTAPE 1 : 1 CHOISIR (Oui / Non) */}
@@ -1431,6 +1533,7 @@ const BirthdayEventPage = () => {
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
                             {(suggested_days || []).map((dayOption) => {
                               const active = celebrationDay === dayOption.date;
+                              const disp = formatDayOptionDisplay(dayOption, isRTL);
                               return (
                                 <button
                                   key={dayOption.date}
@@ -1443,7 +1546,7 @@ const BirthdayEventPage = () => {
                                   }`}
                                 >
                                   <div className="text-xs font-bold leading-tight truncate">
-                                    {dayOption.label}
+                                    {disp.icon} {disp.label}
                                   </div>
                                   <div
                                     className={`text-[10px] ${
@@ -1643,8 +1746,7 @@ const BirthdayEventPage = () => {
                         <div className="flex flex-wrap items-center justify-between gap-1.5 text-xs bg-white rounded-xl px-3 py-2 border border-rose-100">
                           <span className="font-bold text-stone-800 truncate">
                             📅{' '}
-                            {suggested_days?.find((s) => s.date === celebrationDay)?.label ||
-                              celebrationDay}
+                            {formatChosenDayLabel(celebrationDay, suggested_days, isRTL)}
                           </span>
                           <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-stone-100 text-stone-700 whitespace-nowrap">
                             {notifyOtherParents
