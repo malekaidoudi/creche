@@ -4,7 +4,7 @@
  * Version Unifiée & Mobile-First:
  * - Assistant interactif étape par étape sur smartphone (Wizard tactile)
  * - Vue ergonomique et complète sur grand écran / desktop
- * - Civilité adaptative: Mme / M. pour le personnel ; Mère / Père / Tuteur pour les parents
+ * - Civilité adaptative: Mme / M. pour le personnel ; Mère / Père pour les parents
  * - Onboarding sans email avec pseudo unique vérifié en temps réel
  * - Association enfant flexible: Enfant orphelin, Inscription express en 20s, ou Associer plus tard
  * - Envoi instantané d'invitation par WhatsApp (wa.me) sans surcoût d'API
@@ -89,7 +89,7 @@ const AddUserPage = () => {
         email: '',
         phone: '',
         username: '',
-        civility: 'female', // Civilité / Lien (parent: female=Mère, male=Père, guardian=Tuteur; staff: female=Mme, male=M.)
+        civility: 'female', // Civilité / Lien (parent: female=Mère, male=Père; staff: female=Mme, male=M.)
         staff_position: '',
         spouse_name: '',
         spouse_phone: '',
@@ -673,7 +673,7 @@ const AddUserPage = () => {
                                 </div>
                             </div>
 
-                            {/* Civilité Adaptative (Règle métier stricte: Mme/M. pour staff; Mère/Père/Tuteur pour parent) */}
+                            {/* Civilité Adaptative (Règle métier stricte: Mme/M. pour staff; Mère/Père pour parent) */}
                             <div>
                                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
                                     {selectedRole === 'parent'
@@ -685,8 +685,7 @@ const AddUserPage = () => {
                                         <>
                                             {[
                                                 { value: 'female', label: isRTL ? 'الأم (ماما)' : 'Mère (Maman)', emoji: '👩' },
-                                                { value: 'male', label: isRTL ? 'الأب (بابا)' : 'Père (Papa)', emoji: '👨' },
-                                                { value: 'guardian', label: isRTL ? 'تuteur légal' : 'Tuteur légal', emoji: '🛡️' }
+                                                { value: 'male', label: isRTL ? 'الأب (بابا)' : 'Père (Papa)', emoji: '👨' }
                                             ].map(c => (
                                                 <button
                                                     key={c.value}
