@@ -1,134 +1,137 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ChevronLeft, ChevronRight, Check, Compass, Globe } from 'lucide-react';
+import { useLanguage } from '../../hooks/useLanguage';
 
-const CHROME_STEPS = [
+
+const getChromeSteps = (isRTL) => [
     {
-        title: "1. Appuyez sur l'icône Partager 📤",
-        desc: "Dans Google Chrome sur votre iPhone, appuyez sur l'icône de partage située directement à droite dans la barre d'adresse.",
+        title: isRTL ? "1. اضغط على أيقونة المشاركة 📤" : "1. Appuyez sur l'icône Partager 📤",
+        desc: isRTL ? "في متصفح Google Chrome على جهاز iPhone الخاص بك، اضغط على أيقونة المشاركة الموجودة على يمين شريط العناوين." : "Dans Google Chrome sur votre iPhone, appuyez sur l'icône de partage située directement à droite dans la barre d'adresse.",
         image: "/guide-pwa/iphone-chrome-step1.png?v=2",
         x: 79.7,
         y: 9.7,
-        badge: "Partager"
+        badge: isRTL ? "مشاركة" : "Partager"
     },
     {
-        title: "2. Touchez 'En voir plus' ∨",
-        desc: "Dans la rangée d'actions, appuyez sur le bouton rond 'En voir plus' pour faire apparaître toutes les options.",
+        title: isRTL ? "2. المس 'عرض المزيد' ∨" : "2. Touchez 'En voir plus' ∨",
+        desc: isRTL ? "في صف الإجراءات، اضغط على الزر الدائري 'عرض المزيد' لإظهار جميع الخيارات." : "Dans la rangée d'actions, appuyez sur le bouton rond 'En voir plus' pour faire apparaître toutes les options.",
         image: "/guide-pwa/safari-step3-sharesheet.png?v=4",
         x: 83.2,
         y: 86.3,
-        badge: "En voir plus ∨"
+        badge: isRTL ? "عرض المزيد ∨" : "En voir plus ∨"
     },
     {
-        title: "3. Choisissez 'Sur l'écran d'accueil' ➕",
-        desc: "Dans la liste d'actions, appuyez sur la ligne avec l'icône carrée '➕ Sur l'écran d'accueil'.",
+        title: isRTL ? "3. اختر 'على الشاشة الرئيسية' ➕" : "3. Choisissez 'Sur l'écran d'accueil' ➕",
+        desc: isRTL ? "في قائمة الإجراءات، اضغط على السطر الذي يحتوي على الرمز المربع '➕ على الشاشة الرئيسية'." : "Dans la liste d'actions, appuyez sur la ligne avec l'icône carrée '➕ Sur l'écran d'accueil'.",
         image: "/guide-pwa/iphone-step2-sharesheet.png?v=2",
         x: 35.0,
         y: 73.2,
-        badge: "Sur l'écran d'accueil"
+        badge: isRTL ? "على الشاشة الرئيسية" : "Sur l'écran d'accueil"
     },
     {
-        title: "4. Confirmez en touchant 'Ajouter'",
-        desc: "En haut à droite, touchez 'Ajouter'. L'icône de la crèche Mima Elghalia apparaît immédiatement sur votre écran d'accueil !",
+        title: isRTL ? "4. قم بالتأكيد عن طريق لمس 'إضافة'" : "4. Confirmez en touchant 'Ajouter'",
+        desc: isRTL ? "في الجزء العلوي الأيمن، المس 'إضافة'. ستظهر أيقونة حضانة ميما الغالية على شاشتك الرئيسية فورًا!" : "En haut à droite, touchez 'Ajouter'. L'icône de la crèche Mima Elghalia apparaît immédiatement sur votre écran d'accueil !",
         image: "/guide-pwa/iphone-step3-confirm.png?v=2",
         x: 84.4,
         y: 12.5,
-        badge: "Ajouter"
+        badge: isRTL ? "إضافة" : "Ajouter"
     },
 {
-        title: "5. Allez dans le menu 'Plus'",
-        desc: "Ouvrez l'application Mima Elghalia depuis votre écran d'accueil, puis touchez le menu 'Plus' en bas à droite.",
-        image: "/guide-pwa/iphone-step4-plus.png?v=1",
-        x: 86.4,
+        title: isRTL ? "5. اذهب إلى قائمة 'المزيد'" : "5. Allez dans le menu 'Plus'",
+        desc: isRTL ? "افتح تطبيق ميما الغالية من شاشتك الرئيسية، ثم المس قائمة 'المزيد' في الأسفل." : "Ouvrez l'application Mima Elghalia depuis votre écran d'accueil, puis touchez le menu 'Plus' en bas à droite.",
+        image: isRTL ? "/guide-pwa/iphone-step4-plus-ar.png?v=1" : "/guide-pwa/iphone-step4-plus.png?v=1",
+        x: isRTL ? 13.6 : 86.4,
         y: 90.6,
-        badge: "Plus"
+        badge: isRTL ? "المزيد" : "Plus"
     },
     {
-        title: "6. Touchez 'Gérer' votre profil",
-        desc: "Dans le menu, appuyez sur le bouton 'Gérer' à côté de votre nom pour accéder à vos préférences.",
-        image: "/guide-pwa/iphone-step5-gerer.png?v=1",
-        x: 86.5,
+        title: isRTL ? "6. المس 'تعديل' ملفك الشخصي" : "6. Touchez 'Gérer' votre profil",
+        desc: isRTL ? "في القائمة، اضغط على زر 'تعديل' بجوار اسمك للوصول إلى تفضيلاتك." : "Dans le menu, appuyez sur le bouton 'Gérer' à côté de votre nom pour accéder à vos préférences.",
+        image: isRTL ? "/guide-pwa/iphone-step5-gerer-ar.png?v=1" : "/guide-pwa/iphone-step5-gerer.png?v=1",
+        x: isRTL ? 13.5 : 86.5,
         y: 69.2,
-        badge: "Gérer"
+        badge: isRTL ? "تعديل" : "Gérer"
     },
     {
-        title: "7. Activez les notifications 🔔",
-        desc: "Descendez en bas de la page et activez l'interrupteur 'Notifications sur cet appareil' pour être alerté en temps réel.",
-        image: "/guide-pwa/iphone-step6-notifications.png?v=1",
-        x: 78.8,
+        title: isRTL ? "7. تفعيل الإشعارات 🔔" : "7. Activez les notifications 🔔",
+        desc: isRTL ? "قم بالتمرير إلى أسفل الصفحة وقم بتفعيل مفتاح 'إشعارات الهاتف (Web Push)' لتنبيهك في الوقت الفعلي." : "Descendez en bas de la page et activez l'interrupteur 'Notifications sur cet appareil' pour être alerté en temps réel.",
+        image: isRTL ? "/guide-pwa/iphone-step6-notifications-ar.png?v=1" : "/guide-pwa/iphone-step6-notifications.png?v=1",
+        x: isRTL ? 21.2 : 78.8,
         y: 51.4,
-        badge: "Notifications"
+        badge: isRTL ? "إشعارات" : "Notifications"
     }
 ];
 
-const SAFARI_STEPS = [
+const getSafariSteps = (isRTL) => [
     {
-        title: "1. Touchez le bouton des options en bas",
-        desc: "Dans Safari, appuyez sur le bouton des options (trois petits points) à droite dans la barre d'adresse flottante en bas de l'écran.",
+        title: isRTL ? "1. المس زر الخيارات في الأسفل" : "1. Touchez le bouton des options en bas",
+        desc: isRTL ? "في Safari، اضغط على زر الخيارات (ثلاث نقاط صغيرة) على اليمين في شريط العناوين العائم في أسفل الشاشة." : "Dans Safari, appuyez sur le bouton des options (trois petits points) à droite dans la barre d'adresse flottante en bas de l'écran.",
         image: "/guide-pwa/iphone-safari-step1.png?v=2",
         x: 85.2,
         y: 93.2,
-        badge: "Options (...)"
+        badge: isRTL ? "خيارات (...)" : "Options (...)"
     },
     {
-        title: "2. Touchez 'Partager' 📤",
-        desc: "Dans le menu Safari qui vient de s'ouvrir, appuyez sur la toute première ligne 'Partager' avec la flèche vers le haut.",
+        title: isRTL ? "2. المس 'مشاركة' 📤" : "2. Touchez 'Partager' 📤",
+        desc: isRTL ? "في قائمة Safari التي فُتحت للتو، اضغط على السطر الأول 'مشاركة' مع السهم المتجه لأعلى." : "Dans le menu Safari qui vient de s'ouvrir, appuyez sur la toute première ligne 'Partager' avec la flèche vers le haut.",
         image: "/guide-pwa/safari-step2-menu.png?v=2",
         x: 52.1,
         y: 61.2,
-        badge: "Partager"
+        badge: isRTL ? "مشاركة" : "Partager"
     },
     {
-        title: "3. Touchez 'En voir plus' ∨",
-        desc: "Dans la rangée d'actions, appuyez sur le bouton rond 'En voir plus' pour afficher la suite des options d'installation.",
+        title: isRTL ? "3. المس 'عرض المزيد' ∨" : "3. Touchez 'En voir plus' ∨",
+        desc: isRTL ? "في صف الإجراءات، اضغط على الزر الدائري 'عرض المزيد' لعرض باقي خيارات التثبيت." : "Dans la rangée d'actions, appuyez sur le bouton rond 'En voir plus' pour afficher la suite des options d'installation.",
         image: "/guide-pwa/safari-step3-sharesheet.png?v=4",
         x: 83.2,
         y: 86.3,
-        badge: "En voir plus ∨"
+        badge: isRTL ? "عرض المزيد ∨" : "En voir plus ∨"
     },
     {
-        title: "4. Choisissez 'Sur l'écran d'accueil' ➕",
-        desc: "Dans la liste d'actions, appuyez sur la ligne '➕ Sur l'écran d'accueil'.",
+        title: isRTL ? "4. اختر 'على الشاشة الرئيسية' ➕" : "4. Choisissez 'Sur l'écran d'accueil' ➕",
+        desc: isRTL ? "في قائمة الإجراءات، اضغط على السطر '➕ على الشاشة الرئيسية'." : "Dans la liste d'actions, appuyez sur la ligne '➕ Sur l'écran d'accueil'.",
         image: "/guide-pwa/iphone-step2-sharesheet.png?v=2",
         x: 35.0,
         y: 73.2,
-        badge: "Sur l'écran d'accueil"
+        badge: isRTL ? "على الشاشة الرئيسية" : "Sur l'écran d'accueil"
     },
     {
-        title: "5. Touchez 'Ajouter' en haut à droite",
-        desc: "Validez en touchant 'Ajouter' en haut à droite. L'application Mima Elghalia est installée sur votre iPhone !",
+        title: isRTL ? "5. قم بالتأكيد عن طريق لمس 'إضافة'" : "5. Touchez 'Ajouter' en haut à droite",
+        desc: isRTL ? "قم بالتأكيد عن طريق لمس 'إضافة' في الجزء العلوي الأيسر. تم تثبيت تطبيق ميما الغالية على جهاز iPhone الخاص بك!" : "Validez en touchant 'Ajouter' en haut à droite. L'application Mima Elghalia est installée sur votre iPhone !",
         image: "/guide-pwa/iphone-step3-confirm.png?v=2",
         x: 84.4,
         y: 12.5,
-        badge: "Ajouter"
+        badge: isRTL ? "إضافة" : "Ajouter"
     },
 {
-        title: "6. Allez dans le menu 'Plus'",
-        desc: "Ouvrez l'application Mima Elghalia depuis votre écran d'accueil, puis touchez le menu 'Plus' en bas à droite.",
-        image: "/guide-pwa/iphone-step4-plus.png?v=1",
-        x: 86.4,
+        title: isRTL ? "6. اذهب إلى قائمة 'المزيد'" : "6. Allez dans le menu 'Plus'",
+        desc: isRTL ? "افتح تطبيق ميما الغالية من شاشتك الرئيسية، ثم المس قائمة 'المزيد' في الأسفل." : "Ouvrez l'application Mima Elghalia depuis votre écran d'accueil, puis touchez le menu 'Plus' en bas à droite.",
+        image: isRTL ? "/guide-pwa/iphone-step4-plus-ar.png?v=1" : "/guide-pwa/iphone-step4-plus.png?v=1",
+        x: isRTL ? 13.6 : 86.4,
         y: 90.6,
-        badge: "Plus"
+        badge: isRTL ? "المزيد" : "Plus"
     },
     {
-        title: "7. Touchez 'Gérer' votre profil",
-        desc: "Dans le menu, appuyez sur le bouton 'Gérer' à côté de votre nom pour accéder à vos préférences.",
-        image: "/guide-pwa/iphone-step5-gerer.png?v=1",
-        x: 86.5,
+        title: isRTL ? "7. المس 'تعديل' ملفك الشخصي" : "7. Touchez 'Gérer' votre profil",
+        desc: isRTL ? "في القائمة، اضغط على زر 'تعديل' بجوار اسمك للوصول إلى تفضيلاتك." : "Dans le menu, appuyez sur le bouton 'Gérer' à côté de votre nom pour accéder à vos préférences.",
+        image: isRTL ? "/guide-pwa/iphone-step5-gerer-ar.png?v=1" : "/guide-pwa/iphone-step5-gerer.png?v=1",
+        x: isRTL ? 13.5 : 86.5,
         y: 69.2,
-        badge: "Gérer"
+        badge: isRTL ? "تعديل" : "Gérer"
     },
     {
-        title: "8. Activez les notifications 🔔",
-        desc: "Descendez en bas de la page et activez l'interrupteur 'Notifications sur cet appareil' pour être alerté en temps réel.",
-        image: "/guide-pwa/iphone-step6-notifications.png?v=1",
-        x: 78.8,
+        title: isRTL ? "8. تفعيل الإشعارات 🔔" : "8. Activez les notifications 🔔",
+        desc: isRTL ? "قم بالتمرير إلى أسفل الصفحة وقم بتفعيل مفتاح 'إشعارات الهاتف (Web Push)' لتنبيهك في الوقت الفعلي." : "Descendez en bas de la page et activez l'interrupteur 'Notifications sur cet appareil' pour être alerté en temps réel.",
+        image: isRTL ? "/guide-pwa/iphone-step6-notifications-ar.png?v=1" : "/guide-pwa/iphone-step6-notifications.png?v=1",
+        x: isRTL ? 21.2 : 78.8,
         y: 51.4,
-        badge: "Notifications"
+        badge: isRTL ? "إشعارات" : "Notifications"
     }
 ];
 
 const IphoneInstallModal = ({ isOpen, onClose, defaultBrowser }) => {
+    const { isRTL } = useLanguage();
     // Détection automatique du navigateur actif (plus besoin d'onglets manuels)
     const browser = (() => {
         if (defaultBrowser === 'chrome' || defaultBrowser === 'safari') return defaultBrowser;
@@ -140,7 +143,7 @@ const IphoneInstallModal = ({ isOpen, onClose, defaultBrowser }) => {
     const [currentStep, setCurrentStep] = useState(0);
     const scrollContainerRef = useRef(null);
 
-    const steps = browser === 'chrome' ? CHROME_STEPS : SAFARI_STEPS;
+    const steps = browser === 'chrome' ? getChromeSteps(isRTL) : getSafariSteps(isRTL);
     const totalSteps = steps.length;
     const step = steps[currentStep] || steps[0];
 
@@ -287,7 +290,7 @@ const IphoneInstallModal = ({ isOpen, onClose, defaultBrowser }) => {
                         {/* Boîte Textuelle d'Instruction */}
                         <div className="p-3 sm:p-4 text-center bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-slate-800 shrink-0">
                             <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 mb-1">
-                                Étape {currentStep + 1} sur {totalSteps}
+                                {isRTL ? "خطوة" : "Étape"} {currentStep + 1} sur {totalSteps}
                             </span>
                             <h4 className="text-xs sm:text-sm font-extrabold text-gray-900 dark:text-white mb-0.5">
                                 {step.title}
@@ -305,8 +308,8 @@ const IphoneInstallModal = ({ isOpen, onClose, defaultBrowser }) => {
                                 disabled={currentStep === 0}
                                 className="flex items-center gap-1 px-3.5 py-1.5 rounded-xl text-xs font-bold text-gray-600 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                             >
-                                <ChevronLeft className="w-3.5 h-3.5" />
-                                <span>Précédent</span>
+                                {isRTL ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
+                                <span>{isRTL ? "السابق" : "Précédent"}</span>
                             </button>
 
                             <button
@@ -317,12 +320,12 @@ const IphoneInstallModal = ({ isOpen, onClose, defaultBrowser }) => {
                                 {currentStep === totalSteps - 1 ? (
                                     <>
                                         <Check className="w-3.5 h-3.5" />
-                                        <span>Compris !</span>
+                                        <span>{isRTL ? "مفهوم" : "Compris !"}</span>
                                     </>
                                 ) : (
                                     <>
-                                        <span>Suivant</span>
-                                        <ChevronRight className="w-3.5 h-3.5" />
+                                        <span>{isRTL ? "التالي" : "Suivant"}</span>
+                                        {isRTL ? <ChevronLeft className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
                                     </>
                                 )}
                             </button>

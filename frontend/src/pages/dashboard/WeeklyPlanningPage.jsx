@@ -385,7 +385,7 @@ const WeeklyPlanningPage = () => {
             task: isRTL ? 'مهمة' : 'Tâche',
             rdv: isRTL ? 'موعد' : 'RDV',
             birthday: isRTL ? 'عيد ميلاد' : 'Anniversaire',
-            event: isRTL ? 'حدث' : 'Événement',
+            event: isRTL ? 'مناسبة' : 'Événement',
             meeting: isRTL ? 'اجتماع' : 'Réunion',
             appointment: isRTL ? 'موعد' : 'RDV'
         };
@@ -675,7 +675,7 @@ const WeeklyPlanningPage = () => {
                     </div>
                     <div className="flex items-center gap-2">
                         <Megaphone className="w-4 h-4 text-orange-500" />
-                        <span className="text-gray-600 dark:text-gray-400">{isRTL ? 'حدث' : 'Événement'}</span>
+                        <span className="text-gray-600 dark:text-gray-400">{isRTL ? 'مناسبة' : 'Événement'}</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <FileText className="w-4 h-4 text-blue-500" />
@@ -743,7 +743,7 @@ const WeeklyPlanningPage = () => {
                                             className="flex flex-col items-center gap-1.5 p-3 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-lg transition-colors border border-blue-200 dark:border-blue-800"
                                         >
                                             <span className="text-xl">📅</span>
-                                            <span className="text-xs font-medium text-blue-700 dark:text-blue-300">{isRTL ? 'حدث' : 'Événement'}</span>
+                                            <span className="text-xs font-medium text-blue-700 dark:text-blue-300">{isRTL ? 'مناسبة' : 'Événement'}</span>
                                         </button>
                                         <button
                                             onClick={() => {

@@ -378,7 +378,7 @@ const MonthlyPlanningPage = () => {
       task: isRTL ? 'مهمة' : 'Tâche',
       rdv: isRTL ? 'موعد' : 'RDV',
       birthday: isRTL ? 'عيد ميلاد' : 'Anniversaire',
-      event: isRTL ? 'حدث' : 'Événement',
+      event: isRTL ? 'مناسبة' : 'Événement',
       meeting: isRTL ? 'اجتماع' : 'Réunion',
       holiday: isRTL ? 'عطلة' : 'Jour férié'
     };
@@ -456,7 +456,7 @@ const MonthlyPlanningPage = () => {
 
 
   const eventTypes = [
-    { value: 'event', label: isRTL ? 'حدث' : 'Événement', icon: '📅' },
+    { value: 'event', label: isRTL ? 'مناسبة' : 'Événement', icon: '📅' },
     { value: 'task', label: isRTL ? 'مهمة' : 'Tâche', icon: '✅' },
     { value: 'birthday', label: isRTL ? 'عيد ميلاد' : 'Anniversaire', icon: '🎂' },
     { value: 'vacation_reminder', label: isRTL ? 'عطلة' : 'Vacances', icon: '🏖️' },
@@ -843,7 +843,7 @@ const MonthlyPlanningPage = () => {
                   className="flex flex-col items-center gap-1.5 p-3 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-lg transition-colors border border-blue-200 dark:border-blue-800"
                 >
                   <span className="text-xl">📅</span>
-                  <span className="text-xs font-medium text-blue-700 dark:text-blue-300">{isRTL ? 'حدث' : 'Événement'}</span>
+                  <span className="text-xs font-medium text-blue-700 dark:text-blue-300">{isRTL ? 'مناسبة' : 'Événement'}</span>
                 </button>
                 <button
                   onClick={() => {

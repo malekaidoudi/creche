@@ -244,7 +244,7 @@ const TaskDetailModal = ({ isOpen, onClose, task, onComplete, onStartAdmission }
                 return isRTL ? 'موعد' : 'Rendez-vous';
             case 'event':
             case 'meeting':
-                return isRTL ? 'حدث' : 'Événement';
+                return isRTL ? 'مناسبة' : 'Événement';
             case 'memo':
                 return isRTL ? 'مذكرة' : 'Mémo';
             case 'task':
@@ -406,6 +406,11 @@ const TaskDetailModal = ({ isOpen, onClose, task, onComplete, onStartAdmission }
                                             <h2 className="text-lg sm:text-xl font-bold truncate">
                                                 {isRTL && isInscriptionAppointment
                                                     ? `📋 موعد تسجيل : ${task.metadata?.child_name || task.metadata?.child_first_name || ''}`
+                                                    : isRTL && isBirthdayTask && task.title
+                                                    ? task.title
+                                                        .replace(/^Organisation\s+Anniversaire\s*—\s*/i, 'تنظيم عيد ميلاد — ')
+                                                        .replace(/^Préparer\s+l'anniversaire\s+de\s*/i, 'تحضير عيد ميلاد ')
+                                                        .replace(/\s*\((\d+)\s*ans\)/i, ' ($1 سنوات)')
                                                     : task.title}
                                             </h2>
                                         </div>
@@ -427,13 +432,20 @@ const TaskDetailModal = ({ isOpen, onClose, task, onComplete, onStartAdmission }
                                         {/* Résumé de la demande ou instructions */}
                                         {cleanedModalDescription && (
                                             <div className="bg-rose-50/70 dark:bg-gray-700/50 border border-rose-200/80 rounded-xl p-3.5 text-xs sm:text-sm text-gray-800 dark:text-gray-200 whitespace-pre-line leading-relaxed">
-                                                {cleanedModalDescription}
+                                                {isRTL
+                                                    ? cleanedModalDescription
+                                                        .replace(/Parent\s*:\s*/gi, 'الولي : ')
+                                                        .replace(/Jour souhaité\s*:\s*/gi, 'اليوم المحدد : ')
+                                                        .replace(/Événement partagé avec tous les parents de la crèche/gi, 'مناسبة مشتركة مع كافة أولياء الروضة')
+                                                        .replace(/Événement privé réservé au parent concerné/gi, 'مناسبة خاصة بالولي المعني')
+                                                        .replace(/Message\s*:\s*/gi, 'الرسالة : ')
+                                                    : cleanedModalDescription}
                                             </div>
                                         )}
 
                                         {loadingBirthday ? (
                                             <div className="text-center py-4 text-xs text-gray-500">
-                                                Chargement des détails de l&apos;anniversaire...
+                                                {isRTL ? 'جارٍ تحميل تفاصيل عيد الميلاد...' : 'Chargement des détails de l\'anniversaire...'}
                                             </div>
                                         ) : birthdayData ? (
                                             <>
@@ -443,11 +455,15 @@ const TaskDetailModal = ({ isOpen, onClose, task, onComplete, onStartAdmission }
                                                         <div className="flex items-center gap-2 font-bold text-sm">
                                                             <XCircle className="w-5 h-5 text-rose-600 shrink-0" />
                                                             <span>
-                                                                🚫 Fête annulée par le parent (Fête uniquement en famille)
+                                                                {isRTL
+                                                                    ? '🚫 تم إلغاء الحفل من قِبل الولي (احتفال عائلي فقط)'
+                                                                    : '🚫 Fête annulée par le parent (Fête uniquement en famille)'}
                                                             </span>
                                                         </div>
                                                         <p className="text-xs leading-relaxed">
-                                                            Le parent a annulé l&apos;organisation de la fête à la crèche. Aucune préparation n&apos;est requise.
+                                                            {isRTL
+                                                                ? 'قام الولي بإلغاء تنظيم الحفل في الروضة. لا توجد أي تحضيرات مطلوبة.'
+                                                                : 'Le parent a annulé l\'organisation de la fête à la crèche. Aucune préparation n\'est requise.'}
                                                         </p>
                                                     </div>
                                                 ) : isStaffPreparationTask ? (
@@ -455,10 +471,10 @@ const TaskDetailModal = ({ isOpen, onClose, task, onComplete, onStartAdmission }
                                                     <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-4 space-y-3">
                                                         <div className="flex flex-wrap items-center justify-between gap-2">
                                                             <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-800">
-                                                                👩‍🏫 Tâche de préparation Staff
+                                                                {isRTL ? '👩‍🏫 مهمة التحضير الموكلة للموظف' : '👩‍🏫 Tâche de préparation Staff'}
                                                             </span>
                                                             <span className="px-2.5 py-0.5 rounded-full bg-white text-emerald-800 border border-emerald-200 text-xs font-bold">
-                                                                📅 Fête prévue le :{' '}
+                                                                {isRTL ? '📅 موعد الحفل المقرّر : ' : '📅 Fête prévue le : '}
                                                                 {celebrationDateInput || birthdayData.birthday?.this_year_date}
                                                             </span>
                                                         </div>
@@ -472,15 +488,17 @@ const TaskDetailModal = ({ isOpen, onClose, task, onComplete, onStartAdmission }
                                                         {/* Actions rapides de contact Parent */}
                                                         <div className="flex flex-wrap items-center justify-between gap-2 bg-gray-50 dark:bg-gray-700/40 p-3 rounded-xl border border-gray-200 dark:border-gray-700">
                                                             <div className="text-xs">
-                                                                <span className="text-gray-500 block">Parent de {birthdayData.child?.first_name} :</span>
+                                                                <span className="text-gray-500 block">
+                                                                    {isRTL ? `ولي ${birthdayData.child?.first_name} :` : `Parent de ${birthdayData.child?.first_name} :`}
+                                                                </span>
                                                                 <strong className="text-gray-900 dark:text-white text-sm">
-                                                                    {birthdayData.child?.parent_first_name || 'Parent'}{' '}
+                                                                    {birthdayData.child?.parent_first_name || (isRTL ? 'الولي' : 'Parent')}{' '}
                                                                     {birthdayData.child?.parent_last_name || ''}
                                                                 </strong>
                                                                 <span className="block text-[11px] text-emerald-700 font-semibold mt-0.5">
                                                                     {birthdayData.celebration?.notify_other_parents
-                                                                        ? '🌍 Événement partagé avec tous les parents'
-                                                                        : '🔒 Événement visible par Parent + Staff + Admin'}
+                                                                        ? (isRTL ? '🌍 مناسبة مشتركة مع كافة الأولياء' : '🌍 Événement partagé avec tous les parents')
+                                                                        : (isRTL ? '🔒 مناسبة ظاهرة للولي + الفريق + الإدارة' : '🔒 Événement visible par Parent + Staff + Admin')}
                                                                 </span>
                                                             </div>
                                                             <div className="flex flex-wrap items-center gap-2">
@@ -489,7 +507,7 @@ const TaskDetailModal = ({ isOpen, onClose, task, onComplete, onStartAdmission }
                                                                     className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition"
                                                                 >
                                                                     <Phone className="w-3.5 h-3.5" />
-                                                                    <span>Appeler</span>
+                                                                    <span>{isRTL ? 'اتصال' : 'Appeler'}</span>
                                                                 </a>
                                                                 <a
                                                                     href={`https://wa.me/${(birthdayData.child?.parent_phone || '+21622334455').replace(/[^0-9]/g, '')}`}
@@ -508,7 +526,9 @@ const TaskDetailModal = ({ isOpen, onClose, task, onComplete, onStartAdmission }
                                                             birthdayData.celebration?.is_late_request) && (
                                                             <div className="rounded-xl bg-amber-50 border border-amber-300 p-3.5 space-y-2.5">
                                                                 <div className="text-xs font-bold text-amber-950">
-                                                                    ⚠️ Demande tardive (J-{birthdayData.birthday?.days_until}) — Décision Direction :
+                                                                    {isRTL
+                                                                        ? `⚠️ طلب متأخر (ي-${birthdayData.birthday?.days_until}) — قرار الإدارة :`
+                                                                        : `⚠️ Demande tardive (J-${birthdayData.birthday?.days_until}) — Décision Direction :`}
                                                                 </div>
                                                                 <div className="flex flex-wrap gap-2">
                                                                     <button
@@ -518,7 +538,7 @@ const TaskDetailModal = ({ isOpen, onClose, task, onComplete, onStartAdmission }
                                                                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition"
                                                                     >
                                                                         <CheckCircle className="w-3.5 h-3.5" />
-                                                                        <span>Accepter la demande</span>
+                                                                        <span>{isRTL ? 'قبول الطلب' : 'Accepter la demande'}</span>
                                                                     </button>
                                                                     <button
                                                                         type="button"
@@ -527,7 +547,7 @@ const TaskDetailModal = ({ isOpen, onClose, task, onComplete, onStartAdmission }
                                                                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition"
                                                                     >
                                                                         <XCircle className="w-3.5 h-3.5" />
-                                                                        <span>Refuser (Délai court)</span>
+                                                                        <span>{isRTL ? 'رفض (الأجل قصير)' : 'Refuser (Délai court)'}</span>
                                                                     </button>
                                                                 </div>
                                                             </div>
@@ -538,11 +558,17 @@ const TaskDetailModal = ({ isOpen, onClose, task, onComplete, onStartAdmission }
                                                             <div className="flex flex-wrap items-center justify-between gap-2">
                                                                 <h4 className="text-xs sm:text-sm font-extrabold text-gray-900 flex items-center gap-1.5">
                                                                     <UserCheck className="w-4 h-4 text-rose-500" />
-                                                                    <span>Assigner la préparation à un membre du staff</span>
+                                                                    <span>
+                                                                        {isRTL
+                                                                            ? 'إسناد التحضير إلى موظف'
+                                                                            : 'Assigner la préparation à un membre du staff'}
+                                                                    </span>
                                                                 </h4>
                                                                 {birthdayData.celebration?.assigned_staff_first_name && (
                                                                     <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold">
-                                                                        ✅ Assigné à {birthdayData.celebration.assigned_staff_first_name}
+                                                                        {isRTL
+                                                                            ? `✅ مسند إلى ${birthdayData.celebration.assigned_staff_first_name}`
+                                                                            : `✅ Assigné à ${birthdayData.celebration.assigned_staff_first_name}`}
                                                                     </span>
                                                                 )}
                                                             </div>
@@ -550,7 +576,7 @@ const TaskDetailModal = ({ isOpen, onClose, task, onComplete, onStartAdmission }
                                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                                                                 <div>
                                                                     <label className="block text-[11px] font-bold text-gray-600 mb-1">
-                                                                        Éducateur / Staff :
+                                                                        {isRTL ? 'المربي / الموظف :' : 'Éducateur / Staff :'}
                                                                     </label>
                                                                     <select
                                                                         value={selectedStaffId}
@@ -566,7 +592,7 @@ const TaskDetailModal = ({ isOpen, onClose, task, onComplete, onStartAdmission }
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-[11px] font-bold text-gray-600 mb-1">
-                                                                        Jour retenu pour la fête :
+                                                                        {isRTL ? 'اليوم المعتمد للحفل :' : 'Jour retenu pour la fête :'}
                                                                     </label>
                                                                     <input
                                                                         type="date"
@@ -579,7 +605,7 @@ const TaskDetailModal = ({ isOpen, onClose, task, onComplete, onStartAdmission }
 
                                                             <div>
                                                                 <label className="block text-[11px] font-bold text-gray-600 mb-1">
-                                                                    Instructions pour le staff :
+                                                                    {isRTL ? 'تعليمات للموظف :' : 'Instructions pour le staff :'}
                                                                 </label>
                                                                 <textarea
                                                                     rows={2}
@@ -598,8 +624,8 @@ const TaskDetailModal = ({ isOpen, onClose, task, onComplete, onStartAdmission }
                                                                 <UserCheck className="w-4 h-4" />
                                                                 <span>
                                                                     {submittingBirthdayAction
-                                                                        ? 'Assignation en cours...'
-                                                                        : '✅ Assigner au staff & Valider l’organisation'}
+                                                                        ? (isRTL ? 'جارٍ الإسناد...' : 'Assignation en cours...')
+                                                                        : (isRTL ? '✅ إسناد للموظف وتأكيد التنظيم' : '✅ Assigner au staff & Valider l’organisation')}
                                                                 </span>
                                                             </button>
                                                         </div>

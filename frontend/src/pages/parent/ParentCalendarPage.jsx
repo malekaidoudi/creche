@@ -706,9 +706,9 @@ const ParentCalendarPage = () => {
                                         backgroundColor: `${selectedEvent.backgroundColor}20`,
                                         color: selectedEvent.backgroundColor
                                     }}>
-                                        {selectedEvent.extendedProps.type === 'rdv' ? 'Rendez-vous' :
-                                            selectedEvent.extendedProps.type === 'event' ? 'Événement' :
-                                                selectedEvent.extendedProps.type === 'meeting' ? 'Réunion' :
+                                        {selectedEvent.extendedProps.type === 'rdv' ? (isRTL ? 'موعد' : 'Rendez-vous') :
+                                            selectedEvent.extendedProps.type === 'event' ? (isRTL ? 'مناسبة' : 'Événement') :
+                                                selectedEvent.extendedProps.type === 'meeting' ? (isRTL ? 'اجتماع' : 'Réunion') :
                                                     selectedEvent.extendedProps.type}
                                     </span>
                                 </div>

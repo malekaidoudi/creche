@@ -62,10 +62,30 @@ const MobileTaskCard = ({ task, index, isRTL, onTaskClick, onValidate, onComplet
     const showTimeBadge =
         Boolean(rawTime) &&
         task.type !== 'birthday' &&
+        !isBirthdayTask &&
         task.source !== 'tasks' &&
         rawTime !== '00:00' &&
         rawTime !== '01:00';
-    const cleanedDescription = cleanTaskCardDescription(task.description);
+
+    let cleanedDescription = cleanTaskCardDescription(task.description);
+    let displayTitle = task.title;
+
+    if (isRTL && isBirthdayTask) {
+        if (displayTitle) {
+            displayTitle = displayTitle
+                .replace(/^Organisation\s+Anniversaire\s*—\s*/i, 'تنظيم عيد ميلاد — ')
+                .replace(/^Préparer\s+l'anniversaire\s+de\s*/i, 'تحضير عيد ميلاد ')
+                .replace(/\s*\((\d+)\s*ans\)/i, ' ($1 سنوات)');
+        }
+        if (cleanedDescription) {
+            cleanedDescription = cleanedDescription
+                .replace(/Parent\s*:\s*/gi, 'الولي : ')
+                .replace(/Jour souhaité\s*:\s*/gi, 'اليوم المحدد : ')
+                .replace(/Événement partagé avec tous les parents de la crèche/gi, 'مناسبة مشتركة مع كافة أولياء الروضة')
+                .replace(/Événement privé réservé au parent concerné/gi, 'مناسبة خاصة بالولي المعني')
+                .replace(/Message\s*:\s*/gi, 'الرسالة : ');
+        }
+    }
 
     return (
         <div>
@@ -95,7 +115,7 @@ const MobileTaskCard = ({ task, index, isRTL, onTaskClick, onValidate, onComplet
 
                 {/* Titre */}
                 <h4 className="font-semibold text-gray-900 dark:text-white text-sm mb-1 line-clamp-1">
-                    {task.title}
+                    {displayTitle}
                 </h4>
 
                 {/* Infos parent pour RDV */}

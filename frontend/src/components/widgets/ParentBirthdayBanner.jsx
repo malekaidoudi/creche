@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Cake, ChevronRight, Baby, Edit3 } from 'lucide-react';
+import { Cake, ChevronRight, ChevronLeft, Baby, Edit3 } from 'lucide-react';
+import { useLanguage } from '../../hooks/useLanguage';
 import api from '../../services/api';
 import API_CONFIG from '../../config/api';
 
@@ -15,6 +16,7 @@ const isGirlGender = (gender) =>
 
 const ParentBirthdayBanner = ({ compact = false }) => {
   const navigate = useNavigate();
+  const { currentLanguage, isRTL } = useLanguage();
   const [children, setChildren] = useState([]);
   const [loading, setLoading] = useState(true);
   const [failedImages, setFailedImages] = useState({});
@@ -50,12 +52,12 @@ const ParentBirthdayBanner = ({ compact = false }) => {
   if (loading || children.length === 0) return null;
 
   return (
-    <div className={`space-y-2.5 ${compact ? 'pt-8 pb-1' : 'mt-2 mb-6'}`}>
+    <div dir={isRTL ? 'rtl' : 'ltr'} className={`space-y-2.5 ${compact ? 'pt-8 pb-1' : 'mt-2 mb-6'}`}>
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
           <Cake className="w-4 h-4 text-rose-500 shrink-0" />
           <span className="text-xs font-extrabold uppercase tracking-wider text-rose-600">
-            Anniversaires & Souvenirs 🎂
+            {isRTL ? 'أعياد الميلاد والذكريات 🎂' : 'Anniversaires & Souvenirs 🎂'}
           </span>
         </div>
       </div>
@@ -82,7 +84,7 @@ const ParentBirthdayBanner = ({ compact = false }) => {
             ? (() => {
                 const d = new Date(rawCelebrationDate);
                 return !isNaN(d.getTime())
-                  ? d.toLocaleDateString('fr-FR', {
+                  ? d.toLocaleDateString(currentLanguage === 'ar' ? 'ar-TN' : 'fr-FR', {
                       weekday: 'short',
                       day: 'numeric',
                       month: 'short'
@@ -126,7 +128,7 @@ const ParentBirthdayBanner = ({ compact = false }) => {
                     </div>
                   )}
                   <span className="absolute -bottom-1 -right-1 text-[10px] font-extrabold bg-rose-500 text-white px-1.5 py-0.2 rounded-full">
-                    {child.turning_age}a
+                    {isRTL ? `${child.turning_age} سنوات` : `${child.turning_age}a`}
                   </span>
                 </div>
 
@@ -149,10 +151,10 @@ const ParentBirthdayBanner = ({ compact = false }) => {
                       }`}
                     >
                       {isPost
-                        ? `📸 Souvenirs (J+${Math.abs(child.days_until)})`
+                        ? (isRTL ? `📸 ذكريات (ي+${Math.abs(child.days_until)})` : `📸 Souvenirs (J+${Math.abs(child.days_until)})`)
                         : child.days_until === 0
-                        ? "🎉 Aujourd'hui"
-                        : `J-${child.days_until}`}
+                        ? (isRTL ? '🎉 اليوم' : "🎉 Aujourd'hui")
+                        : (isRTL ? `ي-${child.days_until}` : `J-${child.days_until}`)}
                     </span>
                     {decisionStatus === 'yes' && !isPost && (
                       <span
@@ -162,23 +164,23 @@ const ParentBirthdayBanner = ({ compact = false }) => {
                             : 'bg-stone-200/80 text-stone-700'
                         }`}
                       >
-                        {child.celebration?.notify_other_parents ? '🌍 Public' : '🔒 Privé'}
+                        {child.celebration?.notify_other_parents ? (isRTL ? '🌍 عام' : '🌍 Public') : (isRTL ? '🔒 خاص' : '🔒 Privé')}
                       </span>
                     )}
                   </div>
 
                   <p className="text-xs text-stone-700 truncate mt-0.5 font-medium">
                     {isPost && hasMemories
-                      ? `📸 Les souvenirs de ${child.first_name} sont disponibles !`
+                      ? (isRTL ? `📸 أصبحت ذكريات ${child.first_name} متوفرة !` : `📸 Les souvenirs de ${child.first_name} sont disponibles !`)
                       : decisionStatus === 'yes'
                       ? child.celebration?.admin_approval_status === 'pending_approval'
-                        ? `⏳ Fête le ${formattedChosenDate} (Accord Direction)`
-                        : `✅ Fête validée (${formattedChosenDate}) · Modifiable jusqu'à J-1`
+                        ? (isRTL ? `⏳ الحفل يوم ${formattedChosenDate} (في انتظار موافقة الإدارة)` : `⏳ Fête le ${formattedChosenDate} (Accord Direction)`)
+                        : (isRTL ? `✅ تم تأكيد الحفل (${formattedChosenDate}) · قابل للتعديل حتى ي-1` : `✅ Fête validée (${formattedChosenDate}) · Modifiable jusqu'à J-1`)
                       : decisionStatus === 'no'
-                      ? '🏠 Fête en famille (Rien à prévoir à la crèche)'
+                      ? (isRTL ? '🏠 احتفال عائلي (لا شيء مقرر في الروضة)' : '🏠 Fête en famille (Rien à prévoir à la crèche)')
                       : isLate
-                      ? '⚠️ Délai < 5j : Demander accord Direction'
-                      : '👉 Cliquez pour choisir (Oui / Non à la crèche)'}
+                      ? (isRTL ? '⚠️ المهلة أقل من 5 أيام : تتطلب موافقة الإدارة' : '⚠️ Délai < 5j : Demander accord Direction')
+                      : (isRTL ? '👉 اضغط للاختيار (نعم / لا في الروضة)' : '👉 Cliquez pour choisir (Oui / Non à la crèche)')}
                   </p>
                 </div>
               </div>
@@ -186,11 +188,11 @@ const ParentBirthdayBanner = ({ compact = false }) => {
               {isValidated && ((decisionStatus === 'yes' && canEditUntilJ1) || canChangeFromNo) ? (
                 <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white border border-stone-200/90 text-stone-700 group-hover:text-rose-600 group-hover:border-rose-200 text-[11px] font-extrabold whitespace-nowrap shrink-0 shadow-sm transition">
                   <Edit3 className="w-3 h-3 shrink-0" />
-                  <span>Modifier</span>
+                  <span>{isRTL ? 'تعديل' : 'Modifier'}</span>
                 </span>
               ) : (
                 <div className="w-8 h-8 rounded-full bg-white/80 group-hover:bg-white flex items-center justify-center text-rose-600 shrink-0 shadow-sm">
-                  <ChevronRight className="w-4 h-4" />
+                  {isRTL ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                 </div>
               )}
             </div>
