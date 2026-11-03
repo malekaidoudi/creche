@@ -27,10 +27,7 @@ import {
     Pill,
     ClipboardList,
     PhoneCall,
-    Image,
-    CalendarX,
-    UserCheck,
-    Download
+    Image
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -41,8 +38,6 @@ import MobileStatCard from './MobileStatCard';
 import api from '../../services/api';
 import API_CONFIG from '../../config/api';
 import { getEmergencyContactDisplay } from '../../utils/emergencyContacts';
-import PushNotificationCard from '../notifications/PushNotificationCard';
-import PWAInstallGuide from './PWAInstallGuide';
 import ParentBirthdayBanner from '../widgets/ParentBirthdayBanner';
 
 // Fonction pour construire l'URL complète de la photo
@@ -74,17 +69,9 @@ const MobileParentSpace = ({
     const [selectedChild, setSelectedChild] = useState(null);
     const [showChildModal, setShowChildModal] = useState(false);
     const [showEmergencyModal, setShowEmergencyModal] = useState(false);
-    const [showHolidaysModal, setShowHolidaysModal] = useState(false);
-    const [showFeedbackModal, setShowFeedbackModal] = useState(false);
-    const [showNewsModal, setShowNewsModal] = useState(false);
-    const [newsModalTab, setNewsModalTab] = useState('news'); // 'news' | 'install'
     const [nurseryPhone, setNurseryPhone] = useState(null);
-    const [holidays, setHolidays] = useState([]);
-    const [news, setNews] = useState([]);
-    const [feedbackForm, setFeedbackForm] = useState({ name: '', message: '', rating: 5 });
-    const [submittingFeedback, setSubmittingFeedback] = useState(false);
 
-    // Charger le numéro de téléphone de la crèche et les jours fériés
+    // Charger le numéro de téléphone de la crèche
     useEffect(() => {
         const loadNurseryPhone = async () => {
             try {
@@ -97,57 +84,8 @@ const MobileParentSpace = ({
                 // Ignorer les erreurs
             }
         };
-
-        const loadHolidays = async () => {
-            try {
-                const res = await api.get('/api/holidays?effective=true');
-                if (res.data?.holidays) {
-                    // Filtrer pour ne garder que les jours fériés futurs
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    const futureHolidays = res.data.holidays.filter(h => new Date(h.date) >= today);
-                    setHolidays(futureHolidays);
-                }
-            } catch (e) {
-                console.error('Erreur chargement jours fériés:', e);
-            }
-        };
-
-        const loadNews = async () => {
-            try {
-                const res = await api.get('/api/announcements?limit=5');
-                if (res.data?.announcements) {
-                    setNews(res.data.announcements);
-                }
-            } catch (e) {
-                // Ignorer les erreurs
-            }
-        };
         loadNurseryPhone();
-        loadHolidays();
-        loadNews();
     }, []);
-
-    // Soumettre un témoignage
-    const handleSubmitFeedback = async () => {
-        if (!feedbackForm.message.trim()) return;
-
-        setSubmittingFeedback(true);
-        try {
-            await api.post('/api/testimonials', {
-                name: feedbackForm.name || user?.first_name || 'Parent',
-                message: feedbackForm.message,
-                rating: feedbackForm.rating
-            });
-            setShowFeedbackModal(false);
-            setFeedbackForm({ name: '', message: '', rating: 5 });
-            // Toast de succès si disponible
-        } catch (e) {
-            console.error('Erreur soumission témoignage:', e);
-        } finally {
-            setSubmittingFeedback(false);
-        }
-    };
 
     // Scroll vers le haut au chargement
     useEffect(() => {
@@ -176,25 +114,25 @@ const MobileParentSpace = ({
         }
     }, [isRTL]);
 
-    // Actions rapides pour parent (alignées avec l'app mobile)
+    // Actions rapides pour parent (Activité, Messages, Bilan, Médicament)
     const quickActions = [
         {
             icon: Image,
-            label: isRTL ? 'الأنشطة' : 'Activités',
+            label: isRTL ? 'الأنشطة' : 'Activité',
             path: '/mon-espace/activities',
             color: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600'
-        },
-        {
-            icon: UserCheck,
-            label: isRTL ? 'الحضور' : 'Présence',
-            path: '/mon-espace/attendance',
-            color: 'bg-green-100 dark:bg-green-900/30 text-green-600'
         },
         {
             icon: MessageCircle,
             label: isRTL ? 'رسائل' : 'Messages',
             path: '/mon-espace/messages',
             color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600'
+        },
+        {
+            icon: ClipboardList,
+            label: isRTL ? 'التقارير' : 'Rapports',
+            path: '/mon-espace/daily-reports',
+            color: 'bg-teal-100 dark:bg-teal-900/30 text-teal-600'
         },
         {
             icon: Pill,
@@ -408,28 +346,6 @@ const MobileParentSpace = ({
                     </motion.div>
                 )}
 
-                {/* Lien Rapports Journaliers */}
-                {children.length > 0 && (
-                    <motion.div variants={itemVariants}>
-                        <button
-                            onClick={() => navigate('/mon-espace/daily-reports')}
-                            className="w-full flex items-center gap-4 p-4 bg-teal-500 hover:bg-teal-600 rounded-2xl shadow-lg active:scale-[0.98] transition-all"
-                        >
-                            <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
-                                <ClipboardList className="w-6 h-6 text-white" />
-                            </div>
-                            <div className="flex-1 text-left">
-                                <p className="text-white font-semibold">
-                                    {isRTL ? 'التقارير اليومية' : 'Rapports Journaliers'}
-                                </p>
-                                <p className="text-teal-100 text-sm">
-                                    {isRTL ? 'تابع يوم طفلك' : 'Suivez la journée de votre enfant'}
-                                </p>
-                            </div>
-                            <ChevronRight className="w-5 h-5 text-white/70" />
-                        </button>
-                    </motion.div>
-                )}
 
                 {/* Mes Enfants */}
                 <motion.div variants={itemVariants}>
@@ -478,11 +394,10 @@ const MobileParentSpace = ({
                                     >
                                         {/* Photo ou icône bébé (rose fille / bleu garçon) */}
                                         <div
-                                            className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 overflow-hidden ${
-                                                ['female', 'f', 'fille', 'girl'].includes(String(child.gender || '').trim().toLowerCase())
+                                            className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 overflow-hidden ${['female', 'f', 'fille', 'girl'].includes(String(child.gender || '').trim().toLowerCase())
                                                     ? 'bg-pink-100 text-pink-500 dark:bg-pink-900/40 dark:text-pink-400'
                                                     : 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400'
-                                            }`}
+                                                }`}
                                         >
                                             {getChildPhotoUrl(child.photo_url) ? (
                                                 <img
@@ -598,66 +513,6 @@ const MobileParentSpace = ({
                             </div>
                         );
                     })()}
-                </motion.div>
-
-                {/* Section Autres - Liens rapides */}
-                <motion.div variants={itemVariants}>
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-                        {isRTL ? 'آخر' : 'Autres'}
-                    </h2>
-
-                    <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-sm">
-                        {/* Jours de fermeture */}
-                        <button
-                            onClick={() => setShowHolidaysModal(true)}
-                            className="w-full flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                        >
-                            <div className="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-900/40 flex items-center justify-center">
-                                <CalendarX className="w-5 h-5 text-orange-600 dark:text-orange-400" />
-                            </div>
-                            <span className="flex-1 text-left font-medium text-gray-900 dark:text-white">
-                                {isRTL ? 'أيام الإغلاق' : 'Jours de fermeture'}
-                            </span>
-                            <ChevronRight className="w-5 h-5 text-gray-400" />
-                        </button>
-
-                        <div className="h-px bg-gray-100 dark:bg-gray-700 mx-4" />
-
-                        {/* Partagez votre avis */}
-                        <button
-                            onClick={() => setShowFeedbackModal(true)}
-                            className="w-full flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                        >
-                            <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center">
-                                <MessageCircle className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-                            </div>
-                            <span className="flex-1 text-left font-medium text-gray-900 dark:text-white">
-                                {isRTL ? 'شارك رأيك' : 'Partagez votre avis'}
-                            </span>
-                            <ChevronRight className="w-5 h-5 text-gray-400" />
-                        </button>
-
-                        <div className="h-px bg-gray-100 dark:bg-gray-700 mx-4" />
-
-                        {/* Nouveauté */}
-                        <button
-                            onClick={() => setShowNewsModal(true)}
-                            className="w-full flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                        >
-                            <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
-                                <Bell className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                            </div>
-                            <span className="flex-1 text-left font-medium text-gray-900 dark:text-white">
-                                {isRTL ? 'الجديد' : 'Nouveauté'}
-                            </span>
-                            <ChevronRight className="w-5 h-5 text-gray-400" />
-                        </button>
-                    </div>
-                </motion.div>
-
-                {/* Notifications Push sur mobile */}
-                <motion.div variants={itemVariants}>
-                    <PushNotificationCard />
                 </motion.div>
 
             </motion.div>
@@ -1164,324 +1019,6 @@ const MobileParentSpace = ({
                                 <button
                                     onClick={() => setShowEmergencyModal(false)}
                                     className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-xl font-medium transition-colors"
-                                >
-                                    {isRTL ? 'إغلاق' : 'Fermer'}
-                                </button>
-                            </div>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            {/* Modal Jours de fermeture */}
-            <AnimatePresence>
-                {showHolidaysModal && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50"
-                        onClick={() => setShowHolidaysModal(false)}
-                    >
-                        <motion.div
-                            initial={{ y: 100, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            exit={{ y: 100, opacity: 0 }}
-                            className="bg-white dark:bg-gray-800 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md overflow-hidden max-h-[80vh]"
-                            onClick={e => e.stopPropagation()}
-                        >
-                            {/* Header */}
-                            <div className="p-5 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-900/40 flex items-center justify-center">
-                                            <CalendarX className="w-5 h-5 text-orange-600" />
-                                        </div>
-                                        <h3 className="font-bold text-lg text-gray-900 dark:text-white">
-                                            {isRTL ? 'أيام الإغلاق' : 'Jours de fermeture'}
-                                        </h3>
-                                    </div>
-                                    <button
-                                        onClick={() => setShowHolidaysModal(false)}
-                                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-                                    >
-                                        <X className="w-5 h-5 text-gray-500" />
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Liste des jours fériés */}
-                            <div className="p-4 overflow-y-auto max-h-[60vh]">
-                                {holidays.length === 0 ? (
-                                    <div className="text-center py-8">
-                                        <CalendarX className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                                        <p className="text-gray-500 dark:text-gray-400">
-                                            {isRTL ? 'لا توجد أيام إغلاق مسجلة' : 'Aucun jour de fermeture enregistré'}
-                                        </p>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-3">
-                                        {holidays.map((holiday, index) => (
-                                            <div
-                                                key={holiday.id || index}
-                                                className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl"
-                                            >
-                                                <div className="w-12 h-12 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex flex-col items-center justify-center">
-                                                    <span className="text-xs text-orange-600 dark:text-orange-400 font-medium">
-                                                        {new Date(holiday.date).toLocaleDateString(isRTL ? 'ar-TN' : 'fr-FR', { month: 'short' })}
-                                                    </span>
-                                                    <span className="text-lg font-bold text-orange-600 dark:text-orange-400">
-                                                        {new Date(holiday.date).getDate()}
-                                                    </span>
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="font-medium text-gray-900 dark:text-white truncate">
-                                                        {holiday.name}
-                                                    </p>
-                                                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                                                        {new Date(holiday.date).toLocaleDateString(isRTL ? 'ar-TN' : 'fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Bouton fermer */}
-                            <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-                                <button
-                                    onClick={() => setShowHolidaysModal(false)}
-                                    className="w-full py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-xl font-medium transition-colors"
-                                >
-                                    {isRTL ? 'إغلاق' : 'Fermer'}
-                                </button>
-                            </div>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            {/* Modal Partagez votre avis (Témoignages) */}
-            <AnimatePresence>
-                {showFeedbackModal && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50"
-                        onClick={() => setShowFeedbackModal(false)}
-                    >
-                        <motion.div
-                            initial={{ y: 100, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            exit={{ y: 100, opacity: 0 }}
-                            className="bg-white dark:bg-gray-800 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md overflow-hidden"
-                            onClick={e => e.stopPropagation()}
-                        >
-                            {/* Header */}
-                            <div className="p-5 border-b border-gray-200 dark:border-gray-700">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center">
-                                            <MessageCircle className="w-5 h-5 text-purple-600" />
-                                        </div>
-                                        <h3 className="font-bold text-lg text-gray-900 dark:text-white">
-                                            {isRTL ? 'شارك رأيك' : 'Partagez votre avis'}
-                                        </h3>
-                                    </div>
-                                    <button
-                                        onClick={() => setShowFeedbackModal(false)}
-                                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-                                    >
-                                        <X className="w-5 h-5 text-gray-500" />
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Formulaire */}
-                            <div className="p-4 space-y-4">
-                                <p className="text-gray-600 dark:text-gray-400 text-sm">
-                                    {isRTL ? 'نحن نقدر رأيك! شاركنا تجربتك مع حضانتنا.' : 'Nous apprécions votre avis ! Partagez votre expérience avec notre crèche.'}
-                                </p>
-
-                                {/* Nom */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                        {isRTL ? 'الاسم (اختياري)' : 'Nom (optionnel)'}
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={feedbackForm.name}
-                                        onChange={(e) => setFeedbackForm({ ...feedbackForm, name: e.target.value })}
-                                        placeholder={user?.first_name || (isRTL ? 'اسمك' : 'Votre nom')}
-                                        className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:border-primary-500"
-                                    />
-                                </div>
-
-                                {/* Note */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                        {isRTL ? 'التقييم' : 'Note'}
-                                    </label>
-                                    <div className="flex gap-2">
-                                        {[1, 2, 3, 4, 5].map((star) => (
-                                            <button
-                                                key={star}
-                                                onClick={() => setFeedbackForm({ ...feedbackForm, rating: star })}
-                                                className={`text-2xl transition-colors ${star <= feedbackForm.rating ? 'text-yellow-400' : 'text-gray-300 dark:text-gray-600'
-                                                    }`}
-                                            >
-                                                ★
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Message */}
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                        {isRTL ? 'رسالتك' : 'Votre message'}
-                                    </label>
-                                    <textarea
-                                        value={feedbackForm.message}
-                                        onChange={(e) => setFeedbackForm({ ...feedbackForm, message: e.target.value })}
-                                        placeholder={isRTL ? 'شاركنا تجربتك...' : 'Partagez votre expérience...'}
-                                        rows={4}
-                                        className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:border-primary-500 resize-none"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Boutons */}
-                            <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex gap-3">
-                                <button
-                                    onClick={() => setShowFeedbackModal(false)}
-                                    className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-xl font-medium transition-colors"
-                                >
-                                    {isRTL ? 'إلغاء' : 'Annuler'}
-                                </button>
-                                <button
-                                    onClick={handleSubmitFeedback}
-                                    disabled={!feedbackForm.message.trim() || submittingFeedback}
-                                    className="flex-1 py-3 bg-primary-600 hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-xl font-medium transition-colors"
-                                >
-                                    {submittingFeedback ? (isRTL ? 'جاري الإرسال...' : 'Envoi...') : (isRTL ? 'إرسال' : 'Envoyer')}
-                                </button>
-                            </div>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            {/* Modal Nouveauté */}
-            <AnimatePresence>
-                {showNewsModal && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50"
-                        onClick={() => setShowNewsModal(false)}
-                    >
-                        <motion.div
-                            initial={{ y: 100, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            exit={{ y: 100, opacity: 0 }}
-                            className="bg-white dark:bg-gray-800 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md overflow-hidden max-h-[80vh]"
-                            onClick={e => e.stopPropagation()}
-                        >
-                            {/* Header */}
-                            <div className="p-5 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
-                                            <Bell className="w-5 h-5 text-blue-600" />
-                                        </div>
-                                        <h3 className="font-bold text-lg text-gray-900 dark:text-white">
-                                            {isRTL ? 'الجديد' : 'Nouveautés'}
-                                        </h3>
-                                    </div>
-                                    <button
-                                        onClick={() => setShowNewsModal(false)}
-                                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
-                                    >
-                                        <X className="w-5 h-5 text-gray-500" />
-                                    </button>
-                                </div>
-
-                                {/* Onglets : Actualités / Installer l'app */}
-                                <div className="flex items-center gap-2 mt-4">
-                                    <button
-                                        onClick={() => setNewsModalTab('news')}
-                                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                            newsModalTab === 'news'
-                                                ? 'bg-blue-600 text-white'
-                                                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
-                                        }`}
-                                    >
-                                        <Bell className="w-4 h-4" />
-                                        {isRTL ? 'الأخبار' : 'Actualités'}
-                                    </button>
-                                    <button
-                                        onClick={() => setNewsModalTab('install')}
-                                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                            newsModalTab === 'install'
-                                                ? 'bg-blue-600 text-white'
-                                                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
-                                        }`}
-                                    >
-                                        <Download className="w-4 h-4" />
-                                        {isRTL ? 'تثبيت التطبيق' : "Installer l'app"}
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Contenu : liste des nouveautés OU guide d'installation PWA */}
-                            <div className="p-4 overflow-y-auto max-h-[60vh]">
-                                {newsModalTab === 'install' ? (
-                                    <PWAInstallGuide />
-                                ) : news.length === 0 ? (
-                                    <div className="text-center py-8">
-                                        <Bell className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                                        <p className="text-gray-500 dark:text-gray-400">
-                                            {isRTL ? 'لا توجد أخبار جديدة' : 'Aucune nouveauté pour le moment'}
-                                        </p>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-4">
-                                        {news.map((item, index) => (
-                                            <div
-                                                key={item.id || index}
-                                                className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl"
-                                            >
-                                                <div className="flex items-start gap-3">
-                                                    <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-                                                        <Bell className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="font-medium text-gray-900 dark:text-white">
-                                                            {item.title}
-                                                        </p>
-                                                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
-                                                            {item.content || item.message}
-                                                        </p>
-                                                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
-                                                            {new Date(item.created_at).toLocaleDateString(isRTL ? 'ar-TN' : 'fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Bouton fermer */}
-                            <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-                                <button
-                                    onClick={() => setShowNewsModal(false)}
-                                    className="w-full py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-xl font-medium transition-colors"
                                 >
                                     {isRTL ? 'إغلاق' : 'Fermer'}
                                 </button>

@@ -19,7 +19,6 @@ import {
     MessageCircle,
     MoreHorizontal,
     Calendar,
-    FileText,
     Settings,
     UserPlus,
     BarChart3,
@@ -29,14 +28,15 @@ import {
     Bell,
     Clock,
     CalendarX,
-    Image,
-    Pill
+    Pill,
+    ChevronRight
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useAuth } from '../../contexts/AuthContext';
 import { useProfileImage } from '../../hooks/useProfileImage';
 import { useAccess } from '../../access';
 import PwaMobileBar from '../pwa/PwaMobileBar';
+import ParentOptionsModals from './ParentOptionsModals';
 
 const MobileNavigation = ({ hideSpacer = false }) => {
     const { isRTL } = useLanguage();
@@ -46,6 +46,11 @@ const MobileNavigation = ({ hideSpacer = false }) => {
     const navigate = useNavigate();
     const location = useLocation();
     const [showMore, setShowMore] = useState(false);
+
+    // États pour les modales du menu Plus (Parents)
+    const [showHolidaysModal, setShowHolidaysModal] = useState(false);
+    const [showNewsModal, setShowNewsModal] = useState(false);
+    const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
     // Navigation principale (5 éléments) : Accueil, Enfant, Inscription, Soins, Plus
     const mainNavItems = [
@@ -158,12 +163,34 @@ const MobileNavigation = ({ hideSpacer = false }) => {
             path: '/dashboard/settings',
             roles: ['admin', 'developer']
         },
-        // Mon Compte & Préférences personnelles (Pour Staff et Parents)
+        // Mon Compte & Préférences personnelles (Pour Staff uniquement - pour parent le bouton Gérer en haut suffit)
         {
             icon: Settings,
             label: isRTL ? 'حسابي وإعداداتي' : 'Mon Compte & Préférences',
             path: '/profile',
-            roles: ['staff', 'parent']
+            roles: ['staff']
+        },
+        // Options spécifiques aux parents dans le menu Plus
+        {
+            icon: CalendarX,
+            label: isRTL ? 'أيام الإغلاق' : 'Jours de fermeture',
+            action: () => setShowHolidaysModal(true),
+            color: 'bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400',
+            roles: ['parent']
+        },
+        {
+            icon: Bell,
+            label: isRTL ? 'الجديد' : 'Nouveauté',
+            action: () => setShowNewsModal(true),
+            color: 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400',
+            roles: ['parent']
+        },
+        {
+            icon: MessageCircle,
+            label: isRTL ? 'شارك رأيك' : 'Partagez votre avis',
+            action: () => setShowFeedbackModal(true),
+            color: 'bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400',
+            roles: ['parent']
         }
     ];
 
@@ -332,16 +359,23 @@ const MobileNavigation = ({ hideSpacer = false }) => {
                                             key={index}
                                             onClick={() => {
                                                 setShowMore(false);
-                                                navigate(item.path);
+                                                if (item.action) {
+                                                    item.action();
+                                                } else if (item.path) {
+                                                    navigate(item.path);
+                                                }
                                             }}
-                                            className="w-full flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                            className="w-full flex items-center justify-between px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group"
                                         >
-                                            <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                                                <Icon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                                            <div className="flex items-center gap-4">
+                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${item.color || 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'}`}>
+                                                    <Icon className="w-5 h-5" />
+                                                </div>
+                                                <span className="text-gray-900 dark:text-white font-medium text-left">
+                                                    {item.label}
+                                                </span>
                                             </div>
-                                            <span className="text-gray-900 dark:text-white font-medium">
-                                                {item.label}
-                                            </span>
+                                            <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200 transition-colors shrink-0" />
                                         </button>
                                     );
                                 })}
@@ -365,6 +399,18 @@ const MobileNavigation = ({ hideSpacer = false }) => {
                     </>
                 )}
             </AnimatePresence>
+
+            {/* Modales pour le menu Plus (Espace Parent) */}
+            {user?.role === 'parent' && (
+                <ParentOptionsModals
+                    showHolidays={showHolidaysModal}
+                    onCloseHolidays={() => setShowHolidaysModal(false)}
+                    showNews={showNewsModal}
+                    onCloseNews={() => setShowNewsModal(false)}
+                    showFeedback={showFeedbackModal}
+                    onCloseFeedback={() => setShowFeedbackModal(false)}
+                />
+            )}
 
             {/* Spacer pour éviter que le contenu soit caché sous la nav */}
             {!hideSpacer && <div className="lg:hidden h-16" />}
