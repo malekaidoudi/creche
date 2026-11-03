@@ -2174,9 +2174,9 @@ const BirthdayEventPage = () => {
                     <Phone className="w-3.5 h-3.5" />
                     <span>
                       {isRTL ? (
-                        <>📞 الاتصال بـ {child.parent_first_name || 'الولي'} ({child.parent_phone || '+216 22 334 455'})</>
+                        <>الاتصال بـ {child.parent_first_name || 'الولي'} ({child.parent_phone || '+216 22 334 455'})</>
                       ) : (
-                        <>📞 Appeler {child.parent_first_name || 'le parent'} ({child.parent_phone || '+216 22 334 455'})</>
+                        <>Appeler {child.parent_first_name || 'le parent'} ({child.parent_phone || '+216 22 334 455'})</>
                       )}
                     </span>
                   </a>
