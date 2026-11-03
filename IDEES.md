@@ -153,6 +153,35 @@ Format suggéré : `- [ ] Description de l'idée` (laisser `[ ]`, passer à `[x]
          - *Volet Dépenses* (extension future immédiate) : Table `nursery_expenses` catégorisée (salaires, loyer, électricité STEG / eau SONEDE, alimentation/goûters, matériel pédagogique, entretien).
          - *Bilan & Rentabilité* : Agrégation mensuelle et annuelle automatisée : `Total Recettes encaissées - Total Dépenses = Bénéfice net / Solde de trésorerie` de la crèche.
        - **Modularité** : Le module backend et le schéma DB sont structurés sous le domaine `finance` pour accueillir le volet dépenses sans jamais devoir refactoriser ou casser la facturation des enfants.
+- [ ] **Badge d'horaires et de moments de la journée en direct dynamique (Site public & Mobile)** :
+  - **Remplacement du programme statique en dur (`NURSERY_SCHEDULE`)** par un moteur dynamique et contextuel capable de détecter l'état réel de la crèche à chaque instant :
+    1. **Détection automatique des fermetures** :
+       - Fermeture hebdomadaire le **Dimanche** (`🔴 Fermé — Dimanche`).
+       - Détection des **jours fériés tunisiens** (fixes et mobiles/fêtes religieuses) et congés annuels configurés dans les paramètres (`🔴 Fermé — Jour férié / Vacances`).
+       - En dehors des heures d'ouverture : affichage de l'heure de réouverture (`🌙 Fermé — Ouvre demain à 07:00`).
+    2. **Gestion des événements spéciaux & Visites médicales (priorité sur la routine)** :
+       - **Événements sur toute la journée** (ex: *Journée Portes Ouvertes*, *Fête de fin d'année*, *Carnaval*).
+       - **Événements ponctuels sur plage horaire** (ex: *Spectacle ou Goûter à 15h30*).
+       - **Visite médicale pédiatrique (🩺)** : créneau dédié affiché en direct sur le badge (*"Visite médicale en cours"*).
+         - *Phase 1 (Actuelle)* : Planification et saisie **manuelle** par la directrice/admin dans les paramètres/planning.
+         - *Phase 2 (Évolution)* : Génération automatique lors de la planification d'interventions par le futur rôle `doctor` (médecin conventionné).
+    3. **Programme standard de routine (Lundi - Samedi)** :
+       - Plages habituelles (Accueil, Petit-déjeuner, Activités d'éveil, Repas, Sieste, Goûter, Départs) configurables directement depuis les paramètres crèche (`DashboardSettingsPage`) avec prise en compte du samedi matin (08:00 - 13:00 si activé).
+  - Intégration sur le Header mobile, Navbar publique, Page Contact et Espace Parent.
+- [ ] **Espace Co-parentalité — Ajout du 2ème parent par lien d'invitation sécurisé (Option B - WhatsApp / SMS)** :
+  - **Invitation fluide en 1 clic par le parent connecté** :
+    - Depuis `/mon-espace` ou `/profile`, le parent principal (père ou mère) clique sur *"Inviter l'autre parent (Conjoint)"*.
+    - Renseignement du lien de parenté (*Mère*, *Père*, *Tuteur légal*) et génération instantanée d'un **lien d'invitation sécurisé (Magic Link)** avec jeton unique à durée limitée (ex: 48h / 7 jours).
+    - Boutons d'action rapide : **"Partager sur WhatsApp"** avec message prérempli d'invitation au dossier de l'enfant, ou **"Copier le lien"** (SMS / email).
+  - **Parcours d'acceptation simplifié pour le 2ème parent** :
+    - Page d'accueil dédiée au clic sur le lien : saisie rapide du mot de passe (et coordonnées) sans formulaire complexe d'inscription.
+    - Rattachement automatique et instantané à tous les enfants du dossier familial via la table existante `parent_children` (colonnes `relationship`: *father/mother*, `is_primary: false`).
+  - **Expérience partagée et synchronisée** :
+    - Accès indépendant avec ses propres identifiants (chacun son compte sur son smartphone).
+    - Consultation commune du fil d'activité, photos, bilans journaliers (repas, siestes, changes), présences en direct et carnet de liaison.
+  - **Suivi et sécurité** :
+    - Tableau de bord du parent émetteur affichant l'état de l'invitation (*En attente*, *Acceptée*, ou *Révoquer le lien*).
+    - Contrôle administratif préservé : visibilité des deux parents sur la fiche enfant pour l'administration et verrou de dissociation réservé à la direction en cas de litige familial.
 - [ ] *(ajouter ici)*
 
 ## 🚀 Performance & Technique

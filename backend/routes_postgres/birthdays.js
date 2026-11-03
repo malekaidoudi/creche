@@ -155,6 +155,23 @@ async function ensureBirthdayTables() {
       // Ignorer silencieusement
     }
 
+    // Nettoyer les anciens événements d'anniversaire créés automatiquement par l'ancien cron
+    // pour des enfants dont les parents n'ont pas explicitement choisi 'yes'
+    try {
+      await pool.query(`
+        UPDATE events
+        SET status = 'cancelled', deleted_at = NOW(), updated_at = NOW()
+        WHERE type = 'birthday'
+          AND child_id IS NOT NULL
+          AND deleted_at IS NULL
+          AND child_id NOT IN (
+            SELECT child_id FROM birthday_celebrations WHERE decision = 'yes'
+          )
+      `);
+    } catch (cleanOrphansErr) {
+      // Ignorer silencieusement
+    }
+
     tablesInitialized = true;
   } catch (err) {
     console.warn('⚠️ Initialisation tables birthday_celebrations/memories:', err.message);
@@ -392,7 +409,19 @@ async function syncBirthdayEventInEventsTable({ child, timing, celebration, acto
     const createdByUserId = child.parent_id || actorUserId || assignedUserId;
 
     let eventRow = null;
-    if (celebration.event_id) {
+    let targetEventId = celebration.event_id;
+
+    if (!targetEventId) {
+      const existingEv = await pool.query(
+        `SELECT id FROM events WHERE child_id = $1 AND type = 'birthday' ORDER BY id DESC LIMIT 1`,
+        [child.id]
+      );
+      if (existingEv.rows.length > 0) {
+        targetEventId = existingEv.rows[0].id;
+      }
+    }
+
+    if (targetEventId) {
       const updRes = await pool.query(
         `UPDATE events
          SET title = $1,
@@ -416,10 +445,17 @@ async function syncBirthdayEventInEventsTable({ child, timing, celebration, acto
           assignedUserId,
           child.id,
           JSON.stringify(metadataObj),
-          celebration.event_id
+          targetEventId
         ]
       );
       eventRow = updRes.rows[0] || null;
+      if (eventRow && !celebration.event_id && celebration.id) {
+        await pool.query(
+          `UPDATE birthday_celebrations SET event_id = $1 WHERE id = $2`,
+          [eventRow.id, celebration.id]
+        );
+        celebration.event_id = eventRow.id;
+      }
     }
 
     if (!eventRow) {
@@ -914,26 +950,36 @@ router.get('/child/:childId', auth.authenticateToken, async (req, res) => {
       task_instructions: ''
     };
 
-    // Récupérer l'événement lié dans la table `events` (ou le synchroniser automatiquement si decision === 'yes')
+    // Récupérer l'événement lié dans la table `events` (uniquement si decision === 'yes')
     let createdEvent = null;
     try {
-      const evQuery = celebration.event_id
-        ? await pool.query(`SELECT * FROM events WHERE id = $1 AND deleted_at IS NULL LIMIT 1`, [celebration.event_id])
-        : await pool.query(
-            `SELECT * FROM events
-             WHERE child_id = $1 AND type = 'birthday' AND deleted_at IS NULL
-             ORDER BY id DESC LIMIT 1`,
-            [childId]
-          );
-      createdEvent = evQuery.rows[0] || null;
+      if (celebration.decision === 'yes' && celebration.admin_status !== 'rejected') {
+        const evQuery = celebration.event_id
+          ? await pool.query(`SELECT * FROM events WHERE id = $1 AND deleted_at IS NULL LIMIT 1`, [celebration.event_id])
+          : await pool.query(
+              `SELECT * FROM events
+               WHERE child_id = $1 AND type = 'birthday' AND deleted_at IS NULL
+               ORDER BY id DESC LIMIT 1`,
+              [childId]
+            );
+        createdEvent = evQuery.rows[0] || null;
 
-      if (!createdEvent && celebration.id && celebration.decision === 'yes' && celebration.admin_status !== 'rejected') {
-        createdEvent = await syncBirthdayEventInEventsTable({
-          child,
-          timing,
-          celebration,
-          actorUserId: userId
-        });
+        if (!createdEvent && celebration.id) {
+          createdEvent = await syncBirthdayEventInEventsTable({
+            child,
+            timing,
+            celebration,
+            actorUserId: userId
+          });
+        }
+      } else {
+        // Si decision !== 'yes', aucun événement calendrier ne doit être actif pour cet enfant
+        await pool.query(
+          `UPDATE events
+           SET status = 'cancelled', deleted_at = NOW(), updated_at = NOW()
+           WHERE child_id = $1 AND type = 'birthday' AND deleted_at IS NULL`,
+          [childId]
+        );
       }
     } catch (evErr) {
       console.warn('⚠️ Lecture/sync événement anniversaire:', evErr.message);

@@ -17,22 +17,18 @@ async function generateBirthdayEvents() {
     
     await client.query('BEGIN');
     
-    // Récupérer tous les enfants actifs
-    const childrenResult = await client.query(`
-      SELECT id, first_name, last_name, birth_date, 'child' as type
-      FROM children
-      WHERE is_active = true AND birth_date IS NOT NULL
-    `);
-    
-    // Récupérer tous les utilisateurs staff/admin avec date de naissance
+    // RÈGLE MÉTIER CLIENT :
+    // Les événements d'anniversaire pour les enfants ne sont créés dans la table `events`
+    // QUE lorsque le parent demande explicitement à fêter l'anniversaire à la crèche (decision = 'yes').
+    // Par conséquent, la génération automatique globale ne crée pas d'événements pour les enfants à l'avance.
+    // Elle ne génère automatiquement que les anniversaires du personnel/staff.
     const staffResult = await client.query(`
       SELECT id, first_name, last_name, birth_date, 'staff' as type
       FROM users
       WHERE role IN ('admin', 'staff') AND birth_date IS NOT NULL
     `);
     
-    // Combiner enfants et staff
-    const allPeople = [...childrenResult.rows, ...staffResult.rows];
+    const allPeople = [...staffResult.rows];
     
     const currentYear = new Date().getFullYear();
     const nextYear = currentYear + 1;
