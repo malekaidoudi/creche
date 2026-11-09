@@ -8,6 +8,19 @@ Format suggéré : `- [ ] Description de l'idée` (laisser `[ ]`, passer à `[x]
 
 ## � Urgent — Bugs en production
 
+- [x] **Purge Compte Fantôme « Aya Aidoudi », Validation Stricte Date RDV, Transaction Atomique d'Approbation & Synchronisation Automatique du Cycle de Vie Enfant ↔ Inscription ↔ RDV** (`enrollmentsController.js`, `childLifecycleService.js`, `userChildren.js`, `enrollments.js`, `ApproveEnrollmentModal.jsx`) :
+  - **Symptômes & Problèmes résolus** :
+    1. Un dossier orphelin au nom de l'enfant de test « Aya Aidoudi » (créé pour tester le compte parent) restait bloqué en statut « En attente / Pas de rendez-vous » tout en ayant été archivé côté enfants, polluant les listes et faussant les statistiques.
+    2. En 2025, une approbation avait été soumise avec une date de RDV non valide (« Invalid Date » dans l'email envoyé), créant un compte sans RDV associé.
+    3. L'archivage d'un enfant dans `deleteChild` ne propageait pas le statut à la table `enrollments`, laissant des dossiers d'inscription orphelins actifs.
+    4. Risque d'affichage d'enfants archivés dans l'espace parent faute de filtrage explicite sur `is_active`.
+  - **Corrections appliquées** :
+    1. Purge définitive de tous les enregistrements liés à Aya Aidoudi sur la base de production Neon (`children`, `enrollments`, `enrollments_archive`, `archived_documents`, `attendances`, `daily_reports`).
+    2. Validation stricte du format ISO, interdiction des dates invalides et rejet des dates dans le passé côté serveur (`enrollmentsController.js`, `routes_postgres/enrollments.js`) et côté modal (`ApproveEnrollmentModal.jsx`).
+    3. Transaction atomique PostgreSQL (`BEGIN ... COMMIT / ROLLBACK`) lors de l'approbation d'inscription : création de l'utilisateur, insertion du RDV et passage en `in_progress` sont désormais indivisibles.
+    4. Synchronisation automatique du cycle de vie dans `childLifecycleService.deleteChild` : l'archivage ou la suppression d'un enfant met automatiquement à jour ses inscriptions (`status = 'archived'`), annule ses RDV non terminés et annule les tâches d'inscription orphelines.
+    5. Filtrage systématique `c.is_active = true AND COALESCE(c.status, 'active') != 'archived'` dans `userChildren.js` et masquage des enfants archivés dans `getAllEnrollments`.
+
 - [x] **Résolution Erreur 500 GET `/api/billing/invoices` (`column c.admission_date does not exist`), Auto-Healing DDL & Purge Crash Console Paramètres (`ReferenceError: setLoadingHolidays is not defined`)** (`021_add_admission_and_departure_dates.js`, `billingService.js`, `children.js`, `DashboardSettingsPage.jsx`) :
   - **Symptômes & Problèmes résolus** :
     1. Erreur 500 à l'ouverture du modal Cotisations : `column c.admission_date does not exist` sur PostgreSQL en production.

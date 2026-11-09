@@ -8,12 +8,14 @@ router.get('/has-children', auth.authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId || req.user.id;
 
-    // Vérifie dans children.parent_id OU enrollments.parent_id
+    // Vérifie dans children.parent_id OU enrollments.parent_id (enfants actifs uniquement)
     const result = await db.query(
       `SELECT COUNT(DISTINCT c.id) as count 
        FROM children c
        LEFT JOIN enrollments e ON c.id = e.child_id
-       WHERE c.parent_id = $1 OR e.parent_id = $1`,
+       WHERE (c.parent_id = $1 OR e.parent_id = $1)
+         AND c.is_active = true 
+         AND COALESCE(c.status, 'active') != 'archived'`,
       [userId]
     );
 
@@ -39,7 +41,7 @@ router.get('/children', auth.authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId || req.user.id;
 
-    // Utilise children.parent_id OU enrollments.parent_id
+    // Utilise children.parent_id OU enrollments.parent_id (enfants actifs uniquement)
     const result = await db.query(
       `SELECT DISTINCT ON (c.id)
         c.*, 
@@ -48,7 +50,9 @@ router.get('/children', auth.authenticateToken, async (req, res) => {
         COALESCE(c.parent_id, e.parent_id) as parent_id
        FROM children c
        LEFT JOIN enrollments e ON c.id = e.child_id
-       WHERE c.parent_id = $1 OR e.parent_id = $1
+       WHERE (c.parent_id = $1 OR e.parent_id = $1)
+         AND c.is_active = true 
+         AND COALESCE(c.status, 'active') != 'archived'
        ORDER BY c.id, c.first_name, c.last_name`,
       [userId]
     );
@@ -115,7 +119,9 @@ router.get('/children-summary', auth.authenticateToken, async (req, res) => {
         END as age_display
        FROM children c
        LEFT JOIN enrollments e ON c.id = e.child_id
-       WHERE c.parent_id = $1 OR e.parent_id = $1
+       WHERE (c.parent_id = $1 OR e.parent_id = $1)
+         AND c.is_active = true 
+         AND COALESCE(c.status, 'active') != 'archived'
        GROUP BY c.id, c.first_name, c.last_name, c.birth_date, c.photo_url, c.gender, 
                 c.emergency_contact_name, c.emergency_contact_phone, c.emergency_contact_choice,
                 c.father_name, c.father_phone, c.mother_name, c.mother_phone,

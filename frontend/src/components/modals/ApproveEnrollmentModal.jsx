@@ -40,10 +40,18 @@ const ApproveEnrollmentModal = ({ isOpen, onClose, enrollment, onApprove }) => {
     setLoading(true);
 
     try {
-      // Combiner date et heure
+      // Combiner date et heure avec validation stricte
       const isoDate = convertToISO(appointmentDate);
+      if (!isoDate) {
+        dialog.error(isRTL ? 'تاريخ الموعد غير صالح' : 'Date de rendez-vous non valide');
+        return;
+      }
       const appointmentDateTime = new Date(`${isoDate}T${appointmentTime}`);
-      if (appointmentDateTime < new Date()) {
+      if (isNaN(appointmentDateTime.getTime())) {
+        dialog.error(isRTL ? 'تاريخ أو وقت الموعد غير صالح' : 'Date ou heure de rendez-vous invalide');
+        return;
+      }
+      if (appointmentDateTime.getTime() < Date.now() - 3600000) {
         dialog.error(isRTL ? 'تاريخ الموعد يجب أن يكون في المستقبل' : 'La date du rendez-vous doit être dans le futur');
         return;
       }

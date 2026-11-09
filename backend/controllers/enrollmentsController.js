@@ -184,16 +184,26 @@ const enrollmentsController = {
   },
 
   // POST /api/enrollments/:id/approve - Approbation avec date RDV
-  // WORKFLOW: Crée le compte parent + RDV. Si RDV échoue, le compte sera supprimé.
+  // WORKFLOW: Transaction atomique. Crée le compte parent + RDV. Si échec, ROLLBACK complet.
   approveEnrollment: async (req, res) => {
+    let client = null;
     try {
       const { id } = req.params;
       const { appointment_date } = req.body;
 
-      if (!appointment_date) {
+      if (!appointment_date || isNaN(new Date(appointment_date).getTime())) {
         return res.status(400).json({
           success: false,
-          error: 'Date de rendez-vous requise'
+          error: 'Date de rendez-vous invalide ou requise'
+        });
+      }
+
+      const parsedAppointmentDate = new Date(appointment_date);
+      // Vérifier que la date n'est pas dans le passé (tolérance de 1h)
+      if (parsedAppointmentDate.getTime() < Date.now() - 3600000) {
+        return res.status(400).json({
+          success: false,
+          error: 'La date du rendez-vous doit être dans le futur'
         });
       }
 
@@ -232,15 +242,15 @@ const enrollmentsController = {
       const tokenExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
       // ============================================================
-      // WORKFLOW: Dossier approuvé → Créer compte parent + RDV
-      // Si RDV échoue/annulé → Supprimer le compte parent
-      // Si RDV validé → Garder le compte parent
+      // TRANSACTION ATOMIQUE : Création Compte Parent + RDV + Mise à jour Inscription
       // ============================================================
+      client = await db.pool.connect();
+      await client.query('BEGIN');
 
       // 1. CRÉER LE COMPTE PARENT (sans mot de passe défini)
       const tempPassword = await bcrypt.hash(crypto.randomBytes(16).toString('hex'), 10);
 
-      const userResult = await db.query(`
+      const userResult = await client.query(`
         INSERT INTO users (
           email, password, first_name, last_name, phone, role,
           password_token, password_token_expires, password_set,
@@ -261,8 +271,7 @@ const enrollmentsController = {
       console.log(`✅ Compte parent créé: ${newUser.email} (ID: ${newUser.id})`);
 
       // 2. CRÉER LE RDV avec le parent_id
-      // pending_response_from = 'parent' car c'est l'admin qui propose et le parent doit confirmer
-      const appointmentResult = await db.query(`
+      const appointmentResult = await client.query(`
         INSERT INTO appointments (
           enrollment_id,
           parent_id,
@@ -291,7 +300,7 @@ const enrollmentsController = {
         req.user.id,
         `Rendez-vous d'inscription - ${enrollmentData.child_first_name}`,
         `Rendez-vous pour finaliser l'inscription de ${enrollmentData.child_first_name} ${enrollmentData.child_last_name || ''} à la crèche.`,
-        appointment_date,
+        parsedAppointmentDate.toISOString(),
         'proposed',
         'Crèche Mima Elghalia',
         'inscription',
@@ -308,7 +317,7 @@ const enrollmentsController = {
       const appointmentId = appointmentResult.rows[0].id;
 
       // 3. Mettre à jour le dossier avec status = 'in_progress', lier le RDV et le user créé
-      const result = await db.query(`
+      const result = await client.query(`
         UPDATE enrollments 
         SET status = 'in_progress', 
             approved_by = $1, 
@@ -325,6 +334,8 @@ const enrollmentsController = {
 
       const enrollment = result.rows[0];
 
+      // Validation de la transaction
+      await client.query('COMMIT');
       console.log(`✅ RDV créé dans appointments: ID ${appointmentId} pour inscription #${id}`);
       console.log(`📋 Dossier #${id} passé en status 'in_progress' (en attente du RDV)`);
 
@@ -332,7 +343,7 @@ const enrollmentsController = {
       await createLog(
         req.user.id,
         'approve_enrollment',
-        `Inscription approuvée pour ${enrollment.child_first_name} ${enrollment.child_last_name || ''} - RDV créé`
+        `Inscription approuvée pour ${enrollment.child_first_name} ${enrollment.child_last_name || ''} - RDV créé (#${appointmentId})`
       );
 
       // Générer le lien de création de mot de passe
@@ -341,7 +352,7 @@ const enrollmentsController = {
       const passwordLink = `${frontendUrl}/create-password?token=${passwordToken}&email=${encodeURIComponent(enrollment.applicant_email)}`;
 
       // Formater la date de rendez-vous en français
-      const appointmentDateFormatted = new Date(appointment_date).toLocaleDateString('fr-FR', {
+      const appointmentDateFormatted = parsedAppointmentDate.toLocaleDateString('fr-FR', {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
@@ -363,10 +374,6 @@ const enrollmentsController = {
         }
       }).catch(err => console.error('❌ Erreur envoi email approbation:', err));
 
-      // NOTE: Les documents restent dans enrollment_documents et seront copiés vers children_documents
-      // lors de la finalisation de l'inscription (quand l'enfant est créé dans la table children)
-      console.log(`📄 Documents d'inscription conservés pour le dossier #${id} (seront transférés à la finalisation)`);
-
       // Marquer automatiquement la tâche d'examen du dossier comme complétée dès l'approbation
       await completeEnrollmentTask(id);
 
@@ -377,8 +384,19 @@ const enrollmentsController = {
       });
 
     } catch (error) {
+      if (client) {
+        try {
+          await client.query('ROLLBACK');
+        } catch (rbErr) {
+          console.error('❌ Erreur rollback:', rbErr.message);
+        }
+      }
       console.error('Erreur approbation:', error);
       res.status(500).json({ success: false, error: error.message });
+    } finally {
+      if (client) {
+        client.release();
+      }
     }
   },
 
@@ -436,6 +454,7 @@ const enrollmentsController = {
             LEFT JOIN children c ON e.child_id = c.id
             LEFT JOIN users u ON c.parent_id = u.id
             WHERE ${enrollmentsWhere}
+              AND (c.id IS NULL OR c.is_active = true OR e.status = 'archived')
             
             UNION ALL
             
@@ -486,6 +505,7 @@ const enrollmentsController = {
           LEFT JOIN children c ON e.child_id = c.id
           LEFT JOIN users u ON c.parent_id = u.id
           WHERE ${enrollmentsWhere}
+            AND (c.id IS NULL OR c.is_active = true OR e.status = 'archived')
           ORDER BY e.created_at DESC
           LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
         `;

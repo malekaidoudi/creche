@@ -338,17 +338,59 @@ async function deleteChild(childId, options = {}) {
             await db.query(`
                 UPDATE children 
                 SET is_active = false, 
+                    status = 'archived',
                     updated_at = NOW(),
                     departure_date = NOW(),
                     departure_reason = $2
                 WHERE id = $1
             `, [childId, reason || 'Archivé']);
 
-            console.log(`📦 [ChildLifecycle] Enfant ${child.first_name} archivé`);
+            // 4b. Synchronisation cycle de vie : Archiver également le dossier d'inscription lié
+            try {
+                await db.query(`
+                    UPDATE enrollments 
+                    SET status = 'archived', updated_at = NOW() 
+                    WHERE child_id = $1 AND status != 'archived'
+                `, [childId]);
+            } catch (enrErr) {
+                console.warn(`⚠️ [ChildLifecycle] Erreur archivage inscription liée (ignorée):`, enrErr.message);
+            }
+
+            // 4c. Annuler les rendez-vous en cours ou proposés pour cet enfant
+            try {
+                await db.query(`
+                    UPDATE appointments 
+                    SET status = 'cancelled', updated_at = NOW() 
+                    WHERE (child_id = $1 OR enrollment_id IN (SELECT id FROM enrollments WHERE child_id = $1))
+                      AND status NOT IN ('completed', 'cancelled')
+                `, [childId]);
+            } catch (aptErr) {
+                console.warn(`⚠️ [ChildLifecycle] Erreur annulation RDV liés (ignorée):`, aptErr.message);
+            }
+
+            // 4d. Annuler les tâches associées encore en attente
+            try {
+                await db.query(`
+                    UPDATE tasks 
+                    SET status = 'cancelled', updated_at = NOW() 
+                    WHERE enrollment_id IN (SELECT id FROM enrollments WHERE child_id = $1)
+                      AND status = 'pending'
+                `, [childId]);
+            } catch (taskErr) {
+                console.warn(`⚠️ [ChildLifecycle] Erreur annulation tâches liées (ignorée):`, taskErr.message);
+            }
+
+            console.log(`📦 [ChildLifecycle] Enfant ${child.first_name} archivé avec synchronisation enrollments et RDV`);
         } else {
-            // 4b. Supprimer définitivement (cascade sur documents, etc.)
+            // 4e. Supprimer définitivement (cascade sur enrollments, documents, etc.)
+            try {
+                await db.query(`DELETE FROM enrollments WHERE child_id = $1`, [childId]);
+                await db.query(`DELETE FROM children_documents WHERE child_id = $1`, [childId]);
+            } catch (cascadeErr) {
+                console.warn(`⚠️ [ChildLifecycle] Erreur cascade suppression dossiers/documents:`, cascadeErr.message);
+            }
             await db.query(`DELETE FROM children WHERE id = $1`, [childId]);
-            console.log(`🗑️ [ChildLifecycle] Enfant ${child.first_name} supprimé définitivement`);
+            console.log(`🗑️ [ChildLifecycle] Enfant ${child.first_name} et ses dossiers supprimés définitivement`);
         }
 
         return { success: true, archived: archive };

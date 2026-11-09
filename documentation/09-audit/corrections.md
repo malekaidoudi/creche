@@ -110,6 +110,7 @@
 | **127** | 09/11/2026 | `backend/services/billingService.js`, `frontend/src/components/modals/BillingManagementModal.jsx`, `IDEES.md` | Règle Métier Suspension Enfant (facturé si $\ge 1$ jour actif dans le mois, exclu dès le mois suivant si suspendu avant le 1er), Remise Strictement Ponctuelle dans Règlement Familial (suppression récurrence, non cochée par défaut, pas de 10 DT) & Purge Badge Confus « Encaissé ce mois » sur Cartes Familles Impayées | Exclusion stricte de la facturation et du listing pour les enfants suspendus avant le 1er jour du mois ciblé ; maintien de la facture pour le mois en cours si suspendu en milieu de mois ; suppression définitive de l'option « Appliquer aux mois futurs » dans le modal Règlement Familial (réservée à la fiche enfant) ; remise ponctuelle non activée par défaut (`enabled: false`) ; pas d'incrément de 10 DT (`step="10"`) ; correction de la formule d'arriérés cumulés en cascade et suppression du badge vert trompeur `💰 Encaissé ce mois` sur les cartes familles impayées. | ✅ Validé & Appliqué |
 | **128** | 09/11/2026 | `backend/migrations/versions/020_consumable_supplies_and_meals.js`, `backend/controllers/{suppliesController.js,dailyReportsController.js}`, `backend/routes_postgres/supplies.js`, `backend/tests/routes/supplies_access.test.js`, `frontend/src/pages/dashboard/DailyReportsPage.jsx`, `frontend/src/components/mobile/MobileDailyReportsPage.jsx`, `frontend/src/pages/parent/ChildDailyReportsPage.jsx`, `IDEES.md` | Rapports Journaliers : Remplacement de « Nourriture/Lait » dans « Fournitures apportées » par les Produits Consommables & Hygiène (Lingettes, Crème, Mouchoirs, Vêtements, Sérum phy., Autre) & Catégories Standards de Repas | Suppression de la saisie de nourriture apportée dans la section « 🎒 Fournitures apportées » au profit de boutons rapides de produits consommables (`🧻 Lingettes`, `🧴 Crème`, `🤧 Mouchoirs`, `👕 Vêtements`, `💧 Sérum phy.`) et d'un champ libre « Autre produit... » ; remplacement de la dépendance `foodOptions` dans la section « 🍽️ Repas » par des catégories standards (`🍼 Biberon / Lait`, `🍲 Repas du jour`, `🥣 Compote / Yaourt`, `🍎 Fruit / Goûter`, `📝 Autre`) + description libre ; nettoyage de la route morte `/food-options` et assouplissement des contraintes DB (`020_consumable_supplies_and_meals`). | ✅ Validé & Appliqué |
 | **129** | 09/11/2026 | `backend/migrations/versions/021_add_admission_and_departure_dates.js`, `backend/services/billingService.js`, `backend/routes_postgres/children.js`, `frontend/src/pages/dashboard/DashboardSettingsPage.jsx`, `IDEES.md` | Résolution Erreur 500 GET `/api/billing/invoices` (`column c.admission_date does not exist`), Auto-Healing DDL & Purge Crash Console Paramètres (`ReferenceError: setLoadingHolidays is not defined`) | Migration 021 pour provisionner `admission_date`, `departure_date` et `departure_reason` sur la table `children` avec initialisation rétroactive ; auto-healing au démarrage de `billingService.js` et `children.js` ; et suppression définitive de 447 lignes de code mort obsolète de jours fériés dans `DashboardSettingsPage.jsx`. | ✅ Validé & Appliqué |
+| **130** | 09/11/2026 | `backend/controllers/enrollmentsController.js`, `backend/services/childLifecycleService.js`, `backend/routes_postgres/{userChildren.js,enrollments.js}`, `frontend/src/components/modals/ApproveEnrollmentModal.jsx`, `IDEES.md` | Purge Compte Fantôme Aya Aidoudi & Garde-Fous Anti-Dossier Orphelin (Validation Stricte Date RDV, Transaction Atomique d'Approbation & Synchronisation Automatique du Cycle de Vie Enfant ↔ Inscription ↔ RDV) | Purge définitive des données de test de l'enfant Aya Aidoudi en base Neon ; validation stricte ISO8601 des dates de RDV (rejet des dates passées ou invalides) côté client et serveur ; transaction atomique PostgreSQL (`BEGIN ... COMMIT / ROLLBACK`) lors de l'approbation d'inscription ; synchronisation automatique du cycle de vie lors de l'archivage/suppression d'un enfant (archivage automatique des inscriptions liées, annulation des RDV non terminés et annulation des tâches d'inscription en attente) ; et filtrage strict `is_active = true` sur les routes de l'espace parent. | ✅ Validé & Appliqué |
 
 ---
 
@@ -3433,6 +3434,43 @@
      - Suppression définitive des 447 lignes de code obsolète appelant `setLoadingHolidays`.
 - **Résultat** :
   - Modal Cotisations 100% opérationnel sans aucune erreur 500, persistance fiable des dates d'admission et de suspension en base de données, et console propre sans warning ni crash. Build Vite et contrôles Node validés.
+
+---
+
+### Correction n°130 : Purge Compte Fantôme Aya Aidoudi & Garde-Fous Anti-Dossier Orphelin (Validation Stricte Date RDV, Transaction Atomique d'Approbation & Synchronisation Automatique du Cycle de Vie Enfant ↔ Inscription ↔ RDV)
+
+- **Date** : 09/11/2026
+- **Fichiers modifiés** :
+  - [`backend/controllers/enrollmentsController.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/controllers/enrollmentsController.js)
+  - [`backend/services/childLifecycleService.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/services/childLifecycleService.js)
+  - [`backend/routes_postgres/enrollments.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/enrollments.js)
+  - [`backend/routes_postgres/userChildren.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/userChildren.js)
+  - [`frontend/src/components/modals/ApproveEnrollmentModal.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/modals/ApproveEnrollmentModal.jsx)
+  - [`IDEES.md`](file:///Volumes/Data/Works/Windsurf/creche/IDEES.md)
+- **Contexte / Symptôme** :
+  1. **Dossier orphelin bloqué** : Sur le site de production, le dossier d'inscription au nom de « Aya Aidoudi » restait affiché en statut « En attente / Pas de rendez-vous » alors que l'enfant avait été archivé dans le module enfants. Ce compte test, utilisé par l'administrateur pour prévisualiser l'espace parent, polluait le tableau de bord et faussait les statistiques.
+  2. **Investigation technique** :
+     - En novembre 2025, une approbation d'inscription avait été tentée avec une date de RDV non valide, générant un e-mail avec la mention « Invalid Date » et échouant silencieusement lors de la création du RDV dans `appointments`.
+     - L'admin avait ensuite créé l'enfant manuellement via `/dashboard/add-child`.
+     - Lors de l'archivage ultérieur de l'enfant dans `/dashboard/children`, la méthode `deleteChild` ne mettait à jour que la table `children` sans répercuter le statut sur `enrollments`, laissant l'inscription orpheline active et sans RDV.
+     - Les endpoints de l'espace parent (`userChildren.js`) ne filtraient pas sur `c.is_active = true`, risquant d'exposer des enfants archivés.
+- **Solution appliquée** :
+  1. **Purge Base de Données (Production Neon)** :
+     - Purge définitive de tous les enregistrements résiduels liés à l'enfant ID 10 (Aya Aidoudi) : `children` (id 10), `enrollments` (id 15), `enrollments_archive` (id 7), `archived_documents` (id 8), `attendances` (3 lignes) et `daily_reports` (2 lignes).
+  2. **Validation Stricte des Dates de Rendez-vous** :
+     - Validation côté client dans [`ApproveEnrollmentModal.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/modals/ApproveEnrollmentModal.jsx) : contrôle de `isoDate`, interdiction des dates invalides (`isNaN`) et interdiction des dates dans le passé (tolérance 1h).
+     - Validation côté serveur dans [`enrollments.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/enrollments.js) (`body('appointment_date').isISO8601()`) et dans [`enrollmentsController.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/controllers/enrollmentsController.js).
+  3. **Transaction Atomique d'Approbation** :
+     - Sécurisation complète de `approveEnrollment` via `client.query('BEGIN')` / `COMMIT` / `ROLLBACK`. La création du compte utilisateur parent, l'insertion du rendez-vous dans `appointments` et la mise à jour de l'inscription en statut `in_progress` sont désormais strictement atomiques. En cas d'anomalie, aucune donnée orpheline n'est persistée.
+  4. **Synchronisation Automatique du Cycle de Vie Enfant ↔ Inscription** :
+     - Dans [`childLifecycleService.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/services/childLifecycleService.js) :
+       - Lors d'un archivage (`soft-delete`), synchronisation automatique de l'inscription liée (`UPDATE enrollments SET status = 'archived'`), annulation des rendez-vous non terminés (`status = 'cancelled'`) et annulation des tâches d'inscription en attente.
+       - Lors d'une suppression définitive (`hard-delete`), cascade automatique sur `enrollments` et `children_documents`.
+  5. **Filtrage Espace Parent & Listes Actives** :
+     - Dans [`userChildren.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/userChildren.js) : filtrage systématique `c.is_active = true AND COALESCE(c.status, 'active') != 'archived'` pour garantir qu'aucun enfant archivé n'apparaît dans l'espace parent.
+     - Dans `getAllEnrollments` : exclusion des inscriptions rattachées à des enfants archivés.
+- **Résultat** :
+  - Base de production assainie (zéro enregistrement résiduel d'Aya Aidoudi). Impossibilité technique absolue de créer une inscription sans RDV valide, de conserver une inscription orpheline lors de l'archivage d'un enfant ou d'exposer un enfant archivé côté parent. Build et tests 100% validés.
 
 
 

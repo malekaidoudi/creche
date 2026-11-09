@@ -578,6 +578,7 @@ router.post('/:id/approve',
   auth.requireRole('admin', 'developer'),
   [
     body('appointment_date').notEmpty().withMessage('Date de rendez-vous requise')
+      .isISO8601().withMessage('Format de date de rendez-vous invalide (ISO 8601 requis)')
   ],
   (req, res, next) => {
     const errors = validationResult(req);
@@ -626,6 +627,7 @@ router.put('/:id/reject',
 router.post('/:id/choose-appointment',
   [
     body('appointment_date').notEmpty().withMessage('Date de rendez-vous requise')
+      .isISO8601().withMessage('Format de date de rendez-vous invalide (ISO 8601 requis)')
   ],
   (req, res, next) => {
     const errors = validationResult(req);
