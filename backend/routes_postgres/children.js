@@ -52,9 +52,13 @@ const ensureChildStatusColumns = async () => {
       ALTER TABLE children ADD COLUMN IF NOT EXISTS suspension_reason TEXT;
       ALTER TABLE children ADD COLUMN IF NOT EXISTS suspended_at TIMESTAMP;
       ALTER TABLE children ADD COLUMN IF NOT EXISTS expected_return_date DATE;
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS admission_date DATE;
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS departure_date TIMESTAMP;
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS departure_reason TEXT;
 
       UPDATE children SET status = 'archived' WHERE is_active = false AND (status IS NULL OR status = 'active');
       UPDATE children SET status = 'active' WHERE is_active = true AND status IS NULL;
+      UPDATE children SET admission_date = created_at::date WHERE admission_date IS NULL;
     `);
   } catch (err) {
     console.warn('⚠️ Note: vérification colonnes status children:', err.message);

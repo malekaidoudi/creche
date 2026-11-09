@@ -109,6 +109,7 @@
 | **126** | 09/11/2026 | `backend/services/billingService.js`, `frontend/src/components/modals/BillingManagementModal.jsx`, `frontend/src/pages/parent/ParentBillingPage.jsx`, `frontend/src/pages/parent/MySpacePage.jsx` | Déblocage Paiement Multi-mois avec Arriérés, Toggle & Recalcul Réactif Immédiat des Remises (Ponctuelle & Récurrente), Élimination Superposition Badges & Conditionnement Quittance au 1er du Mois | Déverrouillage des boutons « 2 mois d'avance » et « Trimestre » même en présence d'arriérés (imputation chronologique stricte : dettes et mois courant soldés en priorité, surplus alloué aux mois futurs ou en avoir) ; case à cocher d'activation/désactivation de la remise avec recalcul dynamique instantané des montants enfant et famille ; calcul récurrent conditionné à la case « Appliquer aussi aux mois futurs » ; mise en page anti-superposition des badges tarifaires (Base, Samedi, Assurance, Arriéré, Remise) ; mention explicite de la date d'encaissement anticipé côté admin ; affichage des mois anticipés côté parent avec quittance officielle débloquée à partir du 1er du mois concerné. | ✅ Validé & Appliqué |
 | **127** | 09/11/2026 | `backend/services/billingService.js`, `frontend/src/components/modals/BillingManagementModal.jsx`, `IDEES.md` | Règle Métier Suspension Enfant (facturé si $\ge 1$ jour actif dans le mois, exclu dès le mois suivant si suspendu avant le 1er), Remise Strictement Ponctuelle dans Règlement Familial (suppression récurrence, non cochée par défaut, pas de 10 DT) & Purge Badge Confus « Encaissé ce mois » sur Cartes Familles Impayées | Exclusion stricte de la facturation et du listing pour les enfants suspendus avant le 1er jour du mois ciblé ; maintien de la facture pour le mois en cours si suspendu en milieu de mois ; suppression définitive de l'option « Appliquer aux mois futurs » dans le modal Règlement Familial (réservée à la fiche enfant) ; remise ponctuelle non activée par défaut (`enabled: false`) ; pas d'incrément de 10 DT (`step="10"`) ; correction de la formule d'arriérés cumulés en cascade et suppression du badge vert trompeur `💰 Encaissé ce mois` sur les cartes familles impayées. | ✅ Validé & Appliqué |
 | **128** | 09/11/2026 | `backend/migrations/versions/020_consumable_supplies_and_meals.js`, `backend/controllers/{suppliesController.js,dailyReportsController.js}`, `backend/routes_postgres/supplies.js`, `backend/tests/routes/supplies_access.test.js`, `frontend/src/pages/dashboard/DailyReportsPage.jsx`, `frontend/src/components/mobile/MobileDailyReportsPage.jsx`, `frontend/src/pages/parent/ChildDailyReportsPage.jsx`, `IDEES.md` | Rapports Journaliers : Remplacement de « Nourriture/Lait » dans « Fournitures apportées » par les Produits Consommables & Hygiène (Lingettes, Crème, Mouchoirs, Vêtements, Sérum phy., Autre) & Catégories Standards de Repas | Suppression de la saisie de nourriture apportée dans la section « 🎒 Fournitures apportées » au profit de boutons rapides de produits consommables (`🧻 Lingettes`, `🧴 Crème`, `🤧 Mouchoirs`, `👕 Vêtements`, `💧 Sérum phy.`) et d'un champ libre « Autre produit... » ; remplacement de la dépendance `foodOptions` dans la section « 🍽️ Repas » par des catégories standards (`🍼 Biberon / Lait`, `🍲 Repas du jour`, `🥣 Compote / Yaourt`, `🍎 Fruit / Goûter`, `📝 Autre`) + description libre ; nettoyage de la route morte `/food-options` et assouplissement des contraintes DB (`020_consumable_supplies_and_meals`). | ✅ Validé & Appliqué |
+| **129** | 09/11/2026 | `backend/migrations/versions/021_add_admission_and_departure_dates.js`, `backend/services/billingService.js`, `backend/routes_postgres/children.js`, `frontend/src/pages/dashboard/DashboardSettingsPage.jsx`, `IDEES.md` | Résolution Erreur 500 GET `/api/billing/invoices` (`column c.admission_date does not exist`), Auto-Healing DDL & Purge Crash Console Paramètres (`ReferenceError: setLoadingHolidays is not defined`) | Migration 021 pour provisionner `admission_date`, `departure_date` et `departure_reason` sur la table `children` avec initialisation rétroactive ; auto-healing au démarrage de `billingService.js` et `children.js` ; et suppression définitive de 447 lignes de code mort obsolète de jours fériés dans `DashboardSettingsPage.jsx`. | ✅ Validé & Appliqué |
 
 ---
 
@@ -3405,6 +3406,33 @@
   4. **Backend, Base de données & Nettoyage du code mort** :
      - Création de la migration `020_consumable_supplies_and_meals.js` assouplissant les contraintes `CHECK` sur `daily_meals`, `child_supplies` et `daily_supplies_brought`.
      - Suppression de l'endpoint et du contrôleur devenus obsolètes `GET /api/supplies/child/:childId/food-options` (`getFoodOptions`) ainsi que des états React `foodOptions` / `supplies_food`.
+
+---
+
+### Correction n°129 : Résolution Erreur 500 GET `/api/billing/invoices` (`column c.admission_date does not exist`), Auto-Healing DDL & Purge Crash Console Paramètres (`ReferenceError: setLoadingHolidays is not defined`)
+
+- **Date** : 09/11/2026
+- **Fichiers modifiés** :
+  - [`backend/migrations/versions/021_add_admission_and_departure_dates.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/migrations/versions/021_add_admission_and_departure_dates.js)
+  - [`backend/services/billingService.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/services/billingService.js)
+  - [`backend/routes_postgres/children.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/children.js)
+  - [`frontend/src/pages/dashboard/DashboardSettingsPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/DashboardSettingsPage.jsx)
+  - [`IDEES.md`](file:///Volumes/Data/Works/Windsurf/creche/IDEES.md)
+- **Contexte / Symptôme** :
+  1. **Erreur 500 à l'ouverture du modal Cotisations** : Lors de l'ouverture de `BillingManagementModal`, la requête `GET /api/billing/invoices?year=2026&month=11` échouait avec une erreur 500. Le log serveur indiquait : `column c.admission_date does not exist`.
+  2. **Crash console sur la page Paramètres** : Dans `DashboardSettingsPage.jsx`, une erreur non gérée `ReferenceError: setLoadingHolidays is not defined` apparaissait dans la console au chargement de la page.
+- **Cause racine** :
+  1. La colonne `admission_date` sur la table `children` n'avait été créée que dans un script ponctuel local et n'était présente dans aucune migration `schema_migrations` ni mécanisme d'auto-healing au démarrage de Render. Les requêtes SQL dans `billingService.js` faisant référence à `c.admission_date` provoquaient un plantage PostgreSQL.
+  2. Un ancien hook `useEffect` (`fetchHolidays`) et ses fonctions associées (`toggleHolidayStatus`, `testHolidaysAPI`) constituant plus de 440 lignes de code mort orphelin d'une ancienne expérimentation de jours fériés tentaient d'appeler `setLoadingHolidays` non déclaré, alors que la gestion réelle est assurée par le sous-composant `HolidayPoliciesManager`.
+- **Solution appliquée** :
+  1. **Migration 021 & Auto-Healing DDL** :
+     - Création de la migration [`021_add_admission_and_departure_dates.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/migrations/versions/021_add_admission_and_departure_dates.js) ajoutant `admission_date DATE`, `departure_date TIMESTAMP` et `departure_reason TEXT` sur `children` avec initialisation rétroactive (`admission_date = created_at::date`).
+     - Ajout de la routine d'auto-healing `ensureBillingDateColumns()` appelée au démarrage et avant chaque requête de facturation dans `billingService.js`.
+     - Ajout de la vérification DDL dans `ensureChildStatusColumns()` de `children.js`.
+  2. **Purge du Code Mort dans `DashboardSettingsPage.jsx`** :
+     - Suppression définitive des 447 lignes de code obsolète appelant `setLoadingHolidays`.
+- **Résultat** :
+  - Modal Cotisations 100% opérationnel sans aucune erreur 500, persistance fiable des dates d'admission et de suspension en base de données, et console propre sans warning ni crash. Build Vite et contrôles Node validés.
 
 
 

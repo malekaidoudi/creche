@@ -8,6 +8,15 @@ Format suggéré : `- [ ] Description de l'idée` (laisser `[ ]`, passer à `[x]
 
 ## � Urgent — Bugs en production
 
+- [x] **Résolution Erreur 500 GET `/api/billing/invoices` (`column c.admission_date does not exist`), Auto-Healing DDL & Purge Crash Console Paramètres (`ReferenceError: setLoadingHolidays is not defined`)** (`021_add_admission_and_departure_dates.js`, `billingService.js`, `children.js`, `DashboardSettingsPage.jsx`) :
+  - **Symptômes & Problèmes résolus** :
+    1. Erreur 500 à l'ouverture du modal Cotisations : `column c.admission_date does not exist` sur PostgreSQL en production.
+    2. Erreur console non bloquante `ReferenceError: setLoadingHolidays is not defined` au chargement de `DashboardSettingsPage`.
+  - **Corrections appliquées** :
+    1. Création de la migration `021_add_admission_and_departure_dates.js` ajoutant `admission_date DATE`, `departure_date TIMESTAMP` et `departure_reason TEXT` sur `children` avec rétrocompatibilité `admission_date = created_at::date`.
+    2. Auto-healing au démarrage dans `billingService.js` (`ensureBillingDateColumns()`) et dans `children.js`.
+    3. Purge définitive de 447 lignes de code mort de jours fériés appelant `setLoadingHolidays` dans `DashboardSettingsPage.jsx`.
+
 - [x] **Rapports Journaliers (`/dashboard/daily-reports`) — Remplacement de « Nourriture/Lait » dans « Fournitures apportées » par les Produits Consommables & Hygiène (Lingettes, Crème, Mouchoirs, Vêtements, Sérum phy., Autre) & Catégories Standards de Repas** (`DailyReportsPage.jsx`, `MobileDailyReportsPage.jsx`, `ChildDailyReportsPage.jsx`, `suppliesController.js`, `dailyReportsController.js`, `supplies.js`, `020_consumable_supplies_and_meals.js`) :
   - **Demande client & Problèmes résolus** :
     1. Dans `/dashboard/daily-reports`, le client ne souhaite plus déclarer les nourritures apportées par l'enfant (yaourt, couscous, compote...) dans la section « 🎒 Fournitures apportées », mais souhaite à la place pouvoir déclarer les produits consommables apportés (lingettes, crème, mouchoirs, vêtements de rechange, sérum physiologique ou autre produit consommable).

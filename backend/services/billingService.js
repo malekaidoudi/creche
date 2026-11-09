@@ -21,6 +21,23 @@ async function logActivity(userId, action, description, metadata = {}) {
   }
 }
 
+let datesColumnsChecked = false;
+async function ensureBillingDateColumns() {
+  if (datesColumnsChecked) return;
+  try {
+    await db.query(`
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS admission_date DATE;
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS departure_date TIMESTAMP;
+      ALTER TABLE children ADD COLUMN IF NOT EXISTS departure_reason TEXT;
+      UPDATE children SET admission_date = created_at::date WHERE admission_date IS NULL;
+    `);
+    datesColumnsChecked = true;
+  } catch (err) {
+    console.warn('[BillingService] Note: vérification colonnes dates children:', err.message);
+  }
+}
+ensureBillingDateColumns();
+
 /**
  * Calcule l'année scolaire pour une date donnée (ex: Septembre 2026 -> '2026-2027', Janvier 2027 -> '2026-2027')
  */
@@ -112,6 +129,7 @@ async function updateSettings(settingsData) {
  * Génère une facture / cotisation mensuelle pour un enfant
  */
 async function generateInvoiceForChild(child, periodMonth, periodYear, options = {}) {
+  await ensureBillingDateColumns();
   const {
     isFirstEnrollment = false,
     prorataAmount = null,
@@ -307,6 +325,7 @@ async function generateInvoiceForChild(child, periodMonth, periodYear, options =
  * Génère les cotisations mensuelles pour tous les enfants actifs
  */
 async function generateMonthlyInvoices(periodMonth, periodYear, createdBy = null) {
+  await ensureBillingDateColumns();
   const m = parseInt(periodMonth, 10);
   const y = parseInt(periodYear, 10);
   const startOfTargetMonth = new Date(Date.UTC(y, m - 1, 1)).toISOString();
@@ -491,6 +510,7 @@ async function autoApplyParentCredit(parentId) {
  * Liste les factures avec filtres et pagination
  */
 async function getInvoices(filters = {}) {
+  await ensureBillingDateColumns();
   const {
     month,
     year,
