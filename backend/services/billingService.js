@@ -8,7 +8,18 @@ const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
 const pushNotificationService = require('./pushNotificationService');
-const { createLog } = require('./activityLogService');
+
+async function logActivity(userId, action, description, metadata = {}) {
+  try {
+    const title = metadata.title || description?.slice(0, 200) || action || 'Opération financière';
+    await db.query(`
+      INSERT INTO activity_logs (user_id, action, category, severity, title, description, metadata, created_at)
+      VALUES ($1, $2, 'payment', 'info', $3, $4, $5, NOW())
+    `, [userId || null, action, title, description, JSON.stringify(metadata)]);
+  } catch (err) {
+    console.warn('[BillingService] Log activity error:', err.message);
+  }
+}
 
 /**
  * Calcule l'année scolaire pour une date donnée (ex: Septembre 2026 -> '2026-2027', Janvier 2027 -> '2026-2027')
@@ -113,6 +124,74 @@ async function generateInvoiceForChild(child, periodMonth, periodYear, options =
   const schoolYear = getSchoolYear(new Date(periodYear, periodMonth - 1, 1));
   const careSchedule = (child.care_schedule === 'half_day') ? 'half_day' : 'full_day';
 
+  // Règle Métier 0 : Vérification formelle de la date d'admission et de départ / suspension de l'enfant
+  // Un enfant ne peut JAMAIS être facturé pour une période antérieure à son mois d'admission officiel,
+  // ni pour un mois où il a été suspendu avant le 1er jour du mois (actif 0 jour).
+  const childInfoRes = await db.query(`
+    SELECT c.id, c.created_at, c.admission_date, c.departure_date, c.is_active, e.enrollment_date
+    FROM children c
+    LEFT JOIN enrollments e ON e.child_id = c.id
+    WHERE c.id = $1
+    ORDER BY e.enrollment_date ASC NULLS LAST
+    LIMIT 1
+  `, [child.id]);
+  const cInfo = childInfoRes.rows[0] || child;
+  const rawAdmission = cInfo.admission_date || cInfo.enrollment_date || cInfo.created_at || child.created_at;
+  if (rawAdmission) {
+    const admitDate = new Date(rawAdmission);
+    const admitYear = admitDate.getFullYear();
+    const admitMonth = admitDate.getMonth() + 1;
+    if (periodYear < admitYear || (periodYear === admitYear && periodMonth < admitMonth)) {
+      // Période antérieure à l'admission de l'enfant : ne jamais facturer
+      return null;
+    }
+  }
+
+  // Règle suspension : si l'enfant est suspendu/inactif et sa date de départ est antérieure au 1er jour du mois visé
+  const startOfMonth = new Date(Date.UTC(periodYear, periodMonth - 1, 1));
+  const isSuspended = cInfo.is_active === false || child.is_active === false;
+  const depDate = cInfo.departure_date || child.departure_date;
+  if (isSuspended && depDate && new Date(depDate) < startOfMonth) {
+    // Enfant suspendu avant ce mois (aucun jour actif ce mois-ci) : aucune facture à émettre
+    return null;
+  }
+
+  // Règle Métier 3 : Le mois d'Août (mois 8) est la période de fermeture annuelle (congé) de la crèche par défaut
+  const isAugustVacation = (periodMonth === 8 && !options.allowSummerClub && settings.summer_club_active !== 'true');
+  if (isAugustVacation) {
+    const result = await db.query(`
+      INSERT INTO child_invoices (
+        child_id, parent_id, period_month, period_year, school_year,
+        care_schedule, base_price, saturday_price, insurance_price,
+        discount_amount, previous_arrears, total_due, amount_paid, status,
+        payment_method, notes, created_by, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, 0, 0, 0, 0, 0, 0, 0, 'cancelled', 'cash', $7, $8, NOW(), NOW())
+      ON CONFLICT (child_id, period_year, period_month)
+      DO UPDATE SET
+        base_price = 0,
+        saturday_price = 0,
+        insurance_price = 0,
+        discount_amount = 0,
+        previous_arrears = 0,
+        total_due = 0,
+        status = 'cancelled',
+        notes = $7,
+        updated_at = NOW()
+      WHERE child_invoices.status != 'paid'
+      RETURNING *
+    `, [
+      child.id,
+      child.parent_id || null,
+      periodMonth,
+      periodYear,
+      schoolYear,
+      careSchedule,
+      'Fermeture annuelle crèche (Congé d\'août)',
+      createdBy
+    ]);
+    return result.rows[0];
+  }
+
   const halfDayTariff = parseFloat(settings.tariff_half_day_monthly) || 100;
   const fullDayTariff = parseFloat(settings.tariff_full_day_monthly) || 130;
   const satTariff = parseFloat(settings.tariff_saturday_monthly) || 20;
@@ -125,10 +204,15 @@ async function generateInvoiceForChild(child, periodMonth, periodYear, options =
   const saturdayPrice = child.saturday_attendance ? satTariff : 0;
 
   // Déterminer si l'assurance annuelle obligatoire d'inscription doit être incluse :
-  // - Si explicitement demandé (includeInsurance === true ou isFirstEnrollment === true)
-  // - Ou si l'enfant n'a encore aucune facture avec assurance enregistrée dans cette année scolaire
-  let finalIncludeInsurance = !!includeInsurance;
-  if (!finalIncludeInsurance) {
+  // 1. Si explicitement demandé (includeInsurance === true, ex: rentrée de septembre)
+  // 2. Si l'assurance pour cette année scolaire est déjà acquittée sur la fiche enfant (insurance_paid_school_year === schoolYear) -> FALSE (0 DT)
+  // 3. Sinon, si aucune facture antérieure dans cette année scolaire ne l'a encore comptabilisée -> TRUE (+60 DT sur 1ère facture)
+  let finalIncludeInsurance = false;
+  if (includeInsurance === true) {
+    finalIncludeInsurance = true;
+  } else if (child.insurance_paid_school_year === schoolYear) {
+    finalIncludeInsurance = false;
+  } else {
     const existingIns = await db.query(`
       SELECT id FROM child_invoices
       WHERE child_id = $1 AND school_year = $2 AND insurance_price > 0
@@ -145,16 +229,23 @@ async function generateInvoiceForChild(child, periodMonth, periodYear, options =
     : (parseFloat(child.monthly_discount) || 0);
 
   // OPTION A : Calcul du report des arriérés / reste à payer des mois précédents
-  const prevUnpaidRes = await db.query(`
-    SELECT COALESCE(SUM(total_due - amount_paid), 0) as arrears
-    FROM child_invoices
-    WHERE child_id = $1
-      AND (period_year < $2 OR (period_year = $2 AND period_month < $3))
-      AND status != 'paid'
-      AND status != 'cancelled'
-  `, [child.id, periodYear, periodMonth]);
+  let previousArrears = 0;
+  if (options.forceArrears !== undefined) {
+    previousArrears = Math.max(0, parseFloat(options.forceArrears) || 0);
+  } else {
+    const prevUnpaidRes = await db.query(`
+      SELECT GREATEST(0,
+        COALESCE(SUM(GREATEST(0, base_price + saturday_price + insurance_price - discount_amount)), 0)
+        - COALESCE(SUM(amount_paid), 0)
+      ) as arrears
+      FROM child_invoices
+      WHERE child_id = $1
+        AND (period_year < $2 OR (period_year = $2 AND period_month < $3))
+        AND status != 'cancelled'
+    `, [child.id, periodYear, periodMonth]);
 
-  const previousArrears = Math.max(0, parseFloat(prevUnpaidRes.rows[0]?.arrears || 0));
+    previousArrears = Math.max(0, parseFloat(prevUnpaidRes.rows[0]?.arrears || 0));
+  }
 
   const monthCharges = Math.max(0, basePrice + saturdayPrice + insurancePrice - discountAmount);
   const totalDue = monthCharges + previousArrears;
@@ -171,7 +262,7 @@ async function generateInvoiceForChild(child, periodMonth, periodYear, options =
       care_schedule = EXCLUDED.care_schedule,
       base_price = EXCLUDED.base_price,
       saturday_price = EXCLUDED.saturday_price,
-      insurance_price = GREATEST(child_invoices.insurance_price, EXCLUDED.insurance_price),
+      insurance_price = EXCLUDED.insurance_price,
       discount_amount = EXCLUDED.discount_amount,
       previous_arrears = EXCLUDED.previous_arrears,
       total_due = EXCLUDED.total_due,
@@ -197,6 +288,18 @@ async function generateInvoiceForChild(child, periodMonth, periodYear, options =
     createdBy
   ]);
 
+  if (insurancePrice > 0) {
+    try {
+      await db.query(`
+        UPDATE children
+        SET insurance_paid_school_year = $1
+        WHERE id = $2 AND (insurance_paid_school_year IS NULL OR insurance_paid_school_year != $1)
+      `, [schoolYear, child.id]);
+    } catch (e) {
+      console.warn('[BillingService] Mise à jour insurance_paid_school_year ignorée:', e.message);
+    }
+  }
+
   return result.rows[0];
 }
 
@@ -204,11 +307,43 @@ async function generateInvoiceForChild(child, periodMonth, periodYear, options =
  * Génère les cotisations mensuelles pour tous les enfants actifs
  */
 async function generateMonthlyInvoices(periodMonth, periodYear, createdBy = null) {
+  const m = parseInt(periodMonth, 10);
+  const y = parseInt(periodYear, 10);
+  const startOfTargetMonth = new Date(Date.UTC(y, m - 1, 1)).toISOString();
+  const endOfTargetMonth = new Date(Date.UTC(y, m, 0, 23, 59, 59, 999)).toISOString();
+
+  // Nettoyer automatiquement d'éventuelles factures fantômes 'pending' non payées :
+  // 1. Pour les enfants admis après cette période
+  // 2. Pour les enfants suspendus avant le début de cette période (règle : suspendu tout le mois = 0 facture)
+  try {
+    await db.query(`
+      DELETE FROM child_invoices ci
+      USING children c
+      LEFT JOIN enrollments e ON e.child_id = c.id
+      WHERE ci.child_id = c.id
+        AND ci.period_month = $1 AND ci.period_year = $2
+        AND ci.status = 'pending' AND COALESCE(ci.amount_paid, 0) = 0
+        AND (
+          COALESCE(c.admission_date, e.enrollment_date, c.created_at::date) > $3::date
+          OR (c.is_active = false AND c.departure_date IS NOT NULL AND c.departure_date::date < $4::date)
+        )
+    `, [m, y, endOfTargetMonth, startOfTargetMonth]);
+  } catch (cleanErr) {
+    console.warn('[BillingService] Purge factures postérieures/suspendues ignorée:', cleanErr.message);
+  }
+
+  // Règle suspension : Si l'enfant est resté actif au moins 1 jour dans le mois, il a une facture.
+  // S'il est suspendu depuis un mois antérieur, il n'est plus comptabilisé.
   const children = await db.query(`
-    SELECT id, first_name, last_name, parent_id, care_schedule, saturday_attendance, monthly_discount
-    FROM children
-    WHERE is_active = true
-  `);
+    SELECT DISTINCT ON (c.id) c.id, c.first_name, c.last_name, c.parent_id, c.care_schedule,
+           c.saturday_attendance, c.monthly_discount, c.insurance_paid_school_year, c.created_at,
+           COALESCE(c.admission_date, e.enrollment_date, c.created_at::date) as effective_admission_date
+    FROM children c
+    LEFT JOIN enrollments e ON e.child_id = c.id
+    WHERE (c.is_active = true OR (c.departure_date IS NOT NULL AND c.departure_date::date >= $2::date))
+      AND (COALESCE(c.admission_date, e.enrollment_date, c.created_at::date) <= $1::date)
+    ORDER BY c.id, e.enrollment_date ASC NULLS LAST
+  `, [endOfTargetMonth, startOfTargetMonth]);
 
   const createdInvoices = [];
 
@@ -236,7 +371,24 @@ async function generateMonthlyInvoices(periodMonth, periodYear, createdBy = null
       includeInsurance: isSeptember,
       createdBy
     });
-    createdInvoices.push(inv);
+    if (inv) {
+      createdInvoices.push(inv);
+    }
+  }
+
+  // Après génération des cotisations mensuelles, imputer automatiquement l'avoir des parents créditeurs
+  try {
+    const credParents = await db.query(`
+      SELECT DISTINCT u.id as parent_id
+      FROM users u
+      JOIN child_invoices ci ON ci.parent_id = u.id
+      WHERE u.credit_balance > 0 AND ci.status != 'paid' AND ci.status != 'cancelled'
+    `);
+    for (const cp of credParents.rows) {
+      await autoApplyParentCredit(cp.parent_id);
+    }
+  } catch (gCredErr) {
+    console.warn('[BillingService] autoApplyParentCredit après génération:', gCredErr.message);
   }
 
   return {
@@ -244,6 +396,95 @@ async function generateMonthlyInvoices(periodMonth, periodYear, createdBy = null
     count: createdInvoices.length,
     period: `${periodMonth}/${periodYear}`
   };
+}
+
+/**
+ * Applique automatiquement le solde d'avoir (credit_balance) d'un parent
+ * sur ses cotisations impayées par ordre chronologique.
+ */
+async function autoApplyParentCredit(parentId) {
+  if (!parentId) return 0;
+
+  const userRes = await db.query(
+    'SELECT id, credit_balance FROM users WHERE id = $1',
+    [parentId]
+  );
+  if (userRes.rows.length === 0) return 0;
+
+  let currentCredit = parseFloat(userRes.rows[0].credit_balance || 0);
+  if (currentCredit <= 0) return 0;
+
+  const unpaidRes = await db.query(`
+    SELECT ci.*
+    FROM child_invoices ci
+    WHERE ci.parent_id = $1
+      AND ci.status != 'paid'
+      AND ci.status != 'cancelled'
+    ORDER BY ci.period_year ASC, ci.period_month ASC, ci.id ASC
+  `, [parentId]);
+
+  if (unpaidRes.rows.length === 0) return 0;
+
+  let totalCreditConsumed = 0;
+
+  for (const inv of unpaidRes.rows) {
+    if (currentCredit <= 0) break;
+
+    const due = Math.max(0, parseFloat(inv.total_due || 0) - parseFloat(inv.amount_paid || 0));
+    if (due <= 0) continue;
+
+    const applyAmount = Math.min(due, currentCredit);
+    const newPaid = parseFloat(inv.amount_paid || 0) + applyAmount;
+    const newStatus = newPaid >= parseFloat(inv.total_due) ? 'paid' : 'partial';
+    const newCreditUsed = parseFloat(inv.credit_used || 0) + applyAmount;
+    const autoReceipt = inv.receipt_number || `REC-${inv.period_year}${String(inv.period_month).padStart(2, '0')}-AVOIR-${String(inv.id).padStart(4, '0')}`;
+
+    currentCredit = Math.max(0, currentCredit - applyAmount);
+    totalCreditConsumed += applyAmount;
+
+    await db.query(`
+      UPDATE child_invoices
+      SET amount_paid = $1,
+          status = $2::varchar,
+          credit_used = $3,
+          receipt_number = $4,
+          paid_at = CASE WHEN $2::varchar = 'paid' THEN NOW() ELSE paid_at END,
+          notes = CASE 
+            WHEN notes IS NULL OR notes = '' THEN $5
+            ELSE notes || ' ' || $5
+          END,
+          updated_at = NOW()
+      WHERE id = $6
+    `, [
+      newPaid,
+      newStatus,
+      newCreditUsed,
+      autoReceipt,
+      `[Avoir déduit : ${applyAmount.toFixed(2)} DT]`,
+      inv.id
+    ]);
+  }
+
+  if (totalCreditConsumed > 0) {
+    await db.query(`
+      UPDATE users
+      SET credit_balance = $1
+      WHERE id = $2
+    `, [currentCredit, parentId]);
+
+    try {
+      await logActivity(
+        parentId,
+        'payment_received',
+        `Déduction automatique d'avoir : ${totalCreditConsumed.toFixed(2)} TND appliqués sur les cotisations du foyer (solde restant : ${currentCredit.toFixed(2)} TND)`,
+        { parent_id: parentId, credit_consumed: totalCreditConsumed, remaining_credit: currentCredit }
+      );
+    } catch (e) {
+      console.warn('[BillingService] Log autoApply error:', e.message);
+    }
+  }
+
+  return totalCreditConsumed;
 }
 
 /**
@@ -261,6 +502,28 @@ async function getInvoices(filters = {}) {
     limit = 50
   } = filters;
 
+  if (parent_id) {
+    try {
+      await autoApplyParentCredit(parent_id);
+    } catch (credErr) {
+      console.warn('[BillingService] autoApplyParentCredit ignoré:', credErr.message);
+    }
+  } else {
+    try {
+      const credParents = await db.query(`
+        SELECT DISTINCT u.id as parent_id
+        FROM users u
+        JOIN child_invoices ci ON ci.parent_id = u.id
+        WHERE u.credit_balance > 0 AND ci.status != 'paid' AND ci.status != 'cancelled'
+      `);
+      for (const cp of credParents.rows) {
+        await autoApplyParentCredit(cp.parent_id);
+      }
+    } catch (gCredErr) {
+      console.warn('[BillingService] autoApplyParentCredit global ignoré:', gCredErr.message);
+    }
+  }
+
   const conditions = ['1=1'];
   const values = [];
   let idx = 1;
@@ -273,6 +536,17 @@ async function getInvoices(filters = {}) {
   if (year) {
     conditions.push(`ci.period_year = $${idx++}`);
     values.push(parseInt(year, 10));
+  }
+
+  // Si une période mensuelle précise est demandée, n'afficher que les enfants inscrits au plus tard pendant ce mois-là
+  // et exclure les enfants suspendus avant le début du mois (sauf s'ils ont déjà un règlement dessus)
+  if (month && year) {
+    const startOfTargetMonth = new Date(Date.UTC(parseInt(year, 10), parseInt(month, 10) - 1, 1)).toISOString();
+    const endOfTargetMonth = new Date(Date.UTC(parseInt(year, 10), parseInt(month, 10), 0, 23, 59, 59, 999)).toISOString();
+    conditions.push(`(COALESCE(c.admission_date, c.created_at::date) <= $${idx++}::date)`);
+    values.push(endOfTargetMonth);
+    conditions.push(`(c.is_active = true OR (c.departure_date IS NOT NULL AND c.departure_date::date >= $${idx++}::date) OR ci.amount_paid > 0)`);
+    values.push(startOfTargetMonth);
   }
 
   if (status && status !== 'all') {
@@ -288,6 +562,18 @@ async function getInvoices(filters = {}) {
   if (parent_id) {
     conditions.push(`ci.parent_id = $${idx++}`);
     values.push(parent_id);
+
+    // Espace Parent : n'afficher que les mois passés et le mois en cours,
+    // OU les mois futurs qui ont fait l'objet d'un paiement ou d'un acompte anticipé !
+    const now = new Date();
+    const curMonth = now.getMonth() + 1;
+    const curYear = now.getFullYear();
+    conditions.push(`(
+      ci.period_year < ${curYear} 
+      OR (ci.period_year = ${curYear} AND ci.period_month <= ${curMonth})
+      OR (ci.status = 'paid' OR ci.amount_paid > 0)
+    )`);
+    conditions.push(`NOT (ci.status = 'cancelled' AND ci.total_due = 0)`);
   }
 
   if (search && search.trim() !== '') {
@@ -325,7 +611,8 @@ async function getInvoices(filters = {}) {
       u.first_name as parent_first_name,
       u.last_name as parent_last_name,
       u.email as parent_email,
-      u.phone as parent_phone
+      u.phone as parent_phone,
+      COALESCE(u.credit_balance, 0.00) as parent_credit_balance
     FROM child_invoices ci
     JOIN children c ON ci.child_id = c.id
     LEFT JOIN users u ON ci.parent_id = u.id
@@ -337,8 +624,144 @@ async function getInvoices(filters = {}) {
 
   const result = await db.query(query, values);
 
+  // Détection des encaissements réels du mois calendaire (Comptabilité de Caisse Réelle)
+  const selectedM = month ? parseInt(month, 10) : null;
+  const selectedY = year ? parseInt(year, 10) : null;
+  const cashCollectedMap = new Map();
+
+  if (selectedM && selectedY) {
+    try {
+      const cashRes = await db.query(`
+        SELECT 
+          ci.parent_id,
+          COALESCE(SUM(ci.amount_paid), 0) as total_cash_collected,
+          COALESCE(SUM(CASE WHEN (ci.period_year > $2) OR (ci.period_year = $2 AND ci.period_month > $1) THEN ci.amount_paid ELSE 0 END), 0) as advance_cash_amount,
+          COALESCE(SUM(CASE WHEN ci.period_month = $1 AND ci.period_year = $2 THEN ci.amount_paid ELSE 0 END), 0) as current_month_cash,
+          COALESCE(SUM(CASE WHEN (ci.period_year < $2) OR (ci.period_year = $2 AND ci.period_month < $1) THEN ci.amount_paid ELSE 0 END), 0) as arrears_cash
+        FROM child_invoices ci
+        WHERE EXTRACT(MONTH FROM ci.paid_at) = $1
+          AND EXTRACT(YEAR FROM ci.paid_at) = $2
+          AND ci.status != 'cancelled'
+          AND ci.amount_paid > 0
+        GROUP BY ci.parent_id
+      `, [selectedM, selectedY]);
+
+      for (const row of cashRes.rows) {
+        if (row.parent_id) {
+          cashCollectedMap.set(`parent_${row.parent_id}`, {
+            total_cash_collected: parseFloat(row.total_cash_collected || 0),
+            advance_cash_amount: parseFloat(row.advance_cash_amount || 0),
+            current_month_cash: parseFloat(row.current_month_cash || 0),
+            arrears_cash: parseFloat(row.arrears_cash || 0)
+          });
+        }
+      }
+    } catch (cashErr) {
+      console.warn('[BillingService] Erreur récupération cashCollectedMap:', cashErr.message);
+    }
+  }
+
+  // Annotation de chaque facture : détection si soldée par anticipation
+  for (const inv of result.rows) {
+    let isAdvancePaid = false;
+    let advancePaidDate = null;
+    let advancePaidMonth = null;
+    let advancePaidYear = null;
+
+    if (inv.paid_at && (inv.status === 'paid' || parseFloat(inv.amount_paid || 0) >= parseFloat(inv.total_due || 0))) {
+      const pDate = new Date(inv.paid_at);
+      const pMonth = pDate.getUTCMonth() + 1;
+      const pYear = pDate.getUTCFullYear();
+      if (pYear < inv.period_year || (pYear === inv.period_year && pMonth < inv.period_month)) {
+        isAdvancePaid = true;
+        advancePaidDate = inv.paid_at;
+        advancePaidMonth = pMonth;
+        advancePaidYear = pYear;
+      }
+    }
+
+    inv.is_advance_paid = isAdvancePaid;
+    inv.advance_paid_date = advancePaidDate;
+    inv.advance_paid_month = advancePaidMonth;
+    inv.advance_paid_year = advancePaidYear;
+  }
+
+  // Construction du regroupement par famille (Foyer)
+  const familyMap = new Map();
+  for (const inv of result.rows) {
+    const parentKey = inv.parent_id 
+      ? `parent_${inv.parent_id}` 
+      : `orphan_${inv.parent_first_name || ''}_${inv.parent_last_name || ''}_${inv.id}`;
+
+    if (!familyMap.has(parentKey)) {
+      const cashInfo = cashCollectedMap.get(parentKey) || {
+        total_cash_collected: 0,
+        advance_cash_amount: 0,
+        current_month_cash: 0,
+        arrears_cash: 0
+      };
+
+      familyMap.set(parentKey, {
+        family_id: parentKey,
+        parent_id: inv.parent_id || null,
+        parent_name: (inv.parent_first_name && inv.parent_last_name)
+          ? `${inv.parent_first_name} ${inv.parent_last_name}`
+          : (inv.parent_first_name || inv.parent_last_name || 'Parent non renseigné'),
+        parent_email: inv.parent_email,
+        parent_phone: inv.parent_phone,
+        credit_balance: parseFloat(inv.parent_credit_balance || 0),
+        period_month: inv.period_month,
+        period_year: inv.period_year,
+        invoices: [],
+        children_count: 0,
+        total_due: 0,
+        amount_paid: 0,
+        remaining_due: 0,
+        status: 'paid',
+        cash_collected_in_period: cashInfo.total_cash_collected,
+        advance_cash_amount: cashInfo.advance_cash_amount,
+        current_month_cash: cashInfo.current_month_cash,
+        arrears_cash: cashInfo.arrears_cash,
+        is_advance_paid: false,
+        advance_paid_date: null,
+        advance_receipt_number: null
+      });
+    }
+
+    const fam = familyMap.get(parentKey);
+    fam.invoices.push(inv);
+    fam.children_count = fam.invoices.length;
+    const invDue = parseFloat(inv.total_due || 0);
+    const invPaid = parseFloat(inv.amount_paid || 0);
+    fam.total_due += invDue;
+    fam.amount_paid += invPaid;
+    fam.remaining_due += Math.max(0, invDue - invPaid);
+  }
+
+  const families = Array.from(familyMap.values()).map(f => {
+    if (f.remaining_due <= 0 && f.total_due > 0) {
+      f.status = 'paid';
+    } else if (f.amount_paid > 0) {
+      f.status = 'partial';
+    } else {
+      f.status = 'pending';
+    }
+
+    // Si toutes les factures de cette famille pour ce mois ont été réglées en avance
+    const allAdvancePaid = f.invoices.length > 0 && f.invoices.every(i => i.is_advance_paid);
+    f.is_advance_paid = allAdvancePaid;
+    if (allAdvancePaid) {
+      const advInv = f.invoices.find(i => i.advance_paid_date) || f.invoices[0];
+      f.advance_paid_date = advInv.advance_paid_date;
+      f.advance_receipt_number = advInv.receipt_number;
+    }
+
+    return f;
+  });
+
   return {
     invoices: result.rows,
+    families,
     pagination: {
       total,
       page: parseInt(page, 10),
@@ -418,9 +841,21 @@ async function recordPayment(invoiceId, paymentData) {
       primaryUpdated = updatedRow;
     }
 
+    if (parseFloat(inv.insurance_price || 0) > 0) {
+      try {
+        await db.query(`
+          UPDATE children
+          SET insurance_paid_school_year = $1
+          WHERE id = $2
+        `, [inv.school_year, inv.child_id]);
+      } catch (insErr) {
+        console.warn('[BillingService] Maj insurance_paid_school_year ignorée:', insErr.message);
+      }
+    }
+
     // Logger l'activité
     try {
-      await createLog(
+      await logActivity(
         recordedBy,
         'payment_received',
         `Paiement reçu : ${invPaid} TND (${paymentMethod}) pour la facture #${inv.id} (reçu groupé ${autoReceipt})`,
@@ -440,11 +875,438 @@ async function recordPayment(invoiceId, paymentData) {
 }
 
 /**
+ * Enregistrement d'un règlement groupé pour une famille (multi-enfants et/ou multi-mois)
+ */
+async function recordFamilyPayment(paymentData) {
+  const {
+    parentId,
+    childIds = [],
+    monthsCount = 1,
+    startMonth,
+    startYear,
+    amountGiven,
+    paymentMethod = 'cash',
+    notes = '',
+    discounts,
+    recordedBy
+  } = paymentData;
+
+  if (!childIds || childIds.length === 0) {
+    throw new Error('Veuillez sélectionner au moins un enfant à régler');
+  }
+
+  const now = new Date();
+  const baseMonth = parseInt(startMonth, 10) || (now.getMonth() + 1);
+  const baseYear = parseInt(startYear, 10) || now.getFullYear();
+  const countMonths = Math.min(6, Math.max(1, parseInt(monthsCount, 10) || 1));
+
+  // Règle Métier : Ordre chronologique strict.
+  // Si le foyer a des arriérés, ils sont imputés en priorité sur la facture du mois en cours
+  // avant que les fonds résiduels ne soient alloués aux mois futurs (ou reversés en avoir).
+
+  // 1. Déterminer les périodes à régler (chronologique)
+  const periods = [];
+  let curM = baseMonth;
+  let curY = baseYear;
+  for (let m = 0; m < countMonths; m++) {
+    periods.push({ month: curM, year: curY });
+    curM++;
+    if (curM > 12) {
+      curM = 1;
+      curY++;
+    }
+  }
+
+  // 2. Récupérer les informations des enfants sélectionnés
+  const childrenRes = await db.query(
+    `SELECT id, first_name, last_name, parent_id, care_schedule, saturday_attendance, monthly_discount, insurance_paid_school_year
+     FROM children WHERE id = ANY($1::int[])`,
+    [childIds]
+  );
+  const children = childrenRes.rows;
+  if (children.length === 0) {
+    throw new Error('Aucun enfant valide sélectionné');
+  }
+
+  // 3. Pour chaque période et chaque enfant, s'assurer que la facture existe
+  const targetInvoices = [];
+  for (let pIndex = 0; pIndex < periods.length; pIndex++) {
+    const period = periods[pIndex];
+    for (const child of children) {
+      const existing = await db.query(
+        `SELECT * FROM child_invoices WHERE child_id = $1 AND period_month = $2 AND period_year = $3`,
+        [child.id, period.month, period.year]
+      );
+      let inv;
+      if (existing.rows.length > 0) {
+        inv = existing.rows[0];
+      } else {
+        inv = await generateInvoiceForChild(child, period.month, period.year, {
+          createdBy: recordedBy,
+          includeInsurance: (period.month === 9),
+          forceArrears: pIndex > 0 ? 0 : undefined
+        });
+      }
+      if (inv) {
+        targetInvoices.push(inv);
+      }
+    }
+  }
+
+  // 3.b Traitement des remises saisies directement dans le Règlement Familial
+  if (discounts && typeof discounts === 'object') {
+    for (const [cIdStr, discInfo] of Object.entries(discounts)) {
+      const cId = parseInt(cIdStr, 10);
+      const discAmt = parseFloat(discInfo?.discountAmount !== undefined ? discInfo.discountAmount : discInfo);
+      if (!isNaN(discAmt) && discAmt >= 0) {
+        const updateRec = Boolean(discInfo?.updateRecurring);
+        const invRow = targetInvoices.find(inv => inv.child_id === cId && inv.period_month === baseMonth && inv.period_year === baseYear);
+        if (invRow) {
+          await adjustInvoice(invRow.id, {
+            discountAmount: discAmt,
+            updateChildRecurringDiscount: updateRec,
+            updatedBy: recordedBy
+          });
+          const refreshed = await db.query(`SELECT * FROM child_invoices WHERE id = $1`, [invRow.id]);
+          if (refreshed.rows[0]) {
+            Object.assign(invRow, refreshed.rows[0]);
+          }
+        }
+      }
+    }
+  }
+
+  // 4. Calculer le total attendu restant dû
+  let totalRemainingDue = 0;
+  for (const inv of targetInvoices) {
+    const due = Math.max(0, parseFloat(inv.total_due || 0) - parseFloat(inv.amount_paid || 0));
+    totalRemainingDue += due;
+  }
+
+  // 5. Récupérer l'avoir / crédit actuel du parent
+  let parentCredit = 0;
+  if (parentId) {
+    const pRes = await db.query(`SELECT id, first_name, last_name, credit_balance FROM users WHERE id = $1`, [parentId]);
+    if (pRes.rows.length > 0) {
+      parentCredit = parseFloat(pRes.rows[0].credit_balance || 0);
+    }
+  }
+
+  const effectiveCashGiven = amountGiven !== undefined && amountGiven !== null && !isNaN(parseFloat(amountGiven))
+    ? parseFloat(amountGiven)
+    : totalRemainingDue;
+
+  // Calcul des fonds utilisables
+  let totalFundsAvailable = effectiveCashGiven;
+  let creditUsedTotal = 0;
+
+  // Si le paiement versé ne couvre pas tout mais qu'il y a un crédit/avoir disponible :
+  if (totalFundsAvailable < totalRemainingDue && parentCredit > 0) {
+    const needed = totalRemainingDue - totalFundsAvailable;
+    creditUsedTotal = Math.min(needed, parentCredit);
+    totalFundsAvailable += creditUsedTotal;
+  }
+
+  // Générer un numéro de reçu unique pour toute la famille et l'ensemble de la période
+  const firstInv = targetInvoices[0];
+  const autoReceipt = `REC-${baseYear}${String(baseMonth).padStart(2, '0')}-FAM-${String(firstInv.id).padStart(4, '0')}`;
+
+  // 6. Répartir les fonds sur les factures (chronologiquement)
+  let fundsLeft = totalFundsAvailable;
+  const updatedInvoices = [];
+
+  for (const inv of targetInvoices) {
+    const invRemaining = Math.max(0, parseFloat(inv.total_due || 0) - parseFloat(inv.amount_paid || 0));
+    const payThis = Math.min(fundsLeft, invRemaining);
+    const newPaid = parseFloat(inv.amount_paid || 0) + payThis;
+    fundsLeft = Math.max(0, fundsLeft - payThis);
+
+    const finalStatus = newPaid >= parseFloat(inv.total_due) ? 'paid' : (newPaid > 0 ? 'partial' : inv.status);
+
+    const periodRangeLabel = countMonths > 1
+      ? `[Paiement groupé ${countMonths} mois : ${baseMonth}/${baseYear} à ${periods[periods.length-1].month}/${periods[periods.length-1].year}]`
+      : '';
+    const combinedNotes = [notes, periodRangeLabel].filter(Boolean).join(' - ');
+
+    const updRes = await db.query(`
+      UPDATE child_invoices
+      SET amount_paid = $1,
+          status = $2,
+          payment_method = $3,
+          receipt_number = $4,
+          paid_at = NOW(),
+          notes = CASE 
+            WHEN notes IS NULL OR notes = '' THEN $5
+            ELSE notes || ' ' || $5
+          END,
+          updated_at = NOW()
+      WHERE id = $6
+      RETURNING *
+    `, [newPaid, finalStatus, paymentMethod, autoReceipt, combinedNotes, inv.id]);
+
+    updatedInvoices.push(updRes.rows[0]);
+  }
+
+  // 7. Gestion de l'excédent (surplus) -> versé sur l'avoir du compte parent
+  let surplusCredit = 0;
+  if (fundsLeft > 0 && parentId) {
+    surplusCredit = fundsLeft;
+    await db.query(`
+      UPDATE users
+      SET credit_balance = credit_balance + $1
+      WHERE id = $2
+    `, [surplusCredit, parentId]);
+  }
+
+  // Déduire l'avoir consommé du compte parent
+  if (creditUsedTotal > 0 && parentId) {
+    await db.query(`
+      UPDATE users
+      SET credit_balance = GREATEST(0, credit_balance - $1)
+      WHERE id = $2
+    `, [creditUsedTotal, parentId]);
+  }
+
+  // 8. Journalisation d'audit
+  try {
+    const childNames = children.map(c => `${c.first_name} ${c.last_name}`).join(', ');
+    await logActivity(
+      recordedBy,
+      'family_payment_received',
+      `Règlement familial : ${effectiveCashGiven} TND (${paymentMethod}) pour ${children.length} enfant(s) (${childNames}) sur ${countMonths} mois - Reçu ${autoReceipt}` +
+      (surplusCredit > 0 ? ` (+${surplusCredit} TND en avoir)` : '') +
+      (creditUsedTotal > 0 ? ` (${creditUsedTotal} TND d'avoir déduits)` : ''),
+      {
+        parent_id: parentId,
+        receipt_number: autoReceipt,
+        amount: effectiveCashGiven,
+        surplus_credit: surplusCredit,
+        credit_used: creditUsedTotal,
+        months_count: countMonths,
+        periods
+      }
+    );
+  } catch (logErr) {
+    console.warn('[BillingService] Log family payment error:', logErr.message);
+  }
+
+  return {
+    success: true,
+    receipt_number: autoReceipt,
+    primary_invoice_id: firstInv.id,
+    total_paid: effectiveCashGiven,
+    total_due: totalRemainingDue,
+    surplus_credit: surplusCredit,
+    credit_used: creditUsedTotal,
+    months_count: countMonths,
+    periods,
+    invoices: updatedInvoices
+  };
+}
+
+/**
+ * Annule un encaissement (droit à l'erreur / remise en statut pending pour correction)
+ */
+async function voidPayment(invoiceId, voidData = {}) {
+  const { reason, voidedBy } = voidData;
+
+  const invCheck = await db.query(`
+    SELECT ci.*, c.first_name as child_first_name, c.last_name as child_last_name 
+    FROM child_invoices ci 
+    JOIN children c ON ci.child_id = c.id 
+    WHERE ci.id = $1
+  `, [invoiceId]);
+
+  if (invCheck.rows.length === 0) {
+    throw new Error('Facture introuvable');
+  }
+
+  const invoice = invCheck.rows[0];
+
+  if (invoice.status !== 'paid' && invoice.status !== 'partial' && parseFloat(invoice.amount_paid || 0) <= 0) {
+    throw new Error('Cette cotisation n\'a aucun paiement enregistré à annuler');
+  }
+
+  const previousReceipt = invoice.receipt_number || 'N/A';
+  const previousAmount = parseFloat(invoice.amount_paid || 0);
+
+  const voidNote = `[Encaissement annulé le ${new Date().toISOString().slice(0, 10)} - Reçu ${previousReceipt} (${previousAmount} TND)${reason ? ' - Motif : ' + reason : ''}]`;
+  const newNotes = invoice.notes ? `${invoice.notes}\n${voidNote}` : voidNote;
+
+  const result = await db.query(`
+    UPDATE child_invoices
+    SET
+      amount_paid = 0.00,
+      status = 'pending',
+      receipt_number = NULL,
+      paid_at = NULL,
+      notes = $1,
+      updated_at = NOW()
+    WHERE id = $2
+    RETURNING *
+  `, [newNotes, invoiceId]);
+
+  // Logger l'activité
+  try {
+    await logActivity(
+      voidedBy,
+      'payment_voided',
+      `Encaissement annulé : ${previousAmount} TND (reçu ${previousReceipt}) pour la cotisation #${invoice.id} (${invoice.child_first_name} ${invoice.child_last_name})${reason ? ' - Motif : ' + reason : ''}`,
+      { invoice_id: invoice.id, child_id: invoice.child_id, voided_receipt: previousReceipt, amount: previousAmount, reason }
+    );
+  } catch (logErr) {
+    console.warn('[BillingService] Log void payment error:', logErr.message);
+  }
+
+  return result.rows[0];
+}
+
+/**
+ * Annule un encaissement familial (ou multi-mois)
+ */
+async function voidFamilyPayment(params = {}) {
+  const { parentId, receiptNumber, periodMonth, periodYear, reason, voidedBy } = params;
+
+  const pMonth = periodMonth ? parseInt(periodMonth, 10) : (new Date().getMonth() + 1);
+  const pYear = periodYear ? parseInt(periodYear, 10) : new Date().getFullYear();
+
+  let invoices = [];
+  if (receiptNumber) {
+    const res = await db.query(`
+      SELECT ci.*, c.first_name as child_first_name, c.last_name as child_last_name
+      FROM child_invoices ci
+      JOIN children c ON ci.child_id = c.id
+      WHERE ci.receipt_number = $1
+    `, [receiptNumber]);
+    invoices = res.rows;
+  }
+
+  // Englober toutes les factures de la fratrie pour ce mois et les mois d'avance
+  if (parentId) {
+    const res = await db.query(`
+      SELECT ci.*, c.first_name as child_first_name, c.last_name as child_last_name
+      FROM child_invoices ci
+      JOIN children c ON ci.child_id = c.id
+      WHERE ci.parent_id = $1
+        AND (
+          (ci.period_year = $2 AND ci.period_month = $3)
+          OR (ci.receipt_number = $4)
+          OR (ci.period_year > $2 OR (ci.period_year = $2 AND ci.period_month > $3))
+        )
+        AND (ci.status = 'paid' OR ci.status = 'partial' OR ci.amount_paid > 0 OR ci.receipt_number IS NOT NULL)
+    `, [parentId, pYear, pMonth, receiptNumber || '']);
+
+    const seenIds = new Set(invoices.map(i => i.id));
+    for (const inv of res.rows) {
+      if (!seenIds.has(inv.id)) {
+        invoices.push(inv);
+        seenIds.add(inv.id);
+      }
+    }
+  }
+
+  if (invoices.length === 0) {
+    throw new Error('Aucun encaissement trouvé à annuler pour cette famille');
+  }
+
+  const resolvedReceipt = receiptNumber || invoices.find(i => i.receipt_number)?.receipt_number || 'N/A';
+  const totalVoidedAmount = invoices.reduce((sum, i) => sum + parseFloat(i.amount_paid || 0), 0);
+
+  const voidNote = `[Encaissement familial annulé le ${new Date().toISOString().slice(0, 10)} - Reçu ${resolvedReceipt} (${totalVoidedAmount.toFixed(2)} TND)${reason ? ' - Motif : ' + reason : ''}]`;
+
+  for (const inv of invoices) {
+    const newNotes = inv.notes ? `${inv.notes}\n${voidNote}` : voidNote;
+
+    // Si c'est une facture générée pour un mois futur (avance multi-mois), la supprimer purement et simplement
+    const isFutureMonth = (inv.period_year > pYear) || (inv.period_year === pYear && inv.period_month > pMonth);
+    if (isFutureMonth) {
+      await db.query(`DELETE FROM child_invoices WHERE id = $1`, [inv.id]);
+    } else {
+      await db.query(`
+        UPDATE child_invoices
+        SET
+          amount_paid = 0.00,
+          status = 'pending',
+          receipt_number = NULL,
+          paid_at = NULL,
+          credit_used = 0.00,
+          notes = $1,
+          updated_at = NOW()
+        WHERE id = $2
+      `, [newNotes, inv.id]);
+    }
+  }
+
+  // Annuler également tout surplus / avoir ou restituer le crédit utilisé lié à cet encaissement
+  if (parentId) {
+    try {
+      const logRes = await db.query(`
+        SELECT metadata FROM activity_logs
+        WHERE action = 'family_payment_received'
+          AND (metadata->>'receipt_number' = $1 OR (metadata->>'parent_id')::text = $2)
+        ORDER BY id DESC LIMIT 1
+      `, [resolvedReceipt, String(parentId)]);
+
+      if (logRes.rows.length > 0 && logRes.rows[0].metadata) {
+        const surplus = parseFloat(logRes.rows[0].metadata.surplus_credit || 0);
+        const creditUsed = parseFloat(logRes.rows[0].metadata.credit_used || 0);
+
+        if (surplus > 0) {
+          await db.query(`
+            UPDATE users
+            SET credit_balance = GREATEST(0.00, credit_balance - $1)
+            WHERE id = $2
+          `, [surplus, parentId]);
+        }
+
+        if (creditUsed > 0) {
+          await db.query(`
+            UPDATE users
+            SET credit_balance = credit_balance + $1
+            WHERE id = $2
+          `, [creditUsed, parentId]);
+        }
+      } else {
+        // Fallback de sécurité : réinitialiser l'avoir pour éviter tout résidu orphelin après annulation
+        await db.query(`
+          UPDATE users
+          SET credit_balance = 0.00
+          WHERE id = $1
+        `, [parentId]);
+      }
+    } catch (creditErr) {
+      console.warn('[BillingService] Annulation avoir parent ignorée:', creditErr.message);
+    }
+  }
+
+  // Journaliser dans activity_logs
+  try {
+    await logActivity(
+      voidedBy,
+      'family_payment_voided',
+      `Encaissement familial annulé : ${totalVoidedAmount.toFixed(2)} TND (reçu ${resolvedReceipt}) pour ${invoices.length} cotisation(s)${reason ? ' - Motif : ' + reason : ''}`,
+      { parent_id: parentId, voided_receipt: resolvedReceipt, amount: totalVoidedAmount, reason }
+    );
+  } catch (logErr) {
+    console.warn('[BillingService] Log family void error:', logErr.message);
+  }
+
+  return {
+    success: true,
+    voided_receipt: resolvedReceipt,
+    total_voided: totalVoidedAmount,
+    invoices_count: invoices.length
+  };
+}
+
+/**
  * Ajuste le montant d'une facture (ex: prorata, modification ou suppression de remise)
  * Permet également de mettre à jour la remise récurrente de l'enfant pour les mois futurs.
  */
 async function adjustInvoice(invoiceId, adjustmentData) {
-  const { totalDue, basePrice, discountAmount, notes, updateChildRecurringDiscount, updatedBy } = adjustmentData;
+  const totalDue = adjustmentData.totalDue !== undefined && adjustmentData.totalDue !== null ? adjustmentData.totalDue : adjustmentData.adjusted_amount;
+  const notes = adjustmentData.notes !== undefined ? adjustmentData.notes : adjustmentData.reason;
+  const { basePrice, discountAmount, updateChildRecurringDiscount, updatedBy } = adjustmentData;
 
   const invCheck = await db.query(`SELECT * FROM child_invoices WHERE id = $1`, [invoiceId]);
   if (invCheck.rows.length === 0) {
@@ -560,7 +1422,7 @@ async function sendPaymentReminder(invoiceId, options = {}) {
 
   // 3. Logger l'action
   try {
-    await createLog(
+    await logActivity(
       senderId,
       'payment_alert_sent',
       `Rappel de paiement envoyé au parent #${parentId} pour ${inv.child_first_name} - ${amountToPay} TND`,
@@ -579,27 +1441,63 @@ async function sendPaymentReminder(invoiceId, options = {}) {
 
 /**
  * Résumé financier mensuel pour la crèche
+ * Distingue clairement la Comptabilité d'Engagement (Attendu / Facturé)
+ * et la Comptabilité de Caisse Réelle (Cash réellement encaissé dans le mois sans fausse accumulation)
  */
 async function getFinancialSummary(periodMonth, periodYear) {
   const m = parseInt(periodMonth, 10);
   const y = parseInt(periodYear, 10);
+  const endOfTargetMonth = new Date(Date.UTC(y, m, 0, 23, 59, 59, 999)).toISOString();
 
-  // Recettes des cotisations
+  // 1. Recettes attendues et facturées pour ce mois spécifique (Comptabilité d'Engagement)
   const invoicesRes = await db.query(`
     SELECT
       COUNT(*) as total_invoices,
-      COALESCE(SUM(total_due), 0) as total_invoiced,
-      COALESCE(SUM(amount_paid), 0) as total_collected,
-      COUNT(CASE WHEN status = 'paid' THEN 1 END) as count_paid,
-      COUNT(CASE WHEN status = 'pending' THEN 1 END) as count_pending,
-      COUNT(CASE WHEN status = 'overdue' THEN 1 END) as count_overdue,
-      COUNT(CASE WHEN care_schedule = 'full_day' THEN 1 END) as count_full_day,
-      COUNT(CASE WHEN care_schedule = 'half_day' THEN 1 END) as count_half_day
-    FROM child_invoices
-    WHERE period_month = $1 AND period_year = $2
+      COALESCE(SUM(ci.total_due), 0) as total_invoiced,
+      COALESCE(SUM(ci.amount_paid), 0) as total_paid_for_period,
+      COALESCE(SUM(GREATEST(0, ci.total_due - ci.amount_paid)), 0) as total_remaining,
+      COUNT(CASE WHEN ci.status = 'paid' THEN 1 END) as count_paid,
+      COUNT(CASE WHEN ci.status = 'pending' THEN 1 END) as count_pending,
+      COUNT(CASE WHEN ci.status = 'overdue' THEN 1 END) as count_overdue,
+      COUNT(CASE WHEN ci.care_schedule = 'full_day' THEN 1 END) as count_full_day,
+      COUNT(CASE WHEN ci.care_schedule = 'half_day' THEN 1 END) as count_half_day
+    FROM child_invoices ci
+    JOIN children c ON ci.child_id = c.id
+    WHERE ci.period_month = $1 AND ci.period_year = $2
+      AND (c.created_at IS NULL OR c.created_at <= $3)
+      AND ci.status != 'cancelled'
+  `, [m, y, endOfTargetMonth]);
+
+  // 2. Flux réels de trésorerie perçus durant le mois calendaire m/y (Comptabilité de Caisse Réelle)
+  const cashFlowRes = await db.query(`
+    SELECT
+      COALESCE(SUM(ci.amount_paid), 0) as total_cash_collected,
+      COALESCE(SUM(CASE WHEN ci.period_month = $1 AND ci.period_year = $2 THEN ci.amount_paid ELSE 0 END), 0) as current_month_cash,
+      COALESCE(SUM(CASE WHEN (ci.period_year > $2) OR (ci.period_year = $2 AND ci.period_month > $1) THEN ci.amount_paid ELSE 0 END), 0) as advance_cash_collected,
+      COALESCE(SUM(CASE WHEN (ci.period_year < $2) OR (ci.period_year = $2 AND ci.period_month < $1) THEN ci.amount_paid ELSE 0 END), 0) as arrears_cash_collected
+    FROM child_invoices ci
+    WHERE EXTRACT(MONTH FROM ci.paid_at) = $1 
+      AND EXTRACT(YEAR FROM ci.paid_at) = $2
+      AND ci.status != 'cancelled'
+      AND ci.amount_paid > 0
   `, [m, y]);
 
-  // Dépenses de la crèche (prévu et opérationnel)
+  // 3. Montant des cotisations de ce mois m/y ayant été déjà réglées en avance lors d'un mois antérieur
+  const prepaidEarlierRes = await db.query(`
+    SELECT
+      COALESCE(SUM(ci.amount_paid), 0) as prepaid_earlier_amount,
+      COUNT(*) as count_prepaid_earlier
+    FROM child_invoices ci
+    JOIN children c ON ci.child_id = c.id
+    WHERE ci.period_month = $1 AND ci.period_year = $2
+      AND ci.paid_at IS NOT NULL
+      AND (EXTRACT(YEAR FROM ci.paid_at) < $2 OR (EXTRACT(YEAR FROM ci.paid_at) = $2 AND EXTRACT(MONTH FROM ci.paid_at) < $1))
+      AND ci.status != 'cancelled'
+      AND ci.amount_paid > 0
+      AND (c.created_at IS NULL OR c.created_at <= $3)
+  `, [m, y, endOfTargetMonth]);
+
+  // 4. Dépenses de la crèche pour ce mois
   const expensesRes = await db.query(`
     SELECT
       COUNT(*) as total_expenses_count,
@@ -609,25 +1507,37 @@ async function getFinancialSummary(periodMonth, periodYear) {
   `, [m, y]);
 
   const invSummary = invoicesRes.rows[0];
+  const cashSummary = cashFlowRes.rows[0];
+  const prepaidSummary = prepaidEarlierRes.rows[0];
   const expSummary = expensesRes.rows[0];
 
-  const totalCollected = parseFloat(invSummary.total_collected || 0);
   const totalInvoiced = parseFloat(invSummary.total_invoiced || 0);
-  const totalRemaining = Math.max(0, totalInvoiced - totalCollected);
+  const totalRemaining = parseFloat(invSummary.total_remaining || 0);
+  const totalCashCollected = parseFloat(cashSummary.total_cash_collected || 0);
+  const advanceCashCollected = parseFloat(cashSummary.advance_cash_collected || 0);
+  const currentMonthCash = parseFloat(cashSummary.current_month_cash || 0);
+  const arrearsCashCollected = parseFloat(cashSummary.arrears_cash_collected || 0);
+  const prepaidEarlier = parseFloat(prepaidSummary.prepaid_earlier_amount || 0);
+
   const totalExpenses = parseFloat(expSummary.total_expenses_amount || 0);
-  const netBalance = totalCollected - totalExpenses;
-  const collectionRate = totalInvoiced > 0 ? Math.round((totalCollected / totalInvoiced) * 100) : 0;
+  // Trésorerie nette du mois = Total des espèces/virements physiquement encaissés ce mois - Dépenses engagées ce mois
+  const netBalance = totalCashCollected - totalExpenses;
+  const collectionRate = totalInvoiced > 0 ? Math.round(((totalInvoiced - totalRemaining) / totalInvoiced) * 100) : 0;
 
   return {
     period: { month: m, year: y },
     total_due: totalInvoiced,
-    total_collected: totalCollected,
+    total_collected: totalCashCollected, // Cash réel disponible en caisse perçu ce mois-ci
     total_remaining: totalRemaining,
     collection_rate: collectionRate,
     incomes: {
       total_invoiced: totalInvoiced,
-      total_collected: totalCollected,
+      total_collected: totalCashCollected,
       total_pending: totalRemaining,
+      current_month_cash: currentMonthCash,
+      advance_cash_collected: advanceCashCollected,
+      arrears_cash_collected: arrearsCashCollected,
+      prepaid_earlier: prepaidEarlier,
       count_paid: parseInt(invSummary.count_paid || 0, 10),
       count_pending: parseInt(invSummary.count_pending || 0, 10),
       count_overdue: parseInt(invSummary.count_overdue || 0, 10),
@@ -641,6 +1551,108 @@ async function getFinancialSummary(periodMonth, periodYear) {
     treasury: {
       net_balance: netBalance
     }
+  };
+}
+
+/**
+ * Régularise une cotisation d'un mois passé (historique payé en espèces avant mise en place du logiciel)
+ * La date de paiement paid_at est fixée au 15 du mois concerné pour ne pas fausser le cash flow du mois en cours
+ */
+async function settlePastInvoice(invoiceId, options = {}) {
+  const { recordedBy, notes = 'Règlement historique antérieur au logiciel' } = options;
+  const invRes = await db.query(`SELECT * FROM child_invoices WHERE id = $1`, [invoiceId]);
+  if (invRes.rows.length === 0) {
+    const err = new Error('Cotisation introuvable');
+    err.status = 404;
+    throw err;
+  }
+  const inv = invRes.rows[0];
+  const targetDue = parseFloat(inv.total_due || 0);
+
+  // Date historique : 15 du mois de la facture
+  const historicalDate = new Date(Date.UTC(inv.period_year, inv.period_month - 1, 15, 12, 0, 0));
+  const autoReceipt = inv.receipt_number || `REC-${inv.period_year}${String(inv.period_month).padStart(2, '0')}-HIST-${String(inv.id).padStart(4, '0')}`;
+
+  const updRes = await db.query(`
+    UPDATE child_invoices
+    SET amount_paid = $1,
+        status = 'paid',
+        payment_method = 'Espèces (antérieur)',
+        receipt_number = $2,
+        paid_at = $3,
+        notes = CASE 
+          WHEN notes IS NULL OR notes = '' THEN $4
+          ELSE notes || ' - ' || $4
+        END,
+        updated_at = NOW()
+    WHERE id = $5
+    RETURNING *
+  `, [
+    targetDue,
+    autoReceipt,
+    historicalDate.toISOString(),
+    `[Régularisation historique : ${notes}]`,
+    invoiceId
+  ]);
+
+  try {
+    await logActivity(
+      recordedBy,
+      'invoice_settled_past',
+      `Régularisation historique validée pour cotisation ${inv.period_month}/${inv.period_year} : ${targetDue} DT (Espèces antérieur)`,
+      { invoice_id: invoiceId, child_id: inv.child_id, amount: targetDue, historical_date: historicalDate }
+    );
+  } catch (e) {
+    console.warn('[BillingService] Log settlePastInvoice error:', e.message);
+  }
+
+  return updRes.rows[0];
+}
+
+/**
+ * Régularise toutes les cotisations d'un mois passé pour une famille
+ */
+async function settlePastFamily(familyData) {
+  const { parentId, childIds = [], periodMonth, periodYear, recordedBy, notes = 'Règlement historique antérieur au logiciel' } = familyData;
+  const conditions = ['status != $1', 'status != $2'];
+  const values = ['paid', 'cancelled'];
+  let idx = 3;
+
+  if (periodMonth) {
+    conditions.push(`period_month = $${idx++}`);
+    values.push(parseInt(periodMonth, 10));
+  }
+  if (periodYear) {
+    conditions.push(`period_year = $${idx++}`);
+    values.push(parseInt(periodYear, 10));
+  }
+
+  if (parentId) {
+    conditions.push(`parent_id = $${idx++}`);
+    values.push(parseInt(parentId, 10));
+  } else if (childIds && childIds.length > 0) {
+    conditions.push(`child_id = ANY($${idx++}::int[])`);
+    values.push(childIds);
+  } else {
+    throw new Error('Identifiant parent ou enfants requis pour la régularisation');
+  }
+
+  const query = `
+    SELECT * FROM child_invoices
+    WHERE ${conditions.join(' AND ')}
+  `;
+  const targets = await db.query(query, values);
+  const settled = [];
+
+  for (const inv of targets.rows) {
+    const res = await settlePastInvoice(inv.id, { recordedBy, notes });
+    settled.push(res);
+  }
+
+  return {
+    success: true,
+    count: settled.length,
+    invoices: settled
   };
 }
 
@@ -1073,8 +2085,14 @@ module.exports = {
   generateMonthlyInvoices,
   getInvoices,
   recordPayment,
+  recordFamilyPayment,
+  autoApplyParentCredit,
+  voidPayment,
+  voidFamilyPayment,
   adjustInvoice,
   sendPaymentReminder,
   getFinancialSummary,
-  generateReceiptPDF
+  generateReceiptPDF,
+  settlePastInvoice,
+  settlePastFamily
 };

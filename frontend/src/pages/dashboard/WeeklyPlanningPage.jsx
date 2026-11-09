@@ -13,11 +13,9 @@ import {
     ChevronRight,
     X,
     CheckCircle,
-    AlertCircle,
     User,
     Megaphone,
     MapPin,
-    Plus,
     Lock
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -29,6 +27,7 @@ import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import EventModal from '../../components/modals/EventModal';
 import TaskModal from '../../components/modals/TaskModal';
 import CreateAppointmentModal from '../../components/modals/CreateAppointmentModal';
+import MobileNavigation from '../../components/mobile/MobileNavigation';
 
 /**
  * Page Planning Hebdomadaire
@@ -158,23 +157,8 @@ const WeeklyPlanningPage = () => {
                     }
                 });
 
-                // Ajouter les anniversaires
-                const month = date.getMonth() + 1;
-                const day = date.getDate();
-                children.forEach(child => {
-                    if (!child.date_of_birth) return;
-                    const birthDate = new Date(child.date_of_birth);
-                    if (birthDate.getMonth() + 1 === month && birthDate.getDate() === day) {
-                        data[dayKey].items.push({
-                            id: `birthday-${child.id}`,
-                            title: `🎂 ${child.first_name} ${child.last_name}`,
-                            description: isRTL ? `عيد ميلاد ${child.first_name}` : `Anniversaire de ${child.first_name}`,
-                            start_date: dateStr,
-                            itemType: 'birthday',
-                            metadata: { child_name: `${child.first_name} ${child.last_name}` }
-                        });
-                    }
-                });
+                // Les événements d'anniversaire confirmés par les parents (decision = 'yes')
+                // sont déjà présents dans `events` chargés depuis `/api/events`.
 
                 // Trier par heure
                 data[dayKey].items.sort((a, b) => {
@@ -427,7 +411,7 @@ const WeeklyPlanningPage = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 px-4 pb-4 pt-[calc(env(safe-area-inset-top,0px)+1rem)] md:p-6">
+        <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 px-4 pt-[calc(env(safe-area-inset-top,0px)+1rem)] md:p-6 ${isMobile ? 'pb-24' : 'pb-4'}`}>
             <div className="max-w-7xl mx-auto">
                 {/* En-tête */}
                 <motion.div
@@ -1033,6 +1017,9 @@ const WeeklyPlanningPage = () => {
                 onSuccess={handleModalSuccess}
                 prefilledDate={selectedDate}
             />
+
+            {/* Navigation mobile */}
+            {isMobile && <MobileNavigation />}
         </div>
     );
 };

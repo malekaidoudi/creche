@@ -15,18 +15,19 @@ async function createTask(taskData, creatorId) {
   try {
     await client.query('BEGIN');
 
-    const { title, description, assigned_to, due_date, priority = 'medium' } = taskData;
+    const { title, description, assigned_to, due_date, priority = 'medium', enrollment_id = null } = taskData;
     const targetUserId = parseInt(assigned_to);
     const authorId = parseInt(creatorId);
+    const numericEnrollmentId = enrollment_id ? parseInt(enrollment_id, 10) : null;
 
     console.log('📝 Création tâche:', { title, assigned_to: targetUserId, creatorId: authorId, due_date, priority });
 
     // Créer la tâche
     const result = await client.query(`
-      INSERT INTO tasks (title, description, assigned_to, created_by, due_date, priority, status)
-      VALUES ($1, $2, $3, $4, $5, $6, 'pending')
+      INSERT INTO tasks (title, description, assigned_to, created_by, due_date, priority, status, enrollment_id)
+      VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7)
       RETURNING *
-    `, [title, description, targetUserId, authorId, due_date, priority]);
+    `, [title, description, targetUserId, authorId, due_date, priority, numericEnrollmentId]);
 
     const task = result.rows[0];
 
@@ -74,6 +75,191 @@ async function createTask(taskData, creatorId) {
 }
 
 /**
+ * Enrichit les tâches automatiques (résolution enfant Express, dossier d'inscription,
+ * nettoyage des #ID techniques et auto-complétion des tâches obsolètes).
+ */
+async function enrichAndFilterTasks(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) return [];
+
+  // 1. Auto-compléter et exclure la tâche #3 devenue obsolète ("📄 Compléter le dossier de ...")
+  const obsoleteIds = rows
+    .filter(t => /^📄\s*Compléter le dossier/i.test(t.title || ''))
+    .map(t => t.id);
+
+  if (obsoleteIds.length > 0) {
+    try {
+      await query(
+        `UPDATE tasks SET status = 'completed', completed_at = NOW(), updated_at = NOW() WHERE id = ANY($1) AND status != 'completed'`,
+        [obsoleteIds]
+      );
+    } catch (e) {
+      console.warn('⚠️ Nettoyage tâches documents obsolètes:', e.message);
+    }
+  }
+
+  const activeRows = rows.filter(t => !/^📄\s*Compléter le dossier/i.test(t.title || ''));
+  if (activeRows.length === 0) return [];
+
+  // 2. Collecter les enrollment_id potentiels et les noms d'enfants Express
+  const enrollmentIdsToFetch = new Set();
+  const expressNamesToFetch = new Set();
+
+  for (const t of activeRows) {
+    const title = t.title || '';
+    const desc = t.description || '';
+
+    if (/Traiter dossier inscription|Demande d'inscription/i.test(title)) {
+      const idFromCol = t.enrollment_id ? parseInt(t.enrollment_id, 10) : null;
+      const idFromTitle = title.match(/#(\d+)/)?.[1] ? parseInt(title.match(/#(\d+)/)[1], 10) : null;
+      const idFromDesc = desc.match(/highlight=(\d+)/)?.[1] ? parseInt(desc.match(/highlight=(\d+)/)[1], 10) : null;
+      const resolvedEnrollmentId = idFromCol || idFromDesc || idFromTitle;
+      if (resolvedEnrollmentId && !isNaN(resolvedEnrollmentId)) {
+        t._resolvedEnrollmentId = resolvedEnrollmentId;
+        enrollmentIdsToFetch.add(resolvedEnrollmentId);
+      }
+    }
+
+    if (/Compléter dossier admin/i.test(title)) {
+      const idFromDesc = desc.match(/editChildId=(\d+)/)?.[1] ? parseInt(desc.match(/editChildId=(\d+)/)[1], 10) : null;
+      if (idFromDesc && !isNaN(idFromDesc)) {
+        t._resolvedChildId = idFromDesc;
+      } else {
+        const afterColon = title.split(':')[1]?.trim();
+        if (afterColon) {
+          const firstChildName = afterColon.split(',')[0].trim();
+          if (firstChildName) {
+            t._resolvedChildName = firstChildName;
+            expressNamesToFetch.add(firstChildName.toLowerCase());
+          }
+        }
+      }
+    }
+  }
+
+  // 3. Charger les infos d'enrollments correspondantes
+  const enrollmentMap = new Map();
+  if (enrollmentIdsToFetch.size > 0) {
+    try {
+      const enrollRes = await query(
+        `SELECT id, status, child_first_name, child_last_name FROM enrollments WHERE id = ANY($1)`,
+        [Array.from(enrollmentIdsToFetch)]
+      );
+      for (const row of enrollRes.rows) {
+        enrollmentMap.set(Number(row.id), row);
+      }
+    } catch (e) {
+      console.warn('⚠️ Erreur enrichissement enrollments pour tasks:', e.message);
+    }
+  }
+
+  // 4. Charger les enfants Express correspondants par nom si pas d'ID direct
+  const childByNameMap = new Map();
+  if (expressNamesToFetch.size > 0) {
+    try {
+      const childRes = await query(
+        `SELECT id, first_name, last_name
+         FROM children
+         WHERE LOWER(TRIM(COALESCE(first_name, '') || ' ' || COALESCE(last_name, ''))) = ANY($1)
+         ORDER BY id DESC`,
+        [Array.from(expressNamesToFetch)]
+      );
+      for (const row of childRes.rows) {
+        const fullNameKey = `${row.first_name || ''} ${row.last_name || ''}`.trim().toLowerCase();
+        if (!childByNameMap.has(fullNameKey)) {
+          childByNameMap.set(fullNameKey, row);
+        }
+      }
+    } catch (e) {
+      console.warn('⚠️ Erreur enrichissement children pour tasks:', e.message);
+    }
+  }
+
+  // 5. Filtrer les inscriptions déjà traitées et enrichir les tâches restantes
+  const staleEnrollmentTaskIds = [];
+  const enrichedTasks = [];
+
+  for (const t of activeRows) {
+    const title = t.title || '';
+    const desc = t.description || '';
+
+    // Cas A : Dossier d'inscription
+    if (/Traiter dossier inscription|Demande d'inscription/i.test(title)) {
+      const enrollId = t._resolvedEnrollmentId || null;
+      const enrollData = enrollId ? enrollmentMap.get(Number(enrollId)) : null;
+
+      // Si le dossier a déjà été approuvé ou rejeté (ou supprimé/archivé) et n'est plus 'pending'
+      if (enrollData && enrollData.status && enrollData.status !== 'pending' && t.status !== 'completed') {
+        staleEnrollmentTaskIds.push(t.id);
+        continue;
+      }
+
+      const childFromDb = enrollData
+        ? `${enrollData.child_first_name || ''} ${enrollData.child_last_name || ''}`.trim()
+        : '';
+      const childFromDesc = desc.match(/pour\s+([^(.\n]+)/i)?.[1]?.trim() || '';
+      const childFromTitle = title.includes(':') ? title.split(':')[1]?.replace(/#\d+/g, '').trim() : '';
+      const childDisplayName = childFromDb || childFromDesc || childFromTitle || '';
+
+      t.enrollment_id = enrollId;
+      t.enrollment_child_name = childDisplayName || null;
+      t.auto_action_type = 'enrollment_review';
+      t.title = childDisplayName
+        ? `📋 Demande d'inscription : ${childDisplayName}`
+        : `📋 Demande d'inscription`;
+    }
+
+    // Cas B : Compléter dossier admin & cotisation (Express Parent/Enfant)
+    if (/Compléter dossier admin/i.test(title)) {
+      let childId = t._resolvedChildId || null;
+      const afterColon = title.split(':')[1]?.trim() || '';
+      const firstChildName = (t._resolvedChildName || afterColon.split(',')[0] || '').trim();
+      if (!childId && firstChildName) {
+        const matchedChild = childByNameMap.get(firstChildName.toLowerCase());
+        if (matchedChild) {
+          childId = matchedChild.id;
+        }
+      }
+      t.edit_child_id = childId;
+      t.edit_child_name = firstChildName || null;
+      t.desktop_only = true;
+      t.auto_action_type = 'edit_express_child';
+    }
+
+    // Cas C : Anniversaires
+    if (/^🎂|^🚨\s*Demande Anniversaire/i.test(title)) {
+      t.auto_action_type = 'birthday';
+    }
+
+    // Nettoyage systématique des #ID ou (ID: XX) techniques dans le titre
+    if (t.title) {
+      t.title = t.title
+        .replace(/\s*\(ID\s*:\s*\d+\)/gi, '')
+        .replace(/\s*#\d+\b/g, '')
+        .trim();
+    }
+
+    delete t._resolvedEnrollmentId;
+    delete t._resolvedChildId;
+    delete t._resolvedChildName;
+
+    enrichedTasks.push(t);
+  }
+
+  if (staleEnrollmentTaskIds.length > 0) {
+    try {
+      await query(
+        `UPDATE tasks SET status = 'completed', completed_at = NOW(), updated_at = NOW() WHERE id = ANY($1) AND status != 'completed'`,
+        [staleEnrollmentTaskIds]
+      );
+    } catch (e) {
+      console.warn('⚠️ Nettoyage tâches inscriptions déjà traitées:', e.message);
+    }
+  }
+
+  return enrichedTasks;
+}
+
+/**
  * Récupérer les tâches d'un utilisateur
  */
 async function getUserTasks(userId, filters = {}) {
@@ -93,6 +279,7 @@ async function getUserTasks(userId, filters = {}) {
       LEFT JOIN users u ON t.created_by = u.id
       LEFT JOIN birthday_celebrations bc ON bc.task_id = t.id
       WHERE t.assigned_to = $1
+        AND t.title NOT LIKE '📄 Compléter le dossier%'
     `;
 
     const params = [userId];
@@ -113,8 +300,9 @@ async function getUserTasks(userId, filters = {}) {
     sql += ` ORDER BY t.priority DESC, t.due_date ASC`;
 
     const result = await query(sql, params);
+    const enriched = await enrichAndFilterTasks(result.rows);
 
-    return { success: true, tasks: result.rows };
+    return { success: true, tasks: enriched };
 
   } catch (error) {
     console.error('❌ Erreur getUserTasks:', error);
@@ -142,6 +330,7 @@ async function getTodayTasks(userId) {
         t.due_date,
         t.status,
         t.priority,
+        t.enrollment_id,
         t.created_at,
         t.completed_at,
         'task' as type,
@@ -159,11 +348,19 @@ async function getTodayTasks(userId) {
       LEFT JOIN birthday_celebrations bc ON bc.task_id = t.id
       WHERE (
         DATE(t.due_date) = CURRENT_DATE
-        OR (DATE(t.due_date) < CURRENT_DATE AND t.title LIKE '📋 Compléter dossier%')
+        OR (
+          DATE(t.due_date) < CURRENT_DATE
+          AND (
+            t.title LIKE '📋 Compléter dossier%'
+            OR t.title LIKE '📋 Demande d''inscription%'
+            OR t.title LIKE '📋 Traiter dossier inscription%'
+          )
+        )
         OR t.title LIKE '🎂%'
         OR t.title LIKE '🚨 Demande Anniversaire%'
       )
         AND t.status != 'completed'
+        AND t.title NOT LIKE '📄 Compléter le dossier%'
         AND t.assigned_to = $1
         AND (bc.decision IS NULL OR bc.decision = 'yes')
       ORDER BY 
@@ -176,7 +373,8 @@ async function getTodayTasks(userId) {
         t.due_date ASC
     `, [userId]);
 
-    return { success: true, tasks: result.rows };
+    const enriched = await enrichAndFilterTasks(result.rows);
+    return { success: true, tasks: enriched };
 
   } catch (error) {
     console.error('❌ Erreur getTodayTasks:', error);
@@ -215,18 +413,26 @@ async function getOverdueTasks(userId = null, userRole = null) {
         t.due_date,
         t.status,
         t.priority,
+        t.enrollment_id,
         t.created_at,
         'task' as type,
         u1.first_name || ' ' || u1.last_name as assigned_to_name,
         u1.role as assigned_to_role,
         u2.first_name || ' ' || u2.last_name as created_by_name,
+        bc.child_id as birthday_child_id,
+        bc.decision as birthday_decision,
+        bc.admin_status as birthday_admin_status,
+        bc.assigned_staff_id as birthday_assigned_staff_id,
+        COALESCE(bc.celebration_iso_date, bc.preferred_date) as birthday_celebration_date,
         CURRENT_DATE - DATE(t.due_date) as days_overdue
       FROM tasks t
       LEFT JOIN users u1 ON t.assigned_to = u1.id
       LEFT JOIN users u2 ON t.created_by = u2.id
+      LEFT JOIN birthday_celebrations bc ON bc.task_id = t.id
       WHERE DATE(t.due_date) < CURRENT_DATE
         AND t.status != 'completed'
         AND t.title NOT LIKE '📋 Compléter dossier%'
+        AND t.title NOT LIKE '📄 Compléter le dossier%'
         ${whereClause}
       ORDER BY 
         CASE t.priority 
@@ -238,7 +444,8 @@ async function getOverdueTasks(userId = null, userRole = null) {
         t.due_date ASC
     `, (role === 'admin') ? [] : [userId]);
 
-    return { success: true, tasks: result.rows };
+    const enriched = await enrichAndFilterTasks(result.rows);
+    return { success: true, tasks: enriched };
 
   } catch (error) {
     console.error('❌ Erreur getOverdueTasks:', error);

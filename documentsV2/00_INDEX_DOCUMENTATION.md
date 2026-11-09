@@ -36,6 +36,7 @@ Documentation d'audit du projet **Mima Elghalia**, produite à partir du code so
 | [23 — Anomalies et recommandations](./23_ANOMALIES_ET_RECOMMANDATIONS.md) | Incohérences identifiées, recommandations, questions ouvertes |
 | [24 — Références code](./24_REFERENCES_CODE.md) | Index rapide sujet → fichier |
 | [25 — Dictionnaire des routes et navigation](./25_DICTIONNAIRE_DES_ROUTES_ET_NAVIGATION.md) | Référentiel canonique des routes frontend, résolution des alias et règles IA |
+| [26 — Plans SaaS et feature flags](./26_PLANS_SAAS_ET_FEATURE_FLAGS.md) | Proposition de grille tarifaire (Essentiel/Pro/Premium), modules activés par palier, prérequis techniques |
 
 ## Diagrammes (`diagrams/`)
 - [architecture-globale.mmd](./diagrams/architecture-globale.mmd)

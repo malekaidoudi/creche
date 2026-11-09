@@ -253,16 +253,19 @@ const ChildDetailsPage = () => {
     const initials = `${child.first_name?.charAt(0) || ''}${child.last_name?.charAt(0) || ''}`.toUpperCase();
     const age = calculateAge(child.birth_date || child.date_of_birth);
     const enrollmentDuration = getEnrollmentDuration();
+    const targetChildId = id || child?.id;
 
     return (
-        <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors ${isMobile ? 'pb-24' : ''}`}>
+        <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors ${isMobile ? 'pb-32' : 'pb-12'}`}>
             {/* Header */}
             <div className="sticky top-0 z-10 bg-white/95 dark:bg-gray-900/95 backdrop-blur border-b border-gray-200 dark:border-gray-800 shadow-sm transition-colors pt-[env(safe-area-inset-top,0px)]">
                 <div className="flex items-center justify-between px-4 py-3.5 max-w-2xl mx-auto">
                     <button
-                        onClick={() => navigate('/mon-espace')}
-                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors text-gray-700 dark:text-gray-200"
+                        type="button"
+                        onClick={() => navigate(targetChildId ? `/mon-espace?openChild=${targetChildId}` : '/mon-espace')}
+                        className="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors shrink-0"
                         title={isRTL ? 'رجوع' : 'Retour'}
+                        aria-label={isRTL ? 'رجوع' : 'Retour'}
                     >
                         <ArrowLeft className={`w-5 h-5 ${isRTL ? 'rotate-180' : ''}`} />
                     </button>

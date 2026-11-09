@@ -6,7 +6,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
-    ChevronLeft, Search, RefreshCw, Baby, CheckCircle, Clock,
+    ArrowLeft, Search, RefreshCw, Baby, CheckCircle, Clock,
     Utensils, Droplets, Heart, Moon, Activity, MessageSquare,
     Save, Send, X, Plus, Loader2, ChevronRight, Thermometer, Check,
     AlertTriangle, Lock
@@ -16,6 +16,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useAccess } from '../../access';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
+import MobileNavigation from './MobileNavigation';
 
 // Couleurs style direction (comme app mobile)
 const dirColors = {
@@ -49,10 +50,9 @@ const MobileDailyReportsPage = () => {
     const [children, setChildren] = useState([]);
     const [selectedChild, setSelectedChild] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
-    const [foodOptions, setFoodOptions] = useState([]);
-    const [foodBadges, setFoodBadges] = useState([]);
-    const [foodInputText, setFoodInputText] = useState('');
-    const [showFoodSuggestions, setShowFoodSuggestions] = useState(false);
+    const [suppliesBrought, setSuppliesBrought] = useState([]);
+    const [consumableBadges, setConsumableBadges] = useState([]);
+    const [customSupplyText, setCustomSupplyText] = useState('');
     const [childStock, setChildStock] = useState({ diapers: 0, alertThreshold: 5 });
     const [showLowStockAlert, setShowLowStockAlert] = useState(false);
 
@@ -69,7 +69,6 @@ const MobileDailyReportsPage = () => {
         activities: '',
         observations: '',
         supplies_diapers: 0,
-        supplies_food: '',
     });
 
     const labels = {
@@ -102,7 +101,7 @@ const MobileDailyReportsPage = () => {
         supplies: isRTL ? 'المستلزمات المحضرة' : 'Fournitures apportées',
         suppliesDesc: isRTL ? 'سجل المستلزمات التي أحضرها الوالدين' : 'Enregistrez les fournitures apportées par les parents',
         diapers: isRTL ? 'حفاضات' : 'Couches',
-        food: isRTL ? 'طعام/حليب' : 'Nourriture/Lait',
+        consumables: isRTL ? 'مستلزمات استهلاكية / نظافة' : 'Produits consommables & Hygiène',
         pieces: isRTL ? 'قطعة' : 'pièces',
         validateSupplies: isRTL ? 'حفظ المستلزمات' : 'Valider les fournitures',
         pee: isRTL ? 'بول' : 'Pipi',
@@ -111,6 +110,22 @@ const MobileDailyReportsPage = () => {
         start: isRTL ? 'البداية' : 'Début',
         end: isRTL ? 'النهاية' : 'Fin',
     };
+
+    const consumablePresets = [
+        { type: 'wipes', icon: '🧻', label: isRTL ? 'مناديل مبللة' : 'Lingettes', description: isRTL ? 'مناديل مبللة' : 'Lingettes' },
+        { type: 'cream', icon: '🧴', label: isRTL ? 'مرهم / كريم' : 'Crème', description: isRTL ? 'مرهم / كريم' : 'Crème' },
+        { type: 'other', icon: '🤧', label: isRTL ? 'مناديل ورقية' : 'Mouchoirs', description: isRTL ? 'مناديل ورقية' : 'Mouchoirs' },
+        { type: 'clothes', icon: '👕', label: isRTL ? 'ملابس إضافية' : 'Vêtements', description: isRTL ? 'ملابس إضافية' : 'Vêtements de rechange' },
+        { type: 'other', icon: '💧', label: isRTL ? 'مصل فيزيولوجي' : 'Sérum phy.', description: isRTL ? 'مصل فيزيولوجي' : 'Sérum physiologique' }
+    ];
+
+    const mealTypeOptions = [
+        { value: 'bottle', label: isRTL ? '🍼 رضاعة / حليب' : '🍼 Biberon / Lait' },
+        { value: 'meal', label: isRTL ? '🍲 وجبة اليوم' : '🍲 Repas du jour' },
+        { value: 'compote', label: isRTL ? '🥣 كومبوت / ياغورت' : '🥣 Compote / Yaourt' },
+        { value: 'fruit', label: isRTL ? '🍎 فاكهة / لمجة' : '🍎 Fruit / Goûter' },
+        { value: 'other', label: isRTL ? '📝 أخرى' : '📝 Autre' }
+    ];
 
     useEffect(() => {
         loadChildren();
@@ -147,10 +162,9 @@ const MobileDailyReportsPage = () => {
             activities: '',
             observations: '',
             supplies_diapers: 0,
-            supplies_food: '',
         });
-        setFoodBadges([]);
-        setFoodInputText('');
+        setConsumableBadges([]);
+        setCustomSupplyText('');
 
         if (child.has_report) {
             try {
@@ -175,7 +189,6 @@ const MobileDailyReportsPage = () => {
                         activities: r.activities || '',
                         observations: r.observations || '',
                         supplies_diapers: 0,
-                        supplies_food: '',
                     });
                 }
             } catch (error) {
@@ -183,14 +196,14 @@ const MobileDailyReportsPage = () => {
             }
         }
 
-        // Charger les options de nourriture apportée
+        // Charger les fournitures apportées aujourd'hui
         try {
-            const foodRes = await api.get(`/api/supplies/child/${child.id}/food-options`);
-            if (foodRes.data?.success) {
-                setFoodOptions(foodRes.data.food_options || []);
+            const suppliesRes = await api.get(`/api/supplies/today/${child.id}`);
+            if (suppliesRes.data?.success) {
+                setSuppliesBrought(suppliesRes.data.supplies || []);
             }
         } catch (error) {
-            console.error('Erreur chargement options nourriture:', error);
+            console.error('Erreur chargement fournitures:', error);
         }
 
         // Charger le stock de couches de l'enfant
@@ -246,9 +259,10 @@ const MobileDailyReportsPage = () => {
         } else if (currentHour >= 15) {
             defaultPeriod = 'snack';
         }
+        const defaultMealType = isBaby ? 'bottle' : 'meal';
         setFormData(prev => ({
             ...prev,
-            meals: [...prev.meals, { period: defaultPeriod, meal_type: 'bottle', meal_description: '', quantity: 'full' }]
+            meals: [...prev.meals, { period: defaultPeriod, meal_type: defaultMealType, meal_description: '', quantity: 'full' }]
         }));
     };
 
@@ -321,41 +335,27 @@ const MobileDailyReportsPage = () => {
         }));
     };
 
-    const handleFoodInputChange = (text) => {
-        if (text.endsWith(',')) {
-            const word = text.slice(0, -1).trim();
-            if (word && !foodBadges.includes(word)) {
-                const newBadges = [...foodBadges, word];
-                setFoodBadges(newBadges);
-                setFormData(prev => ({ ...prev, supplies_food: newBadges.join(', ') }));
-            }
-            setFoodInputText('');
-            setShowFoodSuggestions(false);
+    const toggleConsumableBadge = (item) => {
+        const exists = consumableBadges.some(b => b.description === item.description);
+        if (exists) {
+            setConsumableBadges(prev => prev.filter(b => b.description !== item.description));
         } else {
-            setFoodInputText(text);
-            setShowFoodSuggestions(text.length > 0);
+            setConsumableBadges(prev => [...prev, { type: item.type, description: item.description, icon: item.icon || '📦' }]);
         }
     };
 
-    const addFoodBadge = (food) => {
-        if (!foodBadges.includes(food)) {
-            const newBadges = [...foodBadges, food];
-            setFoodBadges(newBadges);
-            setFormData(prev => ({ ...prev, supplies_food: newBadges.join(', ') }));
+    const addCustomConsumable = () => {
+        const text = customSupplyText.trim();
+        if (!text) return;
+        if (!consumableBadges.some(b => b.description.toLowerCase() === text.toLowerCase())) {
+            setConsumableBadges(prev => [...prev, { type: 'other', description: text, icon: '📦' }]);
         }
-        setFoodInputText('');
-        setShowFoodSuggestions(false);
+        setCustomSupplyText('');
     };
 
-    const removeFoodBadge = (food) => {
-        const newBadges = foodBadges.filter(b => b !== food);
-        setFoodBadges(newBadges);
-        setFormData(prev => ({ ...prev, supplies_food: newBadges.join(', ') }));
+    const removeConsumableBadge = (description) => {
+        setConsumableBadges(prev => prev.filter(b => b.description !== description));
     };
-
-    const filteredFoodSuggestions = foodOptions.filter(
-        opt => opt.toLowerCase().includes(foodInputText.toLowerCase()) && !foodBadges.includes(opt)
-    ).slice(0, 5);
 
     const saveSupplies = async () => {
         if (!selectedChild) return;
@@ -363,7 +363,7 @@ const MobileDailyReportsPage = () => {
             toast.error(isRTL ? 'ليس لديك صلاحية تسجيل المستلزمات' : 'Permission requise pour gérer les fournitures');
             return;
         }
-        if (formData.supplies_diapers === 0 && foodBadges.length === 0 && !foodInputText.trim()) {
+        if (formData.supplies_diapers === 0 && consumableBadges.length === 0 && !customSupplyText.trim()) {
             toast.error(isRTL ? 'لا توجد مستلزمات للحفظ' : 'Aucune fourniture à enregistrer');
             return;
         }
@@ -371,32 +371,36 @@ const MobileDailyReportsPage = () => {
         setSavingSupplies(true);
         try {
             const today = new Date().toISOString().split('T')[0];
-            let finalFoodList = [...foodBadges];
-            if (foodInputText.trim()) {
-                finalFoodList.push(foodInputText.trim());
+            const finalConsumables = [...consumableBadges];
+            if (customSupplyText.trim()) {
+                finalConsumables.push({ type: 'other', description: customSupplyText.trim() });
             }
 
             if (formData.supplies_diapers > 0) {
                 await api.post(`/api/supplies/child/${selectedChild.id}/refill`, {
                     supply_type: 'diapers',
                     quantity: formData.supplies_diapers,
-                    notes: `Apporté le ${today}`
+                    notes: `Apporté le ${today}`,
+                    date: today
                 });
             }
 
-            if (finalFoodList.length > 0) {
-                const foodDescription = finalFoodList.join(', ');
-                await api.post(`/api/supplies/child/${selectedChild.id}/refill`, {
-                    supply_type: 'food',
-                    quantity: 1,
-                    notes: foodDescription
+            if (finalConsumables.length > 0) {
+                await api.post('/api/supplies/daily-brought', {
+                    child_id: selectedChild.id,
+                    date: today,
+                    supplies: finalConsumables.map(item => ({
+                        type: item.type || 'other',
+                        quantity: 1,
+                        description: item.description
+                    }))
                 });
             }
 
-            // Recharger les options de nourriture
-            const foodRes = await api.get(`/api/supplies/child/${selectedChild.id}/food-options`);
-            if (foodRes.data?.success) {
-                setFoodOptions(foodRes.data.food_options || []);
+            // Recharger les fournitures apportées aujourd'hui
+            const suppliesRes = await api.get(`/api/supplies/today/${selectedChild.id}`);
+            if (suppliesRes.data?.success) {
+                setSuppliesBrought(suppliesRes.data.supplies || []);
             }
 
             // Recharger le stock de couches
@@ -411,9 +415,9 @@ const MobileDailyReportsPage = () => {
                 }
             }
 
-            setFormData(prev => ({ ...prev, supplies_diapers: 0, supplies_food: '' }));
-            setFoodBadges([]);
-            setFoodInputText('');
+            setFormData(prev => ({ ...prev, supplies_diapers: 0 }));
+            setConsumableBadges([]);
+            setCustomSupplyText('');
 
             toast.success(isRTL ? 'تم حفظ المستلزمات' : 'Fournitures enregistrées');
         } catch (error) {
@@ -472,7 +476,7 @@ const MobileDailyReportsPage = () => {
     }
 
     return (
-        <div style={{ backgroundColor: dirColors.background, minHeight: '100vh' }}>
+        <div style={{ backgroundColor: dirColors.background, minHeight: '100vh', paddingBottom: 110 }}>
             {/* Header */}
             <div style={{
                 background: `linear-gradient(135deg, ${dirColors.primary} 0%, #6366F1 100%)`,
@@ -481,21 +485,13 @@ const MobileDailyReportsPage = () => {
                 borderBottomRightRadius: 24,
             }}>
                 <button
+                    type="button"
                     onClick={() => selectedChild ? setSelectedChild(null) : navigate(-1)}
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        background: 'none',
-                        border: 'none',
-                        color: 'white',
-                        cursor: 'pointer',
-                        marginBottom: 12,
-                        fontSize: 16,
-                    }}
+                    className="p-2 rounded-xl bg-white/20 text-white hover:bg-white/30 transition-colors shrink-0 mb-3 inline-flex items-center justify-center"
+                    title={labels.back}
+                    aria-label={labels.back}
                 >
-                    <ChevronLeft size={24} />
-                    <span>{labels.back}</span>
+                    <ArrowLeft className={`w-5 h-5 ${isRTL ? 'rotate-180' : ''}`} />
                 </button>
                 <h1 style={{ fontSize: 24, fontWeight: 'bold', color: 'white', margin: 0 }}>
                     {focusParam === 'meals'
@@ -647,8 +643,40 @@ const MobileDailyReportsPage = () => {
                             <p style={{ fontSize: 12, color: dirColors.textSecondary, marginBottom: 12 }}>
                                 {labels.suppliesDesc}
                             </p>
-                            <div style={{ display: 'flex', gap: 12 }}>
-                                <div style={{ flex: 1 }}>
+
+                            {/* Fournitures déjà enregistrées aujourd'hui */}
+                            {suppliesBrought.length > 0 && (
+                                <div style={{
+                                    backgroundColor: dirColors.card,
+                                    borderRadius: 8,
+                                    padding: '8px 12px',
+                                    marginBottom: 12,
+                                    border: '1px solid rgba(34, 197, 94, 0.35)'
+                                }}>
+                                    <p style={{ fontSize: 11, fontWeight: 600, color: '#86EFAC', marginBottom: 6 }}>
+                                        ✅ {isRTL ? 'تم تسجيله اليوم:' : 'Enregistré aujourd\'hui :'}
+                                    </p>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                        {suppliesBrought.map((supply, idx) => (
+                                            <span key={idx} style={{
+                                                fontSize: 11,
+                                                padding: '3px 8px',
+                                                borderRadius: 12,
+                                                backgroundColor: supply.supply_type === 'diapers' ? 'rgba(59, 130, 246, 0.25)' : 'rgba(34, 197, 94, 0.25)',
+                                                color: supply.supply_type === 'diapers' ? '#93C5FD' : '#86EFAC',
+                                                fontWeight: 500
+                                            }}>
+                                                {supply.supply_type === 'diapers'
+                                                    ? `🧷 ${supply.quantity} ${isRTL ? 'حفاضات' : 'couches'}`
+                                                    : `📦 ${supply.description || supply.supply_type}`}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                <div>
                                     <p style={{ fontSize: 12, color: dirColors.textSecondary, marginBottom: 4 }}>
                                         🧷 {labels.diapers}
                                     </p>
@@ -659,7 +687,7 @@ const MobileDailyReportsPage = () => {
                                             value={formData.supplies_diapers || ''}
                                             onChange={(e) => setFormData(prev => ({ ...prev, supplies_diapers: parseInt(e.target.value) || 0 }))}
                                             style={{
-                                                width: 60,
+                                                width: 72,
                                                 backgroundColor: dirColors.cardLight,
                                                 border: 'none',
                                                 borderRadius: 8,
@@ -671,13 +699,38 @@ const MobileDailyReportsPage = () => {
                                         <span style={{ color: dirColors.textSecondary, fontSize: 12 }}>{labels.pieces}</span>
                                     </div>
                                 </div>
-                                <div style={{ flex: 2 }}>
-                                    <p style={{ fontSize: 12, color: dirColors.textSecondary, marginBottom: 4 }}>
-                                        🍼 {labels.food}
+                                <div>
+                                    <p style={{ fontSize: 12, color: dirColors.textSecondary, marginBottom: 6 }}>
+                                        🧴 {labels.consumables}
                                     </p>
-                                    {foodBadges.length > 0 && (
+                                    {/* Boutons rapides */}
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                                        {consumablePresets.map((preset, idx) => {
+                                            const isSelected = consumableBadges.some(b => b.description === preset.description);
+                                            return (
+                                                <button
+                                                    key={idx}
+                                                    type="button"
+                                                    onClick={() => toggleConsumableBadge(preset)}
+                                                    style={{
+                                                        padding: '5px 10px',
+                                                        borderRadius: 14,
+                                                        border: isSelected ? `1px solid ${dirColors.success}` : '1px solid rgba(148, 163, 184, 0.3)',
+                                                        backgroundColor: isSelected ? dirColors.success : dirColors.cardLight,
+                                                        color: isSelected ? 'white' : dirColors.text,
+                                                        fontSize: 12,
+                                                        cursor: 'pointer',
+                                                    }}
+                                                >
+                                                    {isSelected ? '✓ ' : '+ '}{preset.icon} {preset.label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {consumableBadges.length > 0 && (
                                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
-                                            {foodBadges.map((badge, idx) => (
+                                            {consumableBadges.map((badge, idx) => (
                                                 <div key={idx} style={{
                                                     display: 'flex',
                                                     alignItems: 'center',
@@ -685,50 +738,59 @@ const MobileDailyReportsPage = () => {
                                                     padding: '4px 8px',
                                                     borderRadius: 12,
                                                 }}>
-                                                    <span style={{ color: 'white', fontSize: 12, marginRight: 4 }}>{badge}</span>
-                                                    <button onClick={() => removeFoodBadge(badge)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                                                    <span style={{ color: 'white', fontSize: 12, marginRight: 4 }}>
+                                                        {badge.icon} {badge.description}
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeConsumableBadge(badge.description)}
+                                                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                                                    >
                                                         <X size={14} color="white" />
                                                     </button>
                                                 </div>
                                             ))}
                                         </div>
                                     )}
-                                    <input
-                                        type="text"
-                                        placeholder={isRTL ? 'تابع بفاصلة...' : 'Tapez puis virgule...'}
-                                        value={foodInputText}
-                                        onChange={(e) => handleFoodInputChange(e.target.value)}
-                                        style={{
-                                            width: '100%',
-                                            backgroundColor: dirColors.cardLight,
-                                            border: 'none',
-                                            borderRadius: 8,
-                                            padding: '8px 12px',
-                                            color: dirColors.text,
-                                        }}
-                                    />
-                                    {showFoodSuggestions && filteredFoodSuggestions.length > 0 && (
-                                        <div style={{
-                                            backgroundColor: dirColors.card,
-                                            borderRadius: 8,
-                                            marginTop: 4,
-                                            border: `1px solid ${dirColors.cardLight}`,
-                                        }}>
-                                            {filteredFoodSuggestions.map((suggestion, idx) => (
-                                                <div
-                                                    key={idx}
-                                                    onClick={() => addFoodBadge(suggestion)}
-                                                    style={{
-                                                        padding: '8px 12px',
-                                                        cursor: 'pointer',
-                                                        borderBottom: idx < filteredFoodSuggestions.length - 1 ? `1px solid ${dirColors.cardLight}` : 'none',
-                                                    }}
-                                                >
-                                                    <span style={{ color: dirColors.text, fontSize: 13 }}>{suggestion}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
+
+                                    <div style={{ display: 'flex', gap: 8 }}>
+                                        <input
+                                            type="text"
+                                            placeholder={isRTL ? 'منتج آخر (مثال: قطن، بودرة...)' : 'Autre produit (Ex: Coton, Talc...)'}
+                                            value={customSupplyText}
+                                            onChange={(e) => setCustomSupplyText(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' && customSupplyText.trim()) {
+                                                    e.preventDefault();
+                                                    addCustomConsumable();
+                                                }
+                                            }}
+                                            style={{
+                                                flex: 1,
+                                                backgroundColor: dirColors.cardLight,
+                                                border: 'none',
+                                                borderRadius: 8,
+                                                padding: '8px 12px',
+                                                color: dirColors.text,
+                                                fontSize: 13,
+                                            }}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={addCustomConsumable}
+                                            style={{
+                                                backgroundColor: dirColors.success,
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: 8,
+                                                padding: '0 14px',
+                                                fontWeight: 'bold',
+                                                cursor: 'pointer',
+                                            }}
+                                        >
+                                            +
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                             {(isAdmin() || can('DAILY_REPORTS_MANAGE') || can('CHILD_SUPPLIES_MANAGE')) ? (
@@ -849,67 +911,36 @@ const MobileDailyReportsPage = () => {
                                                 ))}
                                             </div>
                                         </div>
-                                        {/* Type - Biberon par défaut, nourriture apportée, et Autre */}
+                                        {/* Type - Catégories standards de repas */}
                                         <div style={{ marginBottom: 12 }}>
-                                            <p style={{ fontSize: 12, color: dirColors.textSecondary, marginBottom: 6 }}>Type</p>
+                                            <p style={{ fontSize: 12, color: dirColors.textSecondary, marginBottom: 6 }}>
+                                                {isRTL ? 'نوع الوجبة' : 'Type'}
+                                            </p>
                                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                                                {/* Biberon */}
-                                                <button
-                                                    onClick={() => updateMeal(index, 'meal_type', 'bottle')}
-                                                    style={{
-                                                        padding: '6px 12px',
-                                                        borderRadius: 6,
-                                                        border: 'none',
-                                                        backgroundColor: meal.meal_type === 'bottle' ? dirColors.primary : dirColors.cardLight,
-                                                        color: meal.meal_type === 'bottle' ? 'white' : dirColors.text,
-                                                        fontSize: 12,
-                                                        cursor: 'pointer',
-                                                    }}
-                                                >
-                                                    🍼 Biberon
-                                                </button>
-                                                {/* Nourriture apportée par le parent */}
-                                                {foodOptions.map((food, idx) => (
+                                                {mealTypeOptions.map(opt => (
                                                     <button
-                                                        key={idx}
-                                                        onClick={() => {
-                                                            updateMeal(index, 'meal_type', 'food_brought');
-                                                            updateMeal(index, 'meal_description', food);
-                                                        }}
+                                                        key={opt.value}
+                                                        type="button"
+                                                        onClick={() => updateMeal(index, 'meal_type', opt.value)}
                                                         style={{
                                                             padding: '6px 12px',
                                                             borderRadius: 6,
                                                             border: 'none',
-                                                            backgroundColor: meal.meal_type === 'food_brought' && meal.meal_description === food ? dirColors.success : dirColors.cardLight,
-                                                            color: meal.meal_type === 'food_brought' && meal.meal_description === food ? 'white' : dirColors.text,
+                                                            backgroundColor: meal.meal_type === opt.value ? dirColors.orange : dirColors.cardLight,
+                                                            color: meal.meal_type === opt.value ? 'white' : dirColors.text,
                                                             fontSize: 12,
                                                             cursor: 'pointer',
                                                         }}
                                                     >
-                                                        🥗 {food}
+                                                        {opt.label}
                                                     </button>
                                                 ))}
-                                                {/* Autre */}
-                                                <button
-                                                    onClick={() => updateMeal(index, 'meal_type', 'other')}
-                                                    style={{
-                                                        padding: '6px 12px',
-                                                        borderRadius: 6,
-                                                        border: 'none',
-                                                        backgroundColor: meal.meal_type === 'other' ? dirColors.orange : dirColors.cardLight,
-                                                        color: meal.meal_type === 'other' ? 'white' : dirColors.text,
-                                                        fontSize: 12,
-                                                        cursor: 'pointer',
-                                                    }}
-                                                >
-                                                    📝 Autre
-                                                </button>
                                             </div>
                                         </div>
                                         {/* Description */}
                                         <input
                                             type="text"
-                                            placeholder="Description..."
+                                            placeholder={isRTL ? 'تفاصيل الوجبة (اختياري)...' : 'Précision (ex: Soupe, Purée...) optionnel'}
                                             value={meal.meal_description || ''}
                                             onChange={(e) => updateMeal(index, 'meal_description', e.target.value)}
                                             style={{
@@ -1254,6 +1285,7 @@ const MobileDailyReportsPage = () => {
                     </div>
                 )}
             </div>
+            <MobileNavigation />
         </div>
     );
 };

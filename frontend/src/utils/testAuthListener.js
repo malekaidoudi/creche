@@ -7,8 +7,6 @@ export const initTestAuthListener = () => {
     // Seulement en développement
     if (import.meta.env.MODE !== 'development') return;
 
-    console.log('🧪 Test Auth Listener: Initialisation...');
-
     window.addEventListener('message', (event) => {
         // Accepter tous les messages en développement (fichiers locaux = origin null)
         // En production, ce code ne s'exécute pas
@@ -20,16 +18,12 @@ export const initTestAuthListener = () => {
             return;
         }
 
-        console.log('✅ Message d\'authentification valide:', type);
-
         switch (type) {
             case 'SET_AUTH':
                 // Injecter le token et l'utilisateur dans localStorage
                 if (token && user) {
                     localStorage.setItem('token', token);
                     localStorage.setItem('user', JSON.stringify(user));
-                    console.log('🔒 Test Auth: Utilisateur connecté', user);
-                    // Recharger pour appliquer les changements
                     setTimeout(() => {
                         window.location.reload();
                     }, 100);
@@ -40,8 +34,6 @@ export const initTestAuthListener = () => {
                 // Supprimer le token et l'utilisateur
                 localStorage.removeItem('token');
                 localStorage.removeItem('user');
-                console.log('🔓 Test Auth: Utilisateur déconnecté');
-                // Recharger pour appliquer les changements
                 setTimeout(() => {
                     window.location.reload();
                 }, 100);
@@ -51,6 +43,4 @@ export const initTestAuthListener = () => {
                 break;
         }
     });
-
-    console.log('✅ Test Auth Listener initialisé');
 };

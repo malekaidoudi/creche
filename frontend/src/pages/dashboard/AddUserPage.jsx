@@ -16,7 +16,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     UserPlus,
     Users,
-    Shield,
     Mail,
     Phone,
     Check,
@@ -31,14 +30,11 @@ import {
     Copy,
     MessageCircle,
     Smartphone,
-    UserCheck,
-    Calendar,
-    ChevronRight,
     Clock,
-    HeartHandshake
+    X
 } from 'lucide-react';
+import MobileNavigation from '../../components/mobile/MobileNavigation';
 import { useLanguage } from '../../hooks/useLanguage';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import ToggleSwitch from '../../components/ui/ToggleSwitch';
 import { Button } from '../../components/ui/Button';
 import { useDialogContext } from '../../contexts/DialogContext';
@@ -579,7 +575,7 @@ const AddUserPage = () => {
     // RENDU DU FORMULAIRE (WIZARD OU DESKTOP)
     // ==========================================
     return (
-        <div className="max-w-4xl mx-auto px-4 py-4 sm:py-6 space-y-6">
+        <div className={`max-w-4xl mx-auto px-4 py-4 sm:py-6 space-y-6 ${isMobileScreen ? 'pb-24' : ''}`}>
             {/* En-tête */}
             <div className="flex items-center justify-between">
                 <div>
@@ -592,6 +588,14 @@ const AddUserPage = () => {
                             : 'Enregistrement express avec invitation WhatsApp sans surcoût'}
                     </p>
                 </div>
+                <button
+                    type="button"
+                    onClick={() => navigate('/dashboard')}
+                    className="p-2 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    title={isRTL ? 'إلغاء وإغلاق' : 'Annuler et quitter'}
+                >
+                    <X className="w-6 h-6" />
+                </button>
             </div>
 
             {/* Stepper Wizard (Particulièrement fluide sur smartphone) */}
@@ -1168,6 +1172,9 @@ const AddUserPage = () => {
                     )}
                 </div>
             </div>
+
+            {/* Navigation mobile */}
+            {isMobileScreen && <MobileNavigation />}
         </div>
     );
 };

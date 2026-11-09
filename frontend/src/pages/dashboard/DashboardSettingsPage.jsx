@@ -39,6 +39,7 @@ import HolidayPoliciesManager from '../../components/HolidayPoliciesManager';
 import API_CONFIG from '../../config/api';
 import useIsMobile from '../../hooks/useIsMobile';
 import MobileSettingsView from '../../components/mobile/MobileSettingsView';
+import MobileNavigation from '../../components/mobile/MobileNavigation';
 
 const DashboardSettingsPage = () => {
   const location = useLocation();
@@ -98,6 +99,7 @@ const DashboardSettingsPage = () => {
     capacity: 0,
     openingTime: '',
     closingTime: '',
+    attendanceMode: 'hourly',
 
     // Horaires samedi (fermé par défaut, 08:00 à 13:00)
     saturdayOpen: false,
@@ -194,6 +196,7 @@ const DashboardSettingsPage = () => {
             capacity: parseInt(apiSettings.max_capacity?.toString().replace(/\D/g, '')) || 30,
             openingTime: apiSettings.opening_time || '07:00',
             closingTime: apiSettings.closing_time || '18:00',
+            attendanceMode: apiSettings.attendance_mode || 'hourly',
             saturdayOpen: apiSettings.saturday_open === 'true' || apiSettings.saturday_open === true,
             saturdayOpeningTime: apiSettings.saturday_opening_time || '08:00',
             saturdayClosingTime: apiSettings.saturday_closing_time || '13:00'
@@ -860,6 +863,7 @@ const DashboardSettingsPage = () => {
         max_capacity: settings.capacity.toString(),
         opening_time: settings.openingTime,
         closing_time: settings.closingTime,
+        attendance_mode: settings.attendanceMode || 'hourly',
         saturday_open: settings.saturdayOpen.toString(),
         saturday_opening_time: settings.saturdayOpeningTime,
         saturday_closing_time: settings.saturdayClosingTime
@@ -967,7 +971,7 @@ const DashboardSettingsPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6">
+    <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6 ${isMobile ? 'pb-28' : ''}`}>
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Bandeau de retour au mode mobile si forcé */}
         {isMobile && forceDesktopView && (
@@ -1203,6 +1207,76 @@ const DashboardSettingsPage = () => {
                       </div>
                     </div>
                   )}
+                </div>
+
+                {/* Mode de Pointage & Calcul des Heures */}
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+                  <h4 className="font-medium text-gray-900 dark:text-white mb-2">
+                    {isRTL ? 'نظام تسجيل الحضور (حساب الساعات)' : 'Mode de Pointage & Calcul des Heures'}
+                  </h4>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                    {isRTL 
+                      ? 'اختر بين تسجيل الوصول والمغادرة بالساعة الحقيقية، أو تسجيل يومي بنقرة واحدة مع احتساب الساعات التعاقدية تلقائيًا.'
+                      : 'Choisissez entre un pointage horodaté à la minute (Arrivée & Départ réels) ou un pointage journalier simplifié en 1 clic avec horaires forfaitaires.'}
+                  </p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Option 1 : Mode Horaire Réel */}
+                    <div
+                      onClick={() => handleSettingChange('attendanceMode', 'hourly')}
+                      className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                        settings.attendanceMode === 'hourly'
+                          ? 'border-primary-500 bg-primary-50/50 dark:bg-primary-950/20 shadow-xs'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 bg-white dark:bg-gray-800'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-semibold text-gray-900 dark:text-white text-sm">
+                          {isRTL ? 'حساب الساعات الفعلي (وصول ومغادرة)' : 'Mode Horodaté Réel (Arrivée / Départ)'}
+                        </span>
+                        <input
+                          type="radio"
+                          name="attendanceMode"
+                          checked={settings.attendanceMode === 'hourly'}
+                          onChange={() => handleSettingChange('attendanceMode', 'hourly')}
+                          className="text-primary-600 focus:ring-primary-500 cursor-pointer"
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                        {isRTL
+                          ? 'تسجيل دقيق لوقت الدخول والخروج مع حساب مدة التواجد، والإغلاق التلقائي بعد ساعة من نهاية الدوام (14:00 لنصف اليوم و19:00 لليوم الكامل).'
+                          : 'Pointage précis de l\'heure d\'arrivée et de sortie. Calcul des durées et clôture automatique différée (+1h après fermeture: 14h / 19h).'}
+                      </p>
+                    </div>
+
+                    {/* Option 2 : Mode Journalier Forfaitaire */}
+                    <div
+                      onClick={() => handleSettingChange('attendanceMode', 'daily')}
+                      className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                        settings.attendanceMode === 'daily'
+                          ? 'border-primary-500 bg-primary-50/50 dark:bg-primary-950/20 shadow-xs'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 bg-white dark:bg-gray-800'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-semibold text-gray-900 dark:text-white text-sm">
+                          {isRTL ? 'تسجيل يومي بسيط (نقرة واحدة باليوم)' : 'Mode Journalier Forfaitaire (1 clic)'}
+                        </span>
+                        <input
+                          type="radio"
+                          name="attendanceMode"
+                          checked={settings.attendanceMode === 'daily'}
+                          onChange={() => handleSettingChange('attendanceMode', 'daily')}
+                          className="text-primary-600 focus:ring-primary-500 cursor-pointer"
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+                        {isRTL
+                          ? 'نقرة واحدة في اليوم لتسجيل الحضور. يعتمد النظام تلقائياً الساعات الرسمية (07:00-18:00 لليوم الكامل، و07:00-13:00 لنصف اليوم والسبت).'
+                          : 'Un seul clic par jour pour marquer présent. Horaires forfaitaires automatiques : 07h-18h (journée complète), 07h-13h (demi-journée et samedi).'}
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Vacances Annuelles */}
@@ -1812,6 +1886,7 @@ const DashboardSettingsPage = () => {
         </motion.div>
 
       </div>
+      {isMobile && <MobileNavigation />}
     </div>
   );
 };

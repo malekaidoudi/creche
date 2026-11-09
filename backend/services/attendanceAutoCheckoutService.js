@@ -28,7 +28,7 @@ const getScheduleSettings = async () => {
     const res = await db.query(`
       SELECT setting_key, value_fr 
       FROM nursery_settings 
-      WHERE setting_key IN ('closing_time', 'saturday_open', 'saturday_closing_time')
+      WHERE setting_key IN ('closing_time', 'opening_time', 'saturday_open', 'saturday_closing_time', 'attendance_mode')
     `);
     
     const settings = {};
@@ -37,18 +37,34 @@ const getScheduleSettings = async () => {
     });
 
     return {
+      openingTime: settings.opening_time || '07:00',
       closingTime: settings.closing_time || '18:00',
       saturdayOpen: settings.saturday_open !== 'false',
-      saturdayClosingTime: settings.saturday_closing_time || '13:00'
+      saturdayClosingTime: settings.saturday_closing_time || '13:00',
+      attendanceMode: settings.attendance_mode || 'hourly' // 'hourly' ou 'daily'
     };
   } catch (err) {
     console.warn('[attendanceAutoCheckout] Erreur lecture schedule settings, utilisation des défauts:', err.message);
     return {
+      openingTime: '07:00',
       closingTime: '18:00',
       saturdayOpen: true,
-      saturdayClosingTime: '13:00'
+      saturdayClosingTime: '13:00',
+      attendanceMode: 'hourly'
     };
   }
+};
+
+/**
+ * Ajoute un nombre d'heures à une chaîne HH:mm (ex: '13:00' + 1 => '14:00', '18:00' + 1 => '19:00')
+ */
+const addHoursToTimeStr = (timeStr, hoursToAdd = 1) => {
+  if (!timeStr || typeof timeStr !== 'string' || !timeStr.includes(':')) {
+    return '19:00';
+  }
+  const [h, m] = timeStr.split(':').map(Number);
+  const newH = Math.min(23, (h || 0) + hoursToAdd);
+  return `${String(newH).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}`;
 };
 
 /**
@@ -118,9 +134,10 @@ const autoCloseExpiredAttendances = async () => {
       console.log(`⏰ [Auto-Checkout] ${pastUnclosed.rows.length} présence(s) de date(s) passée(s) clôturée(s) automatiquement`);
     }
 
-    // 2. CLÔTURE D'AUJOURD'HUI
-    // 2.A : Clôture spécifique des demi-journées dès 13h00
-    if (currentTimeStr >= '13:00') {
+    // 2. CLÔTURE D'AUJOURD'HUI (Déclenchée 1 heure après l'heure officielle de fermeture)
+    // 2.A : Clôture spécifique des demi-journées (départ contractuel 13h00, déclenchement différé à 14h00)
+    const halfDayTriggerTime = '14:00';
+    if (currentTimeStr >= halfDayTriggerTime) {
       const halfDayUnclosed = await db.query(`
         SELECT a.id, a.date, a.child_id, a.check_in_time, a.notes
         FROM attendance a
@@ -129,11 +146,12 @@ const autoCloseExpiredAttendances = async () => {
           AND a.check_in_time IS NOT NULL 
           AND a.check_out_time IS NULL
           AND c.care_schedule = 'half_day'
+          AND a.created_at < NOW() - INTERVAL '30 minutes'
       `, [todayStr]);
 
       if (halfDayUnclosed.rows.length > 0) {
         for (const row of halfDayUnclosed.rows) {
-          const autoNote = `[Départ automatique - fin de demi-journée (13:00)]`;
+          const autoNote = `[Départ automatique - fin de demi-journée (13:00, clôture différée 14:00)]`;
           const newNotes = row.notes ? `${row.notes} | ${autoNote}` : autoNote;
 
           await db.query(`
@@ -143,24 +161,28 @@ const autoCloseExpiredAttendances = async () => {
           `, [newNotes, row.id]);
           totalClosed++;
         }
-        console.log(`⏰ [Auto-Checkout] ${halfDayUnclosed.rows.length} demi-journée(s) d'aujourd'hui clôturée(s) à 13h00`);
+        console.log(`⏰ [Auto-Checkout] ${halfDayUnclosed.rows.length} demi-journée(s) d'aujourd'hui clôturée(s) à 14h00 (départ calé à 13h00)`);
       }
     }
 
-    // 2.B : Clôture générale à l'heure de fermeture de la crèche (ex: 18h00)
+    // 2.B : Clôture générale (déclenchée 1 heure après l'heure de fermeture, ex: 19h00 en semaine au lieu de 18h00, 14h00 le samedi)
     const todayClosingTime = getClosingTimeForDate(todayStr, schedule);
-    const isPastClosing = currentTimeStr >= todayClosingTime;
+    const generalTriggerTime = addHoursToTimeStr(todayClosingTime, 1);
+    const isPastClosing = currentTimeStr >= generalTriggerTime;
 
     if (isPastClosing) {
       const todayUnclosed = await db.query(`
         SELECT id, date, child_id, check_in_time, notes
         FROM attendance
-        WHERE date = $1 AND check_in_time IS NOT NULL AND check_out_time IS NULL
+        WHERE date = $1 
+          AND check_in_time IS NOT NULL 
+          AND check_out_time IS NULL
+          AND created_at < NOW() - INTERVAL '30 minutes'
       `, [todayStr]);
 
       if (todayUnclosed.rows.length > 0) {
         for (const row of todayUnclosed.rows) {
-          const autoNote = `[Départ automatique - fermeture de la crèche (${todayClosingTime})]`;
+          const autoNote = `[Départ automatique - fermeture de la crèche (${todayClosingTime}, clôture différée ${generalTriggerTime})]`;
           const newNotes = row.notes ? `${row.notes} | ${autoNote}` : autoNote;
 
           await db.query(`
@@ -170,7 +192,7 @@ const autoCloseExpiredAttendances = async () => {
           `, [`${todayClosingTime}:00`, newNotes, row.id]);
           totalClosed++;
         }
-        console.log(`⏰ [Auto-Checkout] ${todayUnclosed.rows.length} présence(s) d'aujourd'hui clôturée(s) à la fermeture (${todayClosingTime})`);
+        console.log(`⏰ [Auto-Checkout] ${todayUnclosed.rows.length} présence(s) d'aujourd'hui clôturée(s) à ${generalTriggerTime} (départ calé à ${todayClosingTime})`);
       }
     }
 

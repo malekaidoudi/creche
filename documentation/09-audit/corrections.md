@@ -72,6 +72,43 @@
 | **89** | 25/10/2026 | `backend/routes_postgres/users.js`, `frontend/src/components/widgets/CombinedPresenceActivityWidget.jsx`, `frontend/src/components/widgets/OnlineUsersWidget.jsx`, `frontend/src/components/widgets/RecentActivitiesWidget.jsx`, `frontend/src/pages/dashboard/DashboardHome.jsx` | Sécurité Présence & Supervision | Réservation stricte du widget unifié de présence/activités à la Direction et Développeur, masquage total du compte développeur des compteurs et listes | ✅ Validé & Appliqué |
 | **90** | 25/10/2026 | `backend/services/taskService.js`, `backend/routes_postgres/{events.js,dashboardStats.js}`, `frontend/src/components/widgets/{TodayTasksWidget.jsx,TodayTasksWidgetMobile.jsx,OverdueTasksWidget.jsx}`, `frontend/src/components/dashboard/MobileDashboardComplete.jsx` | Feedback Tâches & UX Mobile | Notification push/in-app lors de l'assignation et de la complétion des tâches, intégration dans le fil d'activité et ouverture directe de la modale des tâches en retard depuis la bannière d'alerte mobile (fin de la fausse redirection planning) | ✅ Validé & Appliqué |
 | **91** | 25/10/2026 | `frontend/src/pages/UnifiedProfilePage.jsx`, `frontend/src/components/mobile/MobileNavigation.jsx`, `frontend/src/routes/AppRoutes.jsx`, `frontend/src/utils/routeValidator.js`, `frontend/src/components/layout/{DashboardHeader.jsx,DashboardSidebar.jsx}`, `frontend/src/components/ui/{SideMenu.jsx,FloatingActionButton.jsx}` | Unification Compte & Préférences (PWA) | Centralisation de "Mon Compte & Préférences" (Profil, Mot de passe, Thème clair/sombre, Langue FR/AR, Notifications push PWA, Rappels staff), suppression définitive des erreurs 403 sur Paramètres pour Staff et Parents via redirection intelligente | ✅ Validé & Appliqué |
+| **92** | 07/11/2026 | `backend/routes_postgres/{attendance.js,nurserySettings.js,dashboardStats.js}`, `backend/services/attendanceAutoCheckoutService.js`, `backend/jobs/attendanceJob.js`, `backend/migrations/versions/017_attendance_mode_and_correction.js`, `frontend/src/services/attendanceService.js`, `frontend/src/pages/dashboard/{DashboardSettingsPage.jsx,AttendancePage.jsx}`, `frontend/src/components/attendance/{TodaySection.jsx,HistorySection.jsx}`, `frontend/src/components/mobile/MobileAttendance.jsx` | Audit Fautes de Frappe & Résilience Présences | Mode Pointage Forfaitaire/Horaire configurable (`hourly = true/false`), clôture automatique différée d'1h après fermeture, tableau de correction rétrospective par date (heures optionnelles), UX mobile sans toast bloquant (confirmation au 2e clic) et accueil exceptionnel samedi notifié | ✅ Validé & Appliqué |
+| **93** | 07/11/2026 | `backend/routes_postgres/billing.js`, `backend/services/billingService.js`, `frontend/src/components/modals/BillingManagementModal.jsx` | Audit Droit à l'erreur & Finances | Annulation/rectification d'encaissement d'espèces (`POST /invoices/:id/void-payment` avec motif et audit trail), CRUD complet des dépenses de crèche (`nursery_expenses`), garde-fou UX anti-surplus de paiement et synthèse financière 5 cartes | ✅ Validé & Appliqué |
+| **94** | 07/11/2026 | `backend/migrations/versions/018_annual_insurance_tracking.js`, `backend/services/billingService.js`, `backend/routes_postgres/children.js` | Facturation & Assurance Annuelle | Traçabilité de l'assurance scolaire (`insurance_paid_school_year`), rétroactivité de rentrée pour les enfants déjà inscrits et réconciliation immédiate des factures de novembre (retour à 130 DT / 100 DT) | ✅ Validé & Appliqué |
+| **95** | 07/11/2026 | `backend/migrations/versions/019_family_billing_and_credit.js`, `backend/services/billingService.js`, `backend/routes_postgres/billing.js`, `frontend/src/components/modals/BillingManagementModal.jsx`, `frontend/src/pages/parent/MySpacePage.jsx` | Facturation Familiale & Transparence | Cotisations consolidées par foyer (vue famille vs enfant), encaissement modulaire fratrie, paiements multi-mois d'avance (1 à 3 mois), gestion des avoirs (crédit balance), décomposition transparente des arriérés et badge paiement partiel sur l'Espace Parent | ✅ Validé & Appliqué |
+| **96** | 07/11/2026 | `frontend/src/components/modals/BillingManagementModal.jsx` | Calibrage & Ergonomie Visuelle Vue par Famille & Enfant | Initialisation fidèle du montant attendu et remis au reste réel (`calculateFamilyExpectedDue`), migration du reste dû en badge informatif sur la ligne 2 (`⏳ Reste dû : XX DT` harmonisé avec l'Avoir disponible), intégration directe des montants dans les boutons d'action (« Encaisser 260 DT » en `w-44` et « Régler 60 DT » en `w-36` calibrés), suppression du bloc textuel redondant pour les impayés et harmonisation 100% miroir de la Vue par Enfant | ✅ Validé & Appliqué |
+| **97** | 08/11/2026 | `frontend/src/pages/parent/MySpacePage.jsx`, `frontend/src/components/modals/BillingManagementModal.jsx` | Dark Mode Espace Parent, Bannière Reste Dû & Badges Ligne 1 | Correction du mode sombre sur les cartes de cotisations parents (remplacement de `dark:bg-gray-750` invalide par `dark:bg-gray-900/60`), ajout de la bannière rouge « Reste à payer sur votre compte famille » calculée en direct, et migration des badges `[ Arriéré : +XX DT ]` et `[ Remise : -XX DT ]` en 1ère ligne sur la Vue par Enfant | ✅ Validé & Appliqué |
+| **98** | 08/11/2026 | `frontend/src/components/modals/BillingManagementModal.jsx` | Encaissement Individuel Enfant & Pré-remplissage du Reste Dû | Transmission exacte du montant dû de l'enfant ciblé dans le champ « Montant encaissé (DT) * » de la modale individuelle (désélection automatique par défaut des frères et sœurs pour éviter le cumul involontaire) et récapitulatif avec acompte déduit | ✅ Validé & Appliqué |
+| **99** | 08/11/2026 | `frontend/src/pages/parent/MySpacePage.jsx` | Unification & Conception Miroir des Cartes de Cotisations (Individuelle & Famille) | Harmonisation 100% miroir de la carte de cotisation individuelle sur le modèle de la cotisation famille : déplacement du numéro de reçu en haut après le mois (`Mois MM/YYYY • N° Reçu: REC-...`), intégration de la mention du régime d'accueil entre parenthèses avec emojis (`(☀️ Journée complète)` / `(🌤️ Demi-journée)`) à côté du nom de l'enfant, et nettoyage du footer avec le bouton PDF isolé | ✅ Validé & Appliqué |
+| **100** | 08/11/2026 | `frontend/src/pages/parent/ParentBillingPage.jsx`, `frontend/src/pages/parent/MySpacePage.jsx`, `frontend/src/components/mobile/MobileNavigation.jsx`, `frontend/src/routes/AppRoutes.jsx` | Ergonomie Cotisations Parent : Proposition 1 & Page Mobile Dédiée via Menu Plus | Implémentation de la Proposition 1 (affichage par défaut des impayés + 3 derniers mois réglés avec bouton accordéon « Voir l'historique des mois précédents »), création de la page mobile moderne `ParentBillingPage.jsx` (`/mon-espace/cotisations`) avec KPI synthétiques, bannières dynamiques, téléchargement direct des reçus PDF et raccourci dans le menu « Plus » | ✅ Validé & Appliqué |
+| **101** | 08/11/2026 | `backend/routes_postgres/birthdays.js`, `frontend/src/components/modals/TaskDetailModal.jsx`, `frontend/src/pages/BirthdayEventPage.jsx`, `frontend/src/components/dashboard/MobileDashboardComplete.jsx`, `frontend/src/components/widgets/{MessagesWidget.jsx,UpcomingEventsWidget.jsx}`, `frontend/src/pages/{tasks/TasksPage.jsx,auth/ResetPasswordPage.jsx,auth/ForgotPasswordPage.jsx,parent/AnnouncementsPage.jsx}` | Correction Refus Anniversaire (HTTP 500 `42P08`), Affichage Dates de Demande & Fête, et Préfixe `/api` en Production | Correction du crash PostgreSQL `42P08: inconsistent types deduced for parameter $1` lors du clic sur « Refuser la demande » / « Accepter la demande », clôture automatique des tâches/événements lors d'un refus, correction du chargement `detailRes.data` dans `TaskDetailModal.jsx`, affichage explicite de la date d'envoi de la demande (`requested_at`/`decided_at`) et de la date souhaitée pour la fête (`celebration_date_label`) dans `BirthdayEventPage.jsx` et `TaskDetailModal.jsx`, et normalisation du préfixe `/api` pour éliminer le 404 sur `/staff-messages/unread` | ✅ Validé & Appliqué |
+| **102** | 08/11/2026 | `backend/services/childLifecycleService.js`, `backend/routes_postgres/{children.js,birthdays.js}`, `backend/controllers/appointmentsController.js`, `frontend/src/components/widgets/{TodayTasksWidget.jsx,TodayTasksWidgetMobile.jsx,BirthdaysWidget.jsx}`, `frontend/src/pages/{BirthdayEventPage.jsx,dashboard/MonthlyPlanningPage.jsx,dashboard/WeeklyPlanningPage.jsx,parent/ParentCalendarPage.jsx}`, `frontend/src/components/modals/TaskDetailModal.jsx` | Suppression de la Génération Automatique Legacy d'Anniversaires & Distinction Explicite « Aucune Demande du Parent » | Désactivation de `createBirthdayEvent` dans `childLifecycleService.js`, nettoyage des événements `type = 'birthday'` orphelins non liés à une demande parent active (`decision = 'yes'`), arrêt de la synthèse automatique de fausses tâches/événements `birthday-${child.id}` dans les widgets et calendriers, et masquage des boutons « Accepter / Refuser la demande » tant que le parent n'a soumis aucune demande (`decision_status !== 'yes'`) avec bannière explicite « ⏳ Aucune demande soumise par le parent » | ✅ Validé & Appliqué |
+| **103** | 08/11/2026 | `frontend/src/components/modals/BillingManagementModal.jsx`, `frontend/src/pages/parent/MySpacePage.jsx`, `frontend/src/pages/parent/ParentBillingPage.jsx` | Filtre Universel Mensuel (Cotisations & Dépenses Indépendantes), Résolution Dark Mode Espace Parent & Badges Arriéré/Remise en Ligne 1 | Intégration d'un sélecteur de période universel (mois/année, FR/AR) pour cotisations et dépenses indépendantes, pré-remplissage de date de dépense intelligente, élimination du fond gris délavé sur les cartes en mode sombre au profit d'un contraste franc (`bg-white dark:bg-gray-800/90`), et intégration des badges Arriéré (+XX DT) et Remise (-XX DT) en première ligne de chaque carte | ✅ Validé & Appliqué |
+| **104** | 08/11/2026 | `backend/services/billingService.js`, `backend/routes_postgres/billing.js`, `frontend/src/components/modals/BillingManagementModal.jsx`, `frontend/src/pages/parent/ParentBillingPage.jsx`, `frontend/src/pages/parent/MySpacePage.jsx` | Comptabilité de Caisse Réelle (Cash Flow Mensuel Indépendant), Traçabilité des Avances Futures & Anticipations, Régularisation Historique des Mois Passés, et Élargissement Modale Financière (Fix Troncature « Alerte Rapide ») | Implémentation du calcul de trésorerie sur les flux physiques réels de caisse du mois calendaire (`EXTRACT(MONTH FROM paid_at) = m`), détection et affichage des paiements par anticipation (`✓ Soldé par anticipation`), mise en évidence du total perçu ce mois avec détail des avances futures, endpoints et bouton « Régulariser mois passé » (espèces antérieures sans polluer la trésorerie actuelle), et élargissement de la modale (`max-w-[96vw] 2xl:max-w-[1480px]`) éliminant définitivement la troncature de « Alerte Rapide Personnalisée » | ✅ Validé & Appliqué |
+| **105** | 08/11/2026 | `backend/services/billingService.js`, `frontend/src/components/modals/BillingManagementModal.jsx`, Base de Données PostgreSQL | Règles Financières Métier (FIFO Stricte, Verrouillage Avances si Dettes, Fermeture Annuelle Août 0 DT), Style C Mobile Accordéon & Fix Header Desktop Universel | Application stricte du principe FIFO (solder mois ancien avant mois futur, fix Inès Issa Nov 150/150 DT & Déc 120/150 DT), verrouillage du sélecteur 2 mois / 3 mois d'avance si arriérés impayés (avec cadenas et alerte), neutralisation d'Août (fermeture annuelle 0 DT et purge des dettes fantômes), filtre strict d'inscription dans l'historique (`created_at <= FinDuMois`), intégration Style C mobile (Héro Trésorerie Nette + Grille 2x2 + accordéon dépliable par enfant) et adaptation desktop universelle sans débordement ni troncature | ✅ Validé & Appliqué |
+| **106** | 08/11/2026 | `frontend/src/components/mobile/MobileNavigation.jsx`, `frontend/src/pages/parent/ParentBillingPage.jsx`, `frontend/src/pages/parent/MySpacePage.jsx`, `frontend/src/components/modals/BillingManagementModal.jsx`, `backend/services/billingService.js`, `frontend/src/index.css`, Base Neon | Bouton d'Accès Cotisations Admin Mobile, Protection Anti-Coupure Monétaire Stricte (`nowrap-dt` & `\u00A0DT`) et Élimination de l'Affichage Prématuré des Mois Futurs Non Échus (Fix Mohamed Trabelsi) | Ajout de l'entrée « Cotisations & Dépenses » dans le menu mobile « Plus » pour les administrateurs et développeurs, définition globale de `.nowrap-dt` avec protection systématique anti-coupure des montants monétaires sur smartphone (`+190 DT`, `190 DT`, etc. avec `\u00A0DT`), purge des factures orphelines de test de Décembre 2026 (`amount_paid = 0`), et verrou SQL backend interdisant aux parents de voir un mois futur non échu sauf s'il a été préalablement soldé par anticipation (`amount_paid > 0`) | ✅ Validé & Appliqué |
+| **107** | 08/11/2026 | `frontend/src/components/modals/BillingManagementModal.jsx`, `frontend/src/components/mobile/MobileNavigation.jsx`, `frontend/src/index.css` | Refonte Visuelle 100% Fidèle à la Maquette Mobile (`maquette_cotisation.html` - Photos 1 & 2 vs Photos 3 & 4) & Allègement Menu Plus | Refonte complète de `BillingManagementModal.jsx` sur le modèle strict de la maquette HTML : canvas épuré moderne (`bg-[#F4F7FA] dark:bg-gray-900`), en-tête émeraude dégradé avec alerte cloche, onglets 50/50 avec badges de compteurs, sélecteur de période pilule sans coupure (`< Mois Année >` + bouton `Ce mois`), carte Héro Trésorerie Nette nuit (`bg-[#0F172A]`) avec icône banque `Landmark`, grille 2x2 des 4 KPI avec bandelettes d'accent gauche, barre d'outils (switch Famille/Enfant, recherche, pilules de filtre), cartes Style C avec liseré de 4px (`border-l-4`), avatar dégradé à 2 initiales, prix en haut à droite avec statut dessous, accordéon dépliable fratrie et barre d'actions inférieure (`Masquer détail` / `Encaisser` / `Reçu PDF`), et suppression d'« Activité récentes » dans le menu Plus mobile | ✅ Validé & Appliqué |
+| **108** | 08/11/2026 | `backend/routes_postgres/billing.js`, `frontend/src/components/modals/PaymentsHistoryModal.jsx`, `frontend/src/pages/parent/ParentBillingPage.jsx`, `frontend/src/pages/parent/MySpacePage.jsx`, `frontend/src/components/modals/BillingManagementModal.jsx` | Point Courant Espace Parent, Exclusion Stricte des Mois Futurs du Reste à Payer, Historique Chronologique des Versements Réels (`PaymentsHistoryModal`), et Fix Responsive Boutons Période Admin | Alignement de l'espace parent sur le point courant (mois en cours en vedette), exclusion stricte des mois futurs du calcul du solde restant dû (fix Inès Issa : 0 DT d'impayé au lieu de 30 DT de faux arriéré, affichage « ✓ À jour »), qualification valorisante en turquoise des versements futurs (« ✓ Règlement anticipé »), intégration de la modale et de l'endpoint d'historique chronologique des versements réels (`/api/billing/my-payments` & `PaymentsHistoryModal`), et fiabilisation responsive du sélecteur de période et des boutons d'action admin (`sm:inline`/`sm:hidden`, suppression du `+` redondant) | ✅ Validé & Appliqué |
+| **109** | 08/11/2026 | `frontend/src/components/modals/BillingManagementModal.jsx`, `frontend/src/pages/parent/ParentBillingPage.jsx`, `frontend/src/pages/parent/MySpacePage.jsx`, `backend/services/billingService.js` | Protection Safe-Area iOS Notch, Footer Cartes Famille Responsive 2 Lignes (Anti-Boutons Masqués/Coupés), Suppression Switch Onglets Famille/Enfant, et Exclusion Absolue Cartes Futures Espace Parent | Dégagement Safe Area iOS (`pt-[max(calc(env(safe-area-inset-top)+0.75rem),2.75rem)]`), restructuration responsive 2 lignes des pieds de carte famille mobile (Ligne 1 : Détail + Reçu PDF + Rappel + Annuler ; Ligne 2 : CTA `Encaisser`/`Régler` pleine largeur anti-coupure), suppression totale du switch `Vue par Famille` / `Vue par Enfant` (vue famille épurée unique), et masquage absolu de tout mois futur (ex: Décembre 2026) sur l'Espace Parent avec suppression des débordements de texte | ✅ Validé & Appliqué |
+| **110** | 08/11/2026 | `backend/services/billingService.js`, `backend/services/childLifecycleService.js`, `backend/scripts/reconcile_trabelsi_billing.js`, `frontend/src/pages/parent/ParentBillingPage.jsx`, `frontend/src/pages/parent/MySpacePage.jsx`, `frontend/src/components/modals/BillingManagementModal.jsx` | Verrouillage Date d'Admission (`admission_date`), Réconciliation Famille Trabelsi (Purge Samir Sept/Oct, Solde Youssef 190 DT, Avoir 100 DT), Neutralisation Congé Août 0 DT Espace Parent & Pied de Carte Stylisé | Empêchement absolu de facturer un enfant avant son mois d'admission officiel (`generateInvoiceForChild` renvoie `null`), exclusion des factures vacances `status = 'cancelled' AND total_due = 0` dans l'espace parent et correction du calcul `isPaid` à 0 DT, garde-fou affichage assurance (`itemInsurance > 0 && itemDue > 0`), pied de carte stylisé anti-flottement, refonte header mobile iOS Dynamic Island (padding 3.75rem+), boutons d'action `flex-1 sm:flex-initial` anti-masquage et padding bas de défilement anti-coupure | ✅ Validé & Appliqué |
+| **111** | 08/11/2026 | `frontend/src/components/modals/BillingManagementModal.jsx`, `frontend/src/index.css` | Résolution des Boutons Inconnus/Vides (Rappel & Annulation), Respect du Mode Clair Carte Héro Trésorerie & Anti-Troncature En-tête | Libellés explicites avec icônes contrastées pour les boutons « Rappel » (`Bell` ambre) et « Annuler » (`RotateCcw` rose), fiabilisation du rappel avec `invoiceId` garanti (fin de l'erreur `undefined`), adaptation de la carte Héro Trésorerie Nette au mode clair (`bg-gradient-to-r from-emerald-50/90 to-white` en light vs `dark:from-[#0F172A]` en dark) et recalibrage du sous-titre de l'en-tête (« Recettes, charges & reçus PDF ») sans aucune coupure `...` | ✅ Validé & Appliqué |
+| **112** | 08/11/2026 | `frontend/src/index.css`, `frontend/src/components/modals/BillingManagementModal.jsx`, `frontend/src/pages/parent/MySpacePage.jsx`, `frontend/src/pages/parent/ParentBillingPage.jsx`, `backend/scripts/reconcile_trabelsi_billing.js` | Élimination Définitive des Rayures Flottantes Modales (CSS Native Borders), Suppression Doublon Bouton Annuler Externe, Élévation Z-Index Sub-modales (`z-[70]`) & Réconciliation Finale Trabelsi | Remplacement des pseudo-éléments `::before` absolus (`.cotis-card-stripe`, `.kpi-stripe`) par des bordures natives `border-left-width: 4px` pour stopper tout débordement visuel sur les modales, sécurisation des sous-modales avec `z-[70]` et `style={{ zIndex: 70 }}` avec boutons de fermeture `X`, suppression définitive du bouton `Annuler` redondant sur la ligne extérieure des cartes (conservé uniquement dans l'accordéon Détail avec libellé clair), et exécution de la réconciliation comptable Trabelsi (Samir débutant en novembre, 100 DT d'avoir, 590 DT perçus en cash de caisse, mois de décembre filtré côté parent) | ✅ Validé & Appliqué |
+| **113** | 08/11/2026 | `frontend/src/pages/tasks/TasksPage.jsx`, `frontend/src/pages/parent/AnnouncementsPage.jsx`, `frontend/src/pages/parent/AttendanceParentPage.jsx`, `frontend/src/pages/parent/AbsenceRequestPage.jsx`, `frontend/src/pages/parent/ParentBillingPage.jsx`, `frontend/src/pages/staff/AbsenceManagementPage.jsx`, `frontend/src/pages/activities/ActivitiesPage.jsx`, `frontend/src/pages/dashboard/WeeklyPlanningPage.jsx`, `frontend/src/components/modals/BillingManagementModal.jsx` | Modernisation UX/UI Mobile : Épuration des En-têtes (Suppression Flèches Retour Redondantes) au Profit de la Bottom Navigation Bar Permanente & Suppression Doublons | Suppression des flèches et boutons "Retour au Dashboard / Mon Espace" disgracieux et redondants sur les 10 écrans de premier niveau mobile au profit de la barre de navigation inférieure tactile permanente (`MobileNavigation`), intégration d'en-têtes légers avec pastilles d'icônes stylisées, couverture du planning hebdomadaire et du fil d'activités, correction d'un bug de variable non définie (`navigate`) dans `TasksPage`, et suppression de la mention superflue « Erreur de saisie » dans l'accordéon de facturation | ✅ Validé & Appliqué |
+| **114** | 08/11/2026 | `frontend/src/pages/parent/ChildMedicalPage.jsx`, `frontend/src/pages/parent/ChildEmergencyContactsPage.jsx`, `frontend/src/pages/parent/AddChildPage.jsx`, `frontend/src/pages/dashboard/StaffChildDetailPage.jsx` | Modernisation UX/UI Mobile — Étape 2 : Harmonisation des En-têtes & Rétablissement des Boutons de Retour sur les Sous-écrans & Drill-down | Rétablissement du bouton de retour sur mobile pour les sous-écrans médicaux et urgences (auparavant masqué par `!isMobile`), redirection contextuelle précise vers la fiche enfant (`/mon-espace/children/:childId`), en-tête sticky uniforme avec pastille `rounded-xl`, alignement visuel du formulaire d'ajout d'enfant et harmonisation des icônes staff (`w-5 h-5`) | ✅ Validé & Appliqué |
+| **115** | 08/11/2026 | `frontend/src/pages/staff/StaffMemoForm.jsx`, `frontend/src/pages/dashboard/AddUserPage.jsx`, `frontend/src/pages/dashboard/AddChildPage.jsx` | Modernisation UX/UI Mobile — Étape 3 : Formulaires de Saisie, Remplacement de la Flèche par Bouton Fermer `[✕]`, Inscription Express Unifiée & Sécurisation Navigation | Élimination de la flèche textuelle flottante au profit d'un bouton de fermeture explicite `[✕]` et bouton `[Annuler]` en pied (`StaffMemoForm.jsx`, `AddUserPage.jsx`), intégration de la Bottom Navigation bar tactile permanente (`MobileNavigation` avec `pb-24`), et redirection automatique de `AddChildPage.jsx` (admin) vers le wizard d'inscription express unifiée (`/dashboard/add-user?role=parent`) | ✅ Validé & Appliqué |
+| **116** | 08/11/2026 | `frontend/src/components/modals/BillingManagementModal.jsx`, `frontend/src/pages/tasks/TasksPage.jsx`, `frontend/src/pages/parent/AttendanceParentPage.jsx`, `frontend/src/pages/parent/AbsenceRequestPage.jsx`, `frontend/src/pages/parent/ParentBillingPage.jsx`, `frontend/src/pages/parent/ChildDailyReportsPage.jsx`, `frontend/src/pages/parent/AddChildPage.jsx`, `frontend/src/pages/dashboard/AddUserPage.jsx`, `frontend/src/pages/dashboard/AddChildPage.jsx`, `frontend/src/pages/activities/ActivitiesPage.jsx`, `frontend/src/pages/dashboard/WeeklyPlanningPage.jsx`, `frontend/src/pages/dashboard/MonthlyPlanningPage.jsx`, `frontend/src/pages/UnifiedProfilePage.jsx` | Audit Global & Re-vérification des Écrans Mobiles : Nettoyage Intégral du Code Mort & Imports Inutilisés (AST Babel), Couverture Complète Bottom Bar & Marges Tactiles (`pb-24`) | Analyse AST déterministe (`@babel/parser`) éliminant 100% des imports inutilisés sur les 21 écrans mobiles modifiés dans la conversation, intégration de la barre de navigation tactile persistante `MobileNavigation` sur les derniers écrans secondaires orphelins (`ChildDailyReportsPage`, `parent/AddChildPage`) et sécurisation des marges inférieures anti-masquage `pb-24` | ✅ Validé & Appliqué |
+| **117** | 08/11/2026 | `frontend/src/pages/dashboard/GeneralStatsPage.jsx`, `frontend/src/pages/dashboard/DashboardSettingsPage.jsx`, `frontend/src/components/mobile/MobileSettingsView.jsx`, `frontend/src/components/mobile/MobileParentSpace.jsx`, `frontend/src/pages/parent/ChildDailyReportsPage.jsx`, `frontend/src/pages/parent/ChildDetailsPage.jsx`, `frontend/src/pages/parent/ChildMedicalPage.jsx`, `frontend/src/pages/parent/ChildEmergencyContactsPage.jsx`, `frontend/src/pages/dashboard/StaffChildDetailPage.jsx`, `frontend/src/pages/parent/TreatmentsPage.jsx`, `frontend/src/pages/dashboard/TreatmentsPage.jsx`, `frontend/src/components/mobile/MobileDailyReportsPage.jsx` | Déblocage Navigation Paramètres & Stats Mobiles, Débroussaillage Modales iPhone SE (`z-[60]` & Safe-Padding), Harmonisation Stricte des Boutons de Retour (`ArrowLeft` Pilule Universelle) & Anti-Coupure Cartes | Déblocage des pages orphelines sans retour ni bottom bar (`GeneralStatsPage` et `DashboardSettingsPage`/`MobileSettingsView` avec bouton retour vers `/dashboard` et `MobileNavigation`), fiabilisation des modales mobile et bottom-sheets (iPhone SE 375x667 : élévation `z-[60]`, `flex-col`, `overflow-y-auto` et boutons d'action d'urgence 100% visibles au-dessus de la barre), standardisation absolue du bouton de retour sur 100% des écrans secondaires (`p-2 rounded-xl bg-gray-100 dark:bg-gray-800` avec `ArrowLeft rtl:rotate-180`, fin des `<` vs `<-` vs `< Retour`), et marge de confort anti-coupure `pb-32`/`pb-36` sur les rapports journaliers | ✅ Validé & Appliqué |
+| **118** | 08/11/2026 | `frontend/src/pages/messages/MessagesPage.jsx`, `IDEES.md` | Résolution Masquage En-tête Conversation Mobile (`z-[60]` vs `PublicHeader`), Synchronisation Historique Navigateur (`?contactId`) & Support Geste Tactile Swipe-to-Close | Élimination du conflit d'empilement CSS (élévation `z-30` → `z-[60]` pour passer au-dessus de `PublicHeader` `z-50`), affichage dégagé de l'en-tête de conversation avec avatar, nom, statut et bouton retour standardisé `p-2 rounded-xl bg-gray-100 dark:bg-gray-800`, synchronisation bidirectionnelle de l'URL (`?contactId=ID`) pour que le geste naturel de swipe retour ou le bouton retour du téléphone referme la discussion vers la liste des contacts sans renvoyer vers le dashboard, et écouteur tactile de glissement horizontal intégré | ✅ Validé & Appliqué |
+| **119** | 08/11/2026 | `frontend/src/pages/messages/MessagesPage.jsx`, `frontend/src/components/mobile/ParentOptionsModals.jsx`, `frontend/src/pages/parent/ChildMedicalPage.jsx`, `frontend/src/pages/parent/ChildEmergencyContactsPage.jsx`, `frontend/src/pages/parent/ChildDetailsPage.jsx`, `frontend/src/pages/parent/ChildDailyReportsPage.jsx`, `frontend/src/components/mobile/MobileParentSpace.jsx`, `frontend/src/pages/parent/MySpacePage.jsx`, `IDEES.md` | Retour Contextuel vers Menu Enfant Ouvert (`?openChild=ID`), Suppression Bouton Retour Redondant Contacts Messages, Purge Onglet "Installer App" Modale Nouveautés & Fix `ReferenceError childId` | Suppression du bouton de retour redondant dans l'en-tête de la liste des contacts de messagerie (présence de la bottom bar permanente), routage contextuel du bouton retour des 4 pages enfants (Fiche, Médical, Urgences, Rapports) vers `/mon-espace?openChild=ID` avec ouverture automatique et transparente du menu d'action de l'enfant ciblé, suppression de l'onglet et du composant d'installation PWA dans la modale Nouveautés, et correction du crash console `ReferenceError: childId is not defined` (`targetChildId = id || child?.id`) | ✅ Validé & Appliqué |
+| **120** | 08/11/2026 | `frontend/src/components/modals/BillingManagementModal.jsx`, `frontend/src/components/mobile/MobileParentSpace.jsx`, `frontend/src/pages/messages/MessagesPage.jsx`, `frontend/src/pages/parent/ChildDailyReportsPage.jsx`, `IDEES.md` | Bouton Remise Ponctuelle Visible en Direct (Règlement Familial & Pied de Carte), Portals `document.body` Modales Mobile (Contacts d'Urgence), Isolation Conversation Plein Écran (`z-[100]`) & Compactage Cartes Rapports | Intégration du bouton dédié « Remise » directement sur chaque ligne d'enfant dans la modale « Règlement Familial » et sur le pied des cartes familles pour déduire immédiatement les remises sans navigation complexe, purge de 221 lignes de code mort dans le composant de facturation, montage via `createPortal` des modales d'actions enfants et contacts d'urgence sur `document.body` avec `z-[100]` pour empêcher tout masquage par la barre de navigation mobile, isolation en plein écran avec portail de la vue discussion mobile éliminant tout chevauchement par l'en-tête public, et recalibrage compact des cartes d'états vides des rapports journaliers | ✅ Validé & Appliqué |
+| **121** | 08/11/2026 | `frontend/src/pages/dashboard/AddChildPage.jsx`, `IDEES.md` | Résolution Crash Temporal Dead Zone `ReferenceError: Cannot access 'isPersonal' before initialization` | Déplacement de la déclaration `const isPersonal = searchParams.get('personal') === 'true'` en amont du hook `useEffect` qui l'utilise dans ses dépendances et sa condition de redirection, restaurant l'accès sans plantage à `dashboard/add-child` | ✅ Validé & Appliqué |
+| **122** | 08/11/2026 | `frontend/src/pages/parent/ChildDailyReportsPage.jsx`, `frontend/src/components/mobile/MobileParentSpace.jsx`, `frontend/src/layouts/PublicLayout.jsx`, `frontend/src/pages/messages/MessagesPage.jsx`, `frontend/src/components/modals/BillingManagementModal.jsx` | Dégagement barre navigation mobile (Rapports, Contacts urgence), Header conversation messagerie & Bouton remise règlement familial | Densification et marge basse `pb-44` sur rapports enfants, portail `z-[120]` et safe area sur contacts d'urgence, masquage `PublicHeader` sur `/mon-espace/messages` mobile restaurant le retour conversation `←`, découplage `<label>`/`<button>` remise dans `BillingManagementModal` | ✅ Validé & Appliqué |
+| **123** | 09/11/2026 | `backend/routes_postgres/billing.js`, `backend/services/billingService.js`, `frontend/src/components/modals/BillingManagementModal.jsx`, `frontend/src/pages/messages/MessagesPage.jsx`, `frontend/src/layouts/PublicLayout.jsx` | Intégration Native & Élégante de la Remise dans le Règlement Familial, Élimination de la Modale Secondaire d'Ajustement, Suppression du Bouton Retour Inutile sur la Liste des Contacts & Isolation Plein Écran Chat Conversation | Suppression du bouton popup et de la modale secondaire redondante « Ajuster la facture & Remises » au profit d'un champ inline « Remise ce mois » avec case « Appliquer aussi aux mois futurs » directement intégré sous chaque enfant sélectionné dans le modal « Règlement Familial » ; recalcul dynamique en temps réel du total net et prise en charge backend complète dans `recordFamilyPayment` ; confirmation de la suppression du bouton retour inutile dans l'en-tête de la liste des contacts (navigation assurée par la barre mobile persistante) et isolation plein écran avec en-tête dédié (bouton retour `←` et swipe tactile) pour la conversation active. | ✅ Validé & Appliqué |
+| **124** | 09/11/2026 | `backend/controllers/dailyReportsController.js`, `IDEES.md` | Correction Bug Stock Couches : Décrémentation Différentielle ($\Delta = N_{nouveau} - N_{ancien}$) lors de la Ré-édition & Réintégration au Stock en Cas de Suppression de Rapport | Calcul du différentiel net de couches consommées lors de la modification d'un rapport existant : zéro décrémentation si le nombre de couches est inchangé ($\Delta = 0$), décrémentation du surplus uniquement ($\Delta > 0$), réintégration au stock si des couches sont retirées ($\Delta < 0$) et réintégration automatique de la totalité des couches dans `deleteReport`. Élimine tout drainage artificiel du stock et les fausses alertes parents. | ✅ Validé & Appliqué |
+| **125** | 09/11/2026 | `backend/routes_postgres/{userWorkflow.js,children.js,enrollments.js}`, `backend/controllers/{enrollmentsController.js,appointmentsController.js}`, `backend/services/taskService.js`, `frontend/src/utils/taskHelpers.js`, `frontend/src/pages/dashboard/{ChildrenPage.jsx,PendingEnrollmentsPage.jsx}`, `frontend/src/components/widgets/{TodayTasksWidget.jsx,TodayTasksWidgetMobile.jsx,OverdueTasksWidget.jsx}`, `frontend/src/components/dashboard/MobileDashboardComplete.jsx`, `frontend/src/components/modals/TaskDetailModal.jsx`, `frontend/src/pages/tasks/TasksPage.jsx` | Refonte des Tâches Automatiques Système : Boutons d'Action Métier Contextuels, Auto-Complétion à la Sauvegarde, Exclusion Mobile Stricte du Dossier Express, Suppression de la Tâche #3 Obsolète & Éradication des `#ID` Techniques | Remplacement du bouton générique « Terminer » sur toutes les tâches automatiques par des actions métier directes (`✏️ Compléter la fiche enfant` ouvrant la modale d'édition sur `/dashboard/children`, `📋 Examiner le dossier` ciblant `/dashboard/pending-enrollments`, `🎂 Organiser & Assigner`, `✅ Valider le RDV` / `📅 Autre date`, `📋 Entretien d'admission`, `📅 Gérer le RDV`) ; auto-complétion en base dès l'exécution de l'action métier ; masquage intégral sur mobile des tâches réservées au Desktop (`Compléter dossier admin & cotisation`) ; suppression définitive de la tâche inutile `📄 Compléter le dossier de ...` ; et suppression de tout identifiant technique `#ID` ou `(ID: XX)` dans les titres, descriptions et URLs au profit du nom complet de l'enfant. | ✅ Validé & Appliqué |
+| **126** | 09/11/2026 | `backend/services/billingService.js`, `frontend/src/components/modals/BillingManagementModal.jsx`, `frontend/src/pages/parent/ParentBillingPage.jsx`, `frontend/src/pages/parent/MySpacePage.jsx` | Déblocage Paiement Multi-mois avec Arriérés, Toggle & Recalcul Réactif Immédiat des Remises (Ponctuelle & Récurrente), Élimination Superposition Badges & Conditionnement Quittance au 1er du Mois | Déverrouillage des boutons « 2 mois d'avance » et « Trimestre » même en présence d'arriérés (imputation chronologique stricte : dettes et mois courant soldés en priorité, surplus alloué aux mois futurs ou en avoir) ; case à cocher d'activation/désactivation de la remise avec recalcul dynamique instantané des montants enfant et famille ; calcul récurrent conditionné à la case « Appliquer aussi aux mois futurs » ; mise en page anti-superposition des badges tarifaires (Base, Samedi, Assurance, Arriéré, Remise) ; mention explicite de la date d'encaissement anticipé côté admin ; affichage des mois anticipés côté parent avec quittance officielle débloquée à partir du 1er du mois concerné. | ✅ Validé & Appliqué |
+| **127** | 09/11/2026 | `backend/services/billingService.js`, `frontend/src/components/modals/BillingManagementModal.jsx`, `IDEES.md` | Règle Métier Suspension Enfant (facturé si $\ge 1$ jour actif dans le mois, exclu dès le mois suivant si suspendu avant le 1er), Remise Strictement Ponctuelle dans Règlement Familial (suppression récurrence, non cochée par défaut, pas de 10 DT) & Purge Badge Confus « Encaissé ce mois » sur Cartes Familles Impayées | Exclusion stricte de la facturation et du listing pour les enfants suspendus avant le 1er jour du mois ciblé ; maintien de la facture pour le mois en cours si suspendu en milieu de mois ; suppression définitive de l'option « Appliquer aux mois futurs » dans le modal Règlement Familial (réservée à la fiche enfant) ; remise ponctuelle non activée par défaut (`enabled: false`) ; pas d'incrément de 10 DT (`step="10"`) ; correction de la formule d'arriérés cumulés en cascade et suppression du badge vert trompeur `💰 Encaissé ce mois` sur les cartes familles impayées. | ✅ Validé & Appliqué |
+| **128** | 09/11/2026 | `backend/migrations/versions/020_consumable_supplies_and_meals.js`, `backend/controllers/{suppliesController.js,dailyReportsController.js}`, `backend/routes_postgres/supplies.js`, `backend/tests/routes/supplies_access.test.js`, `frontend/src/pages/dashboard/DailyReportsPage.jsx`, `frontend/src/components/mobile/MobileDailyReportsPage.jsx`, `frontend/src/pages/parent/ChildDailyReportsPage.jsx`, `IDEES.md` | Rapports Journaliers : Remplacement de « Nourriture/Lait » dans « Fournitures apportées » par les Produits Consommables & Hygiène (Lingettes, Crème, Mouchoirs, Vêtements, Sérum phy., Autre) & Catégories Standards de Repas | Suppression de la saisie de nourriture apportée dans la section « 🎒 Fournitures apportées » au profit de boutons rapides de produits consommables (`🧻 Lingettes`, `🧴 Crème`, `🤧 Mouchoirs`, `👕 Vêtements`, `💧 Sérum phy.`) et d'un champ libre « Autre produit... » ; remplacement de la dépendance `foodOptions` dans la section « 🍽️ Repas » par des catégories standards (`🍼 Biberon / Lait`, `🍲 Repas du jour`, `🥣 Compote / Yaourt`, `🍎 Fruit / Goûter`, `📝 Autre`) + description libre ; nettoyage de la route morte `/food-options` et assouplissement des contraintes DB (`020_consumable_supplies_and_meals`). | ✅ Validé & Appliqué |
 
 ---
 
@@ -2088,4 +2125,1303 @@
   - [`frontend/src/components/ui/SideMenu.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/ui/SideMenu.jsx)
   - [`frontend/src/components/ui/FloatingActionButton.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/ui/FloatingActionButton.jsx)
 - **Résultat** : Zéro erreur 403. Chaque utilisateur accède en un tap à ses préférences personnelles, avec contrôle total sur l'affichage, la langue et les notifications PWA.
+
+---
+
+### Fiche 92 - Pointage & Présences : Mode Forfaitaire / Horaire, Correction Rétrospective, Clôture Différée & Accueil Samedi
+
+- **Date** : 07 Novembre 2026
+- **Contexte** :
+  1. **Absence d'alternative au calcul d'heures strict** : Le système exigeait un double pointage en temps réel (check-in / check-out horodatés à la minute exacte). De nombreuses crèches fonctionnent sous un régime forfaitaire où le seul critère requis est la présence de l'enfant dans la journée, sans obligation de pointer les départs à la seconde près.
+  2. **Vulnérabilité aux fautes de frappe et oublis sans moyen de rectification** : Aucun tableau ne permettait de corriger rétrospectivement des présences ou absences passées. Un pointage erroné ne pouvait être annulé (remis en absent).
+  3. **UX Mobile ralentie par les toasts successifs** : L'éducatrice pointant 15 enfants à la file le matin subissait une avalanche de notifications toasts bloquantes. De plus, un clic malencontreux pouvait dépointer un enfant sans avertissement.
+  4. **Clôture automatique prématurée** : Le service de clôture automatique exécutait le départ à 13h00 (demi-journée) et 18h00 (journée) immédiatement à l'heure de fermeture, coupant l'herbe sous le pied des parents en léger retard ou des éducatrices encore en service.
+  5. **Non-respect du filtre samedi & accueil exceptionnel** : Le samedi, tous les enfants de la crèche s'affichaient au lieu des seuls enfants inscrits au samedi. De plus, aucun mécanisme n'existait pour accueillir exceptionnellement un enfant non inscrit avec traçabilité et avertissement du parent.
+- **Causes identifiées** :
+  1. Pas de paramètre `attendance_mode` dans `nursery_settings` (mode horaire en dur).
+  2. Absence de routes `PUT /api/attendance/:id` et `DELETE /api/attendance/:id` avec tolérance sur l'absence d'heures explicites.
+  3. Composant mobile `MobileAttendance.jsx` appelant `dialog.success` à chaque tap et sans dialogue de confirmation pour marquer absent.
+  4. Cron et conditions `attendanceAutoCheckoutService.js` calés sur `>= 13:00` et `>= 18:00` sans battement opérationnel.
+  5. `TodaySection.jsx` effectuait un simple tri `sort()` au lieu d'un filtrage strict sur `saturday_attendance`.
+- **Action appliquée** :
+  - **Base de données & Migration (`017_attendance_mode_and_correction.js`)** :
+    - Ajout du paramètre `attendance_mode` (`'hourly'` ou `'daily'`) dans `nursery_settings`.
+    - Ajout des colonnes `status` (`'present'` / `'absent'`), `updated_by` et `is_exceptional_saturday` dans la table `attendance`.
+  - **Moteur Métier & Clôture Automatique (`attendanceAutoCheckoutService.js` & `attendanceJob.js`)** :
+    - Décalage de la clôture automatique d'1 heure après la fermeture : **14h00** pour la demi-journée / samedi et **19h00** pour la journée complète. L'horodatage de sortie consigné reste l'heure contractuelle officielle (`13:00` ou `18:00`).
+    - Cron adapté : vérifications échelonnées à 14h00, 14h15, 14h30, 19h00, 19h15, 19h30, avec balai de sécurité à 20h30.
+  - **Backend API (`attendance.js`, `dashboardStats.js`, `nurserySettings.js`)** :
+    - Route `PUT /api/attendance/:id` pour rectifier le pointage : l'heure est **totalement optionnelle** (si laissée vide, application automatique des forfaits 07h-18h ou 07h-13h).
+    - Route `DELETE /api/attendance/:id` pour annuler le pointage (droit à l'erreur, remise en absent).
+    - Route `POST /api/attendance/exceptional-saturday` : pointage d'un enfant non inscrit au samedi avec notification push et in-app instantanée envoyée au parent.
+    - Synchronisation des compteurs du dashboard (`presentToday`) s'adaptant automatiquement selon le mode horaire ou journalier.
+  - **Configuration Direction (`DashboardSettingsPage.jsx`)** :
+    - Cartes interactives pour choisir le mode de pointage : **Mode Horodaté Réel** (`hourly`) vs **Mode Journalier Forfaitaire** (`daily`).
+  - **UX Mobile Dédiée (`MobileAttendance.jsx`)** :
+    - 1er clic sur enfant absent : pointage immédiat en Présent (vert) **sans toast** pour une rapidité maximale à l'accueil.
+    - 2ème clic sur un enfant déjà présent : dialogue modal centré haute priorité (`z-[70]` au-dessus de la barre de navigation mobile) avec formulation explicite (*« Annuler la présence ? »*, rappel visuel du statut actuel *« Noté Présent »*, et boutons sans ambiguïté : *« Non, laisser présent »* et *« Oui, marquer absent »*).
+    - Bannière samedi avec filtrage strict et bouton modal d'accueil exceptionnel.
+  - **Tableaux de Gestion & Correction (`TodaySection.jsx` & `HistorySection.jsx`)** :
+    - `TodaySection.jsx` : calcul unifié de la liste des enfants présents (`presentList`) en mode horaire comme en mode journalier (`daily`) garantissant que tout enfant pointé présent s'affiche directement dans le widget du haut *« Enfants présents aujourd'hui »* et est automatiquement exclu de la section des non-pointés ; filtrage strict le samedi (seuls les enfants avec `saturday_attendance = true` ou déjà pointés apparaissent), bouton d'accueil exceptionnel.
+    - Élimination de l'ambiguïté temporelle des libellés de widgets : renommage du widget haut en **« Enfants présents aujourd'hui »** (*الأطفال الحاضرون اليوم*) éliminant le faux sentiment de présence physique à la crèche lors des consultations en soirée ou en mode forfaitaire, et clarification du widget bas en **« Enregistrement rapide (Non encore pointés) »**.
+    - Séparation stricte et réconciliation dynamique des widgets :
+      - **Widget Haut (« Enfants présents aujourd'hui »)** : rassemble désormais la totalité des enfants pointés du jour (en cours ET clôturés/partis). Pour les enfants dont la journée est terminée (`check_out_time` présent), affichage des heures d'arrivée, de départ, de la durée, du badge « Clôture auto à la fermeture » si applicable, et d'un bouton d'action dédié **« ✏️ Rectifier les heures »** ouvrant une modale interactive de rectification d'heures.
+      - **Widget Bas (« Enregistrement rapide (Non encore pointés) »)** : restreint rigoureusement aux enfants n'ayant aucun pointage aujourd'hui (ou marqués absents). Tout enfant pointé quitte définitivement ce widget.
+      - **Rattrapage tardif hors heures d'ouverture (mode horaire)** : détection automatique de la fermeture de la crèche (`isCrecheClosed`). En mode horaire, le clic sur « Marquer présent » d'un enfant non pointé après les horaires d'ouverture (ex: 20h00) ouvre une modale de rattrapage dédiée préremplie avec les horaires contractuels standards (07h00 - 13h00 / 18h00), modifiables par l'administrateur. En mode forfaitaire journalier ou durant les heures d'ouverture, le pointage s'effectue directement en 1 clic.
+    - Élimination du bouton rouge doublon `Undo2` (annuler) en mode journalier : en mode forfaitaire journalier, seul le bouton principal pleine largeur *« Marquer absent »* est affiché (le bouton icône `Undo2` n'est désormais rendu qu'en mode horaire pour annuler un check-in erroné en parallèle de l'enregistrement du départ).
+    - Synchronisation réactive temps réel des 4 cartes de statistiques (Total, Présents, Absents, Terminé) sur Desktop et Mobile collapsible : calcul dynamique basé sur l'effectif éligible du jour (samedi vs semaine), élimination de l'affichage `Total: 0` ou `Absents: 0` et calcul exact des absents (`Total - Présents - Terminé`).
+    - `HistorySection.jsx` : sélecteur de date interactif, bouton `+ Rectifier / Ajouter présence`, modale d'édition avec heures optionnelles et bouton d'annulation de pointage par ligne.
+    - **Correction visibilité des boutons d'actions dans l'Historique (`HistorySection.jsx`)** : correction de l'invisibilité des boutons d'action dans la colonne « Actions / Correction » (en modes dark et light). Remplacement des boutons `variant="ghost"` écrasés par les règles globales de `responsive-fixes.css` (`min-height: 44px; padding: 0.75rem 1rem;` réduisant la largeur utile des icônes à 0px) par des boutons d'action explicites dotés des classes `compact-btn icon-only`, dimensionnés à `w-8 h-8` avec bordures et arrière-plans contrastés (`bg-gray-100 dark:bg-gray-800` pour Détails, `bg-blue-50 dark:bg-blue-900/40` pour Corriger, `bg-red-50 dark:bg-red-900/40` pour Annuler/Absent) et remplacement du `window.confirm` natif par `dialog.confirm`.
+  - **Correction des Statistiques Backend & API (`attendance.js` & `dashboardStats.js`)** :
+    - `POST /check-in`, `/toggle` & `/exceptional-saturday` : correction de l'anomalie de départ immédiat. En mode journalier (`daily`), `check_out_time` reste strictement `NULL` tant que l'enfant est présent à la crèche (l'heure de fin n'est plus écrite en dur à l'arrivée). L'heure de clôture (13:00 / 18:00) n'est enregistrée qu'à la clôture automatique différée de fin de journée.
+    - Réconciliation automatique : à l'appel de `GET /today` et `GET /currently-present`, tout pointage du jour qui avait reçu prématurément une heure de départ 13:00 ou 18:00 est guéri (`check_out_time = NULL`) assurant que l'enfant demeure présent dans « Enfants actuellement présents » quel que soit le mode actif ou lors d'une bascule journalier <-> horaire.
+    - `attendanceAutoCheckoutService.js` : garde anti-clôture prématurée (`created_at < NOW() - INTERVAL '30 minutes'`) protégeant les pointages saisis manuellement.
+    - `GET /api/attendance/stats` : refonte complète du calcul des totaux. L'effectif `total` est calculé à partir des enfants actifs approuvés avec prise en compte stricte du samedi (seuls les inscrits au samedi et les cas exceptionnels de la date cible sont comptabilisés). Calcul réel du nombre d'absents (`Math.max(0, total - present - completed)`) au lieu de la valeur `0` codée en dur.
+    - `GET /api/dashboard/stats` : alignement du taux de présence et du nombre d'enfants attendus le samedi avec prise en compte des inscrits au samedi et des accueils exceptionnels du jour.
+    - `AttendancePage.jsx` : extraction sécurisée de l'objet `stats` (`statsResponse?.stats || statsResponse`) et synchronisation du composant `mobileStats`.
+- **Fichiers modifiés** :
+  - [`backend/migrations/versions/017_attendance_mode_and_correction.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/migrations/versions/017_attendance_mode_and_correction.js)
+  - [`backend/routes_postgres/attendance.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/attendance.js)
+  - [`backend/routes_postgres/nurserySettings.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/nurserySettings.js)
+  - [`backend/routes_postgres/dashboardStats.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/dashboardStats.js)
+  - [`backend/services/attendanceAutoCheckoutService.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/services/attendanceAutoCheckoutService.js)
+  - [`backend/jobs/attendanceJob.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/jobs/attendanceJob.js)
+  - [`frontend/src/services/attendanceService.js`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/services/attendanceService.js)
+  - [`frontend/src/pages/dashboard/DashboardSettingsPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/DashboardSettingsPage.jsx)
+  - [`frontend/src/pages/dashboard/AttendancePage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/AttendancePage.jsx)
+  - [`frontend/src/components/mobile/MobileAttendance.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/mobile/MobileAttendance.jsx)
+  - [`frontend/src/components/attendance/TodaySection.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/attendance/TodaySection.jsx)
+  - [`frontend/src/components/attendance/HistorySection.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/attendance/HistorySection.jsx)
+  - [`IDEES.md`](file:///Volumes/Data/Works/Windsurf/creche/IDEES.md)
+- **Résultat** : Flexibilité totale offerte à la direction entre le mode horaire et journalier, droit à l'erreur garanti avec rectification rétrospective sans contrainte d'heures, fluidité mobile sans toasts intempestifs, sécurisation rigoureuse de l'accueil du samedi avec notification parentale, et statistiques de présence/absence rigoureusement exactes en temps réel sur tous les écrans.
+
+---
+
+### Correction n°93 : Droit à l'erreur sur encaissements d'espèces, CRUD des dépenses et suivi de trésorerie nette
+- **Fichiers impactés** :
+  - [`backend/services/billingService.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/services/billingService.js)
+  - [`backend/routes_postgres/billing.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/billing.js)
+  - [`frontend/src/components/modals/BillingManagementModal.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/modals/BillingManagementModal.jsx)
+  - [`IDEES.md`](file:///Volumes/Data/Works/Windsurf/creche/IDEES.md)
+- **Contexte & Symptôme** :
+  1. **Absence de droit à l'erreur sur les encaissements** : Une fois un règlement en espèces validé sur une cotisation enfant, aucun bouton ni endpoint ne permettait d'annuler ou de rectifier la transaction en cas d'erreur de saisie sur le montant, de chèque revenu impayé ou d'annulation à la demande du parent.
+  2. **Absence de gestion des dépenses opérationnelles (CRUD incomplet)** : Bien que la table `nursery_expenses` et l'agrégation existaient, aucune route `PUT` ou `DELETE` n'était disponible pour rectifier un montant erroné de facture fournisseur ou supprimer une charge doublon, et l'interface admin ne présentait aucun onglet de gestion des dépenses.
+  3. **Absence de garde-fou UX lors du paiement** : Saisie d'un montant supérieur au reste dû sans avertissement visuel de surplus.
+- **Cause racine** :
+  - Absence de route d'annulation d'encaissement et de service `voidPayment`.
+  - Routes d'écriture des dépenses restreintes à `POST` sans routes de mise à jour (`PUT`) ni de suppression (`DELETE`).
+  - Interface `BillingManagementModal.jsx` focalisée uniquement sur les cotisations et les alertes sans volet dépenses ni bouton d'annulation de paiement.
+- **Solution appliquée** :
+  - **Backend (`billingService.js` & `billing.js`)** :
+    - Implémentation du service `voidPayment(invoiceId, voidData)` : vérification de l'état de la facture, remise à zéro de `amount_paid = 0.00`, statut `pending`, invalidation du numéro de reçu (`receipt_number = NULL`, `paid_at = NULL`), archivage du motif d'annulation avec horodatage dans les `notes` et journalisation dans la table d'audit `activity_logs`.
+    - Exposition de la route sécurisée `POST /api/billing/invoices/:id/void-payment` réservée aux rôles `admin` et `staff`.
+    - Implémentation des routes `PUT /api/billing/expenses/:id` (modification du titre, de la catégorie, du montant, de la date avec recalcul automatique des périodes, du mode de paiement et des notes) et `DELETE /api/billing/expenses/:id` (suppression sécurisée avec droits `admin`/`staff`).
+    - Support du filtre par catégorie (`category`) sur `GET /api/billing/expenses`.
+  - **Frontend (`BillingManagementModal.jsx`)** :
+    - Ajout du bouton d'action **« ↩️ Annuler l'encaissement »** sur chaque facture réglée ou partielle, ouvrant une modale de confirmation demandant obligatoirement le motif de l'annulation et rappelant le montant et le reçu concernés.
+    - Ajout de l'onglet **« Dépenses & Trésorerie »** (`expenses`) avec sélecteur de filtres par catégorie (Fournitures, Alimentation, Salaires, Loyer, STEG/SONEDE, Entretien, Activités, Autres), barre de recherche textuelle, et tableau détaillé des charges.
+    - Modale d'ajout et d'édition complète de dépense (`expenseModalOpen`) avec sélecteur de date interactif (`DatePicker`), saisie de montant, choix de catégorie avec icônes et mode de règlement.
+    - Bouton de suppression avec confirmation sécurisée (`dialog.confirm`).
+    - Bannière de synthèse financière à 5 cartes : Total Attendu, Total Encaissé, Restant Dû, Dépenses du Mois, et **Trésorerie Nette** (`Total Encaissé - Dépenses du Mois`) avec mise en valeur cyan si positive ou rose si négative.
+    - Garde-fou UX dans la modale d'encaissement : alerte visuelle si le montant saisi dépasse le montant attendu (facture principale + fratrie).
+- **Résultat** : Droit à l'erreur intégralement garanti sur les flux de caisse, traçabilité sans faille avec motifs d'annulation archivés, contrôle budgétaire exhaustif des dépenses de fonctionnement et calcul en direct de la trésorerie nette de la crèche.
+
+---
+
+### Correction n°94 : Gestion de l'assurance annuelle par enfant et réconciliation des factures de rentrée
+- **Fichiers impactés** :
+  - [`backend/migrations/versions/018_annual_insurance_tracking.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/migrations/versions/018_annual_insurance_tracking.js)
+  - [`backend/services/billingService.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/services/billingService.js)
+  - [`backend/routes_postgres/children.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/children.js)
+  - [`IDEES.md`](file:///Volumes/Data/Works/Windsurf/creche/IDEES.md)
+- **Contexte & Symptôme** :
+  - Lors de la génération des cotisations mensuelles, toutes les factures des enfants actifs affichaient 190 DT (ou 160 DT en demi-journée) au lieu des mensualités contractuelles normales (130 DT ou 100 DT).
+- **Cause racine** :
+  - L'assurance annuelle obligatoire (60 DT) était injectée automatiquement sur toute première facture d'un enfant pour l'année scolaire dès lors qu'aucune facture antérieure avec assurance n'existait en base de données.
+  - Lors de la mise en service du module en cours d'année, tous les enfants déjà inscrits (ayant déjà réglé leur assurance à la rentrée de septembre) se voyaient indûment refacturer les 60 DT.
+  - La clause SQL `ON CONFLICT DO UPDATE` contenait `insurance_price = GREATEST(child_invoices.insurance_price, EXCLUDED.insurance_price)`, empêchant la réinitialisation à 0 DT.
+- **Solution appliquée** :
+  - **Base de données & Migration (`018_annual_insurance_tracking.js`)** :
+    - Ajout de la colonne `insurance_paid_school_year VARCHAR(20)` sur la table `children`.
+    - Rétroactivité automatique : tous les enfants actifs déjà présents en base sont marqués avec `insurance_paid_school_year = '2026-2027'`.
+    - Réconciliation immédiate : suppression des 60 DT d'assurance sur les factures non payées de l'année scolaire 2026-2027 et recalcul des totaux dus.
+  - **Moteur Métier (`billingService.js`)** :
+    - Conditionnement strict de l'assurance : si `child.insurance_paid_school_year === schoolYear`, `insurancePrice = 0` garanti.
+    - Pour tout nouvel enfant inscrit en cours d'année sans couverture, les 60 DT sont ajoutés sur sa 1ère facture, puis `insurance_paid_school_year` est automatiquement mis à jour pour que les mois suivants restent à tarif standard.
+    - Renouvellement automatique en septembre (`periodMonth === 9`) pour la rentrée scolaire.
+    - Correction du `ON CONFLICT` pour appliquer directement `EXCLUDED.insurance_price`.
+- **Résultat** : Toutes les factures de novembre reviennent immédiatement à 130 DT (journée) et 100 DT (demi-journée), les anciens enfants sont protégés sans doublon, et les nouvelles inscriptions continuent d'intégrer automatiquement l'assurance obligatoire sur leur première échéance.
+
+---
+
+### Correction n°95 : Gestion des cotisations par foyer / famille, encaissement multi-mois, avoirs d'avance et transparence parentale des arriérés
+- **Fichiers impactés** :
+  - [`backend/migrations/versions/019_family_billing_and_credit.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/migrations/versions/019_family_billing_and_credit.js)
+  - [`backend/services/billingService.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/services/billingService.js)
+  - [`backend/routes_postgres/billing.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/billing.js)
+  - [`frontend/src/components/modals/BillingManagementModal.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/modals/BillingManagementModal.jsx)
+  - [`frontend/src/pages/parent/MySpacePage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/MySpacePage.jsx)
+  - [`IDEES.md`](file:///Volumes/Data/Works/Windsurf/creche/IDEES.md)
+- **Contexte & Symptôme** :
+  1. **Absence de vision consolidée par famille** : À l'accueil de la crèche, les parents paient pour l'ensemble de leur fratrie. L'administration devait rechercher et encaisser chaque enfant un par un, générant des reçus éparpillés.
+  2. **Impossibilité de payer plusieurs mois d'avance** : Les parents souhaitant régler 2 mois ou un trimestre devaient revenir chaque mois ou l'administration devait gérer des notes manuscrites.
+  3. **Absence de gestion des avoirs (trop-perçu)** : Tout surplus monétaire (ex: un parent donnant 500 DT pour 380 DT dus) n'était pas persisté comme crédit déductible sur les factures suivantes.
+  4. **Opacité des arriérés et badge erroné sur l'Espace Parent** :
+     - Pour un enfant ayant un arriéré reporté (ex: Samir Trabelsi à 120 DT = 100 DT forfait + 20 DT impayé d'octobre), la carte parent affichait un chiffre brut de 120 DT sans décomposition explicite, laissant croire à une hausse de tarif arbitraire.
+     - Pour une fratrie ayant fait l'objet d'un règlement partiel (ex: 340 DT réglés sur 360 DT en octobre avec un reçu émis), la carte affichait le badge trompeur « À régler » comme si rien n'avait été payé.
+- **Cause racine** :
+  - Manque de colonnes `users.credit_balance` et `child_invoices.credit_used`.
+  - Pas d'agrégation familiale dans `billingService.js` ni d'endpoint `POST /api/billing/family-pay`.
+  - Dans `MySpacePage.jsx`, le regroupement familial utilisait un affichage binaire (`group.isPaid ? 'Payé' : 'À régler'`) sans prendre en compte `group.totalPaid > 0`, et n'affichait pas `previous_arrears` pour les éléments de fratrie.
+- **Solution appliquée** :
+  - **Base de données & Migration (`019_family_billing_and_credit.js`)** :
+    - Ajout de `credit_balance NUMERIC(10, 2) DEFAULT 0.00` sur `users`.
+    - Ajout de `credit_used NUMERIC(10, 2) DEFAULT 0.00` sur `child_invoices`.
+  - **Moteur Métier & API (`billingService.js` & `billing.js`)** :
+    - Agrégation automatique des foyers dans `getInvoices` (familles groupées par parent avec enfants rattachés, total dû et solde d'avoir).
+    - Implémentation de `recordFamilyPayment(paymentData)` : support du paiement multi-enfants (sélection de fratrie), multi-mois (1, 2, ou 3 mois / trimestre), déduction prioritaire de l'avoir existant, génération automatique des factures futures acquittées, génération d'un reçu officiel unique familial (`REC-YYYYMM-FAM-xxxx`), et stockage sécurisé de tout surplus sous forme d'avoir (`credit_balance`).
+    - Exposition de `POST /api/billing/family-pay` et mise à jour de `GET /api/billing/my-invoices` pour retourner `credit_balance`.
+  - **Interface Direction & Accueil (`BillingManagementModal.jsx`)** :
+    - Bascule en 1 clic entre **« Vue par Famille »** (par défaut) et **« Vue par Enfant »**.
+    - Modale d'encaissement familial avec sélection des mois (1 mois, 2 mois, Trimestre), cases à cocher par enfant pour paiement partiel ou intégral de fratrie, calcul dynamique en direct et détection automatique de l'avoir en cas de surplus.
+    - **Annulation d'encaissement familial (Droit à l'erreur)** : ajout du bouton **« ↩️ Annuler »** directement sur chaque carte de la Vue par Famille, ouvrant une modale avec sélection normalisée du motif d'annulation via liste déroulante `<select>` (`Erreur de saisie` par défaut, `Modifier le mode de paiement`, `Autre (sans précision)`), résolution du crash `ReferenceError: selectedMonth is not defined` et réinitialisation atomique de toutes les cotisations de la fratrie (avec purge propre des mois futurs générés par avance).
+    - **Uniformisation esthétique de la Vue par Famille** : suppression des étiquettes d'enfants encombrantes pour un alignement strict et homogène affichant uniquement les coordonnées téléphoniques (`📞 Téléphone`) sur chaque ligne.
+    - **Protection multi-mois** : neutralisation de l'accumulation indue d'arriérés sur les mois futurs (`forceArrears: 0`) lors d'un paiement trimestriel d'avance.
+  - **Espace Parent (`MySpacePage.jsx`) & Déduction Automatique de l'Avoir (`billingService.js`)** :
+    - **Déduction automatique en cascade de l'avoir (`autoApplyParentCredit`)** : lorsqu'un parent dispose d'un avoir (ex: 620 DT restants sur 1000 DT versés après déduction des 380 DT du mois en cours), celui-ci s'impute automatiquement mois par mois sur les échéances futures : le mois suivant (360 DT) est soldé et l'avoir passe à 260 DT, puis le 3e mois consomme les 260 DT restants, laissant apparaître très précisément le reliquat manquant de 100 DT.
+    - **Regroupement strictement mensuel des cotisations** : dissociation des échéances d'avance en cartes distinctes par mois (`11/2026`, `12/2026`, `01/2027`) même si elles partagent un reçu commun, garantissant une visibilité parfaite sur chaque mois acquitté et sur le solde manquant du dernier mois.
+    - **Fixation sur une seule ligne** : application de `whitespace-nowrap` et contrainte `min-w-fit shrink-0` pour que la mention `(Payé : 340 DT • Reste dû : 20 DT)` ne subisse plus aucun retour à la ligne intempestif.
+    - Correction du crash `ReferenceError: Clock is not defined` lors du rendu du badge partiel.
+    - Badge dynamique : **« Payé »** (vert), **« Paiement partiel (340/360 DT) »** (bleu) si un acompte est enregistré, et **« À régler »** (orange) si non réglé.
+    - Décomposition limpide sous chaque enfant : affichage distinct de la mensualité de base, du report d'arriéré (ex: `+20 DT`) et de l'assurance annuelle.
+    - Bannière d'avoir disponible (`+XX DT`) dynamique et fidèle, ne s'affichant que pour le solde non encore consommé.
+- **Résultat** : Fluidité totale des encaissements à l'accueil, droit à l'erreur garanti en vue famille en 1 clic, affichage uniforme et épuré des parents, clarté absolue pour les parents sans confusion sur les arriérés ou les règlements partiels, gestion automatisée des trimestres d'avance et traçabilité comptable irréprochable des avoirs.
+
+---
+
+### Fiche 96 — Calibrage & Ergonomie Visuelle des Boutons en Vue par Famille (`BillingManagementModal.jsx`)
+
+- **Contexte / Symptôme** :
+  - Sur la Vue par Famille de la gestion financière, lorsqu'un paiement partiel avait été enregistré (ex: Malek Aidoudi avec 200 DT versés sur 260 DT dus), la colonne de droite accumulait un bloc textuel (`260 DT` + `Reste : 60 DT` en rouge) suivi de trois boutons d'action (`Régler le reste`, `Reçu PDF`, `Annuler`).
+  - Cette accumulation de texte et de boutons étroits créait un encombrement visuel, des boutons de largeurs disparates et des risques de saut de ligne inesthétique.
+- **Cause racine** :
+  - Redondance entre le texte d'arriéré à droite et l'action du bouton d'encaissement.
+  - Absence de largeur fixe calibrée sur les boutons primaires d'encaissement (`Encaisser` vs `Régler le reste`).
+- **Solution appliquée** :
+  - **Badge « Reste dû » harmonisé** : Migration de `Reste : XX DT` sous forme d'un badge arrondi sur la 2ème ligne (`text-[10px] rounded-full font-bold bg-amber-100 text-amber-800`), aligné aux côtés du numéro de téléphone et du badge d'avoir disponible (`💰 Avoir disponible`).
+  - **Intégration directe du montant dans le libellé du bouton** :
+    - Pour une famille n'ayant rien réglé (`amount_paid === 0`) : le bouton affiche directement **« Encaisser 260 DT »** (ou en arabe `استخلاص 260 د.ت`).
+    - Pour une famille ayant un acompte partiel (`amount_paid > 0`) : le bouton affiche directement **« Régler 60 DT »** (ou en arabe `استخلاص 60 د.ت`).
+  - **Suppression du bloc textuel redondant pour les impayés** : Élimination du bloc flottant `260 DT / Reste : 60 DT` pour les factures non soldées, libérant tout l'espace horizontal sur la droite.
+  - **Calibrage strict des tailles de boutons** :
+    - Tous les boutons `Encaisser XXX DT` partagent une largeur identique calibrée (`w-44` / 176 px, hauteur `h-8`, contenu centré).
+    - Tous les boutons `Régler XXX DT` partagent une largeur identique calibrée (`w-36` / 144 px, hauteur `h-8`, contenu centré).
+  - **Correction du montant pré-rempli dans la modale Règlement Familial (`calculateFamilyExpectedDue`)** :
+    - Déduction systématique des acomptes déjà perçus (`invAmountPaid`) sur le mois 1.
+    - Lors du clic sur « Régler 60 DT », le champ « Montant encaissé remis » et le calcul du montant attendu affichent fidèlement **60.00 DT** (et non plus le montant brut de 260 DT).
+  - **Harmonisation Miroir de la « Vue par Enfant »** :
+    - Application rigoureuse du même design visuel et fonctionnel :
+      - Ligne 1 : Initiale en avatar, Nom de l'enfant, badge d'état (`Payé`, `Partiel`, `À régler`) et badge régime d'accueil.
+      - Ligne 2 : Parent rattaché, téléphone, badge `⏳ Reste dû : XX DT` si partiel, arriérés, remises et n° de reçu.
+      - Actions à droite : boutons calibrés `Encaisser XX DT` (`w-44 h-8`) ou `Régler XX DT` (`w-36 h-8`), `Reçu PDF`, `Annuler`, `Ajuster/Prorata` (`h-8 w-8`) et `Rappel SMS` (`h-8 w-8`), avec affichage du montant soldé uniquement si payé.
+  - **Préservation stricte du statut Soldé** : Lorsque la cotisation est entièrement réglée (`isFullyPaid`), l'affichage initial est rigoureusement conservé (`{total} DT` + `Soldé (Espèces)` + `Reçu PDF` + `Annuler`).
+- **Fichiers modifiés** :
+  - [`frontend/src/components/modals/BillingManagementModal.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/modals/BillingManagementModal.jsx)
+- **Résultat** : Alignement vertical parfait de tous les boutons d'encaissement dans la liste, lecture immédiate du solde sans redondance, et clarté visuelle optimale.
+
+---
+
+### Fiche 97 — Dark Mode Espace Parent, Bannière Reste Dû & Badges Ligne 1 (`MySpacePage.jsx` & `BillingManagementModal.jsx`)
+
+- **Contexte / Symptôme** :
+  1. Sur la page `/mon-espace` (Espace Parent), en mode sombre, les cartes de cotisations individuelles apparaissaient avec un fond gris clair délavé et du texte presque illisible en raison d'une classe Tailwind inexistante (`dark:bg-gray-750`).
+  2. L'Espace Parent disposait d'une bannière verte pour l'Avoir disponible (`+XX DT`), mais aucun indicateur global synthétique en rouge n'informait le parent du reste total dû à régler sur son foyer.
+  3. Dans la modale financière (Vue par Enfant), les badges d'arriéré (`[ Arriéré : +XX DT ]`) et de remise (`[ Remise : -XX DT ]`) étaient situés sur la 2ème ligne, surchargeant les coordonnées de contact.
+- **Cause racine** :
+  - Classe Tailwind `dark:bg-gray-750` invalide non interprétée par Vite/Tailwind, laissant apparaître le fond clair `bg-gray-50/60` en mode sombre.
+  - Manque du calcul `totalRemainingDue` et de la bannière correspondante en rouge sur `MySpacePage.jsx`.
+  - Positionnement des badges d'arriéré/remise sur la 2ème ligne au lieu de la 1ère ligne sur `BillingManagementModal.jsx`.
+- **Solution appliquée** :
+  - **Correction du Dark Mode (`MySpacePage.jsx`)** : Remplacement de `dark:bg-gray-750` par `dark:bg-gray-900/60` avec bordure `dark:border-gray-700` et ajustement des contrastes typographiques (`dark:text-white`, `dark:text-gray-400`).
+  - **Bannière Rouge « Reste à payer sur votre compte famille »** : Ajout d'une bannière dynamique calculant la somme des échéances restantes dues (`totalRemainingDue > 0`), symétrique à la bannière d'avoir vert.
+  - **Migration des Badges en Ligne 1 (`BillingManagementModal.jsx`)** : Déplacement de `[ Arriéré : +XX DT ]` et `[ Remise : -XX DT ]` sur la première ligne, directement à la suite du régime d'accueil.
+- **Fichiers modifiés** :
+  - [`frontend/src/pages/parent/MySpacePage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/MySpacePage.jsx)
+  - [`frontend/src/components/modals/BillingManagementModal.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/modals/BillingManagementModal.jsx)
+- **Résultat** : Lisibilité et contraste parfaits en mode sombre sur l'Espace Parent, transparence totale sur le reste à payer familial, et hiérarchisation optimale des badges en vue enfant.
+
+---
+
+### Fiche 98 — Encaissement Individuel Enfant & Pré-remplissage du Reste Dû (`BillingManagementModal.jsx`)
+
+- **Contexte / Symptôme** :
+  - Dans la « Vue par Enfant » de la modale de facturation, lorsqu'une éducatrice ou directrice cliquait sur « Régler 60 DT » (ou « Encaisser 130 DT ») pour un enfant ayant des frères et sœurs, le champ « Montant encaissé (DT) * » de la modale d'encaissement n'affichait pas 60 DT mais le cumul de toute la fratrie (ex: 320 DT).
+- **Cause racine** :
+  - Dans `handleOpenCashPayment`, `selectedSiblingIds` cochait automatiquement tous les frères et sœurs non soldés par défaut (`siblings.map(s => s.id)`), et recalculait `cashAmount = (mainDue + siblingsDue)`, écrasant le montant individuel de l'enfant ciblé.
+  - Le récapitulatif de la modale d'encaissement affichait le « Total dû » brut sans faire apparaître l'acompte déjà versé.
+- **Solution appliquée** :
+  - Dans `handleOpenCashPayment`, initialisation de `selectedSiblingIds` à `[]` (vide par défaut) pour que seul l'enfant cliqué soit pris en compte lors de l'ouverture de la modale.
+  - Pré-remplissage strict du champ `Montant encaissé (DT) *` avec `mainDue.toFixed(2)` (ex: `60.00` ou `130.00`).
+  - Maintien des frères et sœurs sous forme de cases à cocher optionnelles : si l'utilisateur souhaite finalement grouper, il lui suffit de cocher le frère/sœur pour recalculer dynamiquement le montant.
+  - Enrichissement du récapitulatif de la modale : affichage de la ligne « Acompte déjà réglé : -XX DT » et intitulé « Reste dû à régler : XX DT » lorsque l'enfant bénéficie d'un acompte partiel.
+- **Fichiers modifiés** :
+  - [`frontend/src/components/modals/BillingManagementModal.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/modals/BillingManagementModal.jsx)
+- **Résultat** : Cohérence totale entre le montant affiché sur le bouton cliqué (« Régler 60 DT ») et le montant pré-rempli dans le champ d'encaissement (« 60.00 DT »).
+
+---
+
+### Fiche 99 — Unification & Conception Miroir des Cartes de Cotisations (Individuelle & Famille) (`MySpacePage.jsx`)
+
+- **Contexte / Symptôme** :
+  - Sur la page « Mon Espace » (`/mon-espace`), la carte de cotisation d'un enfant unique différait de la carte de cotisation famille (fratrie) : le nom de l'enfant était utilisé comme titre général au lieu de disposer d'une ligne dédiée enfant, le régime d'accueil était collé sur le sous-titre de la carte sans parenthèses au lieu d'accompagner le nom de l'enfant, et le `N° Reçu: ...` était situé tout en bas à côté du bouton PDF, créant un encombrement visuel sur le footer.
+- **Cause racine** :
+  - `MySpacePage.jsx` maintenait deux branches de rendu JSX distinctes (`group.type === 'family'` vs `// Enfant individuel`) avec des structures HTML, des hiérarchies et des positionnements hétérogènes.
+- **Solution appliquée** :
+  - **Unification totale du rendu** : Fusion des deux branches de rendu en une conception unique et universelle calquée sur la carte familiale (`Cotisation Famille (Fratrie)` pour fratrie ou `Cotisation Mensuelle` avec badge `👤 1 enfant` pour enfant unique).
+  - **Déplacement du N° Reçu en haut** : Le `N° Reçu: REC-...` (en monospace émeraude) a été remonté sur la 2ème ligne de métadonnées, directement après le mois (`Mois MM/YYYY • N° Reçu: REC-...`).
+  - **Mention du régime avec icône** : Pour chaque enfant (qu'il soit seul ou en fratrie), la mention du régime d'accueil est intégrée entre parenthèses directement à côté de son nom (`(☀️ Journée complète)` / `(🌤️ Demi-journée)`).
+  - **Bas de carte aéré** : Le footer est épuré : à gauche, le bouton `Consulter le reçu PDF` est isolé et parfaitement dégagé ; à droite, le montant total et le statut de solde sont alignés.
+- **Fichiers modifiés** :
+  - [`frontend/src/pages/parent/MySpacePage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/MySpacePage.jsx)
+- **Résultat** : Harmonie visuelle absolue, conception 100% miroir entre cotisations individuelles et fratries, lisibilité optimale du reçu en en-tête et régimes d'accueil clairs avec icônes.
+
+---
+
+### Fiche 100 — Ergonomie Cotisations Parent : Proposition 1 & Page Mobile Dédiée via Menu Plus (`ParentBillingPage.jsx`, `MySpacePage.jsx`, `MobileNavigation.jsx`, `AppRoutes.jsx`)
+
+- **Contexte / Symptôme** :
+  - Sur mobile, les parents n'avaient aucun accès direct à leurs cotisations et reçus de paiement depuis la barre de navigation ou le menu « Plus ».
+  - Sur desktop comme sur mobile, l'accumulation de 4 à 12 mois de cotisations au fil de l'année scolaire allongeait démesurément la page en affichant l'intégralité des mois soldés passés d'un seul bloc.
+- **Cause racine** :
+  - Absence de route mobile dédiée pour les finances parents dans `AppRoutes.jsx` et `MobileNavigation.jsx`.
+  - Absence de filtrage temporel ou d'accordéon d'archivage sur le composant de factures parent.
+- **Solution appliquée** :
+  - **Proposition 1 appliquée (Desktop & Mobile)** : Priorité absolue aux cotisations non soldées (`À régler` ou `Partiel`) toujours visibles + affichage immédiat des 3 derniers mois entièrement soldés (`Payé`).
+  - **Accordéon d'historique dépliable** : Si des mois plus anciens existent, un bouton élégant et épuré s'affiche : `📂 Voir l'historique des mois précédents (X)` / `Masquer l'historique` avec icône chevron animée.
+  - **Création de la page mobile dédiée (`ParentBillingPage.jsx`)** :
+    - Route : `/mon-espace/cotisations`.
+    - En-tête mobile sticky avec bouton retour (`ArrowLeft`), actualisation instantanée et indicateurs KPI (Total cotisations, Situation du compte à jour ou solde restant dû).
+    - Intégration des bannières dynamiques d'Avoir disponible et de Reste à payer.
+    - Conception miroir des cartes (Individuelle / Fratrie) avec téléchargement instantané du reçu officiel PDF.
+    - Navigation mobile complète intégrée au pied de page (`MobileNavigation`).
+  - **Raccourci Menu « Plus »** : Ajout de l'entrée « Mes Cotisations & Reçus » (avec icône carte bancaire émeraude `CreditCard`) dans le bottom sheet `MobileNavigation.jsx`.
+- **Fichiers modifiés** :
+  - [`frontend/src/pages/parent/ParentBillingPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/ParentBillingPage.jsx)
+  - [`frontend/src/pages/parent/MySpacePage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/MySpacePage.jsx)
+  - [`frontend/src/components/mobile/MobileNavigation.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/mobile/MobileNavigation.jsx)
+  - [`frontend/src/routes/AppRoutes.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/routes/AppRoutes.jsx)
+  - [`documentsV2/25_DICTIONNAIRE_DES_ROUTES_ET_NAVIGATION.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/25_DICTIONNAIRE_DES_ROUTES_ET_NAVIGATION.md)
+- **Résultat** : Page d'accueil allégée et focalisée sur l'essentiel, navigation mobile fluide et moderne vers les cotisations en 1 clic via le menu « Plus », et consultation immédiate des reçus PDF.
+
+---
+
+### Fiche 101 — Correction du Crash HTTP 500 lors du Refus/Acceptation d'Anniversaire (`42P08`), Affichage des Dates de Demande & Fête, et Correction du 404 `/staff-messages/unread`
+
+- **Contexte / Symptôme** :
+  1. Sur le site de production (`https://creche-lx4u.onrender.com`), lorsque l'administrateur cliquait sur **« Refuser la demande »** pour un anniversaire (`POST /api/birthdays/child/11/admin-action`), le serveur renvoyait une erreur `500 Internal Server Error` et affichait une alerte d'erreur.
+  2. L'administrateur ne pouvait ni voir **quel jour le parent avait envoyé sa demande**, ni voir clairement **pour quelle date la fête était demandée** (notamment dans `TaskDetailModal.jsx` où les détails d'anniversaire ne s'affichaient pas du tout, et dans `BirthdayEventPage.jsx` où la date d'envoi de la demande était absente).
+  3. La console de production affichait également des erreurs `404` répétées sur `https://creche-lx4u.onrender.com/staff-messages/unread`.
+- **Causes racines** :
+  1. **Conflit d'inférence de type PostgreSQL (`SQLSTATE 42P08`)** : Dans `backend/routes_postgres/birthdays.js` (`POST /child/:childId/admin-action`), la requête `UPDATE birthday_celebrations SET admin_status = $1, decision = CASE WHEN $1 = 'accepted' THEN 'yes' ELSE decision END` utilisait le même paramètre `$1` à la fois pour `SET admin_status = $1` (colonne `VARCHAR(30)`, type `character varying`) et pour `WHEN $1 = 'accepted'` (littéral comparé en `text`), provoquant l'erreur PostgreSQL `inconsistent types deduced for parameter $1 (text versus character varying)`.
+  2. **Propriété `.data.data` inexistante dans `TaskDetailModal.jsx`** : `TaskDetailModal.jsx` vérifiait `if (detailRes.data?.success && detailRes.data?.data)` alors que `GET /api/birthdays/child/:childId` retournait directement les propriétés à la racine de `res.json({ success: true, child, birthday, celebration, ... })`. Par conséquent, `birthdayData` restait toujours `null` dans la modale de tâche.
+  3. **Absence d'affichage de `requested_at` / `decided_at` et formatage de `celebration_date`** : Ni `BirthdayEventPage.jsx` ni `TaskDetailModal.jsx` n'affichaient la date et l'heure d'envoi de la demande par le parent (`decided_at` / `created_at`), et la date souhaitée pour la fête n'était affichée qu'en chaîne brute ISO sans libellé complet (jour de la semaine, jour, mois, année).
+  4. **Absence du suffixe `/api` lorsque `VITE_API_URL` vaut `https://creche-lx4u.onrender.com`** : Plusieurs composants (`MobileDashboardComplete.jsx`, `MessagesWidget.jsx`, `UpcomingEventsWidget.jsx`, `TasksPage.jsx`, `ResetPasswordPage.jsx`, `ForgotPasswordPage.jsx`, `AnnouncementsPage.jsx`) concaténaient directement `import.meta.env.VITE_API_URL` sans garantir la présence du suffixe `/api`.
+- **Solutions appliquées** :
+  1. **Correction SQL et clôture propre lors du refus (`backend/routes_postgres/birthdays.js`)** :
+     - Séparation et typage explicite des paramètres SQL (`SET admin_status = $1::varchar, decision = CASE WHEN $2::boolean THEN 'yes' ELSE decision END`).
+     - Lors d'un refus (`action === 'reject'`), clôture automatique de la tâche urgente dans `tasks` et annulation des événements liés dans `events` pour qu'ils ne restent pas en suspens dans « Tâches du jour ».
+     - Enrichissement de `GET /api/birthdays/child/:childId` avec `requested_at`, `decided_at`, `celebration_date_label` (formaté en français avec jour de la semaine), `assigned_staff_first_name`, et compatibilité double `res.data` / `res.data.data`.
+     - Ajout de `Demande envoyée le : ...` et `Jour souhaité pour la fête : ...` dans la description des tâches urgentes créées par `POST /api/birthdays/child/:childId/decision`.
+  2. **Affichage complet des dates dans `TaskDetailModal.jsx` et `BirthdayEventPage.jsx`** :
+     - Correction de `const d = detailRes.data.data || detailRes.data;` dans `TaskDetailModal.jsx`.
+     - Ajout d'un encadré récapitulatif clair dans `TaskDetailModal.jsx` et `BirthdayEventPage.jsx` affichant côte à côte :
+       - **🕒 Demande faite par le parent le** (date complète et heure d'envoi de la demande).
+       - **🎂 Date demandée pour la fête** (date complète en toutes lettres + date ISO).
+       - **🎈 Date d'anniversaire réelle de l'enfant** et statut de validation de la direction (`Acceptée`, `Refusée`, `En attente`).
+  3. **Normalisation de `VITE_API_URL`** : Garantie systématique du suffixe `/api` dans les 7 composants concernés.
+- **Fichiers modifiés** :
+  - [`backend/routes_postgres/birthdays.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/birthdays.js)
+  - [`frontend/src/components/modals/TaskDetailModal.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/modals/TaskDetailModal.jsx)
+  - [`frontend/src/pages/BirthdayEventPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/BirthdayEventPage.jsx)
+  - [`frontend/src/components/dashboard/MobileDashboardComplete.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/dashboard/MobileDashboardComplete.jsx)
+  - [`frontend/src/components/widgets/MessagesWidget.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/widgets/MessagesWidget.jsx)
+  - [`frontend/src/components/widgets/UpcomingEventsWidget.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/widgets/UpcomingEventsWidget.jsx)
+  - [`frontend/src/pages/tasks/TasksPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/tasks/TasksPage.jsx)
+  - [`frontend/src/pages/auth/ResetPasswordPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/auth/ResetPasswordPage.jsx)
+  - [`frontend/src/pages/auth/ForgotPasswordPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/auth/ForgotPasswordPage.jsx)
+  - [`frontend/src/pages/parent/AnnouncementsPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/AnnouncementsPage.jsx)
+- **Résultat** : Le refus ou l'acceptation d'une demande d'anniversaire fonctionne sans aucune erreur 500, l'administrateur visualise immédiatement quand la demande a été envoyée et pour quelle date la fête est demandée (aussi bien dans la modale de tâche que sur la page dédiée), et l'erreur 404 sur `/staff-messages/unread` est éliminée.
+
+---
+
+### Fiche 102 — Suppression de la Génération Automatique Legacy d'Anniversaires & Distinction Explicite « Aucune Demande du Parent »
+
+- **Contexte / Symptôme** :
+  - L'utilisateur a constaté que le parent de l'enfant concerné (`child_id = 11`) ne s'était pas connecté depuis le `29/10` et n'avait donc **jamais soumis de demande d'organisation d'anniversaire** (`existingCelebration === null` dans `birthday_celebrations`).
+  - Malgré cela, l'anniversaire apparaissait comme tâche/événement et, lorsque l'administrateur ouvrait la fiche d'anniversaire de l'enfant (`/dashboard/children/11/birthday`), la vue Direction affichait `🚨 Organisation Direction` ainsi que le bloc `Décision de la Direction (Demande à moins de 5 jours) : Acceptez-vous d'organiser la fête à la crèche ? [✅ Accepter la demande tardive] [❌ Refuser (Délai trop court)]`, induisant l'administrateur en erreur en lui faisant croire qu'une demande tardive avait été envoyée par le parent (sans date d'envoi de demande puisqu'aucune demande n'existait !).
+- **Causes racines** :
+  1. **Création automatique legacy côté Backend (`childLifecycleService.js`)** : Lors de l'inscription ou de la création d'un enfant (`createChild`), l'option `create_birthday_event = true` appelait `createBirthdayEvent()`, qui insérait automatiquement un événement `type = 'birthday'` récurrent dans la table `events` sans aucune demande du parent.
+  2. **Synthèse automatique legacy côté Frontend (`TodayTasksWidget.jsx`, `TodayTasksWidgetMobile.jsx`, `MonthlyPlanningPage.jsx`, `WeeklyPlanningPage.jsx`, `ParentCalendarPage.jsx`)** : Ces 5 composants récupéraient `/api/children` et fabriquaient à la volée des objets `id: birthday-${child.id}` dans « Tâches du jour » et sur les calendriers pour tous les enfants, même lorsque le parent n'avait fait aucune demande (`decision = 'pending'`).
+  3. **Objet `celebration` par défaut trompeur dans `GET /api/birthdays/child/:childId` et condition `decision_status !== 'no'` dans `BirthdayEventPage.jsx`** :
+     - Lorsque `existingCelebration` était `null` (aucune demande du parent), `GET /api/birthdays/child/:childId` renvoyait un objet par défaut avec `decision: 'pending'`, `preferred_date: suggestedDays[0]?.date`, et `is_late_request: timing.isLateWindow` (`true` à moins de 5 jours de l'anniversaire).
+     - Dans `BirthdayEventPage.jsx`, les blocs « Décision de la Direction : Accepter / Refuser la demande » et « Assigner la tâche au staff » étaient affichés sous la condition `celebration?.decision_status !== 'no'` au lieu de `celebration?.decision_status === 'yes'`, si bien qu'ils s'affichaient même quand `decision_status === 'pending'` (aucune demande du parent).
+- **Solutions appliquées** :
+  1. **Désactivation définitive de la création automatique d'événements d'anniversaire (`childLifecycleService.js`, `children.js`, `appointmentsController.js`, `birthdays.js`)** :
+     - Passage de `create_birthday_event = false` par défaut et transformation de `createBirthdayEvent()` en no-op documenté (un événement `type = 'birthday'` dans `events` n'est créé que lorsque le parent soumet explicitement `decision = 'yes'`).
+     - Renforcement du nettoyage dans `ensureBirthdayTables()` (`birthdays.js`) pour annuler tout événement `type = 'birthday'` dont l'ID ne figure pas parmi les `event_id` actifs de `birthday_celebrations` (`decision = 'yes' AND admin_status != 'rejected'`).
+  2. **Suppression des fausses tâches et faux événements synthétisés côté Frontend** :
+     - Suppression de la génération automatique `id: birthday-${child.id}` depuis `/api/children` dans `TodayTasksWidget.jsx`, `TodayTasksWidgetMobile.jsx`, `MonthlyPlanningPage.jsx`, `WeeklyPlanningPage.jsx` et `ParentCalendarPage.jsx` (les vraies tâches et événements confirmés proviennent déjà de `/api/tasks/today` et `/api/events`).
+     - Enrichissement de `GET /api/children/birthdays/month` (`children.js`) et de `BirthdaysWidget.jsx` (« Événements - Ce mois-ci ») avec un badge explicite sur chaque carte d'anniversaire : `⏳ Aucune demande parent`, `✅ Fête demandée`, `❌ Demande refusée` ou `🏠 En famille`.
+  3. **Clarification de la vue Admin dans `birthdays.js`, `BirthdayEventPage.jsx` et `TaskDetailModal.jsx` lorsqu'aucune demande n'a été soumise par le parent (`decision_status !== 'yes'`)** :
+     - Dans `GET /api/birthdays/child/:childId`, lorsque `existingCelebration` est `null` ou `decision !== 'yes'`, `has_parent_request: false`, `is_late_request: false`, `preferred_date: null`, `celebration_date: null` et `requested_at: null`.
+     - Dans `BirthdayEventPage.jsx` et `TaskDetailModal.jsx`, lorsque `decision_status !== 'yes'` :
+       - Affichage du badge `⏳ Aucune demande du parent` (au lieu de `🚨 Organisation Direction`).
+       - Affichage d'une bannière explicite : **« ℹ️ Aucune demande d'organisation n'a été envoyée par le parent »** précisant qu'il n'y a aucune demande à accepter ou refuser.
+       - Mention explicite `Aucune demande envoyée par le parent` et `Aucune date demandée (pas de demande du parent)`.
+       - Affichage des boutons **« Accepter / Refuser la demande »** et **« Assigner la tâche au staff »** strictement réservé au cas où `celebration?.decision_status === 'yes'`.
+- **Fichiers modifiés** :
+  - [`backend/services/childLifecycleService.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/services/childLifecycleService.js)
+  - [`backend/routes_postgres/children.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/children.js)
+  - [`backend/controllers/appointmentsController.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/controllers/appointmentsController.js)
+  - [`backend/routes_postgres/birthdays.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/birthdays.js)
+  - [`frontend/src/components/widgets/TodayTasksWidget.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/widgets/TodayTasksWidget.jsx)
+  - [`frontend/src/components/widgets/TodayTasksWidgetMobile.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/widgets/TodayTasksWidgetMobile.jsx)
+  - [`frontend/src/components/widgets/BirthdaysWidget.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/widgets/BirthdaysWidget.jsx)
+  - [`frontend/src/pages/BirthdayEventPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/BirthdayEventPage.jsx)
+  - [`frontend/src/components/modals/TaskDetailModal.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/modals/TaskDetailModal.jsx)
+  - [`frontend/src/pages/dashboard/MonthlyPlanningPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/MonthlyPlanningPage.jsx)
+  - [`frontend/src/pages/dashboard/WeeklyPlanningPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/WeeklyPlanningPage.jsx)
+  - [`frontend/src/pages/parent/ParentCalendarPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/ParentCalendarPage.jsx)
+- **Résultat** : Aucun événement ni tâche d'anniversaire n'est généré automatiquement sans demande explicite du parent (`decision = 'yes'`), et lorsqu'un administrateur consulte l'anniversaire d'un enfant dont le parent ne s'est pas manifesté, l'interface indique clairement **« ⏳ Aucune demande du parent »** sans proposer à tort d'accepter ou de refuser une demande inexistante.
+
+---
+
+### Fiche 103 — Filtre Universel Mensuel (Cotisations & Dépenses Indépendantes), Résolution Dark Mode Espace Parent & Badges Arriéré/Remise en Ligne 1
+
+- **Date** : 08/11/2026
+- **Contexte / Symptôme** :
+  1. La gestion de la facturation et des dépenses dans `BillingManagementModal.jsx` ne permettait pas de naviguer librement entre les mois passés et futurs ; l'administrateur avait besoin de consulter ou clôturer des mois antérieurs ou d'anticiper les mensualités à venir, en ayant des dépenses et une trésorerie nette calculées de façon strictement indépendante pour chaque mois sans accumulation erronée.
+  2. Sur l'Espace Parent (`MySpacePage.jsx`), les cartes de cotisations présentaient un fond gris délavé non conforme au thème sombre (`dark:bg-gray-700/40` ou opacités dégradées sur fond `dark:bg-gray-800`), nuisant au contraste et à la lisibilité.
+  3. Les badges d'arriéré reporté (`[Arriéré : +XX DT]`) et de remise (`[Remise : -XX DT]`) devaient figurer sur la première ligne de chaque carte aux côtés du badge de statut (`Payé` / `Partiel` / `À régler`), tout en conservant le numéro de reçu en haut à droite après le mois et la mention du régime d'accueil avec emoji `(☀️ Journée complète)` / `(🌤️ Demi-journée)` entre parenthèses avec le nom de l'enfant.
+- **Cause racine** :
+  - Absence de contrôle d'interface temporelle (sélecteur mois/année) dans le bandeau d'onglets de `BillingManagementModal.jsx` bien que le backend supportait déjà les paramètres `{ month, year }`.
+  - Classes CSS Tailwind utilisant des transparences grisâtres inadaptées aux cartes imbriquées sur fond sombre.
+  - Dispersion des informations tarifaires (arriérés et remises) reléguées en sous-lignes au lieu d'une visibilité directe en en-tête.
+- **Solution appliquée** :
+  1. **Barre de Navigation Temporelle Universelle & Élargissement Modale (`BillingManagementModal.jsx`)** :
+     - Élargissement de la largeur maximale de la modale financière (`max-w-6xl xl:max-w-7xl 2xl:max-w-[88rem]`) et passage de la barre d'onglets en `xl:flex-row` avec `shrink-0` sur chaque onglet pour garantir la visibilité intégrale et sans troncature du bouton « Alerte Rapide Personnalisée ».
+     - Ajout des boutons `<ChevronLeft>` et `<ChevronRight>` (compatibles RTL avec inversion de direction).
+     - Menus déroulants bilingues (Janvier-Décembre FR / جانفي-ديسمبر AR) et années (2024 à 2028).
+     - Bouton intelligent `[Ce mois]` apparaissant dès qu'on navigue hors du mois courant pour un retour instantané, directement intégré dans la pilule de sélection.
+     - Verrouillage strict sur la même ligne (`flex-nowrap`, `shrink-0`) du filtre de période, du bouton `[Ce mois]` et du bouton d'action `Générer ce mois` / `Nouvelle Dépense`, éliminant tout passage intempestif à la ligne.
+     - Bouton d'action dynamique : `Générer ce mois` si mois courant, ou `Générer [Mois]` en navigation extérieure.
+     - Pré-remplissage de la date de création de dépense sur le 1er du mois sélectionné lors de l'ajout d'une charge passée/future.
+  2. **Filtrage Historique Strict des Enfants Inscrits (`billingService.js`)** :
+     - Dans `generateMonthlyInvoices`, `getInvoices` et `getFinancialSummary`, ajout d'un filtre temporel sur la date d'inscription/création de l'enfant (`c.created_at <= endOfTargetMonth`).
+     - Lors de la consultation ou de la génération d'un mois antérieur (ex: Octobre 2026), seuls les enfants déjà inscrits au plus tard pendant ce mois-là sont facturés et affichés. Les enfants inscrits ultérieurement (ex: Novembre 2026) ne polluent plus l'historique antérieur.
+     - Purge automatique de toute facture fantôme `pending` non payée qui aurait pu être générée par erreur pour un enfant créé après la période.
+  3. **Harmonisation Dark Mode & Contrastes (`MySpacePage.jsx` & `ParentBillingPage.jsx`)** :
+     - Remplacement des fonds grisés par `bg-white dark:bg-gray-800/90 border border-gray-200 dark:border-gray-700/80 shadow-xs`, offrant un rendu sombre profond et élégant parfaitement intégré à la page.
+  4. **Badges Arriéré & Remise en Première Ligne (Photo 2)** :
+     - Intégration sur la première ligne de chaque carte (espace parent desktop, mobile et modale admin) des badges arrondis avec bordures franches : `[ Arriéré : +XX DT ]` (rose) et `[ Remise : -XX DT ]` (émeraude).
+  5. **Structure Miroir & Ergonomie Visuelle** :
+     - Ligne 2 : `Mois MM/YYYY • N° Reçu: REC-...`.
+     - Liste des enfants : `• Nom Prénom (☀️ Journée complète)` avec statut unifié.
+     - Bas de carte : Bouton de reçu PDF isolé à gauche, Total et mention `✓ Intégralement réglé` à droite.
+- **Fichiers modifiés** :
+  - [`backend/services/billingService.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/services/billingService.js)
+  - [`frontend/src/components/modals/BillingManagementModal.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/modals/BillingManagementModal.jsx)
+  - [`frontend/src/pages/parent/MySpacePage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/MySpacePage.jsx)
+  - [`frontend/src/pages/parent/ParentBillingPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/ParentBillingPage.jsx)
+- **Résultat** : Navigation mensuelle universelle fluide pour les cotisations et dépenses indépendantes, pleine visibilité des onglets sans troncature, filtrage fidèle des enfants inscrits par mois sélectionné, mode sombre parfaitement contrasté, et visibilité immédiate en 1ère ligne des arriérés et remises.
+
+---
+
+### Correction n°104 : Comptabilité de Caisse Réelle (Cash Flow Mensuel Indépendant), Traçabilité des Avances Futures & Anticipations, Régularisation Historique des Mois Passés, et Élargissement Modale Financière (Fix Troncature « Alerte Rapide »)
+- **Date** : 08/11/2026
+- **Fichiers impactés** :
+  - [`backend/services/billingService.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/services/billingService.js)
+  - [`backend/routes_postgres/billing.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/billing.js)
+  - [`frontend/src/components/modals/BillingManagementModal.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/modals/BillingManagementModal.jsx)
+  - [`frontend/src/pages/parent/ParentBillingPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/ParentBillingPage.jsx)
+  - [`frontend/src/pages/parent/MySpacePage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/MySpacePage.jsx)
+- **Contexte / Symptôme** :
+  1. Lors du règlement multi-mois d'une famille (ex: parent Ines Issa payant 500 DT en Novembre pour régler la cotisation de Novembre [300 DT] et celle de Décembre en avance [200 DT]), la direction ne voyait pas combien d'argent avait été physiquement encaissé en caisse en Novembre.
+  2. En Décembre, la cotisation apparaissait réglée, mais sans aucune précision expliquant qu'elle avait été soldée par anticipation le 07/11/2026, donnant l'impression trompeuse qu'un encaissement avait eu lieu en Décembre.
+  3. Le calcul de la trésorerie nette devait être strictement indépendant de mois en mois (comptabilité de caisse) : l'argent perçu en Novembre sert à régler les dépenses de Novembre et doit faire partie du solde net de Novembre (`total_collected - total_expenses`), tandis qu'en Décembre le montant attendu reflète les prestations du mois mais avec 0 DT restant dû et 0 DT de nouveau cash perçu si tout a été réglé en avance.
+  4. Les mois historiques passés (ex: Septembre et Octobre) apparaissaient non réglés pour les parents ayant déjà réglé en espèces avant la mise en place du logiciel. Un encaissement classique aurait faussé le cash-flow du mois en cours avec un horodatage `NOW()`.
+  5. Le bouton « Alerte Rapide Personnalisée » était tronqué (`Alerte Rapide P...`) sur certaines résolutions d'écran car la modale manquait de largeur.
+- **Cause racine** :
+  1. `getFinancialSummary` et `getInvoices` agrégeaient uniquement les cotisations par `period_month = m AND period_year = y`, sans distinguer la date physique d'encaissement (`paid_at`) ni les avances futures.
+  2. Absence de fonctions et d'endpoints dédiés à la régularisation historique avec horodatage calé dans le mois passé d'origine.
+  3. Contrainte de largeur maximale (`max-w-6xl xl:max-w-7xl`) combinée à un flex-wrap insuffisant sur le bandeau d'onglets.
+- **Solution appliquée** :
+  1. **Comptabilité de Caisse Réelle dans `billingService.js`** :
+     - `getFinancialSummary` calcule désormais `total_collected` comme la somme réelle de tous les encaissements physiques perçus dans le mois calendaire (`EXTRACT(MONTH FROM paid_at) = m AND EXTRACT(YEAR FROM paid_at) = y`), avec ventilation explicite des avances futures (`advance_cash_collected`), des cotisations courantes (`current_month_cash`) et des arriérés passés.
+     - Calcul de `prepaid_earlier` (montant des cotisations du mois déjà réglées par anticipation).
+     - `net_balance = total_collected (cash physique réel) - total_expenses (charges du mois)` sans fausse accumulation.
+  2. **Traçabilité des Flux Réels & Anticipations par Famille et par Enfant** :
+     - Dans `getInvoices`, détection automatique de `is_advance_paid` quand `paid_at` est antérieur au mois de facturation.
+     - Badges visuels dédiés `✓ Soldé par anticipation (le JJ/MM/AAAA - Reçu REC-...)`.
+     - Affichage en en-tête de famille : `💰 Total perçu ce mois : X DT (dont Y DT en avance pour les mois suivants)`.
+     - Montant restant dû à 0 DT et cash perçu ce mois à 0 DT pour les mois soldés par anticipation.
+     - Reflet identique dans l'Espace Parent (`ParentBillingPage.jsx` et `MySpacePage.jsx`).
+  3. **Régularisation Historique des Mois Passés** :
+     - Nouveaux endpoints backend `POST /api/billing/invoices/:id/settle-past` et `POST /api/billing/family-settle-past`.
+     - Enregistrement immédiat avec `payment_method = 'Espèces (antérieur)'`, note explicite et `paid_at` calé au 15 du mois passé sans impacter la trésorerie du mois en cours.
+     - Bouton d'action ergonomique `[Régulariser mois passé]` visible sur les mois antérieurs non réglés dans les vues par famille et par enfant.
+  4. **Élargissement Modale & Zéro Troncature** :
+     - Modale élargie à `max-w-[96vw] 2xl:max-w-[1480px]`.
+     - Barre d'onglets réorganisée en `lg:flex-row lg:items-center justify-between` avec `min-w-0` et `shrink-0` sur les onglets, garantissant que « Alerte Rapide Personnalisée », le filtre de période et le bouton d'action s'affichent sans aucune troncature ni chevauchement.
+- **Résultat** : Trésorerie mensuelle rigoureusement exacte basée sur les flux de caisse physiques réels, traçabilité transparente des multi-mois et paiements par anticipation, régularisation sans friction des mois antérieurs à la crèche, et interface élargie avec lisibilité totale de tous les onglets.
+
+---
+
+### Correction n°105 : Règles Financières Métier (FIFO Stricte, Verrouillage Avances si Dettes, Neutralisation Août 0 DT), Style C Mobile Accordéon & Fix Header Desktop Universel
+- **Date** : 08/11/2026
+- **Fichiers impactés** :
+  - [`backend/services/billingService.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/services/billingService.js)
+  - [`frontend/src/components/modals/BillingManagementModal.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/modals/BillingManagementModal.jsx)
+  - Base de Données PostgreSQL (Neon)
+- **Contexte / Symptôme** :
+  1. Lors du règlement multi-mois ou partiel, le parent Inès Issa avait payé 270 DT : le système avait marqué le mois futur (Décembre) comme payé (150 DT) alors qu'il manquait 30 DT sur le mois présent (Novembre 120/150 DT), ce qui était contre-intuitif et contraire à la rigueur comptable.
+  2. Les boutons de paiement d'avance (2 mois, 3 mois) restaient accessibles aux familles ayant des dettes ou des arriérés impayés sur les mois antérieurs.
+  3. Le mois d'Août (mois 8), correspondant au congé annuel de fermeture de la crèche, générait des cotisations complètes (190 DT, 210 DT) créant des dettes fantômes reportées indûment sur Septembre et Octobre (ex: Mohamed Trabelsi).
+  4. Lors de la navigation dans l'historique (ex: Août ou Septembre), des enfants inscrits fin Octobre apparaissaient dans la liste suite à des générations globales accidentelles.
+  5. Sur écran desktop, l'onglet « Alerte Rapide Personnalisée » était tronqué (`Alerte Rapide P...`) dès que le bouton « Ce mois » s'affichait en navigation de période.
+  6. Sur mobile, l'interface de gestion nécessitait une adaptation inspirée du Style C de `maquette_cotisation.html` (Hero Trésorerie Nette, grille 2x2 des KPI et accordéon dépliable par enfant).
+- **Cause racine** :
+  1. L'imputation financière manuelle isolée avait mis à jour Décembre sans solder Novembre en priorité (absence de vérification FIFO stricte lors des ajustements).
+  2. Le sélecteur de durée multi-mois ne vérifiait pas l'existence d'arriérés passés.
+  3. `generateInvoiceForChild` ne prenait pas en compte la fermeture annuelle par défaut du mois d'Août.
+  4. Conflit de largeur flexbox entre les onglets et le bloc sélecteur sous le breakpoint `lg:`.
+- **Solution appliquée** :
+  1. **Principe FIFO Strict & Rééquilibrage Inès Issa** :
+     - Imputation chronologique stricte : le mois le plus ancien est soldé à 100% avant que le reliquat partiel ne soit attribué au mois suivant.
+     - Rectification en base de données pour Inès Issa : Novembre 2026 soldé à 150.00 DT (`status: 'paid'`), et Décembre 2026 ajusté à 120.00 DT (`status: 'partial'`) pour un total perçu préservé de 270 DT.
+  2. **Verrouillage des Avances en Cas de Dettes** :
+     - Contrôle backend dans `recordFamilyPayment` : rejet avec erreur explicite si `countMonths > 1` alors que la famille a des arriérés passés.
+     - Sécurisation UI dans `BillingManagementModal.jsx` : boutons « 2 mois d'avance » et « Trimestre (3 mois) » désactivés avec cadenas 🔒 et bannière d'alerte claire.
+  3. **Neutralisation de la Fermeture Annuelle d'Août** :
+     - Dans `billingService.js`, détection automatique du mois 8 : forfait 0 DT et statut `cancelled` avec mention « Fermeture annuelle crèche (Congé d'août) ».
+     - Annulation des factures fantômes d'Août 2026 en base, supprimant les faux arriérés de Mohamed Trabelsi et des autres familles.
+  4. **Filtre Strict d'Inscription dans l'Historique** :
+     - Filtre SQL strict `created_at <= end_of_target_month` et purge des factures orphelines créées avant l'inscription effective des enfants.
+  5. **Header Desktop Universel Sans Troncature** :
+     - Breakpoint monté à `xl:flex-row`, flex-wrap fluide et libellé responsive : `Alerte Rapide` sous 1400px et `Alerte Rapide Personnalisée` au-dessus. Zéro troncature sur toutes résolutions.
+  6. **Vue Petits Écrans Style C (Liste Compacte & Détail Dépliable)** :
+     - Héro Trésorerie Nette grand format + Grille 2x2 des KPI sur mobile (`sm:hidden`).
+     - Cartes compactes avec accordéon dépliable `[▼ Afficher détail / Masquer détail]` par enfant avec forfaits et régimes individuels.
+     - Règle anti-coupure stricte `.nowrap-dt` pour tous les montants monétaires.
+- **Résultat** : Comptabilité rigoureusement saine et équitable (FIFO), protection totale contre l'accumulation de dettes avec paiement d'avance, congé d'août neutralisé, et interface fluide, élégante et ergonomique sur mobile comme sur desktop.
+
+---
+
+### Correction n°106 : Bouton d'Accès Cotisations Admin Mobile, Protection Anti-Coupure Monétaire Stricte (`nowrap-dt` & `\u00A0DT`) et Élimination de l'Affichage Prématuré des Mois Futurs Non Échus (Fix Mohamed Trabelsi)
+- **Date** : 08/11/2026
+- **Fichiers impactés** :
+  - [`frontend/src/components/mobile/MobileNavigation.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/mobile/MobileNavigation.jsx)
+  - [`frontend/src/pages/parent/ParentBillingPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/ParentBillingPage.jsx)
+  - [`frontend/src/pages/parent/MySpacePage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/MySpacePage.jsx)
+  - [`frontend/src/components/modals/BillingManagementModal.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/modals/BillingManagementModal.jsx)
+  - [`frontend/src/index.css`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/index.css)
+  - [`backend/services/billingService.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/services/billingService.js)
+  - Base de Données PostgreSQL (Neon)
+- **Contexte / Symptôme** :
+  1. **Absence de bouton Admin sur Mobile** : Sur petit écran / smartphone, l'administrateur n'avait aucun moyen d'ouvrir la modale de gestion financière (cotisations & dépenses) depuis la barre de navigation mobile (`MobileNavigation.jsx`) car la sidebar de gauche est masquée en dessous de 1024px.
+  2. **Coupure inesthétique des montants en DT** : Sur des largeurs d'écran de 375px à 390px (iPhone), les montants monétaires (`+190 DT`, `190 DT`, `+20 DT`, `160 DT`) cassaient leur ligne : le nombre apparaissait sur la première ligne et l'unité `DT` sautait toute seule sur la ligne inférieure.
+  3. **Affichage prématuré du mois 12/2026 pour Mohamed Trabelsi** : Alors que le mois en cours est Novembre 2026, l'espace parent de Mohamed Trabelsi affichait une carte de cotisation « Mois 12/2026 » de 1 040 DT avec un arriéré fantôme reporté de +680 DT, portant la situation de son compte à 1 180 DT au lieu de ses 140 DT légitimes.
+- **Cause racine** :
+  1. `moreMenuItems` dans `MobileNavigation.jsx` ne contenait aucune action pour ouvrir `BillingManagementModal` avec les rôles `['admin', 'developer']`.
+  2. Les conteneurs flexbox des lignes d'enfants et de totaux manquaient de `min-w-0` sur la colonne de gauche et les spans de montants monétaires à droite n'avaient pas de `white-space: nowrap !important; flex-shrink: 0 !important;` ni d'espaces insécables (`\u00A0`).
+  3. Des factures orphelines de test pour le mois 12/2026 avaient été générées automatiquement en base avec `amount_paid = 0` lors de tests de clics à minuit. De plus, `billingService.getInvoices` ne filtrait pas les mois futurs non échus lorsque la requête provenait de l'espace parent (`parent_id`).
+- **Solution appliquée** :
+  1. **Accès Cotisations Admin sur Mobile** :
+     - Ajout dans `moreMenuItems` de `MobileNavigation.jsx` de l'option « Cotisations & Dépenses » (`المالية، الاشتراكات والمصاريف`) pour les rôles `admin` et `developer`, déclenchant l'ouverture de `<BillingManagementModal />`.
+  2. **Protection Anti-Coupure Monétaire Universelle** :
+     - Ajout de la classe utilitaire globale `.nowrap-dt` dans `frontend/src/index.css` :
+       ```css
+       .nowrap-dt {
+         white-space: nowrap !important;
+         flex-shrink: 0 !important;
+       }
+       ```
+     - Intégration systématique de `nowrap-dt whitespace-nowrap shrink-0` avec espaces insécables (`&nbsp;DT` / `\u00A0DT`) et `min-w-0` sur les libellés de gauche dans `ParentBillingPage.jsx`, `MySpacePage.jsx` et `BillingManagementModal.jsx` (forfaits individuels, badges arriéré, badges remise, totaux, soldes restants dus).
+  3. **Assainissement Base de Données & Verrou SQL Backend** :
+     - Purge en base Neon des 16 factures orphelines de Décembre 2026 (`amount_paid = 0`).
+     - Ajout d'une condition stricte dans `billingService.js` (`getInvoices`) pour tout accès parent (`parent_id`) :
+       ```sql
+       (ci.period_year < curYear OR (ci.period_year = curYear AND ci.period_month <= curMonth))
+       OR COALESCE(ci.amount_paid, 0) > 0
+       ```
+       Les mois futurs non échus sont rigoureusement invisibles pour les parents, sauf si une avance a été effectivement encaissée.
+     - Mohamed Trabelsi ne voit plus Décembre 2026 : sa situation de compte affiche exactement son reliquat légitime de Septembre (140 DT), ses mois d'Août (0 DT), Octobre et Novembre étant intégralement soldés.
+- **Résultat** : Accès direct pour les administrateurs depuis leur mobile, montants monétaires parfaitement lisibles et insécables sur tous les écrans, et intégrité absolue de l'espace parent sans mois futurs prématurés.
+
+---
+
+### Correction n°107 : Refonte Visuelle 100% Fidèle à la Maquette Mobile (`maquette_cotisation.html` - Photos 1 & 2 vs Photos 3 & 4) & Allègement Menu Plus
+
+- **Date** : 08/11/2026
+- **Fichiers impactés** :
+  - `frontend/src/components/modals/BillingManagementModal.jsx`
+  - `frontend/src/components/mobile/MobileNavigation.jsx`
+  - `frontend/src/index.css`
+- **Contexte / Symptôme** :
+  1. **Décalage esthétique flagrant entre la maquette (Photos 1 & 2) et la réalité rendue (Photos 3 & 4)** :
+     - La modale de gestion financière (`BillingManagementModal.jsx`) s'affichait dans un bloc sombre lourd et compact, sans aération visuelle.
+     - Les listes déroulantes de sélection de période (`<select>`) tronquaient leurs libellés sur smartphone sous 390px (`...embre v 2026 v >`), débordant sur le bouton d'action.
+     - L'avatar des parents n'affichait qu'une seule lettre monochrome (`A`, `M`, `I`) au lieu des 2 initiales élégantes en dégradé (`BA`, `ST`, `WM`, `AG`).
+     - Tous les badges étaient empilés en vrac sur une seule ligne à côté du nom du parent, créant un pavé illisible qui repoussait le prix.
+     - Absence complète des bandelettes colorées latérales de 4px (`border-l-4`) associées au statut de chaque carte.
+     - Les boutons d'action et le repli d'accordéon étaient mal placés et tronqués.
+  2. **Élément redondant dans le menu Plus mobile** :
+     - Présence de la route « Activité récente » (`/dashboard/activities`) dans le menu Plus alors que l'accueil assure déjà cette vue.
+- **Cause racine** :
+  - `BillingManagementModal.jsx` utilisait une structure de tableau / formulaire administrative legacy non synchronisée avec le prototype HTML moderne Style C (`maquette_cotisation.html`).
+  - Absence des classes CSS de bandelettes (`.cotis-card-stripe`, `.kpi-stripe`) et absence de formatage rigoureux en 3 zones distinctes (En-tête Identité & Prix/Statut -> Badges méta -> Accordéon fratrie -> Footer boutons).
+- **Solution appliquée** :
+  1. **Canvas et Structure Modale** :
+     - Plein écran mobile moderne et format dialog soigné desktop (`bg-[#F4F7FA] dark:bg-gray-900`, `rounded-none sm:rounded-3xl`, `max-w-[96vw] 2xl:max-w-[1440px]`).
+  2. **En-tête & Barre de Période** :
+     - Bandeau dégradé émeraude éclatant avec icône `Receipt`, titre, sous-titre, cloche d'alerte rapide et bouton de fermeture.
+     - Onglets principaux 50/50 (`Cotisations` & `Dépenses`) avec badges de compteurs sans coupure.
+     - Sélecteur de période en pilule `< Novembre 2026 >` avec bouton `Ce mois` contextuel et bouton d'action contextuel aligné (`Générer ce mois` en émeraude ou `+ Nouvelle Dépense` en rose).
+  3. **Héro Trésorerie Nette & KPIs** :
+     - Héro `TRÉSORERIE NETTE (CAISSE)` en fond bleu nuit profond (`bg-[#0F172A]`) avec icône banque `Landmark` verte, montant net géant et badge `Cash net du mois`.
+     - Grille 2x2 des 4 KPI avec bandelettes d'accent gauche (`Total Attendu`, `Cash Réel Perçu`, `Reste à Percevoir`, `Dépenses du Mois`).
+  4. **Barre d'Outils & Filtres** :
+     - Switch `Vue par Famille` vs `Vue par Enfant` avec badges numériques.
+     - Champ de recherche avec loupe intégrée et pilules de statut (`Tous` actif noir, `À régler`, `Payés`).
+  5. **Cartes Famille & Fratrie Style C** :
+     - Liseré gauche coloré de 4px (`.cotis-stripe-pending` bleu, `.cotis-stripe-partial` ambre, `.cotis-stripe-paid` émeraude, `.cotis-stripe-advance` sarcelle).
+     - Avatar 2 initiales (`getFamilyInitials`) aux dégradés assortis au statut.
+     - Identité à gauche (Nom, téléphone cliquable `tel:`, résumé enfants `getChildrenSummary`) et bloc prix à droite (montant `.nowrap-dt` dominant la pilule de statut).
+     - Ligne de badges méta dédiée (`enfants`, `arriéré`, `remise`, `avoir`, `encaissé`, `reçu`).
+     - Accordéon dépliable pour le détail de la fratrie avec régimes, mentions et montants protégés anti-coupure (`.nowrap-dt`).
+     - Footer de carte avec bouton `Masquer détail` / `Afficher détail` à gauche, et boutons d'action à droite (`Encaisser`, `Reçu PDF`, `Annuler`).
+  6. **Menu Plus Mobile Allégé** :
+     - Suppression de l'élément « Activité récentes » dans `MobileNavigation.jsx`.
+- **Résultat** : Conformité visuelle et fonctionnelle 100% absolue avec la maquette `maquette_cotisation.html` (Photos 1 & 2), navigation ultra-fluide sur smartphone et bureau, et menu mobile désencombré.
+
+---
+
+### Correction n°108 : Point Courant Espace Parent, Exclusion Stricte des Mois Futurs du Reste à Payer, Historique Chronologique des Versements Réels (`PaymentsHistoryModal`), et Fix Responsive Boutons Période Admin
+
+- **Date** : 08/11/2026
+- **Fichiers impactés** :
+  - [`backend/routes_postgres/billing.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/billing.js)
+  - [`frontend/src/components/modals/PaymentsHistoryModal.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/modals/PaymentsHistoryModal.jsx)
+  - [`frontend/src/pages/parent/ParentBillingPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/ParentBillingPage.jsx)
+  - [`frontend/src/pages/parent/MySpacePage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/MySpacePage.jsx)
+  - [`frontend/src/components/modals/BillingManagementModal.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/modals/BillingManagementModal.jsx)
+- **Contexte / Symptôme** :
+  1. **Affichage prématuré et anxiogène de Décembre 2026 sur l'Espace Parent** :
+     - Lorsqu'un parent avait effectué un versement avec avance sur un mois futur (ex: Inès Issa versant 270 DT : 150 DT pour Novembre soldé et 120 DT d'acompte sur Décembre où le tarif mensuel est de 150 DT), le système calculait `150 - 120 = 30 DT` dans le « Reste à payer sur votre compte famille », et affichait une alerte rouge de 30 DT d'impayé alors qu'on est en Novembre et que Décembre n'est pas encore échu !
+     - De plus, Décembre apparaissait tout en haut comme impayé prioritaire au détriment du point courant (Novembre 2026).
+  2. **Absence de consultation de l'historique des règlements réels en caisse** :
+     - Les parents ne disposaient que d'une vue découpée par mois de scolarité et n'avaient aucun bouton pour consulter chronologiquement leurs versements réels effectués en espèces à l'accueil (ex: `12/11/2026 : 500 DT`).
+  3. **Débordement du bouton de génération et symbole '+' dupliqué sur mobile admin (Photos 1, 2, 3)** :
+     - Dans `BillingManagementModal.jsx`, sur smartphone (< 390px), le sélecteur `< Décembre 2026 >` accompagné du bouton contextuel `[ Ce mois ]` prenait toute la largeur et comprimait le bouton d'action à droite (`Générer ce mois` tronqué en `Génér...`).
+     - Dans l'onglet Dépenses, le bouton affichait `(+) + Nouvelle Dépense` (icône `PlusCircle` + texte `+`).
+- **Cause racine** :
+  1. `ParentBillingPage.jsx` et `MySpacePage.jsx` calculaient `totalRemainingDue` en additionnant aveuglément `due - paid` sur l'ensemble des factures sans vérifier si `period_month / period_year` était dans le futur. Les groupes étaient triés en plaçant tous les `!isPaid` en premier sans distinction entre arriérés échus et acomptes futurs.
+  2. Aucun endpoint dédié ni composant ne restituait l'historique chronologique des reçus d'espèces groupés côté parent.
+  3. `BillingManagementModal.jsx` utilisait des libellés fixes trop longs sur petit écran sans adaptation responsive (`sm:inline` / `sm:hidden`) et contenait un symbole `+` textuel redondant.
+- **Solution appliquée** :
+  1. **Point Courant & Règle Métier des Mois Futurs** :
+     - Implémentation des fonctions temporelles `isFuturePeriod(m, y)` et `isCurrentPeriod(m, y)`.
+     - Exclusion stricte de tout mois futur non échu du calcul de `totalRemainingDue` : pour Inès Issa, le solde restant dû est de 0 DT et sa situation affiche « ✓ À jour ».
+     - Ordonnancement rigoureux des cotisations :
+       1. Dettes antérieures échues réelles (en alerte prioritaire).
+       2. **Point courant en vedette** (Novembre 2026 avec badge distinctif émeraude « Point courant »).
+       3. **Règlements anticipés futurs** (Décembre 2026 avec badge turquoise « ✓ Règlement anticipé (120/150 DT) » et mention claire « Avance enregistrée : 120 DT • Reliquat dû à l'échéance : 30 DT », sans statut anxiogène d'impayé).
+       4. Échéances futures planifiées sans versement (badge gris neutre).
+       5. Historique archivé des mois passés soldés (repliable).
+  2. **Historique des Règlements Réels (`PaymentsHistoryModal.jsx` & `/api/billing/my-payments`)** :
+     - Enrichissement de l'endpoint `GET /api/billing/my-payments` groupant les paiements par numéro de reçu officiel avec date réelle (`paid_at`), montant total net, mode de règlement, enfants et périodes couvertes.
+     - Création de la modale dédiée `PaymentsHistoryModal.jsx` accessible en 1 clic via le bouton « Historique de mes versements » avec téléchargement direct du PDF officiel de reçu.
+  3. **Fix Responsive Boutons Période Admin** :
+     - Libellés responsifs compacts (`sm:inline` pour `Générer ce mois` / `Nouvelle Dépense`, `sm:hidden` pour `Générer` / `Dépense`).
+     - Suppression du `+` dupliqué dans l'onglet dépenses (`<span>Nouvelle Dépense</span>`).
+     - Espacement optimisé garantissant zéro débordement sur tout smartphone dès 350px.
+- **Résultat** : L'espace parent affiche fidèlement le mois courant sans fausses alertes d'arriéré sur les avances futures, les parents disposent d'un historique limpide de leurs règlements en espèces avec reçus PDF téléchargeables, et l'interface admin mobile est parfaitement calibrée sans coupure ni débordement.
+
+---
+
+### Correction n°109 : Protection Safe-Area iOS Notch, Footer Cartes Famille Responsive 2 Lignes (Anti-Boutons Masqués/Coupés), Suppression Switch Onglets Famille/Enfant, et Exclusion Absolue Cartes Futures Espace Parent
+
+- **Date** : 08/11/2026
+- **Fichiers impactés** :
+  - [`frontend/src/components/modals/BillingManagementModal.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/modals/BillingManagementModal.jsx)
+  - [`frontend/src/pages/parent/ParentBillingPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/ParentBillingPage.jsx)
+  - [`frontend/src/pages/parent/MySpacePage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/MySpacePage.jsx)
+  - [`backend/services/billingService.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/services/billingService.js)
+- **Contexte / Symptôme (Signalé avec photos d'audit mobile)** :
+  1. **En-tête Admin masqué par l'encoche / Dynamic Island iOS (Photo 1)** :
+     - Le bandeau vert d'en-tête de `BillingManagementModal.jsx` chevauchait la barre d'état iOS (horloge 13:18, batterie, wifi, encoche dynamique), rendant les titres et boutons d'action du haut illisibles et difficilement cliquables.
+  2. **Bouton masqué / repoussé hors écran sur cartes avec paiements partiels (Photo 2)** :
+     - Pour les familles avec paiement partiel (ex: Malek Aidoudi), l'alignement sur une seule ligne de `[ Afficher détail ]` + `[ 🔔 Rappel ]` + `[ 💳 Régler 60 DT ]` + `[ 📄 Reçu PDF ]` + `[ ↺ Annuler ]` dépassait 400px de large, refoulant le bouton `Reçu PDF` hors du champ visible sur smartphone (largeur 360-390px).
+  3. **Bouton coupé sur cartes en attente de paiement (Photo 3)** :
+     - Pour les familles non soldées (ex: Anis Zamouri), le bouton vert `[ 💳 Encaisser 160 DT ]` était rogné sur sa bordure droite par manque de place horizontale.
+  4. **Onglets de bascule Famille/Enfant encombrants (Photo 4)** :
+     - Le switch `[ 👥 Vue par Famille ]` / `[ 👤 Vue par Enfant ]` alourdissait la barre d'outils mobile au détriment du champ de recherche et des filtres de statut.
+  5. **Affichage superflu de la carte Décembre et débordement de texte sur l'Espace Parent (Photo 5 & Vue Mohamed Trabelsi)** :
+     - Sur l'espace parent, la carte de Décembre 2026 continuait d'apparaître sous forme de carte à régler, perturbant le parent alors qu'on est en Novembre 2026.
+     - Le texte d'explication de l'acompte débordait hors du conteneur de carte sur écran mobile.
+- **Cause racine** :
+  1. Le padding supérieur de l'en-tête modale n'utilisait pas de valeur plancher de sécurité en cas de non-résolution de `env(safe-area-inset-top)`.
+  2. Le pied de carte famille utilisait une disposition `flex-nowrap` à une seule ligne pour jusqu'à 5 actions différentes.
+  3. Le commutateur de vue Famille/Enfant était redondant alors que la gestion financière moderne repose sur la vue consolidée par foyer.
+  4. L'espace parent incluait les groupes futurs (`futureAdvanceGroups`, `futureUpcomingGroups`) dans la liste des cartes rendues et les comptabilisait dans le badge de total cotisations.
+- **Solution appliquée** :
+  1. **Protection iOS Notch Safe-Area** :
+     - Application de `pt-[max(calc(env(safe-area-inset-top,0px)+0.75rem),2.75rem)]` garantissant un dégagement minimum de 44px sous la barre d'état iOS sur tout modèle d'iPhone.
+  2. **Pied de Carte Famille Responsive 2 Lignes (Anti-Coupure & Anti-Masquage)** :
+     - **Ligne 1 mobile** : Afficher/Masquer le détail à gauche + outils secondaires à droite (`Reçu PDF`, `Rappel 🔔`, `Annuler ↺`).
+     - **Ligne 2 mobile** : CTA principal pleine largeur (`w-full sm:w-auto h-8 text-xs font-bold`) pour `Encaisser XXX DT` ou `Régler XXX DT`, avec bouton `Régulariser` si mois passé.
+     - **Desktop (`sm:`)** : Alignement automatique en une ligne unique (`sm:flex-row sm:items-center sm:justify-between`).
+  3. **Suppression du Switch Famille / Enfant** :
+     - Élimination intégrale du toggle d'onglets pour une vue famille unique, propre et performante.
+     - Barre d'outils optimisée avec champ de recherche pleine largeur et pilules de filtres (`Tous`, `À régler`, `Payés`).
+  4. **Exclusion Absolue des Cartes Futures sur l'Espace Parent** :
+     - Filtrage strict à la source : `visibleInvoices = invoices.filter(inv => !isFuturePeriod(inv.period_month, inv.period_year))`.
+     - Suppression définitive de `futureAdvanceGroups` et `futureUpcomingGroups` des cartes affichées : Décembre 2026 ne s'affiche plus jamais tant qu'il n'est pas échu.
+     - Les versements d'avance et avoirs restent traçables via « Historique de mes versements » (`PaymentsHistoryModal`) et le badge d'avoir disponible.
+     - Remplacement des conteneurs rigides `whitespace-nowrap nowrap-dt` par `break-words` pour les mentions informatives, évitant tout débordement textuel.
+  5. **Boutons Période Admin Anti-Troncature** :
+     - Utilisation de `hidden md:inline` et `inline md:hidden` pour calibrer les libellés `Générer` et `Dépense` sans écrasement sous 768px.
+- **Résultat** : En-tête parfaitement lisible sous le notch iPhone, boutons d'encaissement spacieux et jamais coupés ni masqués, espace parent 100% centré sur le point courant sans cartes futures prématurées, et zéro débordement graphique.
+
+---
+
+### Correction n°110 : Verrouillage Date d'Admission (`admission_date`), Réconciliation Famille Trabelsi, Neutralisation Congé Août 0 DT Espace Parent & Pied de Carte Stylisé
+- **Date** : 08/11/2026
+- **Fichiers modifiés** :
+  - [`backend/services/billingService.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/services/billingService.js)
+  - [`backend/services/childLifecycleService.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/services/childLifecycleService.js)
+  - [`backend/scripts/reconcile_trabelsi_billing.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/scripts/reconcile_trabelsi_billing.js)
+  - [`frontend/src/pages/parent/ParentBillingPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/ParentBillingPage.jsx)
+  - [`frontend/src/pages/parent/MySpacePage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/MySpacePage.jsx)
+  - [`frontend/src/components/modals/BillingManagementModal.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/modals/BillingManagementModal.jsx)
+- **Contexte / Symptôme (Signalé avec photos et relevé famille Mohamed Trabelsi)** :
+  1. **Anomalie du mois d'août 2026 (fermeture annuelle crèche)** :
+     - La carte d'Août 2026 s'affichait avec le statut « À régler » malgré un montant total de 0 DT, et affichait pour Lina et Youssef la mention erronée `↳ Dont assurance scolaire annuelle : +60 DT`.
+  2. **Facturation prématurée de Samir Trabelsi avant son admission officielle & cascade de fausses dettes (140 DT sur Youssef)** :
+     - Samir Trabelsi (admis officiellement en Novembre 2026) s'est vu générer des factures en Septembre (160 DT : 100 DT forfait + 60 DT assurance) et Octobre (100 DT).
+     - Le versement de 400 DT du parent en Septembre a été aspiré à hauteur de 160 DT par cette facture indue de Samir, ne laissant que 50 DT sur les 190 DT de Youssef. Cela a laissé une dette artificielle de 140 DT sur Youssef qui s'est reportée de mois en mois.
+  3. **Bouton masqué / écrasé lors de l'affichage du bouton de régularisation (Photo 2 - Malek Aidoudi)** :
+     - La présence simultanée du bouton `Régler` avec `w-full` et du bouton `Régulariser` provoquait un débordement du conteneur flex, faisant déborder le bouton hors de la carte.
+  4. **Pied de carte parent flottant hors conteneur (Photo 5)** :
+     - La phrase `Paiement en espèces à la crèche` et `Total : XXX DT` n'était pas délimitée visuellement et semblait flotter hors du cadre de la carte.
+- **Cause racine** :
+  1. Absence de condition `total_due > 0` pour l'affichage de l'assurance scolaire (`itemInsurance > 0 && itemDue > 0`), et condition `isPaid` qui renvoyait `false` pour les factures à 0 DT. Les factures de vacances (`status = 'cancelled' AND total_due = 0`) n'étaient pas filtrées pour les parents.
+  2. Le moteur de facturation (`generateInvoiceForChild`, `generateMonthlyInvoices`, `recordFamilyPayment`) ne contrôlait pas la date d'admission de l'enfant (`admission_date` / `enrollment_date`).
+  3. Le bouton d'encaissement forçait `w-full` sans flexibilité de partage d'espace avec le bouton de régularisation du mois passé.
+  4. Absence de section d'habillage distincte pour le pied de carte de cotisation parent.
+- **Solution appliquée** :
+  1. **Ajout et Synchronisation de `admission_date`** :
+     - Création de la colonne `admission_date DATE` sur la table `children` et synchronisation automatique lors de l'admission dans `childLifecycleService.js`.
+  2. **Garde-fou Absolu dans le Moteur de Facturation (`billingService.js`)** :
+     - `generateInvoiceForChild` vérifie systématiquement la date d'admission : si la période ciblée précède le mois d'admission de l'enfant, la fonction renvoie immédiatement `null` et n'insère aucune ligne.
+     - `generateMonthlyInvoices` et `recordFamilyPayment` excluent formellement les enfants non encore admis à la période concernée.
+     - `getInvoices` exclut systématiquement pour les parents toute facture annulée à montant nul (`NOT (ci.status = 'cancelled' AND ci.total_due = 0)`).
+  3. **Script de Réconciliation des Données Exécuté (`reconcile_trabelsi_billing.js`)** :
+     - Fixation de la date d'admission de Samir au `01/11/2026` et de Lina/Youssef au `09/11/2025`.
+     - Purge des factures indues de Septembre 2026 (id 141) et Octobre 2026 (id 15) pour Samir.
+     - Réaffectation des 140 DT à Youssef (id 152) : Septembre 2026 soldé à 190/190 DT (statut `paid`).
+     - Facture de Novembre 2026 de Samir ajustée : Forfait 100 DT + Assurance annuelle 60 DT - Remise 20 DT = 140 DT, intégralement soldée (`paid`).
+     - Inscription de l'excédent sur le solde d'avoir du parent : **100.00 DT de crédit disponible**.
+     - Solde restant dû famille Trabelsi : **0 DT (Entièrement soldé)**.
+  4. **Frontend Parent (`ParentBillingPage.jsx` & `MySpacePage.jsx`)** :
+     - Filtrage des factures annulées de vacances à 0 DT.
+     - Condition de paiement révisée : `const isPaid = inv.status === 'paid' || invDue === 0 || (invPaid >= invDue && invDue > 0);`.
+     - Garde-fou assurance : `{itemInsurance > 0 && itemDue > 0 && (...)}`.
+     - Création d'un pied de carte dédié stylisé (`-mx-4 -mb-4 px-4 py-3 rounded-b-xl bg-gray-50/70 border-t`) avec affichage de la date de paiement réelle.
+  5. **Modale d'Administration (`BillingManagementModal.jsx`)** :
+     - Header mobile avec dégagement iOS Safe Area renforcé (`pt-[max(calc(env(safe-area-inset-top)+1.5rem),3.75rem)]`) et titres compacts.
+     - Boutons d'action responsives avec `flex-1 sm:flex-initial` évitant tout masquage ou débordement.
+     - Défilement du corps principal avec padding bas généreux (`pb-24 sm:pb-10`) garantissant la visibilité intégrale de la dernière carte au-dessus de la barre d'accueil iOS.
+     - Élimination définitive de la branche orpheline `viewMode === 'child'` au profit d'une vue par famille unique et fluide.
+- **Résultat** : Cohérence comptable et historique irréprochable (0 DT de dette, 100 DT d'avoir), Samir n'est facturé qu'à partir de Novembre, le mois d'Août n'apparaît plus comme impayé, et l'interface mobile iOS est 100% stable sans boutons coupés ni débordements.
+
+---
+
+### Correction n°111 : Boutons Inconnus/Vides (Rappel & Annulation), Respect du Mode Clair Carte Héro Trésorerie & Anti-Troncature En-tête (Photo 1, 2 & 3)
+- **Date** : 08/11/2026
+- **Fichiers modifiés** :
+  - [`frontend/src/components/modals/BillingManagementModal.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/modals/BillingManagementModal.jsx)
+  - [`frontend/src/index.css`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/index.css)
+- **Contexte / Symptôme (Signalé avec photos 1, 2 et 3)** :
+  1. **Photo 1 (Deux boutons vides / incompréhensibles à côté de « Reçu PDF »)** :
+     - Deux petits rectangles blancs sans libellé apparaissaient à côté de « Reçu PDF ». L'utilisateur ne comprenait pas leur fonction (« ce btn sert a quoi pas claire, n'affiche rien »). Au clic, rien ne se passait.
+  2. **Photo 2 (Carte Héro Trésorerie ne respectant pas le mode clair)** :
+     - La carte « TRÉSORERIE NETTE (CAISSE) » restait en noir nuit `#0F172A` même lorsque toute l'application et la modale étaient en Light Mode.
+  3. **Photo 3 (Sous-titre d'en-tête tronqué)** :
+     - Le sous-titre de l'en-tête affichait « Recettes & charges, encaissement... » avec des points de suspension coupant la fin du texte.
+- **Cause racine** :
+  1. Les boutons « Rappel » (`Bell`) et « Annuler l'encaissement » (`RotateCcw`) étaient rendus sous forme d'icônes seules sans libellé texte dans des boîtes de 28x28px (`h-7 w-7`) sans fond contrasté. De plus, `handleSendReminder` recevait un objet `{ parent_phone, ... }` dépourvu de champ `id`, provoquant un appel API erroné vers `/api/billing/invoices/undefined/remind` qui échouait silencieusement.
+  2. La classe de fond `bg-[#0F172A]` était codée en dur sans variante pour le mode clair.
+  3. La classe `truncate` appliquait une troncature CSS dès que la longueur du texte (52 caractères) dépassait l'espace disponible restreint par les boutons de fermeture et d'alerte sur mobile.
+- **Solution appliquée** :
+  1. **Habillage Complet & Intelligibilité des Actions (Photo 1)** :
+     - Les deux boutons disposent désormais de libellés textuels explicites et de couleurs d'accent distinctes :
+       - **Bouton Rappel** : badge ambre (`bg-amber-50 text-amber-700 border-amber-200`) avec icône `Bell` et texte `Rappel` (ou `تذكير` en arabe).
+       - **Bouton Annuler l'encaissement** : badge rose (`bg-rose-50 text-rose-700 border-rose-200`) avec icône `RotateCcw` et texte `Annuler` (ou `إلغاء` en arabe).
+     - Correction de `handleSendReminder` : récupération robuste de l'identifiant (`target?.id || target?.primary_invoice_id || target?.invoices?.[0]?.id`) garantissant l'envoi effectif du rappel avec affichage du toast de confirmation vert.
+  2. **Adaptation Parfaite au Mode Clair (Photo 2)** :
+     - Remplacement de la couleur fixe par un dégradé lumineux en mode clair et sombre en mode nuit :
+       `bg-gradient-to-r from-emerald-50/90 via-teal-50/50 to-white dark:from-[#0F172A] dark:to-gray-900 border border-emerald-200/80 dark:border-white/10 text-gray-900 dark:text-white`.
+     - Textes, badges et montants contrastés en émeraude franc en mode clair (`text-emerald-600`, `bg-emerald-100 text-emerald-800`).
+  3. **Sous-titre d'En-tête Complet & Fluide (Photo 3)** :
+     - Remplacement par une formule concise et élégante : `Recettes, charges & reçus PDF` (en arabe : `المداخيل، المصاريف والوصولات PDF`), éliminant définitivement les points de suspension `...`.
+- **Résultat** : Toutes les actions de la carte sont immédiatement compréhensibles et fonctionnelles, la carte trésorerie s'intègre harmonieusement en mode clair comme en mode sombre, et l'en-tête s'affiche à 100% sans coupure.
+
+---
+
+### Correction n°112 : Rayures Flottantes Modales (Bordures Natives CSS), Anti-Débordement Ligne d'Actions Mobile, Z-Index Sub-modales & Réconciliation Trabelsi
+- **Date** : 08/11/2026
+- **Fichiers modifiés** :
+  - [`frontend/src/index.css`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/index.css)
+  - [`frontend/src/components/modals/BillingManagementModal.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/modals/BillingManagementModal.jsx)
+  - [`frontend/src/pages/parent/MySpacePage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/MySpacePage.jsx)
+  - [`frontend/src/pages/parent/ParentBillingPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/ParentBillingPage.jsx)
+  - [`backend/scripts/reconcile_trabelsi_billing.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/scripts/reconcile_trabelsi_billing.js)
+- **Contexte / Symptôme** :
+  1. **Rayures colorées traversant la modale « Enregistrer une Dépense »** : Dans la modale de saisie de dépense, des bandes verticales de couleur (bleu, vert, jaune, rouge) transperçaient les champs de saisie et les étiquettes.
+  2. **Débordement du bouton « Annuler » sur mobile** : Sur les cartes de cotisation famille (ex: Malek Aidoudi), la présence de 4 éléments sur la première ligne (`Détail`, `Reçu PDF`, `Rappel`, `Annuler`) dépassait la largeur disponible de l'écran mobile (~315px vs ~312px utiles), provoquant un débordement du bouton « Annuler » hors de la carte.
+  3. **Affichage du mois de Décembre 2026 sur l'espace parent** : Le compte parent Mohamed Trabelsi affichait toujours une carte pour Décembre 2026 alors que la période actuelle est Novembre 2026.
+- **Cause racine** :
+  1. Les classes `.kpi-stripe::before` et `.cotis-card-stripe::before` utilisaient des pseudo-éléments `position: absolute; z-index: 10;`. Parallèlement, les 6 modales secondaires de `BillingManagementModal.jsx` utilisaient la classe Tailwind inexistante `z-60` (qui n'était pas générée, laissant `z-index: auto`), permettant aux bandes sous-jacentes de transpercer la modale.
+  2. Cumul de 3 boutons d'action sur la ligne mobile sans limitation de nombre ni repli dans l'accordéon.
+  3. Absence de filtrage temporel excluant les mois futurs sous forme de factures à régler dans l'espace parent.
+- **Solution appliquée** :
+  1. **Remplacement par des Bordures CSS Natives (`index.css`)** : Suppression définitive de tous les pseudo-éléments `::before` sur `.cotis-card-stripe` et `.kpi-stripe`, remplacés par des bordures natives `border-left-width: 4px !important;` et `border-left-color: ... !important;`.
+  2. **Élévation et Sécurisation Z-Index (`z-[70]` & `style={{ zIndex: 70 }}`)** : Application systématique de `z-[70]` et `style={{ zIndex: 70 }}` sur les 6 sous-modales (`payingFamily`, `payingInvoice`, `voidInvoice`, `voidFamily`, `expenseModalOpen`, `adjustingInvoice`), ajout de boutons de fermeture `X` et libellés normalisés (`DATE DE LA DÉPENSE *`).
+  3. **Anti-débordement Calibré sur Mobile** : Déplacement de l'action d'annulation dans l'accordéon `Détail` sous la forme explicite `[ ↺ Annuler l'encaissement ]`, limitant la ligne 1 mobile à 2 boutons au maximum (`Reçu PDF` + `Rappel` si partiel, `Reçu PDF` + `Annuler` si 100% soldé, `Rappel` si impayé).
+  4. **Exécution de la Réconciliation Comptable Trabelsi & Filtre Temporel** : Date d'admission de Samir fixée à Novembre 2026, factures indues supprimées, réaffectation de 140 DT pour solder Septembre 2026 de Youssef, 100 DT d'avoir inscrits, et filtrage strict des mois futurs (`isFuture`) sur l'espace parent.
+- **Résultat** : Disparition totale des rayures flottantes, modales étanches à `z-index: 70`, 0% de débordement sur mobile, et espace parent parfaitement aligné sur le mois courant (Novembre 2026).
+
+---
+
+### Correction n°113 : Modernisation UX/UI Mobile : Épuration des En-têtes (Suppression des Flèches Retour Redondantes) au Profit de la Bottom Navigation Bar Permanente & Nettoyage des Doublons
+- **Date** : 08/11/2026
+- **Fichiers modifiés** :
+  - [`frontend/src/pages/tasks/TasksPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/tasks/TasksPage.jsx)
+  - [`frontend/src/pages/parent/AnnouncementsPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/AnnouncementsPage.jsx)
+  - [`frontend/src/pages/parent/AttendanceParentPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/AttendanceParentPage.jsx)
+  - [`frontend/src/pages/parent/AbsenceRequestPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/AbsenceRequestPage.jsx)
+  - [`frontend/src/pages/parent/ParentBillingPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/ParentBillingPage.jsx)
+  - [`frontend/src/pages/staff/AbsenceManagementPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/staff/AbsenceManagementPage.jsx)
+  - [`frontend/src/pages/activities/ActivitiesPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/activities/ActivitiesPage.jsx)
+  - [`frontend/src/pages/dashboard/WeeklyPlanningPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/WeeklyPlanningPage.jsx)
+  - [`frontend/src/components/modals/BillingManagementModal.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/modals/BillingManagementModal.jsx)
+- **Contexte / Symptôme** :
+  1. **Flèches et boutons "Retour" en haut d'écran sur mobile** : Plusieurs pages de premier niveau (Annonces, Pointages parent, Justificatifs d'absence parent, Cotisations parent, Absences staff, Tâches) affichaient un bouton « Retour au Dashboard » ou une flèche retour textuelle brute en haut d'écran. Sur smartphone, ces boutons étaient visuellement disgracieux, alourdissaient l'en-tête et faisaient doublon avec la barre de navigation inférieure (`MobileNavigation`) déjà accessible d'un seul pouce.
+  2. **Crash potentiel `TasksPage.jsx`** : Le bouton `Retour au Dashboard` appelait `navigate('/dashboard')` alors que le hook `useNavigate` n'était pas instancié dans le composant, provoquant un `ReferenceError` potentiel, et l'icône `ArrowLeft` était dépréciée.
+  3. **Mention parasite dans la modale cotisations** : L'accordéon détail des cartes famille affichait un libellé interrogatif lourd `Erreur de saisie sur cet encaissement ?` à côté du bouton d'annulation.
+- **Cause racine** :
+  - Présence de reliquats de navigation desktop ou de prototypes antérieurs non nettoyés lors de la mise en place de la barre de navigation mobile persistante (`MobileNavigation`).
+- **Solution appliquée** :
+  1. **Nettoyage des En-têtes (Catégorie 1 - Pages de premier niveau)** : Suppression définitive des boutons et flèches de retour vers l'accueil sur l'ensemble des pages de niveau 1.
+  2. **Harmonisation Visuelle des En-têtes** : Remplacement par des pastilles d'icônes arrondies et colorées (`w-9 h-9 rounded-xl` avec fond pastel doux et icône thématique contrastée) associées au titre et sous-titre de la page, offrant un rendu épuré d'application mobile native.
+  3. **Intégration et Sécurisation de la Navigation Inférieure** : Garantir la présence de `MobileNavigation` et la marge de confort inférieure (`pb-24`) sur toutes les pages pour éviter tout chevauchement avec la barre d'onglets.
+  4. **Suppression de la Mention Superflue** : Remplacement du texte `Erreur de saisie sur cet encaissement ?` par un bouton d'action direct et élégant `[ ↺ Annuler l'encaissement ]` aligné à droite dans l'accordéon détail.
+- **Résultat** : En-têtes mobiles allégés et modernes, navigation 100% cohérente d'une seule main via la bottom bar, élimination du crash potentiel sur `TasksPage`, et compilation Vite 100% validée (`✓ built in 18.09s`).
+
+---
+
+### Correction n°114 : Modernisation UX/UI Mobile — Étape 2 : Harmonisation des En-têtes & Rétablissement des Boutons de Retour sur les Sous-écrans & Drill-down
+- **Date** : 08/11/2026
+- **Fichiers modifiés** :
+  - [`frontend/src/pages/parent/ChildMedicalPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/ChildMedicalPage.jsx)
+  - [`frontend/src/pages/parent/ChildEmergencyContactsPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/ChildEmergencyContactsPage.jsx)
+  - [`frontend/src/pages/parent/AddChildPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/AddChildPage.jsx)
+  - [`frontend/src/pages/dashboard/StaffChildDetailPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/StaffChildDetailPage.jsx)
+  - [`IDEES.md`](file:///Volumes/Data/Works/Windsurf/creche/IDEES.md)
+- **Contexte / Symptôme** :
+  1. **Disparition du bouton retour sur smartphone** : Dans `ChildMedicalPage.jsx` et `ChildEmergencyContactsPage.jsx`, le bouton retour était conditionné par `{!isMobile && ...}`, ce qui empêchait les parents sur smartphone de revenir à la fiche enfant après consultation des données de santé ou des personnes de confiance.
+  2. **Rupture de contexte** : Sur grand écran, le clic sur "Retour" renvoyait brutalement vers `/mon-espace` au lieu de la fiche de l'enfant consulté (`/mon-espace/children/:childId`).
+  3. **Lien retour brut et décalé** : Dans `parent/AddChildPage.jsx`, le retour était un simple lien textuel brut non centré, contrastant avec les boutons ergonomiques tactiles.
+  4. **Incohérence des proportions staff** : Dans `StaffChildDetailPage.jsx`, le bouton retour utilisait une icône trop grande (`w-6 h-6`) sans arrondi coordonné avec le reste du design system.
+- **Cause racine** :
+  - Manque d'uniformisation des composants d'en-tête secondaire suite aux refontes progressives des écrans mobiles.
+- **Solution appliquée** :
+  1. **En-têtes Sticky Épurés et Universels** : Intégration d'un bandeau sticky `top-0 z-20 backdrop-blur` sur `ChildMedicalPage` et `ChildEmergencyContactsPage` avec bouton retour tactile `rounded-xl`, icône thématique stylisée (`Stethoscope`, `Users`), et titre + sous-titre centré (nom de l'enfant).
+  2. **Navigation Contextuelle Précise** : Redirection ciblée vers la fiche de l'enfant concerné (`/mon-espace/children/${childId}`) avec fallback historique `navigate(-1)`.
+  3. **Modernisation du Formulaire d'Ajout d'Enfant Parent** : Remplacement du lien textuel brut par une pastille tactile `rounded-xl bg-gray-100 dark:bg-gray-800` alignée avec le titre principal.
+  4. **Harmonisation Staff** : Alignement de `StaffChildDetailPage.jsx` sur la norme `rounded-xl` et icône `w-5 h-5`.
+- **Résultat** : Fluidité totale en navigation sous-jacente, 0 impasse sur smartphone, retour précis à la ressource d'origine, et build de production Vite validé (`✓ built in 21.28s`).
+
+---
+
+### Correction n°115 : Modernisation UX/UI Mobile — Étape 3 : Formulaires de Saisie, Remplacement de la Flèche par Bouton Fermer `[✕]`, Inscription Express Unifiée & Sécurisation Navigation
+- **Date** : 08/11/2026
+- **Fichiers modifiés** :
+  - [`frontend/src/pages/staff/StaffMemoForm.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/staff/StaffMemoForm.jsx)
+  - [`frontend/src/pages/dashboard/AddUserPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/AddUserPage.jsx)
+  - [`frontend/src/pages/dashboard/AddChildPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/AddChildPage.jsx)
+  - [`IDEES.md`](file:///Volumes/Data/Works/Windsurf/creche/IDEES.md)
+- **Contexte / Symptôme** :
+  1. **Asymétrie et ambiguïté sur `StaffMemoForm.jsx`** : Le formulaire d'envoi de mémo affichait un lien flottant textuel `ArrowLeft Retour` à gauche, inversé avec le titre, et faisait double emploi avec le bouton `Annuler` déjà positionné en bas de formulaire.
+  2. **Absence de bouton de fermeture dans le wizard d'inscription** : Dans `AddUserPage.jsx`, le stepper d'inscription express ne proposait aucun bouton d'abandon direct `[✕]` en haut à droite, contraignant l'utilisateur à faire défiler tout l'écran jusqu'au bouton `Annuler` à l'étape 1.
+  3. **Manque de `MobileNavigation` sur les formulaires** : Sur mobile, les deux formulaires laissaient l'utilisateur bloqué sans la barre d'onglets persistante.
+  4. **Coexistence obsolète de l'ancien formulaire enfant admin** : L'ancien écran `AddChildPage.jsx` subsistait sur grand écran, alors que l'inscription unifiée en 3 étapes de `AddUserPage.jsx` couvre désormais toute la création express de parent et enfant.
+- **Cause racine** :
+  - Formulaires historiques non alignés sur les standards de modal/page de création (où une croix `✕` et des boutons d'action explicites `Annuler / Valider` doivent prévaloir sur une flèche "Retour" trompeuse).
+- **Solution appliquée** :
+  1. **Harmonisation `StaffMemoForm.jsx`** : Remplacement de la flèche par un bandeau élégant avec badge violet `MessageSquare`, titre/sous-titre bilingue, bouton de fermeture `[✕]`, bouton `Annuler` conservé en bas, et intégration de `MobileNavigation` avec `pb-24`.
+  2. **Bouton Fermer `[✕]` et Bottom Bar sur `AddUserPage.jsx`** : Ajout d'une croix de fermeture discrète et moderne dans l'en-tête du wizard, activation de `MobileNavigation` sur smartphone avec `pb-24`.
+  3. **Redirection vers l'Inscription Express Unifiée** : Redirection automatique de toute nouvelle inscription dans `AddChildPage.jsx` vers `/dashboard/add-user?role=parent` (tout en conservant le support de l'association fratrie si `parentId` est fourni).
+- **Résultat** : Cohérence totale des interfaces de saisie, expérience d'inscription moderne sans ambiguïté, 0 flèche brute inutile, et compilation Vite 100% validée (`✓ built in 18.89s`).
+
+---
+
+### Correction n°116 : Audit Global & Re-vérification de Tous les Écrans Mobiles : Nettoyage Intégral du Code Mort & Imports Inutilisés (AST Babel), Couverture Complète Bottom Bar (`MobileNavigation`) & Sécurisation des Marges Tactiles (`pb-24`)
+- **Date** : 08/11/2026
+- **Fichiers modifiés** :
+  - [`frontend/src/components/modals/BillingManagementModal.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/modals/BillingManagementModal.jsx)
+  - [`frontend/src/pages/tasks/TasksPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/tasks/TasksPage.jsx)
+  - [`frontend/src/pages/parent/AttendanceParentPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/AttendanceParentPage.jsx)
+  - [`frontend/src/pages/parent/AbsenceRequestPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/AbsenceRequestPage.jsx)
+  - [`frontend/src/pages/parent/ParentBillingPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/ParentBillingPage.jsx)
+  - [`frontend/src/pages/parent/ChildDailyReportsPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/ChildDailyReportsPage.jsx)
+  - [`frontend/src/pages/parent/AddChildPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/AddChildPage.jsx)
+  - [`frontend/src/pages/dashboard/AddUserPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/AddUserPage.jsx)
+  - [`frontend/src/pages/dashboard/AddChildPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/AddChildPage.jsx)
+  - [`frontend/src/pages/activities/ActivitiesPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/activities/ActivitiesPage.jsx)
+  - [`frontend/src/pages/dashboard/WeeklyPlanningPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/WeeklyPlanningPage.jsx)
+  - [`frontend/src/pages/dashboard/MonthlyPlanningPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/MonthlyPlanningPage.jsx)
+  - [`frontend/src/pages/UnifiedProfilePage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/UnifiedProfilePage.jsx)
+  - [`IDEES.md`](file:///Volumes/Data/Works/Windsurf/creche/IDEES.md)
+- **Contexte / Symptôme** :
+  1. **Résidus de code et imports inutilisés** : À la suite des refontes ergonomiques successives, plus de 30 symboles et icônes importés n'étaient plus appelés dans les composants (`Wallet`, `UserCheck`, `useNavigate`, `api`, `CardDescription`, `Send`, `XCircle`, `motion`, `AlertCircle`, `CalendarCheck`, `Phone`, `Clock`, `FiX`, `FiChevronUp`, `FiChevronDown`, etc.).
+  2. **Rupture de navigation mobile sur écrans secondaires** : Les écrans `ChildDailyReportsPage.jsx` et `parent/AddChildPage.jsx` n'intégraient pas `MobileNavigation`, privant l'utilisateur sur smartphone de la barre d'onglets persistante.
+  3. **Marge de défilement insuffisante** : Marge `pb-8` trop courte sur `AddChildPage.jsx` risquant de recouvrir les boutons de soumission du formulaire par la barre tactile.
+- **Cause racine** :
+  - Évolution modulaire du code sans passage d'un linter AST automatisé pour purger les symboles orphelins.
+- **Solution appliquée** :
+  1. **Purge Intégrale via AST Babel (`@babel/parser`)** : Détection et suppression déterministe de tous les imports orphelins sur les 21 écrans mobiles du projet (0 symbole résiduel restant).
+  2. **Généralisation de la Bottom Navigation Tactile** : Intégration systématique de `{isMobile && <MobileNavigation />}` sur `ChildDailyReportsPage` et `parent/AddChildPage`.
+  3. **Standardisation des Espacements Tactiles** : Application de la marge `${isMobile ? 'pb-24' : 'pb-8'}` sur 100% des pages pour garantir une lecture et une manipulation sans chevauchement.
+- **Résultat** : Codebase parfaitement propre et assainie, 0 import mort, fluidité et navigation tactile ininterrompue sur l'ensemble de l'application smartphone, et build de production Vite 100% conforme (`✓ built in 18.06s`).
+
+---
+
+### Correction n°117 : Déblocage Navigation Paramètres & Stats Mobiles, Débroussaillage Modales iPhone SE (`z-[60]` & Safe-Padding), Harmonisation Stricte des Boutons de Retour (`ArrowLeft` Pilule Universelle) & Anti-Coupure Cartes
+- **Date** : 08/11/2026
+- **Fichiers modifiés** :
+  - [`frontend/src/pages/dashboard/GeneralStatsPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/GeneralStatsPage.jsx)
+  - [`frontend/src/pages/dashboard/DashboardSettingsPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/DashboardSettingsPage.jsx)
+  - [`frontend/src/components/mobile/MobileSettingsView.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/mobile/MobileSettingsView.jsx)
+  - [`frontend/src/components/mobile/MobileParentSpace.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/mobile/MobileParentSpace.jsx)
+  - [`frontend/src/pages/parent/ChildDailyReportsPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/ChildDailyReportsPage.jsx)
+  - [`frontend/src/pages/parent/ChildDetailsPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/ChildDetailsPage.jsx)
+  - [`frontend/src/pages/parent/ChildMedicalPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/ChildMedicalPage.jsx)
+  - [`frontend/src/pages/parent/ChildEmergencyContactsPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/ChildEmergencyContactsPage.jsx)
+  - [`frontend/src/pages/dashboard/StaffChildDetailPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/StaffChildDetailPage.jsx)
+  - [`frontend/src/pages/parent/TreatmentsPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/TreatmentsPage.jsx)
+  - [`frontend/src/pages/dashboard/TreatmentsPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/TreatmentsPage.jsx)
+  - [`frontend/src/components/mobile/MobileDailyReportsPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/mobile/MobileDailyReportsPage.jsx)
+  - [`IDEES.md`](file:///Volumes/Data/Works/Windsurf/creche/IDEES.md)
+- **Contexte / Symptôme** :
+  1. **Pages orphelines sans retour ni barre de tâche** : Les pages `/dashboard/general-stats` et `/dashboard/settings` sur smartphone laissaient l'utilisateur bloqué sans bouton retour et sans `MobileNavigation`.
+  2. **Modales coupées sur petits écrans (iPhone SE 375x667 - Photo 2)** : Dans `MobileParentSpace.jsx`, la modale "Contacts d'urgence" avait ses boutons d'action ("Gérer les contacts", "Fermer") partiellement recouverts et masqués par la barre de navigation car les deux partageaient `z-50` et la modale manquait de marge de sécurité inférieure.
+  3. **Disparité visuelle des boutons de retour** : Selon les écrans, le bouton de retour était représenté de manière hétérogène (parfois chevron `<` sans fond, parfois flèche `<-` transparente, parfois texte `< Retour`). Sur `ChildDailyReportsPage` (Photo 1), la flèche flottait sans bouton tactile visible et le contenu du bas était rogné par la barre de tâche.
+- **Cause racine** :
+  - Conflit d'empilement z-index (`z-50` sur les modales vs `z-50` sur `MobileNavigation`), absence de composant `MobileNavigation` sur les pages de statistiques et de paramètres, et classes CSS de bouton retour dispersées sans standard commun.
+- **Solution appliquée** :
+  1. **Déblocage Navigation Paramètres & Stats** : Intégration de `useIsMobile`, de la Bottom Navigation (`MobileNavigation`) et d'un bouton de retour vers `/dashboard` sur `GeneralStatsPage.jsx`, `DashboardSettingsPage.jsx` et `MobileSettingsView.jsx`.
+  2. **Fiabilisation des Modales iPhone SE** : Élévation des overlays modaux à `z-[60]` dans `MobileParentSpace.jsx`, transformation des conteneurs en `flex flex-col` avec zone de contenu `overflow-y-auto flex-1` et pied d'actions `shrink-0` avec padding de sécurité `pb-[max(1rem,calc(env(safe-area-inset-bottom)+1rem))]` garantissant une visibilité et accessibilité totale de 100% des boutons.
+  3. **Standardisation Globale du Bouton Retour** : Harmonisation sur l'ensemble des sous-écrans (`ChildDailyReportsPage`, `ChildDetailsPage`, `ChildMedicalPage`, `ChildEmergencyContactsPage`, `StaffChildDetailPage`, `TreatmentsPage` parent & staff, `MobileDailyReportsPage`) avec le composant standardisé tactile : `p-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors shrink-0` et `<ArrowLeft className="w-5 h-5 rtl:rotate-180" />`.
+  4. **Marges de Défilement Anti-Troncature** : Augmentation de la marge inférieure à `${isMobile ? 'pb-32' : 'pb-12'}` (et `pb-36` sur les rapports journaliers) assurant un confort de lecture total au-dessus de la barre de tâche.
+- **Résultat** : Zéro blocage, boutons de retour 100% identiques et homogènes sur toute l'application, modales parfaitement lisibles même sur les plus petites résolutions d'écran (iPhone SE 375x667), et build de production Vite validé sans aucune erreur.
+
+---
+
+### Correction n°118 : Résolution Masquage En-tête Conversation Mobile (`z-[60]` vs `PublicHeader`), Synchronisation Historique Navigateur (`?contactId`) & Support Geste Tactile Swipe-to-Close
+- **Date** : 08/11/2026
+- **Fichiers modifiés** :
+  - [`frontend/src/pages/messages/MessagesPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/messages/MessagesPage.jsx)
+  - [`IDEES.md`](file:///Volumes/Data/Works/Windsurf/creche/IDEES.md)
+- **Contexte / Symptôme** :
+  1. **Disparition de l'en-tête de conversation sur smartphone** : Lorsqu'un parent ou un membre du personnel ouvrait une conversation, le haut de l'écran n'affichait ni le nom du contact ni le bouton de retour, mais uniquement la barre publique du site (`Mima Elghalia`, `Crèche`, menu hamburger ☰). L'utilisateur n'avait aucun moyen visuel de revenir à la liste de contacts.
+  2. **Rupture de navigation lors du geste swipe** : En tentant de glisser depuis le bord gauche de l'écran (geste naturel iOS/Android de retour) pour fermer la discussion, le navigateur déclenchait un `history.back()` qui renvoyait brutalement l'utilisateur vers le tableau de bord ou Mon Espace au lieu de la liste de contacts.
+- **Cause racine** :
+  - **Conflit Z-index CSS** : `PublicHeader` possède `sticky top-0 z-50`. Le conteneur racine de `MessagesPage` était stylé en `fixed inset-0 z-30`. En vertu des règles de stacking context CSS, `PublicHeader` se peignait systématiquement par-dessus les 64 premiers pixels de `MessagesPage`, masquant complètement l'en-tête de conversation et son bouton `ArrowLeft`.
+  - **Absence d'historique lors de la sélection** : `handleSelectContact` modifiait uniquement un état React local sans pousser d'état dans l'historique du navigateur (`searchParams`). Tout geste de retour navigateur revenait donc à la page précédemment visitée (le dashboard).
+- **Solution appliquée** :
+  1. **Élévation Z-Index à `z-[60]`** : Le conteneur racine de `MessagesPage` et la vue de conversation active sont passés à `fixed inset-0 z-[60]`, garantissant qu'ils recouvrent proprement l'en-tête public `z-50`. L'en-tête de chat est désormais 100% visible et dégagé.
+  2. **Harmonisation des Boutons de Retour** :
+     - En-tête de liste des contacts : ajout d'un bouton de retour standardisé vers `/mon-espace` ou `/dashboard`.
+     - En-tête de conversation : intégration du bouton tactile standardisé `p-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors shrink-0` avec `<ArrowLeft className="w-5 h-5 rtl:rotate-180" />`.
+  3. **Synchronisation avec l'Historique Navigateur (`?contactId=ID`)** : La sélection d'un contact alimente `searchParams`. Un écouteur `useEffect` surveille la présence de `contactId` : lors d'un appui sur le bouton retour du smartphone ou d'un swipe retour système, la conversation se referme automatiquement pour réafficher la liste des contacts sans quitter la messagerie.
+  4. **Support du Geste Tactile de Glissement (Swipe-to-close)** : Ajout des gestionnaires `onTouchStart` et `onTouchEnd` sur le panneau de conversation. Un glissement horizontal du doigt vers la droite (ou vers la gauche en RTL) referme instantanément la discussion.
+- **Résultat** : En-tête de conversation parfaitement visible avec bouton de retour dédié, fermeture fluide par swipe ou bouton retour matériel/système vers la liste des contacts, 0 redirection indésirable vers le dashboard, et build de production Vite validé (`✓ built in 20.38s`).
+
+---
+
+### Correction n°120 : Module Financier — Remise Ponctuelle & Récurrente en 1 Clic (`BillingManagementModal.jsx`), Bouton Explicite "Remise / Ajuster", Élévation `z-[80]` Modales Mobiles & Anti-Troncature Rapports (`pb-36`)
+- **Date** : 08/11/2026
+- **Fichiers modifiés** :
+  - [`frontend/src/components/modals/BillingManagementModal.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/modals/BillingManagementModal.jsx)
+  - [`backend/services/billingService.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/services/billingService.js)
+  - [`frontend/src/components/mobile/MobileParentSpace.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/mobile/MobileParentSpace.jsx)
+  - [`frontend/src/components/mobile/ParentOptionsModals.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/mobile/ParentOptionsModals.jsx)
+  - [`frontend/src/pages/parent/ChildDailyReportsPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/ChildDailyReportsPage.jsx)
+  - [`frontend/src/pages/messages/MessagesPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/messages/MessagesPage.jsx)
+  - [`frontend/src/utils/testAuthListener.js`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/utils/testAuthListener.js)
+  - [`documentsV2/21_FLUX_METIER.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/21_FLUX_METIER.md)
+  - [`documentsV2/07_CATALOGUE_FONCTIONNALITES.md`](file:///Volumes/Data/Works/Windsurf/creche/documentsV2/07_CATALOGUE_FONCTIONNALITES.md)
+  - [`IDEES.md`](file:///Volumes/Data/Works/Windsurf/creche/IDEES.md)
+- **Contexte / Symptôme** :
+  1. **Accès et distinction des remises financières** : Dans le nouveau design de gestion financière (`BillingManagementModal.jsx`), l'accès à la remise ponctuelle (`child_invoices.discount_amount`) n'était plus visible car enfoui dans une minuscule icône sans libellé. De plus, la distinction et la synchronisation avec la remise récurrente mensuelle (`children.monthly_discount`) nécessitaient une interface explicite.
+  2. **Modales mobiles chevauchées par la barre de navigation** : Sur mobile, la modale Contacts d'urgence et les modales de l'Espace Parent s'affichaient sous la barre de navigation inférieure (`MobileNavigation`), masquant les boutons d'action du bas.
+  3. **Carte rapport journalier coupée en bas d'écran** : Sur `ChildDailyReportsPage.jsx`, la carte d'état vide "Pas de rapport pour ce jour" était partiellement tronquée par la barre de navigation mobile.
+  4. **Code mort et résidus** : Présence du fichier orphelin `PWAInstallGuide.jsx` et messages de débogage répétés dans la console par `testAuthListener.js`.
+- **Cause racine** :
+  - L'action d'ajustement était matérialisée par un simple bouton icône `<Sliders />` de 14px sans texte.
+  - La sous-modale d'ajustement ne proposait qu'un champ unique "Nouveau montant dû" sans ventilation financière ni distinction entre remise ponctuelle (uniquement pour le mois en cours) et remise récurrente (mise à jour de la fiche enfant).
+  - Les modales de `MobileParentSpace.jsx` et `ParentOptionsModals.jsx` avaient un z-index de 60, insuffisant face aux éléments fixes de premier plan (`z-50` avec ordre DOM ultérieur).
+  - La marge basse du conteneur de rapports était insuffisante pour compenser la hauteur cumulée de la barre de navigation et de la barre PWA.
+- **Solution appliquée** :
+  1. **Bouton Explicite & Visible "Remise / Ajuster"** : Remplacement de la petite icône par un bouton clairement étiqueté avec badge bleu clair `<Sliders /> Remise / Ajuster` sur chaque ligne d'enfant dans les cartes familles de `BillingManagementModal.jsx`.
+  2. **Modale d'Ajustement Complète & Intelligente** :
+     - Affichage de la ventilation complète de la facture (Prix de base, Assurance, Samedi, Arriérés).
+     - Champ dédié **"Remise pour ce mois (DT)"** permettant de déduire immédiatement un montant (ex: 60 DT d'assurance papier).
+     - Case à cocher **"Appliquer aussi cette remise pour tous les mois futurs"** (`updateChildRecurringDiscount`) mettant à jour directement `children.monthly_discount`.
+     - Recalcul dynamique en temps réel du **Nouveau montant net dû**, tout en restant éditable manuellement pour les proratas d'entrée en cours de mois.
+     - Prise en charge universelle dans `billingService.js` (support des alias `totalDue` / `adjusted_amount` et `notes` / `reason`).
+  3. **Élévation `z-[80]` et Marges Sécurisées** :
+     - Modales de `MobileParentSpace.jsx` et `ParentOptionsModals.jsx` passées à `z-[80]` avec `pb-[max(1.25rem,calc(env(safe-area-inset-bottom,0px)+1.25rem))]` pour un confort tactile absolu au-dessus de `MobileNavigation`.
+     - Ajout de `pb-36` sur le conteneur principal de `ChildDailyReportsPage.jsx` pour éliminer toute troncature.
+  4. **Nettoyage Post-Implémentation** : Suppression du fichier `PWAInstallGuide.jsx`, nettoyage des `console.log` de `testAuthListener.js` et validation complète du build Vite (`✓ built in 27.64s`).
+  5. **Mention Explicite de l'Option Samedi dans le Règlement Familial** : Dans la modale `Règlement Familial` (`payingFamily`), ajout de la mention `+ Samedi (+XX DT)` dans le sous-titre de chaque enfant abonné au samedi (ex: `Journée complète + Samedi (+20 DT) • Arriéré: +10 DT = 160 DT`), rendant l'explication du total parfaitement lisible et transparente.
+- **Résultat** : Gestion des remises transparente et accessible en 1 clic pour l'administrateur, calculs familiaux parfaitement justifiés avec mention claire du samedi, ergonomie mobile irréprochable sans chevauchement, et conformité stricte aux règles de gouvernance.
+
+---
+
+### Correction n°120 : Visibilité Directe de la Remise Ponctuelle (Règlement Familial & Pied de Carte), Portals `document.body` Modales Mobile (Contacts d'urgence), Isolation Plein Écran Chat Conversation (`z-[100]`) & Compactage Cartes Rapports
+- **Date** : 08/11/2026
+- **Fichiers modifiés** :
+  - [`frontend/src/components/modals/BillingManagementModal.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/modals/BillingManagementModal.jsx)
+  - [`frontend/src/components/mobile/MobileParentSpace.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/mobile/MobileParentSpace.jsx)
+  - [`frontend/src/pages/messages/MessagesPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/messages/MessagesPage.jsx)
+  - [`frontend/src/pages/parent/ChildDailyReportsPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/ChildDailyReportsPage.jsx)
+  - [`IDEES.md`](file:///Volumes/Data/Works/Windsurf/creche/IDEES.md)
+- **Contexte / Symptôme** :
+  1. **Remise ponctuelle inaccessible dans le flux de règlement** : Dans la modale de paiement groupé « Règlement Familial » (`payingFamily`), chaque enfant affichait son montant calculé (ex: Houda Zamouri 160 DT) sans aucun bouton permettant d'appliquer une remise immédiate pour déduire une assurance papier ou un ajustement ponctuel. De même sur les cartes familles où l'action était masquée dans l'accordéon fermé.
+  2. **Modales mobile tronquées par la barre de navigation** : Sur mobile (notamment iPhone SE 375x667), la modale « Contacts d'urgence » et les options enfants étaient recouvertes par la barre de navigation inférieure (`MobileNavigation`), rendant les boutons d'action du bas (« Gérer les contacts ») coupés en deux et difficiles d'accès.
+  3. **Discussion chat masquée par l'en-tête global sans retour** : À l'ouverture d'une conversation avec un contact, l'en-tête de l'application publique (`PublicHeader` `z-50`) masquait le bandeau supérieur de discussion, privant l'utilisateur de l'avatar, du nom de son interlocuteur et du bouton retour vers la liste de contacts. Le swipe de retour déclenchait un retour en arrière navigateur expulsant l'utilisateur vers le dashboard.
+  4. **Coupure basse sur les rapports journaliers** : La carte d'état vide « Pas de rapport pour ce jour » débordait sous la barre de navigation en raison d'un padding vertical excessif (`py-16`).
+- **Cause racine** :
+  - Absence de bouton déclencheur d'ajustement/remise dans le JSX de la ligne enfant du composant `payingFamily` et sur le pied des cartes familles.
+  - Conflit d'empilement CSS (stacking context) : les modales déclarées dans `MobileParentSpace` étaient peintes sous `MobileNavigation` en raison de l'ordre d'insertion dans le DOM et des transformations d'animation Framer Motion.
+  - Conflit de superposition sur `/messages` entre le conteneur mobile et le `PublicHeader` sticky.
+  - Padding excessif (128px d'espacement interne) sur les cartes d'états vides de `ChildDailyReportsPage.jsx`.
+- **Solution appliquée** :
+  1. **Bouton Direct « Remise » dans le Règlement Familial & Cartes** :
+     - Ajout d'un bouton stylisé `[ 🎛️ Remise ]` à côté de chaque sous-total enfant dans la modale `payingFamily` ouvrant instantanément la fenêtre d'ajustement sans quitter le flux de règlement.
+     - Ajout du bouton `[ 🎛️ Remise ]` sur le pied visible de chaque carte famille non soldée.
+     - Nettoyage et suppression intégrale de 221 lignes de code mort obsolète (`{false && (...) }`) dans `BillingManagementModal.jsx`.
+  2. **Montage via `createPortal` sur `document.body`** :
+     - Utilisation de `createPortal(..., document.body)` avec `z-[100]` et `backdrop-blur-xs` pour les modales d'actions enfants et de contacts d'urgence dans `MobileParentSpace.jsx`, garantissant un affichage 100% au premier plan au-dessus de la barre de navigation avec marges tactiles sécurisées `safe-area-inset-bottom`.
+  3. **Isolation Plein Écran de la Conversation Mobile** :
+     - Montage par portail de la vue de conversation active sur `document.body` en mode mobile avec `z-[100]`, affichant de façon nette et dégagée l'en-tête de chat (bouton retour spacieux `←`, avatar, nom, statut en ligne) au-dessus de tout en-tête public.
+     - Synchronisation automatique avec l'URL (`?contactId=ID`) permettant de revenir à la liste de contacts via le bouton `←` ou le geste de swipe sans être renvoyé au dashboard.
+  4. **Optimisation Compacte des Rapports Journaliers** :
+     - Remplacement de `py-16` par `py-8 sm:py-12` et icône `w-12 h-12` pour un affichage parfaitement calé dans l'écran de l'iPhone SE sans aucune troncature visuelle.
+- **Résultat** : Remises accessibles et modifiables en 1 clic dans toutes les vues comptables, modales mobiles impeccablement surélevées au-dessus de la navigation inférieure, expérience de messagerie fluide et intuitive en plein écran avec retour garanti, et ergonomie mobile 100% propre.
+
+---
+
+### Correction n°121 : Résolution Crash Temporal Dead Zone `ReferenceError: Cannot access 'isPersonal' before initialization` sur `dashboard/add-child`
+- **Date** : 08/11/2026
+- **Fichiers modifiés** :
+  - [`frontend/src/pages/dashboard/AddChildPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/AddChildPage.jsx)
+  - [`IDEES.md`](file:///Volumes/Data/Works/Windsurf/creche/IDEES.md)
+- **Contexte / Symptôme** :
+  - Lors de la navigation vers la page `/dashboard/add-child`, l'application plante avec un écran d'erreur et une exception console React :
+    `AddChildPage.jsx:50 Uncaught ReferenceError: Cannot access 'isPersonal' before initialization at AddChildPage (AddChildPage.jsx:50:38)`.
+- **Cause racine** :
+  - Dans le composant `AddChildPage.jsx`, le hook `useEffect` évaluant la redirection automatique vers l'inscription express (`navigate('/dashboard/add-user?role=parent')`) utilisait la constante `isPersonal` dans sa condition et dans son tableau de dépendances à la ligne 50.
+  - La déclaration `const isPersonal = searchParams.get('personal') === 'true';` était positionnée à la ligne 52, soit après l'appel au hook. En JavaScript ES6, les variables `const` sont soumises à la Temporal Dead Zone (TDZ) et ne peuvent être accédées avant leur instruction d'initialisation.
+- **Solution appliquée** :
+  - Déplacement de la déclaration `const isPersonal` à la ligne 44, immédiatement à côté de `const preselectedParentId`, en amont du hook `useEffect`.
+- **Résultat** :
+  - Élimination totale de l'erreur `ReferenceError`, exécution sans crash et redirection transparente vers le formulaire d'inscription unifié comme attendu. Build Vite validé (`✓ built in 17.82s`).
+
+---
+
+### Correction n°122 : Ergonomie Mobile (Rapports, Contacts urgence, Chat) & Bouton Remise Règlement Familial
+- **Date** : 08/11/2026
+- **Fichiers modifiés** :
+  - [`frontend/src/pages/parent/ChildDailyReportsPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/ChildDailyReportsPage.jsx)
+  - [`frontend/src/components/mobile/MobileParentSpace.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/mobile/MobileParentSpace.jsx)
+  - [`frontend/src/layouts/PublicLayout.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/layouts/PublicLayout.jsx)
+  - [`frontend/src/pages/messages/MessagesPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/messages/MessagesPage.jsx)
+  - [`frontend/src/components/modals/BillingManagementModal.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/modals/BillingManagementModal.jsx)
+  - [`IDEES.md`](file:///Volumes/Data/Works/Windsurf/creche/IDEES.md)
+- **Contexte / Symptôme** :
+  - Sur mobile (iPhone SE 375x667), plusieurs éléments étaient chevauchés par la barre `MobileNavigation` ou mal positionnés :
+    1. Dans `ChildDailyReportsPage`, la carte vide « Pas de rapport pour ce jour » était tronquée par la barre de navigation inférieure.
+    2. Dans le modal `Contacts d'urgence` (`MobileParentSpace`), les boutons d'action « Gérer les contacts » et « Fermer » étaient coupés à 50% par la barre de tâches.
+    3. Dans la messagerie mobile, lorsqu'une conversation était ouverte, le `PublicHeader` général masquait l'en-tête de chat et son bouton retour `←` vers la liste des contacts ; sur la liste des contacts, aucun bouton retour superflu n'est requis.
+    4. Dans le modal « Règlement Familial » (`BillingManagementModal`), la remise ponctuelle par enfant était invisible ou perturbée par l'imbrication d'un bouton à l'intérieur d'une balise `<label>`.
+- **Cause racine** :
+  - Hauteur de padding insuffisante face à la barre flottante `MobileNavigation` (`z-50`), z-index des overlays modaux insuffisant (`z-50` au lieu de `z-[120]`), `PublicHeader` affiché en `sticky z-50` sur `/mon-espace/messages` entrant en collision avec l'en-tête de la conversation, et balise `<button>` imbriquée dans un `<label>` déclenchant le checkbox au clic.
+- **Solution appliquée** :
+  1. `ChildDailyReportsPage` : Marge inférieure sécurisée `pb-44`, densification des paddings du composant d'état vide (`py-5 sm:py-10`) et du sélecteur de date pour un affichage parfait sur petits écrans.
+  2. `MobileParentSpace` : Élévation de l'overlay des modales enfant et contacts d'urgence à `z-[120]` montées sur `document.body` via `createPortal`, padding inférieur de sécurité `pb-[max(1.5rem,calc(env(safe-area-inset-bottom,0px)+1.5rem))]` et réduction de l'espacement d'état vide.
+  3. `PublicLayout` : Masquage de `PublicHeader` sur mobile (`hidden lg:block`) sur la route `/mon-espace/messages`, laissant le plein écran natif à `MessagesPage` avec son en-tête conversationnel et son bouton retour `←` 100% accessible.
+  4. `BillingManagementModal` : Remplacement du `<label>` parent par un conteneur `<div>`, isolation du `<label>` de sélection du checkbox, et bouton `[ 🎛️ Remise ]` stylisé en ambre haute visibilité avec élévation du modal de remise à `z-[85]`.
+- **Résultat** :
+  - Interface mobile parfaitement fluide, zéro chevauchement sous la barre de navigation, retour de conversation immédiat et accès direct aux remises ponctuelles par enfant lors du règlement familial. Build Vite réussi en 17.93s sans erreur.
+
+---
+
+### Correction n°123 : Intégration Native & Élégante de la Remise dans le Règlement Familial, Élimination de la Modale Secondaire d'Ajustement, Suppression du Bouton Retour Inutile sur la Liste des Contacts & Isolation Plein Écran Chat Conversation
+- **Date** : 09/11/2026
+- **Fichiers modifiés** :
+  - [`backend/routes_postgres/billing.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/billing.js)
+  - [`backend/services/billingService.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/services/billingService.js)
+  - [`frontend/src/components/modals/BillingManagementModal.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/modals/BillingManagementModal.jsx)
+  - [`frontend/src/pages/messages/MessagesPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/messages/MessagesPage.jsx)
+  - [`frontend/src/layouts/PublicLayout.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/layouts/PublicLayout.jsx)
+  - [`IDEES.md`](file:///Volumes/Data/Works/Windsurf/creche/IDEES.md)
+- **Contexte / Symptôme** :
+  1. **Remise dans le Règlement Familial** : L'utilisateur a rejeté le bouton popup `[ 🎛️ Remise ]` qui ouvrait une deuxième modale par-dessus « Règlement Familial » (« Ajuster la facture & Remises »). Il souhaitait que la saisie de la remise soit intégrée directement et élégamment dans la ligne de chaque enfant sélectionné.
+  2. **Messagerie Mobile** : Dans la liste des contacts (`Messages / 6 contacts`), la présence d'un bouton retour `←` à gauche était inutile (« ça sert à rien ») car l'écran dispose de la barre de navigation inférieure persistante. Inversement, dans la fenêtre de discussion ouverte, l'en-tête conversationnel avec le bouton de retour était masqué ou absent, et le swipe tactile renvoyait vers le dashboard au lieu de refermer la conversation.
+- **Cause racine** :
+  1. L'approche modale superposée (`adjustingInvoice`) était lourde et créait des collisions de z-index ; le workflow d'encaissement familial nécessite une saisie directe par enfant sans quitter la vue.
+  2. Dans `PublicLayout`, `PublicHeader` était affiché sur mobile, entrant en collision avec le conteneur plein écran du chat. L'absence de synchronisation de `searchParams` (`?contactId`) empêchait le swipe natif et le retour arrière du navigateur de refermer proprement la discussion.
+- **Solution appliquée** :
+  1. **Remise Directe & Élégante dans « Règlement Familial »** :
+     - Suppression intégrale de la modale secondaire `{adjustingInvoice && ...}` et de ses boutons d'ouverture.
+     - Intégration d'une zone dédiée sous chaque enfant sélectionné : `🏷️ Remise ce mois : [ input ] DT` et case à cocher `Appliquer aussi aux mois futurs`.
+     - Recalcul dynamique immédiat du total net de l'enfant et du montant total de la famille (`familyComputedTotal` et `familyAmountGiven`).
+     - Prise en charge côté backend dans `POST /api/billing/family-pay` et `billingService.recordFamilyPayment` appliquant les remises (`adjustInvoice`) avant l'émission du reçu familial.
+  2. **Messagerie Mobile Épurée & Conversation Plein Écran** :
+     - Élimination de tout bouton retour superflu dans l'en-tête de la liste des contacts de messagerie (utilisation de la bottom bar native).
+     - Isolation plein écran de la conversation via `createPortal(chatContent, document.body)` avec `z-[100]`.
+     - En-tête de conversation dédié avec bouton retour tactile `←` (`p-2 rounded-xl bg-gray-100 dark:bg-gray-800`), avatar, prénom et statut.
+     - Synchronisation automatique avec l'historique (`?contactId=ID`) et écouteur de swipe tactile horizontal (`handleTouchEnd`) refermant la conversation sans quitter la page.
+- **Résultat** :
+  - Workflow d'encaissement familial fluide et intuitif avec remises directes sans modale parasite. Messagerie mobile ergonomique avec transition nette entre liste et discussion et retour instantané. Build Vite 100% validé en 25.90s.
+
+---
+
+### Correction n°124 : Gestion Différentielle du Stock de Couches lors de la Ré-édition d'un Rapport Journalier & Réintégration lors de la Suppression
+
+- **Date** : 09/11/2026
+- **Fichiers modifiés** :
+  - [`backend/controllers/dailyReportsController.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/controllers/dailyReportsController.js)
+  - [`frontend/src/components/modals/BillingManagementModal.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/modals/BillingManagementModal.jsx)
+  - [`IDEES.md`](file:///Volumes/Data/Works/Windsurf/creche/IDEES.md)
+- **Contexte / Symptôme** :
+  1. Lorsqu'une éducatrice modifiait un rapport journalier déjà existant (pour corriger une observation, une heure de sieste, un repas ou une coquille), chaque ré-enregistrement décrémentait à nouveau le stock de couches de l'enfant dans `child_supplies`.
+  2. Exemple : Un rapport avec 3 couches créait initialement une décrémentation de 3 couches. Si l'éducatrice le rouvrait et l'enregistrait 2 fois pour des ajustements de texte sans changer les couches, le stock était décrémenté de 3 couches supplémentaires à chaque fois (total -9 couches au lieu de -3).
+  3. Ce comportement drainait de manière erronée l'inventaire des couches et déclenchait des notifications intempestives de rupture de stock aux parents.
+  4. De plus, lors de la suppression d'un rapport (`deleteReport`), les couches consommées n'étaient jamais réintégrées dans `child_supplies`.
+- **Cause racine** :
+  - Dans `createOrUpdateReport`, la mise à jour du stock effectuait aveuglément `UPDATE child_supplies SET quantity = GREATEST(0, quantity - diaperCount)` basé uniquement sur `diaper_changes_list.length` sans tenir compte du nombre de couches déjà comptabilisées et déduites lors des soumissions antérieures de ce même rapport (`daily_diaper_changes WHERE report_id = $1`).
+- **Solution appliquée** :
+  1. **Calcul Différentiel Strict ($\Delta = N_{nouveau} - N_{ancien}$)** :
+     - Comptage préalable des couches existantes associées au rapport avant toute réécriture : `SELECT COUNT(*)::int AS count FROM daily_diaper_changes WHERE report_id = $1`.
+     - Calcul du différentiel net : `diaperDelta = newDiaperCount - previousDiaperCount`.
+     - **Si $\Delta > 0$** : Consommation de nouvelles couches additionnelles -> Décrémentation de $\Delta$ uniquement dans `child_supplies` avec déclenchement de l'alerte stock bas si `quantity <= alert_threshold`.
+     - **Si $\Delta < 0$** : Couches retirées/corrigées à la baisse -> Réintégration automatique de $|\Delta|$ couches dans `child_supplies.quantity`.
+     - **Si $\Delta = 0$** : Aucune modification de stock (ré-édition 100% neutre et idempotente).
+  2. **Réintégration lors de la Suppression de Rapport (`deleteReport`)** :
+     - Comptage des couches associées avant suppression du rapport et ré-incrémentation du stock `child_supplies.quantity = quantity + count`.
+  3. **Affichage du Tarif de Base dans Règlement Familial** :
+     - Ajout de la mention explicite du tarif de base `Journée complète (150 DT)` ou `Demi-journée (XX DT)` pour expliciter immédiatement l'addition des arriérés, options (samedi, assurance) et remises dans le total de chaque enfant.
+- **Résultat** :
+  - Idempotence absolue des ré-éditions de rapports journaliers. Les stocks de couches restent parfaitement synchronisés avec la consommation physique réelle, sans fausses alertes parents. Syntaxe Node backend et build Vite frontend 100% validés.
+
+---
+
+### Correction n°125 : Refonte des Tâches Automatiques Système (Boutons d'Action Métier, Auto-Complétion, Exclusion Mobile Desktop-Only, Suppression Tâche #3 & Éradication des `#ID` Techniques)
+
+- **Date** : 09/11/2026
+- **Fichiers modifiés** :
+  - [`backend/routes_postgres/userWorkflow.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/userWorkflow.js)
+  - [`backend/routes_postgres/children.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/children.js)
+  - [`backend/controllers/enrollmentsController.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/controllers/enrollmentsController.js)
+  - [`backend/routes_postgres/enrollments.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/enrollments.js)
+  - [`backend/controllers/appointmentsController.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/controllers/appointmentsController.js)
+  - [`backend/services/taskService.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/services/taskService.js)
+  - [`frontend/src/utils/taskHelpers.js`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/utils/taskHelpers.js) *(nouveau)*
+  - [`frontend/src/pages/dashboard/ChildrenPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/ChildrenPage.jsx)
+  - [`frontend/src/pages/dashboard/PendingEnrollmentsPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/PendingEnrollmentsPage.jsx)
+  - [`frontend/src/components/widgets/TodayTasksWidget.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/widgets/TodayTasksWidget.jsx)
+  - [`frontend/src/components/widgets/TodayTasksWidgetMobile.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/widgets/TodayTasksWidgetMobile.jsx)
+  - [`frontend/src/components/widgets/OverdueTasksWidget.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/widgets/OverdueTasksWidget.jsx)
+  - [`frontend/src/components/dashboard/MobileDashboardComplete.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/dashboard/MobileDashboardComplete.jsx)
+  - [`frontend/src/components/modals/TaskDetailModal.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/modals/TaskDetailModal.jsx)
+  - [`frontend/src/pages/tasks/TasksPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/tasks/TasksPage.jsx)
+- **Contexte / Symptôme** :
+  1. La tâche automatique `📋 Compléter dossier admin & cotisation : [Nom Enfant]` créée lors d'une inscription Express Mobile n'avait aucun bouton permettant d'ouvrir directement la modale d'édition de l'enfant concerné, affichait un bouton générique `✅ Terminer` dépourvu de sens métier (qui masquait la tâche sans compléter le dossier), et s'affichait à tort sur mobile alors qu'elle ne doit être traitée que sur grand écran (Desktop).
+  2. Les autres tâches automatiques du système (`📋 Traiter dossier inscription #30`, `📄 Compléter le dossier de ...`, RDV, anniversaires dans les tâches en retard ou `TasksPage`) affichaient également un bouton `Terminer` brut ou exposaient des identifiants techniques (`#30`, `(ID: 12)`).
+  3. La tâche `📄 Compléter le dossier de [Prénom Nom]` créée dans `POST /api/children` n'avait plus d'utilité métier.
+- **Cause racine** :
+  1. Lors de la création de la tâche Express dans `userWorkflow.js`, aucun lien vers l'enfant n'était attaché, et `PUT /api/children/:id` ne complétait pas la tâche associée. Côté mobile, `FocusModal` dans `MobileDashboardComplete.jsx` montait `<TodayTasksWidget />` sans filtrer les tâches réservées au Desktop.
+  2. Dans `enrollmentsController.js` et `enrollments.js`, les tâches d'inscription utilisaient `#${enrollment.id}` dans leur titre, ne renseignaient pas `enrollment_id`, n'appelaient pas `completeEnrollmentTask` lors de `approveEnrollment`, et `appointmentsController.confirmAppointment` exécutait une requête SQL erronée (`WHERE related_type = 'enrollment'`, colonne inexistante sur `tasks`).
+- **Solution appliquée** :
+  1. **Tâche #1 (`📋 Compléter dossier admin & cotisation : [Nom Enfant]`)** :
+     - Enrichissement automatique côté backend (`taskService.js`) avec résolution de `edit_child_id` (via lien ou correspondance exacte du nom de l'enfant dans `children`, prenant en charge les tâches existantes comme `Fadi Issa`) et flag `desktop_only: true`.
+     - Remplacement du bouton `Terminer` par **`✏️ Compléter la fiche enfant`** (AR : `✏️ استكمال ملف الطفل`) qui redirige vers `/dashboard/children` et ouvre automatiquement la modale `handleEditChild(child)`.
+     - Auto-complétion en base (`status = 'completed'`) dès la sauvegarde de la fiche enfant (`PUT /api/children/:id`).
+     - Masquage strict sur tous les écrans et widgets mobiles (`TodayTasksWidgetMobile`, `TodayTasksWidget` en vue mobile, `OverdueTasksWidget` sur mobile, `MobileDashboardComplete`, `TasksPage` sur mobile).
+  2. **Tâche #2 (`📋 Demande d'inscription : [Nom Enfant]`)** :
+     - Intitulé basé sur le nom complet de l'enfant sans aucun `#ID` technique (avec réécriture dynamique des anciennes tâches `#30` en `📋 Demande d'inscription : [Nom Enfant]`).
+     - Remplacement du bouton `Terminer` par **`📋 Examiner le dossier`** qui ouvre `/dashboard/pending-enrollments` et met en évidence le dossier concerné.
+     - Auto-complétion immédiate dès l'approbation (`approveEnrollment`), le rejet (`rejectEnrollment`), la confirmation de RDV (`confirmAppointment`) ou lorsque le dossier lié dans `enrollments` n'est plus au statut `'pending'`.
+  3. **Suppression de la Tâche #3 Obsolète (`📄 Compléter le dossier de ...`)** :
+     - Retrait de l'insertion dans `POST /api/children` (`backend/routes_postgres/children.js`) et auto-complétion/filtrage automatique des tâches existantes dans `taskService.js`.
+  4. **Harmonisation Globale des Actions Métier & Éradication des `#ID`** :
+     - Création de [`frontend/src/utils/taskHelpers.js`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/utils/taskHelpers.js) unifiant `getTaskAutoKind`, `cleanTaskTitle`, `cleanTaskDescription`, `isDesktopOnlyTask`, `isObsoleteDocTask`.
+     - Conservation du bouton `✅ Terminer` exclusivement pour les tâches manuelles et les mémos personnels.
+- **Résultat** :
+  - Chaque tâche automatique propose désormais son bouton d'action métier dédié et se clôture automatiquement une fois l'opération métier accomplie, sans jamais exposer d'identifiant technique `#ID` à l'utilisateur. Build Vite et vérifications syntaxiques backend 100% validés.
+
+---
+
+### Correction n°126 : Déblocage Paiement Multi-mois avec Arriérés, Toggle & Recalcul Réactif Immédiat des Remises (Ponctuelle & Récurrente), Élimination Superposition Badges & Conditionnement Quittance au 1er du Mois
+
+- **Date** : 09/11/2026
+- **Fichiers modifiés** :
+  - [`backend/services/billingService.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/services/billingService.js)
+  - [`frontend/src/components/modals/BillingManagementModal.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/modals/BillingManagementModal.jsx)
+  - [`frontend/src/pages/parent/ParentBillingPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/ParentBillingPage.jsx)
+  - [`frontend/src/pages/parent/MySpacePage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/MySpacePage.jsx)
+  - [`IDEES.md`](file:///Volumes/Data/Works/Windsurf/creche/IDEES.md)
+- **Contexte / Symptôme** :
+  1. **Verrouillage injustifié des paiements d'avance** : Lorsqu'un foyer avait des dettes / arriérés, le système verrouillait (« disabled » et icône cadenas) les boutons « 2 mois d'avance » et « Trimestre ». Or en pratique, un parent endetté peut parfaitement solder ses arriérés, son mois courant ET régler un ou deux mois d'avance lors du même versement.
+  2. **Remise non réactive / absence de toggle** : Dans la modale « Règlement Familial », la remise affichait par défaut le montant enregistré sans possibilité de l'activer ou la désactiver facilement en un clic ; l'activation de la case « Appliquer aussi aux mois futurs » ne modifiait pas le montant instantanément, et la modification du montant de la remise ne se répercutait pas immédiatement dans le total encaissé.
+  3. **Superposition et troncature visuelle des détails tarifaires** : La ligne sous le prénom de l'enfant condensait le tarif de base, l'arriéré et la remise sans espacement suffisant, omettant les options (Samedi, Assurance) et risquant une superposition avec le montant total à droite.
+  4. **Affichage et disponibilité des quittances pour les mois futurs** : Lorsqu'un parent règle un mois futur en avance, le mois doit apparaître comme réglé dans son espace parent, mais la quittance officielle de ce mois futur ne doit être téléchargeable qu'à partir du 1er jour du mois concerné.
+  5. **Traçabilité de la date d'avance chez l'admin** : Dans le module « Cotisations & Dépenses », la mention « Soldé d'avance » devait préciser la date effective de règlement (`le jj/mm/aaaa`).
+- **Cause racine** :
+  1. `recordFamilyPayment` levait une exception `throw new Error(...)` et l'IHM appliquait `disabled={hasArrears && m > 1}` au lieu de laisser l'imputation chronologique naturelle opérer.
+  2. Le composant `BillingManagementModal` ne possédait pas d'état booléen `enabled` pour la remise et ne recalculait pas `familyAmountGiven` lors du basculement de `updateRecurring`.
+  3. Le conteneur des rubriques tarifaires utilisait un simple texte `inline` avec séparateurs `•` au lieu de pilules `badge` flexibles et aérées avec retours à la ligne sécurisés.
+  4. L'API masquait strictement les factures dont le mois était supérieur au mois courant (`period_month <= curMonth`), même si la facture avait été payée d'avance ; de plus, le bouton PDF apparaissait immédiatement dès le paiement sans attendre l'ouverture calendaire du mois.
+- **Solution appliquée** :
+  1. **Déverrouillage Multi-mois avec Priorité Chronologique Absolue** :
+     - Retrait du blocage dans `BillingManagementModal.jsx` et suppression du `throw new Error` dans `backend/services/billingService.js`.
+     - Les boutons 1 mois, 2 mois, 3 mois sont accessibles en permanence. Les fonds versés soldent les arriérés et le mois 1 en priorité stricte, puis le mois 2, et tout excédent est crédité en avoir sur `users.credit_balance`.
+     - Ajout d'un bandeau informatif bleu explicitant l'ordre de priorité du règlement.
+  2. **Toggle & Recalcul Instantané de la Remise** :
+     - Ajout d'une case à cocher explicite `[✓] Remise ce mois` permettant d'activer (déduction immédiate) ou désactiver (remise = 0 DT, retour au plein tarif) la remise en 1 clic.
+     - Réinitialisation systématique de `updateRecurring` à `false` lors de la ré-activation : une ré-activation applique la remise par défaut sur le mois en cours uniquement (ex: $390 - 60 = 330\text{ DT}$ pour 3 mois) et n'applique la remise à tous les mois ($3 \times 70 = 210\text{ DT}$) que si l'utilisateur coche expressément « Appliquer aussi aux mois futurs ».
+     - Affichage transparent de la formule dans le badge (`-60 DT/mois (-180 DT total)` au lieu de `-60 DT remise`) et sous le montant total (`3 × 70 DT` ou `1×70 DT + 2×130 DT = 330 DT`), éliminant tout doute arithmétique.
+     - Prise en compte immédiate et réactive de tout changement (activation, désactivation, saisie de montant, ou basculement récurrent) sur le total de l'enfant, le total dû de la famille et le montant encaissé.
+  3. **Refonte Aérée des Badges Tarifaires (Anti-Superposition)** :
+     - Remplacement du texte compact par une rangée de badges `pill` stylisés : `Forfait accueil`, `+ Samedi (+XX DT)`, `+ Assurance (+XX DT)`, `+ Arriéré (+XX DT)`, `- Remise (-XX DT)`, `• X mois`.
+     - Espacement `flex-wrap gap-1.5` éliminant tout risque de chevauchement ou coupure de texte.
+  4. **Visibilité Espace Parent & Règle d'Émission de la Quittance** :
+     - Élargissement de la requête SQL dans `getInvoices` pour inclure les mois futurs s'ils ont été soldés ou ont reçu un acompte (`ci.status = 'paid' OR ci.amount_paid > 0`).
+     - Dans `ParentBillingPage.jsx` et `MySpacePage.jsx`, les mois futurs réglés d'avance affichent le statut `✓ Réglé d'avance` et un badge temporisé `📄 Quittance disponible le 01/MM/AAAA` ; le bouton de téléchargement officiel du reçu PDF se débloque automatiquement dès le 1er jour du mois concerné.
+  5. **Date d'Encaissement Précise Côté Admin** :
+     - Le badge d'état affiche désormais `Soldé d'avance le jj/mm/aaaa` avec la date réelle d'encaissement.
+- **Résultat** :
+  - Flexibilité totale de paiement pour les parents ayant des arriérés, gestion ergonomique et instantanée des remises avec contrôle en 1 clic, clarté visuelle absolue de chaque composante du montant dû, et respect scrupuleux des règles d'émission des quittances. Build Vite et contrôles Node 100% validés.
+
+---
+
+### Correction n°127 : Règle Facturation Enfant Suspendu, Remise Ponctuelle & Pas de 10 DT (Règlement Familial), Correction Arriérés Cumulés & Suppression Badge Confus « Encaissé ce mois »
+
+- **Date** : 09/11/2026
+- **Fichiers modifiés** :
+  - [`backend/services/billingService.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/services/billingService.js)
+  - [`frontend/src/components/modals/BillingManagementModal.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/modals/BillingManagementModal.jsx)
+  - [`IDEES.md`](file:///Volumes/Data/Works/Windsurf/creche/IDEES.md)
+- **Contexte / Symptôme** :
+  1. **Option récurrente superflue dans le modal** : La case « Appliquer aussi aux mois futurs » dans le modal de règlement créait de la confusion. La modification d'une remise récurrente pérenne doit se faire exclusivement dans la fiche enfant, tandis que le modal Règlement Familial ne gère qu'une remise strictement ponctuelle pour le règlement immédiat.
+  2. **Facturation injustifiée des enfants suspendus** : Les enfants suspendus ou retirés continuaient à apparaître dans la liste des cotisations des mois ultérieurs à leur suspension. La règle métier exige qu'un enfant suspendu au milieu du mois paye le mois en cours (au moins 1 jour d'accueil effectif), mais qu'à partir du mois suivant (inactif dès le 1er du mois), il ne soit plus facturé et ne figure plus dans la liste de facturation de ce mois.
+  3. **Remise activée par défaut** : Lorsqu'un enfant bénéficiait d'une remise dans son dossier, la case de remise dans le modal était cochée d'office, imposant une manipulation à l'administrateur s'il ne souhaitait pas l'appliquer.
+  4. **Pas d'incrément de la remise non calibré** : Le champ de saisie de la remise avançait de 1 en 1, alors que les remises se comptent usuellement par tranches de 10 DT (10, 20, 30, ...).
+  5. **Confusion « Encaissé ce mois : 100 DT » sur une facture impayée (Photo 1 - Karim Brahmi)** : Sur la carte famille d'une facture non soldée (`200 DT À régler`), un badge vert `💰 Encaissé ce mois : 100 DT` s'affichait aux côtés de `Arriéré : +100 DT`, donnant la fausse impression que 100 DT avaient déjà été perçus sur la cotisation de 200 DT du mois.
+  6. **Arriérés en cascade** : L'ancienne formule d'arriéré cumulait les `total_due` des mois passés qui contenaient déjà eux-mêmes les anciens arriérés, risquant un effet boule de neige.
+- **Cause racine** :
+  1. `calculateFamilyExpectedDue` et `submitFamilyPayment` propageaient la remise aux mois futurs si une option récurrente était cochée dans le modal.
+  2. `generateMonthlyInvoices` et `getInvoices` ne filtraient pas les enfants selon leur date de départ (`departure_date`) par rapport au 1er jour du mois ciblé (`startOfTargetMonth`), et `generateInvoiceForChild` n'annulait pas la génération si l'enfant était inactif avant le mois.
+  3. `handleOpenFamilyPayment` initialisait `enabled: currentDisc > 0` au lieu de `enabled: false`.
+  4. L'élément `<input type="number">` avait un attribut `step="1"` au lieu de `step="10"`.
+  5. Le badge `fam.cash_collected_in_period` agrégeait tous les paiements du parent enregistrés durant le mois calendaire (ex: règlement d'une facture antérieure), ce qui n'avait pas sa place sur la carte d'une facture mensuelle individuelle impayée.
+  6. `SUM(total_due - amount_paid)` incluait `previous_arrears` récursivement au lieu de faire : $\text{Arriéré} = \max\left(0, \sum_{\text{passé}} \text{charges nettes} - \sum_{\text{passé}} \text{montants payés}\right)$.
+- **Solution appliquée** :
+  1. **Remise Strictement Ponctuelle dans le Règlement Familial** :
+     - Suppression définitive de la case à cocher « Appliquer aussi aux mois futurs » du modal.
+     - Dans `calculateFamilyExpectedDue`, la remise s'impute uniquement sur le mois 1 (`remainingMonth1`). Les mois futurs (mois 2, mois 3) sont calculés au tarif normal (`base_price + saturday_price`).
+     - Dans `submitFamilyPayment`, les remises envoyées au backend forcent systématiquement `updateRecurring: false`.
+  2. **Règle Métier Enfants Suspendus** :
+     - Dans `backend/services/billingService.js` (`generateInvoiceForChild`, `generateMonthlyInvoices`, `getInvoices`), un enfant inactif / suspendu (`is_active = false` et `departure_date`) dont la date de départ est antérieure au 1er du mois (`departure_date < startOfTargetMonth`) est formellement exclu de la génération et de la liste des cotisations. Les factures en attente antérieures sans paiement sont également purgées.
+     - Si l'enfant est suspendu en cours de mois (`departure_date >= startOfTargetMonth`), il a été actif au moins 1 jour et sa cotisation pour le mois en cours est maintenue.
+  3. **Remise Désactivée par Défaut & Pas de 10 DT** :
+     - Dans `handleOpenFamilyPayment`, toutes les remises sont initialisées avec `enabled: false`. L'admin coche volontairement la case s'il souhaite accorder une remise.
+     - L'ascenseur (stepper) du champ de saisie est paramétré à `step="10"` (10, 20, 30, ...).
+  4. **Purge du Badge Confus « Encaissé ce mois » & Formule d'Arriéré Exacte** :
+     - Retrait du badge vert trompeur `💰 Encaissé ce mois : XX DT` de la carte famille dans `BillingManagementModal.jsx`. La carte n'affiche désormais que les métadonnées propres à l'échéance du mois (`À régler`, `Arriéré : +XX DT`, `Remise : -XX DT`, `Avoir : +XX DT`, `Reste dû : XX DT`).
+     - Correction de la requête SQL d'arriérés dans `generateInvoiceForChild` calculant rigoureusement la somme des charges nettes passées moins la somme des encaissements passés sans cumul en cascade.
+- **Résultat** :
+  - Clarté comptable irréprochable sur chaque foyer et facture, absence de tout double comptage ou confusion visuelle, conformité stricte de la règle de suspension des élèves, et ergonomie optimisée de la saisie des remises ponctuelles. Build frontend et validations backend 100% opérationnels.
+
+---
+
+### Correction n°128 : Rapports Journaliers — Remplacement de « Nourriture/Lait » dans « Fournitures apportées » par les Produits Consommables & Hygiène et Catégories Standards de Repas
+
+- **Date** : 09/11/2026
+- **Fichiers modifiés** :
+  - [`backend/migrations/versions/020_consumable_supplies_and_meals.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/migrations/versions/020_consumable_supplies_and_meals.js) *(nouveau)*
+  - [`backend/controllers/suppliesController.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/controllers/suppliesController.js)
+  - [`backend/controllers/dailyReportsController.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/controllers/dailyReportsController.js)
+  - [`backend/routes_postgres/supplies.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/routes_postgres/supplies.js)
+  - [`backend/tests/routes/supplies_access.test.js`](file:///Volumes/Data/Works/Windsurf/creche/backend/tests/routes/supplies_access.test.js)
+  - [`frontend/src/pages/dashboard/DailyReportsPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/dashboard/DailyReportsPage.jsx)
+  - [`frontend/src/components/mobile/MobileDailyReportsPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/components/mobile/MobileDailyReportsPage.jsx)
+  - [`frontend/src/pages/parent/ChildDailyReportsPage.jsx`](file:///Volumes/Data/Works/Windsurf/creche/frontend/src/pages/parent/ChildDailyReportsPage.jsx)
+  - [`IDEES.md`](file:///Volumes/Data/Works/Windsurf/creche/IDEES.md)
+- **Contexte / Symptôme** :
+  1. Dans `/dashboard/daily-reports` (Desktop et Mobile), la section « 🎒 Fournitures apportées » demandait de saisir « 🍼 Nourriture/Lait » (yaourt, couscous, compote...), ce que le client ne souhaite plus déclarer dans les fournitures.
+  2. Le client souhaite à la place pouvoir déclarer les **produits consommables et d'hygiène** apportés par les parents (ex: **Lingettes**, **Crème**, **Mouchoirs**, **Vêtements de rechange**, **Sérum physiologique**, ou autre produit consommable).
+  3. La section « 🍽️ Repas » dépendait jusqu'ici de la liste `foodOptions` issue des fournitures apportées ce jour.
+- **Cause racine** :
+  1. Couplage historique entre la saisie des fournitures (`supply_type: 'food'`) et les options du sélecteur de repas (`GET /api/supplies/child/:childId/food-options`).
+  2. Contraintes SQL `CHECK` initiales dans `001_baseline_schema.js` sur `daily_meals` (`meal_type IN ('bottle', 'compote', 'fruit', 'other')`) qui bloquaient l'ajout de nouvelles catégories de repas standards (`meal`).
+- **Solution appliquée** :
+  1. **Section « 🎒 Fournitures apportées » (Desktop & Mobile)** :
+     - Conservation du compteur `🧷 Couches (pièces)` à gauche (avec bouton d'ajout rapide `+` ou enregistrement à la sauvegarde du rapport).
+     - Remplacement du bloc « Nourriture/Lait » à droite par **« 🧴 Produits consommables & Hygiène »** comprenant :
+       - Des **boutons rapides cliquables en 1 clic** : `+ 🧻 Lingettes`, `+ 🧴 Crème`, `+ 🤧 Mouchoirs`, `+ 👕 Vêtements`, `+ 💧 Sérum phy.`.
+       - Un **champ libre « Autre produit... »** + bouton `+` (ou touche `Entrée`) pour tout autre consommable (coton, talc, etc.).
+     - Affichage enrichi par icônes et couleurs dans `✅ Enregistré aujourd'hui :` (`🧷 X couches`, `🧻 Lingettes`, `🧴 Crème`, `👕 Vêtements`, `📦 ...`).
+  2. **Section « 🍽️ Repas » indépendante avec catégories standards** :
+     - Proposition des catégories standards : `🍼 Biberon / Lait` (`bottle`), `🍲 Repas du jour` (`meal`), `🥣 Compote / Yaourt` (`compote`), `🍎 Fruit / Goûter` (`fruit`), `📝 Autre` (`other`).
+     - Champ de description libre optionnel disponible pour toutes les catégories afin de préciser le menu si souhaité.
+  3. **Espace Parent (`ChildDailyReportsPage.jsx`)** :
+     - Affichage propre des produits consommables dans la carte « 🎒 Apporté ce jour » et prise en charge des nouvelles catégories de repas (tout en conservant la rétrocompatibilité avec les anciens rapports).
+  4. **Backend, Base de données & Nettoyage du code mort** :
+     - Création de la migration `020_consumable_supplies_and_meals.js` assouplissant les contraintes `CHECK` sur `daily_meals`, `child_supplies` et `daily_supplies_brought`.
+     - Suppression de l'endpoint et du contrôleur devenus obsolètes `GET /api/supplies/child/:childId/food-options` (`getFoodOptions`) ainsi que des états React `foodOptions` / `supplies_food`.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

@@ -863,8 +863,7 @@ const checkAndNotifyTreatments = async () => {
             WHERE ct.status = 'active'
             AND (ct.approval_status = 'approved' OR ct.approval_status IS NULL)
             AND $1 BETWEEN ct.start_date AND ct.end_date
-            AND a.check_in_time IS NOT NULL
-            AND a.check_out_time IS NULL
+            AND (a.check_in_time IS NOT NULL OR COALESCE(a.status, 'present') = 'present')
         `, [today]);
 
         const notificationsToSend = [];

@@ -52,6 +52,7 @@ const AttendancePage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [actionLoading, setActionLoading] = useState(null);
+  const [attendanceMode, setAttendanceMode] = useState('hourly'); // 'hourly' ou 'daily'
 
   // Configuration des onglets ("Aujourd'hui" masqué si la permission n'est pas accordée)
   const tabs = [
@@ -119,7 +120,10 @@ const AttendancePage = () => {
       setAllChildren(children);
       setAttendanceData(attendanceResponse.attendance || []);
       setCurrentlyPresent(currentPresentResponse.children || []);
-      setStats(statsResponse);
+      setStats(statsResponse?.stats || statsResponse || null);
+      if (attendanceResponse.settings?.attendance_mode) {
+        setAttendanceMode(attendanceResponse.settings.attendance_mode);
+      }
     } catch (error) {
       console.error('❌ AttendancePage - Erreur loadTodayData:', error);
     }
@@ -129,7 +133,7 @@ const AttendancePage = () => {
   const loadHistoryData = async () => {
     try {
       const attendanceResponse = await attendanceService.getAttendanceByDate(selectedDate);
-      setAttendanceData(attendanceResponse.attendances || []);
+      setAttendanceData(attendanceResponse.attendance || attendanceResponse.attendances || []);
     } catch (error) {
       console.error('❌ AttendancePage - Erreur loadHistoryData:', error);
     }
@@ -143,18 +147,36 @@ const AttendancePage = () => {
     ]);
 
     setAttendanceData(attendanceResponse.attendance || attendanceResponse.attendances || []);
-    setStats(statsResponse);
+    setStats(statsResponse?.stats || statsResponse || null);
+    if (attendanceResponse.settings?.attendance_mode) {
+      setAttendanceMode(attendanceResponse.settings.attendance_mode);
+    }
   };
 
   // Fonction check-in
-  const handleCheckIn = async (childId) => {
+  const handleCheckIn = async (childId, options = null) => {
     try {
       setActionLoading(childId);
-      await attendanceService.checkIn(childId);
+      await attendanceService.checkIn(childId, options);
       await loadTodayData();
     } catch (error) {
       console.error('Erreur check-in:', error);
       dialog.error(error.response?.data?.error || (isRTL ? 'خطأ في تسجيل الوصول' : 'Erreur lors de l\'enregistrement'));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Rectifier un pointage existant
+  const handleUpdateAttendance = async (attendanceId, data) => {
+    try {
+      setActionLoading(attendanceId);
+      await attendanceService.updateAttendance(attendanceId, data);
+      dialog.success(isRTL ? 'تم تصحيح الحضور بنجاح' : 'Pointage rectifié avec succès');
+      await loadTodayData();
+    } catch (error) {
+      console.error('Erreur rectification:', error);
+      dialog.error(error.response?.data?.error || 'Erreur lors de la rectification');
     } finally {
       setActionLoading(null);
     }
@@ -169,6 +191,54 @@ const AttendancePage = () => {
     } catch (error) {
       console.error('Erreur check-out:', error);
       dialog.error(error.response?.data?.error || (isRTL ? 'خطأ في تسجيل المغادرة' : 'Erreur lors de l\'enregistrement'));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Basculer ou forcer l'état de présence (mode journalier en 1 clic ou toggle)
+  const handleTogglePresence = async (childId, options = {}) => {
+    try {
+      setActionLoading(childId);
+      await attendanceService.togglePresence(childId, options);
+      await loadTodayData();
+    } catch (error) {
+      console.error('Erreur toggle présence:', error);
+      dialog.error(error.response?.data?.error || (isRTL ? 'خطأ في تعديل الحضور' : 'Erreur lors de la mise à jour'));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Annuler un pointage (droit à l'erreur / remise en absent)
+  const handleCancelAttendance = async (attendanceId) => {
+    try {
+      setActionLoading(attendanceId);
+      await attendanceService.deleteAttendance(attendanceId);
+      dialog.success(isRTL ? 'تم إلغاء الحضور' : 'Pointage annulé avec succès');
+      await loadTodayData();
+    } catch (error) {
+      console.error('Erreur annulation pointage:', error);
+      dialog.error(error.response?.data?.error || 'Erreur lors de l\'annulation');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Accueil exceptionnel du samedi avec notification automatique au parent
+  const handleRecordExceptionalSaturday = async (childId, notes = null) => {
+    try {
+      setActionLoading(childId);
+      await attendanceService.recordExceptionalSaturday(childId, notes);
+      dialog.success(
+        isRTL
+          ? 'تم تسجيل الحضور الاستثنائي ليوم السبت وإشعار الولي بنجاح'
+          : 'Accueil exceptionnel enregistré et parent notifié !'
+      );
+      await loadTodayData();
+    } catch (error) {
+      console.error('Erreur samedi exceptionnel:', error);
+      dialog.error(error.response?.data?.error || 'Erreur lors de l\'enregistrement');
     } finally {
       setActionLoading(null);
     }
@@ -206,8 +276,13 @@ const AttendancePage = () => {
             attendanceData={attendanceData}
             allChildren={allChildren}
             stats={stats}
+            attendanceMode={attendanceMode}
             onCheckIn={handleCheckIn}
             onCheckOut={handleCheckOut}
+            onTogglePresence={handleTogglePresence}
+            onCancelAttendance={handleCancelAttendance}
+            onUpdateAttendance={handleUpdateAttendance}
+            onRecordExceptionalSaturday={handleRecordExceptionalSaturday}
             actionLoading={actionLoading}
           />
         );
@@ -215,12 +290,15 @@ const AttendancePage = () => {
         return (
           <HistorySection
             attendanceData={attendanceData}
+            allChildren={allChildren}
+            attendanceMode={attendanceMode}
             selectedDate={selectedDate}
             onDateChange={setSelectedDate}
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
             filterStatus={filterStatus}
             onFilterChange={setFilterStatus}
+            onUpdateSuccess={loadHistoryData}
           />
         );
       case 'stats':
@@ -228,43 +306,77 @@ const AttendancePage = () => {
           <StatsSection
             stats={stats}
             attendanceData={attendanceData}
+            attendanceMode={attendanceMode}
           />
         );
       default:
-        console.log('🎯 AttendancePage - Rendu TodaySection avec allChildren:', allChildren.length);
         return (
           <TodaySection
             currentlyPresent={currentlyPresent}
             attendanceData={attendanceData}
             allChildren={allChildren}
             stats={stats}
+            attendanceMode={attendanceMode}
             onCheckIn={handleCheckIn}
             onCheckOut={handleCheckOut}
+            onTogglePresence={handleTogglePresence}
+            onCancelAttendance={handleCancelAttendance}
+            onUpdateAttendance={handleUpdateAttendance}
+            onRecordExceptionalSaturday={handleRecordExceptionalSaturday}
             actionLoading={actionLoading}
           />
         );
     }
   };
 
-
   // Préparer les données pour le composant mobile
   const mobileAttendanceMap = useMemo(() => {
     const map = {};
     attendanceData.forEach(record => {
       map[record.child_id] = {
+        id: record.id,
         check_in: record.check_in_time || record.check_in,
         check_out: record.check_out_time || record.check_out,
-        notes: record.notes
+        status: record.status || (record.check_in_time ? 'present' : 'absent'),
+        notes: record.notes,
+        is_exceptional_saturday: record.is_exceptional_saturday
       };
     });
     return map;
   }, [attendanceData]);
 
-  const mobileStats = useMemo(() => ({
-    present: currentlyPresent.length,
-    absent: allChildren.length - currentlyPresent.length,
-    total: allChildren.length
-  }), [currentlyPresent, allChildren]);
+  const mobileStats = useMemo(() => {
+    // Vérifier si le jour sélectionné est un samedi
+    const isSaturday = selectedDate ? new Date(selectedDate + 'T12:00:00').getDay() === 6 : new Date().getDay() === 6;
+    const eligible = isSaturday
+      ? allChildren.filter(c => c.saturday_attendance || mobileAttendanceMap[c.id])
+      : allChildren;
+
+    let presentCount = 0;
+    let completedCount = 0;
+
+    eligible.forEach(child => {
+      const rec = mobileAttendanceMap[child.id];
+      if (!rec) return;
+      if (rec.status === 'absent') return;
+      if (attendanceMode === 'daily') {
+        if (rec.status === 'present' || rec.check_in) presentCount++;
+      } else {
+        if (rec.check_in && !rec.check_out) presentCount++;
+        if (rec.check_in && rec.check_out) completedCount++;
+      }
+    });
+
+    const totalCount = eligible.length;
+    const absentCount = Math.max(0, totalCount - presentCount - (attendanceMode === 'daily' ? 0 : completedCount));
+
+    return {
+      present: presentCount,
+      completed: completedCount,
+      absent: absentCount,
+      total: totalCount
+    };
+  }, [allChildren, mobileAttendanceMap, attendanceMode, selectedDate]);
 
   // Version Mobile
   if (isMobile) {
@@ -276,8 +388,12 @@ const AttendancePage = () => {
           stats={mobileStats}
           loading={loading}
           selectedDate={new Date(selectedDate)}
+          attendanceMode={attendanceMode}
           onCheckIn={handleCheckIn}
           onCheckOut={handleCheckOut}
+          onTogglePresence={handleTogglePresence}
+          onCancelAttendance={handleCancelAttendance}
+          onRecordExceptionalSaturday={handleRecordExceptionalSaturday}
           onRefresh={handleRefresh}
           canManage={canManageAttendance}
         />

@@ -16,19 +16,27 @@ const { createLog } = require('../routes_postgres/logs');
  */
 async function completeEnrollmentTask(enrollmentId) {
   try {
-    // Chercher la tâche liée à ce dossier d'inscription
+    const numericId = parseInt(enrollmentId, 10);
+    if (isNaN(numericId)) return { success: false };
+
+    // Chercher la tâche liée à ce dossier d'inscription (via enrollment_id, lien ou ancien titre)
     const taskResult = await db.query(`
       UPDATE tasks 
-      SET status = 'completed', completed_at = NOW()
-      WHERE title LIKE $1 AND status != 'completed'
+      SET status = 'completed', completed_at = NOW(), updated_at = NOW()
+      WHERE status != 'completed'
+        AND (
+          enrollment_id = $1
+          OR title LIKE $2
+          OR description LIKE $3
+        )
       RETURNING id, title
-    `, [`%Traiter dossier inscription #${enrollmentId}%`]);
+    `, [numericId, `%#${numericId}%`, `%highlight=${numericId}%`]);
 
     if (taskResult.rows.length > 0) {
-      console.log(`✅ Tâche #${taskResult.rows[0].id} marquée comme complétée (dossier #${enrollmentId} traité)`);
+      console.log(`✅ Tâche #${taskResult.rows[0].id} marquée comme complétée (dossier #${numericId} traité)`);
       return { success: true, taskId: taskResult.rows[0].id };
     } else {
-      console.log(`ℹ️ Aucune tâche en attente trouvée pour le dossier #${enrollmentId}`);
+      console.log(`ℹ️ Aucune tâche en attente trouvée pour le dossier #${numericId}`);
       return { success: true, taskId: null };
     }
   } catch (error) {
@@ -120,20 +128,21 @@ const enrollmentsController = {
         console.log(`📋 Création tâche TASKS pour admin ID: ${adminId}, dossier #${enrollment.id}`);
 
         if (adminId) {
-          // Créer dans la table TASKS (visible dans le widget Tâches du jour)
-          // Note: La description contient le lien vers la page des inscriptions en attente
+          const childDisplayName = `${child_first_name || ''} ${child_last_name || ''}`.trim() || 'Nouvel enfant';
+          const parentDisplayName = `${applicant_first_name || ''} ${applicant_last_name || ''}`.trim();
           const taskResult = await db.query(`
             INSERT INTO tasks (
               title, description, assigned_to, created_by, 
-              due_date, priority, status, created_at
-            ) VALUES ($1, $2, $3, $4, $5, 'high', 'pending', NOW())
+              due_date, priority, status, enrollment_id, created_at
+            ) VALUES ($1, $2, $3, $4, $5, 'high', 'pending', $6, NOW())
             RETURNING id
           `, [
-            `📋 Traiter dossier inscription #${enrollment.id}`,
-            `Nouvelle demande d'inscription pour ${child_first_name} ${child_last_name || ''} (parent: ${applicant_first_name} ${applicant_last_name}). Email: ${applicant_email}.\n\n🔗 Lien: /dashboard/pending-enrollments`,
+            `📋 Demande d'inscription : ${childDisplayName}`,
+            `Nouvelle demande d'inscription pour ${childDisplayName}${parentDisplayName ? ` (parent : ${parentDisplayName})` : ''}. Email : ${applicant_email}.\n\n🔗 Lien: /dashboard/pending-enrollments?highlight=${enrollment.id}`,
             adminId,
             adminId,
-            new Date() // due_date = aujourd'hui
+            new Date(), // due_date = aujourd'hui
+            enrollment.id
           ]);
 
           if (taskResult.rows.length > 0) {
@@ -358,8 +367,8 @@ const enrollmentsController = {
       // lors de la finalisation de l'inscription (quand l'enfant est créé dans la table children)
       console.log(`📄 Documents d'inscription conservés pour le dossier #${id} (seront transférés à la finalisation)`);
 
-      // NOTE: La tâche sera marquée comme complétée quand le parent confirme le RDV
-      // (voir appointmentsController.confirmAppointment)
+      // Marquer automatiquement la tâche d'examen du dossier comme complétée dès l'approbation
+      await completeEnrollmentTask(id);
 
       res.json({
         success: true,

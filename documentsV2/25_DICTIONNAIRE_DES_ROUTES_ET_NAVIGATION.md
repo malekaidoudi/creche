@@ -53,6 +53,7 @@ Ce document constitue le **référentiel canonique absolu** de toutes les routes
 | `/mon-espace/child/:id/medical` | `ChildMedicalPage.jsx` | `parent` | Dossier médical, allergies et carnet vaccinal. |
 | `/mon-espace/child/:id/emergency-contacts` | `ChildEmergencyContactsPage.jsx` | `parent` | Gestion des personnes de confiance autorisées (jusqu'à 2 personnes majeures). |
 | `/mon-espace/child/:id/birthday` | `BirthdayEventPage.jsx` | `parent` | **Célébration d'anniversaire & Diaporama souvenirs** : Assistant en 3 étapes (choix oui/non de J-30 à J-5, personnalisation, visibilité calendrier crèche privée/publique, message WhatsApp Direction) et diaporama photo souvenir interactif (J+1 à J+30) avec téléchargement HD. |
+| `/mon-espace/cotisations` | `ParentBillingPage.jsx` | `parent`, `admin`, `developer` | **Cotisations & Reçus Mobile & Web** : Vue mobile dédiée avec accès via le menu « Plus » : suivi des mensualités, bannières dynamiques avoir/reste dû, historique accordéon intelligent (Proposition 1) et téléchargement des reçus officiels en PDF. |
 
 ---
 

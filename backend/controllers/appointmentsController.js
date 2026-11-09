@@ -213,13 +213,18 @@ exports.confirmAppointment = async (req, res) => {
         // Si c'est un RDV d'inscription, marquer la tâche comme complétée
         if (appointment.enrollment_id) {
             try {
-                // Chercher et compléter la tâche liée à ce dossier d'inscription
+                const enrollId = parseInt(appointment.enrollment_id, 10);
                 await db.query(`
                     UPDATE tasks 
                     SET status = 'completed', completed_at = NOW(), updated_at = NOW()
-                    WHERE related_type = 'enrollment' AND related_id = $1 AND status != 'completed'
-                `, [appointment.enrollment_id]);
-                console.log(`✅ Tâche d'inscription #${appointment.enrollment_id} marquée comme complétée`);
+                    WHERE status != 'completed'
+                      AND (
+                        enrollment_id = $1
+                        OR title LIKE $2
+                        OR description LIKE $3
+                      )
+                `, [enrollId, `%#${enrollId}%`, `%highlight=${enrollId}%`]);
+                console.log(`✅ Tâche d'inscription #${enrollId} marquée comme complétée`);
             } catch (taskError) {
                 console.error('❌ Erreur mise à jour tâche:', taskError);
             }
@@ -419,7 +424,7 @@ exports.completeAppointment = async (req, res) => {
                         enrollment_date: enrollmentDate,
                         first_month_prorata: firstMonthProrata,
                         transfer_documents: true,
-                        create_birthday_event: true,
+                        create_birthday_event: false,
                         create_notification: true,
                         archive_enrollment: true
                     }

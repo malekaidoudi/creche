@@ -11,7 +11,7 @@ import {
     MessageSquare, Clock, CheckCircle, AlertCircle, Loader2,
     ArrowLeft
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useTheme } from '../../hooks/useTheme';
 import { useAuth } from '../../hooks/useAuth';
@@ -20,6 +20,8 @@ import { Button } from '../../components/ui/Button';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 import API_CONFIG from '../../config/api';
+import useIsMobile from '../../hooks/useIsMobile';
+import MobileNavigation from '../../components/mobile/MobileNavigation';
 
 // Fonction pour construire l'URL complète de la photo
 const getChildPhotoUrl = (photoUrl) => {
@@ -31,10 +33,12 @@ const getChildPhotoUrl = (photoUrl) => {
 };
 
 const ChildDailyReportsPage = () => {
+    const isMobile = useIsMobile();
     const { isRTL } = useLanguage();
     const { isDark } = useTheme();
     const { user } = useAuth();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
 
     // États
     const [children, setChildren] = useState([]);
@@ -55,9 +59,14 @@ const ChildDailyReportsPage = () => {
             const res = await api.get(`/api/daily-reports/parent/my-children?date=${selectedDate}`);
             if (res.data.success) {
                 setChildren(res.data.children);
-                // Sélectionner automatiquement le premier enfant
+                const childParam = searchParams.get('child');
+                const matchedChild = childParam
+                    ? res.data.children.find(c => String(c.child_id) === String(childParam) || String(c.id) === String(childParam))
+                    : null;
+
+                // Sélectionner automatiquement l'enfant demandé dans l'URL ou le premier
                 if (res.data.children.length > 0 && !selectedChild) {
-                    selectChild(res.data.children[0]);
+                    selectChild(matchedChild || res.data.children[0]);
                 } else if (selectedChild) {
                     // Recharger le rapport de l'enfant sélectionné
                     const updatedChild = res.data.children.find(c => c.child_id === selectedChild.child_id);
@@ -190,9 +199,11 @@ const ChildDailyReportsPage = () => {
         educator: isRTL ? 'المربية' : 'Éducatrice',
         history: isRTL ? 'السجل' : 'Historique',
         back: isRTL ? 'رجوع' : 'Retour',
-        bottle: isRTL ? 'رضاعة' : 'Biberon',
-        compote: isRTL ? 'كومبوت' : 'Compote',
-        fruit: isRTL ? 'فاكهة' : 'Fruit',
+        bottle: isRTL ? 'رضاعة / حليب' : 'Biberon / Lait',
+        meal: isRTL ? 'وجبة اليوم' : 'Repas du jour',
+        compote: isRTL ? 'كومبوت / ياغورت' : 'Compote / Yaourt',
+        fruit: isRTL ? 'فاكهة / لمجة' : 'Fruit / Goûter',
+        snack: isRTL ? 'وجبة خفيفة' : 'Goûter',
         solid: isRTL ? 'صلب' : 'Solide',
         other: isRTL ? 'أخرى' : 'Autre'
     };
@@ -214,8 +225,32 @@ const ChildDailyReportsPage = () => {
     };
 
     const getMealTypeLabel = (value) => {
-        const map = { bottle: labels.bottle, compote: labels.compote, fruit: labels.fruit, solid: labels.solid, other: labels.other };
+        const map = {
+            bottle: labels.bottle,
+            meal: labels.meal,
+            compote: labels.compote,
+            fruit: labels.fruit,
+            snack: labels.snack,
+            solid: labels.solid,
+            other: labels.other
+        };
         return map[value] || value;
+    };
+
+    const getSupplyLabel = (supply) => {
+        if (supply.supply_type === 'diapers') {
+            return `${supply.quantity} ${isRTL ? 'حفاضات' : 'couches'}`;
+        }
+        if (supply.description) {
+            return supply.description;
+        }
+        const typeMap = {
+            wipes: isRTL ? 'مناديل مبللة' : 'Lingettes',
+            cream: isRTL ? 'مرهم / كريم' : 'Crème',
+            clothes: isRTL ? 'ملابس إضافية' : 'Vêtements',
+            other: isRTL ? 'مستلزمات' : 'Fournitures'
+        };
+        return typeMap[supply.supply_type] || (isRTL ? 'مستلزمات' : 'Fournitures');
     };
 
     const getAppetiteColor = (value) => {
@@ -237,15 +272,20 @@ const ChildDailyReportsPage = () => {
     }
 
     return (
-        <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} pb-24`} dir={isRTL ? 'rtl' : 'ltr'}>
+        <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} ${isMobile ? 'pb-44' : 'pb-12'}`} dir={isRTL ? 'rtl' : 'ltr'}>
             {/* Header Sticky */}
             <div className={`sticky top-0 z-30 ${isDark ? 'bg-gray-900/95 border-gray-800' : 'bg-white/95 border-gray-200'} backdrop-blur-md border-b px-4 py-3 shadow-xs pt-[calc(env(safe-area-inset-top,0px)+0.75rem)]`}>
                 <div className="max-w-4xl mx-auto flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <button
-                            onClick={() => navigate('/mon-espace')}
-                            className={`p-2 rounded-xl transition-colors ${isDark ? 'hover:bg-gray-800 text-gray-300' : 'hover:bg-gray-100 text-gray-600'}`}
+                            type="button"
+                            onClick={() => {
+                                const targetChildId = selectedChild?.id || selectedChild?.child_id || searchParams.get('child');
+                                navigate(targetChildId ? `/mon-espace?openChild=${targetChildId}` : '/mon-espace');
+                            }}
+                            className="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors shrink-0"
                             title={labels.back}
+                            aria-label={labels.back}
                         >
                             <ArrowLeft className={`w-5 h-5 ${isRTL ? 'rotate-180' : ''}`} />
                         </button>
@@ -264,16 +304,16 @@ const ChildDailyReportsPage = () => {
                 </div>
             </div>
 
-            <div className="max-w-4xl mx-auto px-4 pt-4">
+            <div className="max-w-4xl mx-auto px-3 sm:px-4 pt-3 sm:pt-4 pb-44">
 
             {/* Sélection d'enfant (si plusieurs) */}
             {children.length > 1 && (
-                <div className="flex flex-wrap gap-3 mb-6">
+                <div className="flex flex-wrap gap-2 sm:gap-3 mb-3 sm:mb-6">
                     {children.map(child => (
                         <button
                             key={child.child_id}
                             onClick={() => selectChild(child)}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${selectedChild?.child_id === child.child_id
+                            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm rounded-full transition-all ${selectedChild?.child_id === child.child_id
                                 ? 'bg-primary-500 text-white shadow-lg'
                                 : isDark
                                     ? 'bg-gray-800 text-gray-300 hover:bg-gray-700'
@@ -281,12 +321,12 @@ const ChildDailyReportsPage = () => {
                                 }`}
                         >
                             {child.report_type === 'baby' ? (
-                                <Baby className="w-4 h-4" />
+                                <Baby className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                             ) : (
-                                <User className="w-4 h-4" />
+                                <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                             )}
                             <span>{child.first_name}</span>
-                            {child.has_report && <CheckCircle className="w-4 h-4 text-green-400" />}
+                            {child.has_report && <CheckCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-400" />}
                         </button>
                     ))}
                 </div>
@@ -297,8 +337,8 @@ const ChildDailyReportsPage = () => {
                     {/* Rapport */}
                     <div>
                         {/* Navigation de date */}
-                        <Card className={`mb-4 ${isDark ? 'bg-gray-800 border-gray-700' : ''}`}>
-                            <CardContent className="p-4">
+                        <Card className={`mb-3 sm:mb-4 ${isDark ? 'bg-gray-800 border-gray-700' : ''}`}>
+                            <CardContent className="p-2.5 sm:p-4">
                                 <div className="flex items-center justify-between">
                                     <Button
                                         variant="ghost"
@@ -413,11 +453,7 @@ const ChildDailyReportsPage = () => {
                                                                     {isRTL ? 'أحضر هذا اليوم' : 'Apporté ce jour'}
                                                                 </p>
                                                                 <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300 truncate">
-                                                                    {(selectedReport.today_supplies || selectedChild.today_supplies).map(s =>
-                                                                        s.supply_type === 'diapers'
-                                                                            ? `${s.quantity} ${isRTL ? 'حفاضات' : 'couches'}`
-                                                                            : s.description || (isRTL ? 'طعام' : 'Nourriture')
-                                                                    ).join(', ')}
+                                                                    {(selectedReport.today_supplies || selectedChild.today_supplies).map(s => getSupplyLabel(s)).join(', ')}
                                                                 </p>
                                                             </div>
                                                         </div>
@@ -509,8 +545,10 @@ const ChildDailyReportsPage = () => {
                                                                         <span className={`px-2 py-0.5 rounded text-xs font-medium ${isDark ? 'bg-orange-900/40 text-orange-400' : 'bg-orange-100 text-orange-700'}`}>
                                                                             {meal.period === 'morning' ? (isRTL ? 'صباح' : 'Matin') :
                                                                                 meal.period === 'noon' ? (isRTL ? 'ظهر' : 'Midi') :
-                                                                                    meal.period === 'afternoon' ? (isRTL ? 'بعد الظهر' : 'Après-midi') :
-                                                                                        (isRTL ? 'يوم كامل' : 'Journée')}
+                                                                                    meal.period === 'snack' ? (isRTL ? 'لمجة' : 'Goûter') :
+                                                                                        meal.period === 'afternoon' ? (isRTL ? 'بعد الظهر' : 'Après-midi') :
+                                                                                            meal.period?.includes(':') ? meal.period :
+                                                                                                (isRTL ? 'يوم كامل' : 'Journée')}
                                                                         </span>
                                                                         <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>
                                                                             {meal.meal_type?.startsWith('food_')
@@ -698,12 +736,12 @@ const ChildDailyReportsPage = () => {
                                     exit={{ opacity: 0 }}
                                 >
                                     <Card className={isDark ? 'bg-gray-800 border-gray-700' : ''}>
-                                        <CardContent className="py-16 text-center">
-                                            <AlertCircle className={`w-16 h-16 mx-auto mb-4 ${isDark ? 'text-gray-600' : 'text-gray-400'}`} />
-                                            <h3 className={`text-xl font-semibold mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                                        <CardContent className="py-5 sm:py-10 text-center">
+                                            <AlertCircle className={`w-9 h-9 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-3 ${isDark ? 'text-gray-600' : 'text-gray-400'}`} />
+                                            <h3 className={`text-base sm:text-xl font-bold mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>
                                                 {labels.noReport}
                                             </h3>
-                                            <p className={isDark ? 'text-gray-400' : 'text-gray-500'}>
+                                            <p className={`text-xs sm:text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                                                 {labels.noReportDesc}
                                             </p>
                                         </CardContent>
@@ -730,6 +768,9 @@ const ChildDailyReportsPage = () => {
                 </Card>
             )}
             </div>
+
+            {/* Navigation mobile */}
+            {isMobile && <MobileNavigation />}
         </div>
     );
 };

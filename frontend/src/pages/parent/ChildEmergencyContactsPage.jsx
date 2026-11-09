@@ -225,39 +225,42 @@ const ChildEmergencyContactsPage = () => {
     const isFather = parentGender === 'male';
     const firstParentLabel = isFather ? (isRTL ? 'الأب (حسابك)' : 'Père (Votre compte)') : (isRTL ? 'الأم (حسابك)' : 'Mère (Votre compte)');
     const secondParentLabel = isFather ? (isRTL ? 'الأم (الطرف الثاني)' : 'Mère (2ème parent)') : (isRTL ? 'الأب (الطرف الثاني)' : 'Père (2ème parent)');
+    const targetChildId = id || child?.id;
 
     return (
-        <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 ${isMobile ? 'pb-28 pt-[calc(env(safe-area-inset-top,0px)+0.75rem)]' : 'pb-16'}`}>
-            <div className="max-w-2xl mx-auto px-4 py-6">
-                {/* Header */}
-                {!isMobile && (
+        <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 ${isMobile ? 'pb-32' : 'pb-16'}`}>
+            {/* Header Sticky */}
+            <div className="sticky top-0 z-20 bg-white/95 dark:bg-gray-900/95 backdrop-blur border-b border-gray-200 dark:border-gray-800 shadow-xs px-4 py-3 pt-[calc(env(safe-area-inset-top,0px)+0.75rem)]">
+                <div className="flex items-center justify-between max-w-2xl mx-auto">
                     <button
-                        onClick={() => navigate('/mon-espace')}
-                        className="mb-6 flex items-center gap-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
+                        type="button"
+                        onClick={() => navigate(targetChildId ? `/mon-espace?openChild=${targetChildId}` : '/mon-espace')}
+                        className="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors shrink-0"
+                        title={isRTL ? 'رجوع' : 'Retour'}
+                        aria-label={isRTL ? 'رجوع' : 'Retour'}
                     >
-                        <ArrowLeft className="w-5 h-5 rtl:rotate-180" />
-                        <span>{isRTL ? 'العودة إلى فضاء الولي' : 'Retour à mon espace'}</span>
+                        <ArrowLeft className={`w-5 h-5 ${isRTL ? 'rotate-180' : ''}`} />
                     </button>
-                )}
-
-                {/* Titre */}
-                <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-2xl bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center text-primary-600 dark:text-primary-400 shadow-sm">
-                            <Users className="w-6 h-6" />
+                    <div className="flex items-center gap-2.5">
+                        <div className="w-9 h-9 rounded-xl bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 flex items-center justify-center shrink-0">
+                            <Users className="w-5 h-5" />
                         </div>
-                        <div>
-                            <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                        <div className="text-left rtl:text-right">
+                            <h1 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white leading-tight">
                                 {isRTL ? 'الاتصال وجهات الثقة' : 'Contacts & Personnes de confiance'}
                             </h1>
                             {child && (
-                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
                                     {child.first_name} {child.last_name}
                                 </p>
                             )}
                         </div>
                     </div>
+                    <div className="w-9" />
                 </div>
+            </div>
+
+            <div className="max-w-2xl mx-auto px-4 py-6">
 
                 {/* Avertissement général */}
                 <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/40 rounded-2xl p-4 mb-6">

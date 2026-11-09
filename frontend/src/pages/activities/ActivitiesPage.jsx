@@ -2,17 +2,20 @@
  * Page du fil d'activités
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiPlus, FiLoader, FiImage, FiCheck, FiX, FiChevronUp, FiChevronDown } from 'react-icons/fi';
+import { FiPlus, FiLoader, FiImage, FiCheck } from 'react-icons/fi';
 import ActivityCard from '../../components/activities/ActivityCard';
 import ActivityForm from '../../components/activities/ActivityForm';
 import FullscreenFeed from '../../components/activities/FullscreenFeed';
 import useActivities from '../../hooks/useActivities';
 import { useDialogContext } from '../../contexts/DialogContext';
 import { useAccess } from '../../access';
+import useIsMobile from '../../hooks/useIsMobile';
+import MobileNavigation from '../../components/mobile/MobileNavigation';
 
 const ActivitiesPage = () => {
+  const isMobile = useIsMobile();
   const dialog = useDialogContext();
   const [showForm, setShowForm] = useState(false);
   const [isRTL, setIsRTL] = useState(false);
@@ -117,7 +120,7 @@ const ActivitiesPage = () => {
   };
 
   return (
-    <div className={`pb-20 min-h-full overflow-x-clip ${isRTL ? 'rtl' : 'ltr'}`} dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className={`${isMobile ? 'pb-24' : 'pb-20'} min-h-full overflow-x-clip ${isRTL ? 'rtl' : 'ltr'}`} dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Notification de succès */}
       <AnimatePresence>
         {showSuccess && (
@@ -269,6 +272,8 @@ const ActivitiesPage = () => {
           />
         )}
       </AnimatePresence>
+      {/* Navigation mobile */}
+      {isMobile && <MobileNavigation />}
     </div>
   );
 };

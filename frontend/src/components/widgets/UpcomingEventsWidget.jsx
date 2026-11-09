@@ -7,7 +7,7 @@ import { useAccess, FEATURES } from '../../access';
 import axios from 'axios';
 import WidgetCard, { WidgetEmptyState } from '../ui/WidgetCard';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3003/api';
+const API_URL = `${(import.meta.env.VITE_API_URL || 'http://localhost:3003/api').replace(/\/api\/?$/, '').replace(/\/+$/, '')}/api`;
 
 const EVENT_TYPE_ICONS = {
   general: '📢',

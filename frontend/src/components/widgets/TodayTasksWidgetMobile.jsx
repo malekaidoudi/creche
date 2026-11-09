@@ -1,37 +1,28 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { CheckCircle, Clock, ClipboardCheck, User, Phone, CalendarPlus, Calendar } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { CheckCircle, Clock, ClipboardCheck, User, Phone, Calendar, Eye, Cake } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useDialogContext } from '../../contexts/DialogContext';
 import { useLanguage } from '../../hooks/useLanguage';
 import api from '../../services/api';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import TaskDetailModal from '../modals/TaskDetailModal';
 import AppointmentActionModal from '../modals/AppointmentActionModal';
+import {
+    isDesktopOnlyTask,
+    isObsoleteDocTask,
+    getTaskAutoKind,
+    cleanTaskTitle,
+    cleanTaskDescription,
+    resolveEnrollmentTarget
+} from '../../utils/taskHelpers';
 
 /**
  * Composant de carte mobile unifié pour toutes les tâches
  * Design compact adapté aux petits écrans
  */
-const isBirthdayRelatedTask = (task) =>
-    Boolean(
-        task?.type === 'birthday' ||
-            task?.birthday_child_id ||
-            /anniversaire/i.test(task?.title || '') ||
-            /\/anniversaire\/\d+/.test(task?.description || '')
-    );
-
-const cleanTaskCardDescription = (desc) => {
-    if (!desc) return '';
-    return String(desc)
-        .replace(/🔗\s*Lien\s*:\s*\/[^\s]+/gi, '')
-        .replace(/^[ \t]*•[ \t]*Vérifier les allergies[^\n]*\n?/gim, '')
-        .replace(/Notes médicales\/allergies\s*:\s*[^.\n]+\.?\s*/gi, '')
-        .trim();
-};
-
-const MobileTaskCard = ({ task, index, isRTL, onTaskClick, onValidate, onComplete }) => {
-    const isBirthdayTask = isBirthdayRelatedTask(task);
+const MobileTaskCard = ({ task, isRTL, onTaskClick, onValidate, onManageAppointment, onReviewEnrollment, onComplete }) => {
+    const autoKind = getTaskAutoKind(task);
+    const isBirthdayTask = autoKind === 'birthday';
 
     // Couleurs selon le type
     const getTypeConfig = () => {
@@ -67,8 +58,8 @@ const MobileTaskCard = ({ task, index, isRTL, onTaskClick, onValidate, onComplet
         rawTime !== '00:00' &&
         rawTime !== '01:00';
 
-    let cleanedDescription = cleanTaskCardDescription(task.description);
-    let displayTitle = task.title;
+    let cleanedDescription = cleanTaskDescription(task.description);
+    let displayTitle = cleanTaskTitle(task, isRTL);
 
     if (isRTL && isBirthdayTask) {
         if (displayTitle) {
@@ -141,9 +132,24 @@ const MobileTaskCard = ({ task, index, isRTL, onTaskClick, onValidate, onComplet
                     </p>
                 )}
 
-                {/* Boutons d'action */}
+                {/* Boutons d'action contextuels */}
                 <div className="flex flex-wrap items-center gap-2 mt-2">
-                    {isBirthdayTask && (
+                    {/* 1. Demande d'inscription */}
+                    {autoKind === 'enrollment_review' && task.status !== 'completed' && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onReviewEnrollment(task);
+                            }}
+                            className="flex items-center gap-1 px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-md transition-colors"
+                        >
+                            <Eye className="w-3 h-3" />
+                            <span>{isRTL ? 'فحص الملف' : 'Examiner le dossier'}</span>
+                        </button>
+                    )}
+
+                    {/* 2. Anniversaire */}
+                    {autoKind === 'birthday' && (
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -151,12 +157,19 @@ const MobileTaskCard = ({ task, index, isRTL, onTaskClick, onValidate, onComplet
                             }}
                             className="flex items-center gap-1 px-2.5 py-1 bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold rounded-md transition-colors"
                         >
-                            <span>🎂 Gérer</span>
+                            <Cake className="w-3 h-3" />
+                            <span>
+                                {isRTL
+                                    ? 'إدارة عيد الميلاد'
+                                    : /préparer/i.test(task.title || '')
+                                    ? '🎀 Voir & Préparer'
+                                    : '🎂 Organiser & Assigner'}
+                            </span>
                         </button>
                     )}
 
-                    {/* Bouton Valider pour RDV inscription */}
-                    {task.type === 'appointment' && task.metadata?.is_inscription && task.status !== 'completed' && (
+                    {/* 3. RDV inscription */}
+                    {autoKind === 'inscription_appointment' && task.status !== 'completed' && (
                         <button
                             onClick={(e) => { e.stopPropagation(); onValidate(task); }}
                             className="flex items-center gap-1 px-2.5 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium rounded-md transition-colors"
@@ -166,8 +179,19 @@ const MobileTaskCard = ({ task, index, isRTL, onTaskClick, onValidate, onComplet
                         </button>
                     )}
 
-                    {/* Bouton Terminer pour autres types (masqué pour les tâches d'anniversaire) */}
-                    {!isBirthdayTask && task.type !== 'birthday' && task.status !== 'completed' && !(task.type === 'appointment' && task.metadata?.is_inscription) && (
+                    {/* 4. RDV standard */}
+                    {(autoKind === 'standard_appointment' || autoKind === 'pending_appointment') && task.status !== 'completed' && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onManageAppointment(task); }}
+                            className="flex items-center gap-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded-md transition-colors"
+                        >
+                            <Calendar className="w-3 h-3" />
+                            {isRTL ? 'إدارة الموعد' : 'Gérer le RDV'}
+                        </button>
+                    )}
+
+                    {/* 5. Bouton Terminer UNIQUEMENT pour les tâches manuelles et mémos */}
+                    {autoKind === 'manual' && task.status !== 'completed' && (
                         <button
                             onClick={(e) => { e.stopPropagation(); onComplete(task); }}
                             className="flex items-center gap-1 px-2.5 py-1 bg-green-500 hover:bg-green-600 text-white text-xs font-medium rounded-md transition-colors"
@@ -187,6 +211,7 @@ let cachedTodayTasks = null;
 
 const TodayTasksWidgetMobile = () => {
     const { isRTL } = useLanguage();
+    const navigate = useNavigate();
     const dialog = useDialogContext();
     const [tasks, setTasks] = useState(() => cachedTodayTasks || []);
     const [loading, setLoading] = useState(() => cachedTodayTasks === null);
@@ -217,20 +242,33 @@ const TodayTasksWidgetMobile = () => {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
-            const [eventsResponse, memosResponse] = await Promise.allSettled([
+            const [tasksTodayResponse, eventsResponse, memosResponse] = await Promise.allSettled([
+                api.get('/api/tasks/today'),
                 api.get('/api/events', { params: { limit: 50 } }),
                 api.get('/api/personal-memos/today')
             ]);
 
-            // NE PAS charger les RDV - ils ont leur propre widget
+            // 1. Tâches de la table tasks (strictement filtrées sans les tâches réservées au Desktop)
+            let dbTasks = [];
+            if (tasksTodayResponse.status === 'fulfilled' && tasksTodayResponse.value.data?.success) {
+                dbTasks = (tasksTodayResponse.value.data.tasks || [])
+                    .filter(t => !isDesktopOnlyTask(t) && !isObsoleteDocTask(t))
+                    .map(t => ({
+                        ...t,
+                        id: t.id,
+                        type: 'task',
+                        start_date: t.due_date,
+                        source: 'tasks'
+                    }));
+            }
 
+            // 2. Événements du jour (sans les RDV ni les tâches réservées au Desktop)
+            let filtered = [];
             if (eventsResponse.status === 'fulfilled' && eventsResponse.value.data.success) {
-                // Filtrer STRICTEMENT pour aujourd'hui et exclure les tâches en retard
-                // ⚠️ Les mémos ne viennent PAS de /api/events (table events, type='memo' = legacy
-                // et jamais alimentée) mais de /api/personal-memos (table personal_memos),
-                // traités séparément ci-dessous via memosResponse.
-                const filtered = (eventsResponse.value.data.events || []).filter(event => {
+                const dbTitles = new Set(dbTasks.map(t => cleanTaskTitle(t, false).toLowerCase()));
+                filtered = (eventsResponse.value.data.events || []).filter(event => {
                     if (!['task', 'event', 'meeting'].includes(event.type)) return false;
+                    if (isDesktopOnlyTask(event) || isObsoleteDocTask(event)) return false;
 
                     if (event.metadata && typeof event.metadata === 'object') {
                         if (event.metadata.from_staff === true) return false;
@@ -244,76 +282,45 @@ const TodayTasksWidgetMobile = () => {
 
                     if (event.status === 'completed' || event.status === 'cancelled') return false;
 
-                    // STRICTEMENT aujourd'hui (pas en retard)
                     const eventDate = new Date(event.start_date);
                     eventDate.setHours(0, 0, 0, 0);
+                    if (eventDate.getTime() !== today.getTime()) return false;
 
-                    return eventDate.getTime() === today.getTime();
+                    // Éviter le doublon si déjà présent dans dbTasks
+                    const normTitle = cleanTaskTitle(event, false).toLowerCase();
+                    if (dbTitles.has(normTitle)) return false;
+
+                    return true;
                 });
-
-                // Mémos personnels : aujourd'hui + en retard, tant qu'ils ne sont pas marqués
-                // terminés (même règle que le widget desktop, cf. personalMemoService.getTodayMemos)
-                let memos = [];
-                if (memosResponse.status === 'fulfilled' && memosResponse.value.data.success) {
-                    memos = (memosResponse.value.data.memos || []).map(memo => ({
-                        id: `memo-${memo.id}`,
-                        type: 'memo',
-                        title: memo.content.substring(0, 50) + (memo.content.length > 50 ? '...' : ''),
-                        description: memo.content,
-                        start_date: memo.memo_date,
-                        priority: 'low',
-                        status: memo.is_completed ? 'completed' : 'pending'
-                    }));
-                }
-
-                // NE PAS inclure les RDV - ils ont leur propre widget
-                // const appointmentTasks = [...];
-
-                // Charger les anniversaires du jour
-                let birthdays = [];
-                try {
-                    const childrenResponse = await api.get('/api/children');
-                    if (childrenResponse.data.success) {
-                        const todayMonth = today.getMonth() + 1;
-                        const todayDay = today.getDate();
-                        const todayStr = today.toISOString().split('T')[0];
-
-                        birthdays = (childrenResponse.data.children || [])
-                            .filter(child => {
-                                if (!child.date_of_birth) return false;
-                                const birthDate = new Date(child.date_of_birth);
-                                return birthDate.getMonth() + 1 === todayMonth && birthDate.getDate() === todayDay;
-                            })
-                            .map(child => ({
-                                id: `birthday-${child.id}`,
-                                type: 'birthday',
-                                title: `🎂 Anniversaire de ${child.first_name} ${child.last_name}`,
-                                description: `${child.first_name} fête son anniversaire aujourd'hui !`,
-                                start_date: todayStr,
-                                priority: 'medium',
-                                status: 'pending',
-                                metadata: { child_id: child.id, child_name: `${child.first_name} ${child.last_name}` }
-                            }));
-                    }
-                } catch (error) {
-                    console.log('Erreur chargement anniversaires:', error.message);
-                }
-
-                // Combiner SANS les RDV (ils ont leur propre widget)
-                const combined = [...filtered, ...memos, ...birthdays];
-
-                combined.sort((a, b) => {
-                    // Par priorité puis par heure
-                    const priorityOrder = { high: 0, medium: 1, low: 2 };
-                    const priorityDiff = (priorityOrder[a.priority] || 1) - (priorityOrder[b.priority] || 1);
-                    if (priorityDiff !== 0) return priorityDiff;
-                    return new Date(a.start_date) - new Date(b.start_date);
-                });
-
-                const finalTasks = combined.slice(0, 10);
-                cachedTodayTasks = finalTasks;
-                setTasks(finalTasks);
             }
+
+            // 3. Mémos personnels
+            let memos = [];
+            if (memosResponse.status === 'fulfilled' && memosResponse.value.data.success) {
+                memos = (memosResponse.value.data.memos || []).map(memo => ({
+                    id: `memo-${memo.id}`,
+                    type: 'memo',
+                    title: memo.content.substring(0, 50) + (memo.content.length > 50 ? '...' : ''),
+                    description: memo.content,
+                    start_date: memo.memo_date,
+                    priority: 'low',
+                    status: memo.is_completed ? 'completed' : 'pending',
+                    source: 'personal_memos'
+                }));
+            }
+
+            const combined = [...dbTasks, ...filtered, ...memos];
+
+            combined.sort((a, b) => {
+                const priorityOrder = { urgent: 0, high: 1, medium: 2, low: 3 };
+                const priorityDiff = (priorityOrder[a.priority] || 2) - (priorityOrder[b.priority] || 2);
+                if (priorityDiff !== 0) return priorityDiff;
+                return new Date(a.start_date) - new Date(b.start_date);
+            });
+
+            const finalTasks = combined.slice(0, 10);
+            cachedTodayTasks = finalTasks;
+            setTasks(finalTasks);
         } catch (error) {
             console.error('Erreur chargement tâches du jour:', error);
         } finally {
@@ -398,14 +405,20 @@ const TodayTasksWidgetMobile = () => {
                 </div>
             ) : (
                 <div className="space-y-2">
-                    {tasks.map((task, index) => (
+                    {tasks.map((task) => (
                         <MobileTaskCard
-                            key={task.id}
+                            key={`${task.source || 'evt'}-${task.id}`}
                             task={task}
-                            index={index}
                             isRTL={isRTL}
                             onTaskClick={handleTaskClick}
                             onValidate={handleValidate}
+                            onManageAppointment={handleTaskClick}
+                            onReviewEnrollment={(t) => {
+                                const { enrollmentId, childName } = resolveEnrollmentTarget(t);
+                                navigate('/dashboard/pending-enrollments', {
+                                    state: { highlightId: enrollmentId, highlightChildName: childName }
+                                });
+                            }}
                             onComplete={handleComplete}
                         />
                     ))}

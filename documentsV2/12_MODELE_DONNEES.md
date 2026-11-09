@@ -22,7 +22,8 @@ Le projet a connu **plusieurs générations de gestion de schéma**, toutes visi
 | Domaine | Tables principales | Source(s) |
 |---|---|---|
 | Comptes & sécurité | `users`, `revoked_tokens`, `permissions`, `user_permissions` | migration 001 ; `permissionsService.js` |
-| Enfants & familles | `children`, `child_growth_records` | migration 001, 002, 003, 004, 006, 009 (`saturday_attendance`) |
+| Enfants & familles | `children`, `child_growth_records` | migration 001, 002, 003, 004, 006, 009 (`saturday_attendance`), 015 (`care_schedule`, `monthly_discount`), 018 (`insurance_paid_school_year`) |
+| Facturation & Dépenses | `child_invoices`, `nursery_expenses` | migration 015 (`billing_and_care_schedule`), 018 (`annual_insurance_tracking`) |
 | Inscription (workflow) | `enrollments`, `enrollment_documents`, `children_documents`, `enrollments_archive`, `children_archive` | `001_refactor_enrollments_workflow.sql`, `create_enrollment_documents_table.sql`, migration 005, 009 (`saturday_attendance`, ex-`lunch_assistance`) |
 | Présences | `attendance` | migration 001 |
 | Rendez-vous | `appointments` | migration 001 |

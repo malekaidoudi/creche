@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { motion } from 'framer-motion';
-import { Baby, User, Calendar, Phone, AlertTriangle, Save, ArrowLeft, CheckCircle, UserPlus, ArrowRight, FileText, Search, Users, Lock, Sun, Clock, Tag, CreditCard, Receipt, Calculator, Info } from 'lucide-react';
+import { Baby, User, Calendar, AlertTriangle, Save, ArrowLeft, CheckCircle, UserPlus, ArrowRight, FileText, Search, Users, Lock, Sun, Tag, CreditCard, Receipt, Calculator, Info, Sparkles } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useAccess, FEATURES } from '../../access';
@@ -41,15 +41,6 @@ const AddChildPage = () => {
   const [loadingParents, setLoadingParents] = useState(false);
   const [parentSearch, setParentSearch] = useState('');
   const preselectedParentId = searchParams.get('parentId');
-
-  // Redirection sur mobile vers l'onboarding unifié
-  useEffect(() => {
-    const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
-    if (isMobileDevice) {
-      navigate('/dashboard/add-user?role=parent', { replace: true });
-    }
-  }, [navigate]);
-
   const isPersonal = searchParams.get('personal') === 'true';
 
   const {
@@ -365,6 +356,18 @@ const AddChildPage = () => {
             </p>
           </div>
         </div>
+
+        {!isPersonal && (
+          <button
+            type="button"
+            onClick={() => navigate('/dashboard/add-user?role=parent')}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-950/50 hover:bg-primary-100 dark:hover:bg-primary-900/40 rounded-xl border border-primary-200 dark:border-primary-800 transition-colors shadow-2xs shrink-0"
+            title={isRTL ? 'الانتقال إلى وضع التسجيل السريع' : 'Passer à l\'enregistrement express'}
+          >
+            <Sparkles className="w-3.5 h-3.5 text-primary-500" />
+            <span>{isRTL ? 'التسجيل السريع' : 'Inscription Express ⚡'}</span>
+          </button>
+        )}
       </div>
 
       <Card>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -43,31 +44,52 @@ const PendingEnrollmentsPage = () => {
   const [rejectData, setRejectData] = useState({ rejection_type: 'autre', custom_reason: '' });
   const [usingDemoData, setUsingDemoData] = useState(false);
   const [highlightId, setHighlightId] = useState(null);
+  const [highlightChildName, setHighlightChildName] = useState('');
+  const location = useLocation();
 
   useEffect(() => {
-    // Vérifier s'il y a un paramètre highlight dans l'URL
+    // Vérifier s'il y a un paramètre highlight dans l'URL ou dans location.state
     const urlParams = new URLSearchParams(window.location.search);
-    const highlight = urlParams.get('highlight');
+    const highlight = location.state?.highlightId || urlParams.get('highlight');
+    const childNameFromState = location.state?.highlightChildName || '';
     if (highlight) {
-      setHighlightId(parseInt(highlight));
-      // Nettoyer l'URL après avoir récupéré le paramètre
+      setHighlightId(parseInt(highlight, 10));
+    }
+    if (childNameFromState) {
+      setHighlightChildName(childNameFromState.trim());
+    }
+    if (window.location.search) {
+      // Nettoyer l'URL après avoir récupéré le paramètre pour ne jamais exposer d'ID technique
       window.history.replaceState({}, '', window.location.pathname);
     }
 
     fetchPendingEnrollments();
-  }, []);
+  }, [location.state]);
 
   // Scroll vers l'inscription mise en évidence après le chargement
   useEffect(() => {
-    if (highlightId && enrollments.length > 0) {
+    if (enrollments.length === 0) return;
+    let targetId = highlightId;
+    if (!targetId && highlightChildName) {
+      const norm = highlightChildName.toLowerCase();
+      const matched = enrollments.find(e => {
+        const full = `${e.child_first_name || ''} ${e.child_last_name || ''}`.trim().toLowerCase();
+        return full === norm || full.includes(norm) || norm.includes(full);
+      });
+      if (matched) {
+        targetId = matched.id;
+        setHighlightId(matched.id);
+      }
+    }
+    if (targetId) {
       setTimeout(() => {
-        const element = document.querySelector(`[data-enrollment-id="${highlightId}"]`);
+        const element = document.querySelector(`[data-enrollment-id="${targetId}"]`);
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-      }, 500);
+      }, 400);
     }
-  }, [highlightId, enrollments]);
+  }, [highlightId, highlightChildName, enrollments]);
 
   const fetchPendingEnrollments = async () => {
     try {
@@ -124,6 +146,7 @@ const PendingEnrollmentsPage = () => {
       setEnrollments(prev => prev.filter(e => e.id !== enrollmentId));
       toast.success(isRTL ? 'تم قبول الطلب' : 'Dossier approuvé avec succès');
       setShowApproveModal(false);
+      window.dispatchEvent(new Event('taskUpdated'));
 
       // Rafraîchir la liste
       await fetchPendingEnrollments();
@@ -165,6 +188,7 @@ const PendingEnrollmentsPage = () => {
       setEnrollments(prev => prev.filter(e => e.id !== selectedEnrollment.id));
       setShowRejectModal(false);
       toast.success(isRTL ? 'تم رفض الطلب' : 'Demande rejetée');
+      window.dispatchEvent(new Event('taskUpdated'));
     } catch (error) {
       console.error('Erreur rejet:', error);
       toast.error(isRTL ? 'خطأ في الرفض' : 'Erreur lors du rejet');

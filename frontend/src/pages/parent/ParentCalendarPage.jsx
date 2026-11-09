@@ -125,43 +125,9 @@ const ParentCalendarPage = () => {
                     // Vacances non chargées
                 }
 
-                // Charger les anniversaires
-                let birthdayEvents = [];
-                try {
-                    console.log('🔄 PARENT - Chargement des enfants pour anniversaires...');
-                    const childrenResponse = await api.get('/api/children');
-                    console.log('📋 PARENT - Réponse API children:', childrenResponse.data);
-
-                    if (childrenResponse.data.success && childrenResponse.data.children) {
-                        console.log('👶 PARENT - Nombre d\'enfants:', childrenResponse.data.children.length);
-                        console.log('👶 PARENT - Enfants avec date de naissance:', childrenResponse.data.children.filter(c => c.date_of_birth));
-
-                        birthdayEvents = childrenResponse.data.children
-                            .filter(child => child.date_of_birth)
-                            .map(child => {
-                                const birthDate = new Date(child.date_of_birth);
-                                const currentYear = new Date().getFullYear();
-                                const birthdayThisYear = `${currentYear}-${String(birthDate.getMonth() + 1).padStart(2, '0')}-${String(birthDate.getDate()).padStart(2, '0')}`;
-                                console.log(`🎂 PARENT - Anniversaire de ${child.first_name}: ${birthdayThisYear}`);
-                                return {
-                                    id: `birthday-${child.id}`,
-                                    title: `🎂 ${child.first_name} ${child.last_name}`,
-                                    start: birthdayThisYear,
-                                    allDay: true,
-                                    backgroundColor: '#EC4899',
-                                    borderColor: '#EC4899',
-                                    extendedProps: {
-                                        type: 'birthday',
-                                        childId: child.id
-                                    }
-                                };
-                            });
-
-                    }
-                } catch (error) {
-                    console.error('❌ PARENT - Erreur chargement anniversaires:', error);
-                    console.error('❌ PARENT - Détails:', error.response?.data);
-                }
+                // Les événements d'anniversaire confirmés (decision = 'yes') et autorisés pour ce parent
+                // sont déjà inclus dans `formattedEvents` via `/api/events/views/calendar`.
+                const birthdayEvents = [];
 
                 // Charger les rendez-vous du parent
                 let appointmentEvents = [];

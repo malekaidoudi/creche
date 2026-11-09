@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useLanguage } from '../../hooks/useLanguage';
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3003/api';
+const API_URL = `${(import.meta.env.VITE_API_URL || 'http://localhost:3003/api').replace(/\/api\/?$/, '').replace(/\/+$/, '')}/api`;
 
 const MessagesWidget = ({ isMobileView = false }) => {
   const { isRTL } = useLanguage();

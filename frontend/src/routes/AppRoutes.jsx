@@ -37,6 +37,7 @@ const ChildEmergencyContactsPage = lazy(() => import('../pages/parent/ChildEmerg
 const ChildDailyReportsPage = lazy(() => import('../pages/parent/ChildDailyReportsPage'))
 const AddChildPage = lazy(() => import('../pages/parent/AddChildPage'))
 const ParentTreatmentsPage = lazy(() => import('../pages/parent/TreatmentsPage'))
+const ParentBillingPage = lazy(() => import('../pages/parent/ParentBillingPage'))
 const BirthdayEventPage = lazy(() => import('../pages/BirthdayEventPage'))
 
 // Pages staff
@@ -283,6 +284,14 @@ const AppRoutes = () => {
                             element={
                                 <ProtectedRoute roles={['parent']}>
                                     <ParentTreatmentsPage />
+                                </ProtectedRoute>
+                            }
+                        />
+                        <Route
+                            path="mon-espace/cotisations"
+                            element={
+                                <ProtectedRoute roles={['parent', 'admin', 'developer']}>
+                                    <ParentBillingPage />
                                 </ProtectedRoute>
                             }
                         />

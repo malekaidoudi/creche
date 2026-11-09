@@ -4,7 +4,7 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import frLocale from '@fullcalendar/core/locales/fr';
-import { Calendar, Filter, X, ChevronRight, Clock, User, MapPin, CheckCircle, Lock } from 'lucide-react';
+import { Calendar, Filter, X, ChevronRight, User, MapPin, CheckCircle, Lock } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useAuth } from '../../hooks/useAuth';
 import { useAccess, FEATURES } from '../../access';
@@ -161,40 +161,8 @@ const MonthlyPlanningPage = () => {
           console.log('Pas de vacances annuelles configurées');
         }
 
-        // Charger les anniversaires des enfants
-        let birthdayEvents = [];
-        try {
-          const childrenResponse = await api.get('/api/children');
-          if (childrenResponse.data.success && childrenResponse.data.data) {
-            const currentYear = new Date().getFullYear();
-            const children = childrenResponse.data.data.children || [];
-
-            birthdayEvents = children
-              .filter(child => child.birth_date)
-              .map(child => {
-                const birthDate = new Date(child.birth_date);
-                const birthdayThisYear = `${currentYear}-${String(birthDate.getMonth() + 1).padStart(2, '0')}-${String(birthDate.getDate()).padStart(2, '0')}`;
-
-                return {
-                  id: `birthday-${child.id}`,
-                  title: `🎂 ${child.first_name} ${child.last_name}`,
-                  start: birthdayThisYear,
-                  allDay: true,
-                  backgroundColor: '#EC4899',
-                  borderColor: '#EC4899',
-                  extendedProps: {
-                    type: 'birthday',
-                    childId: child.id,
-                    isBirthday: true
-                  }
-                };
-              });
-
-            console.log('🎂 Anniversaires chargés:', birthdayEvents.length);
-          }
-        } catch (error) {
-          console.log('Pas d\'anniversaires chargés:', error);
-        }
+        // Les événements d'anniversaire confirmés (decision = 'yes') sont déjà inclus dans `formattedEvents` via `/api/events/views/calendar`
+        const birthdayEvents = [];
 
         // Combiner tous les événements
         const allEvents = [...formattedEvents, ...holidayEvents, ...vacationEvents, ...birthdayEvents];

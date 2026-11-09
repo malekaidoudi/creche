@@ -5,7 +5,7 @@ import { useTheme } from '../../hooks/useTheme'
 import { Mail, ArrowLeft, Send, CheckCircle } from 'lucide-react'
 import { motion } from 'framer-motion'
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3003/api'
+const API_BASE = `${(import.meta.env.VITE_API_URL || 'http://localhost:3003/api').replace(/\/api\/?$/, '').replace(/\/+$/, '')}/api`
 
 const ForgotPasswordPage = () => {
     const { isRTL } = useLanguage()

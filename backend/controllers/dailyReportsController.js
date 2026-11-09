@@ -67,7 +67,7 @@ const getChildrenForToday = async (req, res) => {
         cs.quantity as diaper_stock,
         cs.alert_threshold as diaper_alert_threshold
       FROM children c
-      INNER JOIN attendance a ON c.id = a.child_id AND DATE(a.date) = DATE($1) AND a.check_in_time IS NOT NULL
+      INNER JOIN attendance a ON c.id = a.child_id AND DATE(a.date) = DATE($1) AND (a.check_in_time IS NOT NULL OR COALESCE(a.status, 'present') = 'present')
       LEFT JOIN daily_reports dr ON c.id = dr.child_id AND DATE(dr.report_date) = DATE($1)
       LEFT JOIN child_supplies cs ON c.id = cs.child_id AND cs.supply_type = 'diapers'
       WHERE c.is_active = true
@@ -361,10 +361,7 @@ const createOrUpdateReport = async (req, res) => {
             sleep_notes,
             activities,
             observations,
-            status = 'draft',
-            // Champs fournitures (ignorés ici, gérés séparément par l'API supplies)
-            supplies_diapers,
-            supplies_food
+            status = 'draft'
         } = req.body;
 
         // Stocker les traitements médicaux en JSON dans le champ medication
@@ -447,30 +444,47 @@ const createOrUpdateReport = async (req, res) => {
                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                 `, [reportId, child_id, date, meal.period, meal.meal_type, meal.meal_description || null, meal.quantity || null, meal.notes || null]);
             }
+        } else if (Array.isArray(meals)) {
+            await db.query('DELETE FROM daily_meals WHERE report_id = $1', [reportId]);
         }
 
-        // Gérer les changements de couches détaillés
-        if (diaper_changes_list.length > 0) {
-            // Supprimer les anciens changements pour ce rapport
-            await db.query('DELETE FROM daily_diaper_changes WHERE report_id = $1', [reportId]);
+        // Gérer les changements de couches détaillés et l'impact sur le stock
+        // 1. Déterminer le nombre de couches préalablement enregistrées pour ce rapport
+        const prevDiapersRes = await db.query(
+            'SELECT COUNT(*)::int AS count FROM daily_diaper_changes WHERE report_id = $1',
+            [reportId]
+        );
+        const previousDiaperCount = prevDiapersRes.rows[0]?.count || 0;
 
-            // Insérer les nouveaux changements et décrémenter le stock
+        // 2. Mettre à jour la table daily_diaper_changes
+        await db.query('DELETE FROM daily_diaper_changes WHERE report_id = $1', [reportId]);
+
+        const hasDiaperList = Array.isArray(diaper_changes_list);
+        const newDiaperCount = hasDiaperList 
+            ? diaper_changes_list.length 
+            : (parseInt(diaper_changes, 10) || 0);
+
+        if (hasDiaperList && diaper_changes_list.length > 0) {
             for (const change of diaper_changes_list) {
                 await db.query(`
                     INSERT INTO daily_diaper_changes (report_id, child_id, change_date, change_time, nature, notes)
                     VALUES ($1, $2, $3, $4, $5, $6)
                 `, [reportId, child_id, date, change.time || null, change.nature, change.notes || null]);
             }
+        }
 
-            // Décrémenter le stock de couches
-            const diaperCount = diaper_changes_list.length;
+        // 3. Calculer la variation nette (Delta = Nouveau - Ancien)
+        const diaperDelta = newDiaperCount - previousDiaperCount;
+
+        if (diaperDelta > 0) {
+            // Plus de couches consommées -> décrémenter le stock du différentiel uniquement
             const stockResult = await db.query(`
                 UPDATE child_supplies 
                 SET quantity = GREATEST(0, quantity - $2),
                     updated_at = CURRENT_TIMESTAMP
                 WHERE child_id = $1 AND supply_type = 'diapers'
                 RETURNING quantity, alert_threshold
-            `, [child_id, diaperCount]);
+            `, [child_id, diaperDelta]);
 
             // Vérifier si stock bas et envoyer notification
             if (stockResult.rows.length > 0) {
@@ -479,7 +493,18 @@ const createOrUpdateReport = async (req, res) => {
                     await createLowStockNotification(child_id, 'diapers', quantity);
                 }
             }
+        } else if (diaperDelta < 0) {
+            // Couches retirées/corrigées -> réintégrer le stock du différentiel
+            const refundCount = Math.abs(diaperDelta);
+            await db.query(`
+                UPDATE child_supplies 
+                SET quantity = quantity + $2,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE child_id = $1 AND supply_type = 'diapers'
+                RETURNING quantity, alert_threshold
+            `, [child_id, refundCount]);
         }
+        // Si diaperDelta === 0 : Aucune modification de stock (ré-édition neutre)
 
         // Récupérer le rapport complet avec les détails
         const fullReport = await getFullReport(reportId);
@@ -604,6 +629,24 @@ const updateReportStatus = async (req, res) => {
 const deleteReport = async (req, res) => {
     try {
         const { id } = req.params;
+
+        // Récupérer le nombre de couches enregistrées avant suppression pour réintégrer le stock
+        const diaperResult = await db.query(
+            'SELECT child_id, COUNT(*)::int AS count FROM daily_diaper_changes WHERE report_id = $1 GROUP BY child_id',
+            [id]
+        );
+
+        if (diaperResult.rows.length > 0) {
+            const { child_id, count } = diaperResult.rows[0];
+            if (count > 0) {
+                await db.query(`
+                    UPDATE child_supplies 
+                    SET quantity = quantity + $2,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE child_id = $1 AND supply_type = 'diapers'
+                `, [child_id, count]);
+            }
+        }
 
         const result = await db.query(
             'DELETE FROM daily_reports WHERE id = $1 RETURNING *',

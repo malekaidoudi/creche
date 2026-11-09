@@ -83,13 +83,11 @@ const DailyReportsPage = () => {
         status: 'draft',
         // Fournitures apportées
         supplies_diapers: 0,
-        supplies_food: ''
+        supplies_custom: ''
     });
 
     // Fournitures apportées aujourd'hui
     const [suppliesBrought, setSuppliesBrought] = useState([]);
-    // Options de nourriture apportées pour cet enfant
-    const [foodOptions, setFoodOptions] = useState([]);
 
     // Charger les enfants et infos crèche
     useEffect(() => {
@@ -117,8 +115,7 @@ const DailyReportsPage = () => {
     const selectChild = async (child) => {
         setSelectedChild(child);
 
-        // Réinitialiser le formulaire et les options
-        setFoodOptions([]);
+        // Réinitialiser le formulaire
         setFormData({
             temperature: '',
             medication: '',
@@ -134,7 +131,7 @@ const DailyReportsPage = () => {
             observations: '',
             status: 'draft',
             supplies_diapers: 0,
-            supplies_food: ''
+            supplies_custom: ''
         });
 
         // Charger le rapport existant si présent
@@ -158,7 +155,7 @@ const DailyReportsPage = () => {
                         observations: r.observations || '',
                         status: r.status || 'draft',
                         supplies_diapers: 0,
-                        supplies_food: ''
+                        supplies_custom: ''
                     });
                 }
             } catch (error) {
@@ -166,24 +163,14 @@ const DailyReportsPage = () => {
             }
         }
 
-        // Charger les fournitures apportées aujourd'hui
+        // Charger les fournitures apportées à cette date
         try {
-            const suppliesRes = await api.get(`/api/supplies/today/${child.id}`);
+            const suppliesRes = await api.get(`/api/supplies/today/${child.id}?date=${reportDate}`);
             if (suppliesRes.data.success) {
                 setSuppliesBrought(suppliesRes.data.supplies || []);
             }
         } catch (error) {
             console.error('Erreur chargement fournitures:', error);
-        }
-
-        // Charger les options de nourriture apportées CE JOUR pour cet enfant
-        try {
-            const foodRes = await api.get(`/api/supplies/child/${child.id}/food-options?date=${reportDate}`);
-            if (foodRes.data.success) {
-                setFoodOptions(foodRes.data.food_options || []);
-            }
-        } catch (error) {
-            console.error('Erreur chargement options nourriture:', error);
         }
     };
 
@@ -209,15 +196,22 @@ const DailyReportsPage = () => {
                         await api.post(`/api/supplies/child/${selectedChild.id}/refill`, {
                             supply_type: 'diapers',
                             quantity: formData.supplies_diapers,
-                            notes: `Apporté le ${reportDate}`
+                            notes: `Apporté le ${reportDate}`,
+                            date: reportDate
                         });
                     }
-                    if (formData.supplies_food && formData.supplies_food.trim()) {
-                        await api.post(`/api/supplies/child/${selectedChild.id}/refill`, {
-                            supply_type: 'food',
-                            quantity: 1,
-                            notes: formData.supplies_food
+                    if (formData.supplies_custom && formData.supplies_custom.trim()) {
+                        await api.post('/api/supplies/daily-brought', {
+                            child_id: selectedChild.id,
+                            date: reportDate,
+                            supplies: [{ type: 'other', quantity: 1, description: formData.supplies_custom.trim() }]
                         });
+                    }
+                    if (formData.supplies_diapers > 0 || (formData.supplies_custom && formData.supplies_custom.trim())) {
+                        const suppliesRes = await api.get(`/api/supplies/today/${selectedChild.id}?date=${reportDate}`);
+                        if (suppliesRes.data.success) {
+                            setSuppliesBrought(suppliesRes.data.supplies || []);
+                        }
                     }
                 }
 
@@ -236,7 +230,7 @@ const DailyReportsPage = () => {
                 setSelectedChild(prev => ({ ...prev, has_report: true, report_status: payload.status }));
 
                 // Réinitialiser les fournitures après sauvegarde
-                setFormData(prev => ({ ...prev, supplies_diapers: 0, supplies_food: '' }));
+                setFormData(prev => ({ ...prev, supplies_diapers: 0, supplies_custom: '' }));
             }
         } catch (error) {
             console.error('Erreur sauvegarde:', error);
@@ -252,10 +246,8 @@ const DailyReportsPage = () => {
         const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
         // Pour les bébés: heure, pour les enfants: période
         const defaultPeriod = isBaby ? time : 'morning';
-        // Type par défaut: biberon pour bébé, première nourriture apportée ou autre pour enfant
-        const defaultMealType = isBaby
-            ? 'bottle'
-            : (foodMealOptions.length > 0 ? foodMealOptions[0].value : 'other');
+        // Type par défaut: biberon pour bébé, repas du jour pour enfant
+        const defaultMealType = isBaby ? 'bottle' : 'meal';
         setFormData(prev => ({
             ...prev,
             meals: [...prev.meals, { period: defaultPeriod, meal_type: defaultMealType, meal_description: '', quantity: 'full' }]
@@ -314,12 +306,13 @@ const DailyReportsPage = () => {
         try {
             const res = await api.post('/api/supplies/daily-brought', {
                 child_id: selectedChild.id,
+                date: reportDate,
                 supplies: [{ type: supplyType, quantity, description }]
             });
             if (res.data.success) {
                 toast.success(isRTL ? 'تم تسجيل المستلزمات' : 'Fournitures enregistrées');
                 // Recharger les fournitures
-                const suppliesRes = await api.get(`/api/supplies/today/${selectedChild.id}`);
+                const suppliesRes = await api.get(`/api/supplies/today/${selectedChild.id}?date=${reportDate}`);
                 if (suppliesRes.data.success) {
                     setSuppliesBrought(suppliesRes.data.supplies || []);
                 }
@@ -422,39 +415,54 @@ const DailyReportsPage = () => {
         return ageInMonths < 12;
     })() : false;
 
-    // Options de base pour les bébés uniquement
-    const babyMealOptions = [
-        { value: 'bottle', label: labels.bottle },
-        { value: 'compote', label: labels.compote },
-        { value: 'fruit', label: labels.fruit }
-    ];
-
-    // Options de nourriture apportées par les parents (avec clés uniques)
-    const seenFoodValues = new Set();
-    const foodMealOptions = foodOptions
-        .map((food, index) => {
-            const baseValue = `food_${food.toLowerCase().replace(/\s+/g, '_')}`;
-            // Ajouter un index si la valeur existe déjà
-            let value = baseValue;
-            if (seenFoodValues.has(value)) {
-                value = `${baseValue}_${index}`;
-            }
-            seenFoodValues.add(value);
-            return { value, label: food };
-        })
-        .filter((opt, index, self) =>
-            // Filtrer les doublons par label
-            self.findIndex(o => o.label.toLowerCase() === opt.label.toLowerCase()) === index
-        );
-
-    // Options finales selon l'âge :
-    // - Bébés : biberon + nourriture apportée + Autre
-    // - Enfants : nourriture apportée + Autre
+    // Catégories standards de repas (Biberon/Lait, Repas du jour, Compote/Yaourt, Fruit/Goûter, Autre)
     const mealTypeOptions = [
-        { value: 'bottle', label: labels.bottle },
-        ...foodMealOptions,
-        { value: 'other', label: labels.other }
+        { value: 'bottle', label: isRTL ? '🍼 رضاعة / حليب' : '🍼 Biberon / Lait' },
+        { value: 'meal', label: isRTL ? '🍲 وجبة اليوم' : '🍲 Repas du jour' },
+        { value: 'compote', label: isRTL ? '🥣 كومبوت / ياغورت' : '🥣 Compote / Yaourt' },
+        { value: 'fruit', label: isRTL ? '🍎 فاكهة / لمجة' : '🍎 Fruit / Goûter' },
+        { value: 'other', label: isRTL ? '📝 أخرى' : '📝 Autre' }
     ];
+
+    // Boutons rapides de produits consommables apportés par l'enfant
+    const consumablePresets = [
+        { type: 'wipes', icon: '🧻', label: isRTL ? 'مناديل مبللة' : 'Lingettes', description: isRTL ? 'مناديل مبللة' : 'Lingettes' },
+        { type: 'cream', icon: '🧴', label: isRTL ? 'مرهم / كريم' : 'Crème', description: isRTL ? 'مرهم / كريم' : 'Crème' },
+        { type: 'other', icon: '🤧', label: isRTL ? 'مناديل ورقية' : 'Mouchoirs', description: isRTL ? 'مناديل ورقية' : 'Mouchoirs' },
+        { type: 'clothes', icon: '👕', label: isRTL ? 'ملابس إضافية' : 'Vêtements', description: isRTL ? 'ملابس إضافية' : 'Vêtements de rechange' },
+        { type: 'other', icon: '💧', label: isRTL ? 'مصل فيزيولوجي' : 'Sérum phy.', description: isRTL ? 'مصل فيزيولوجي' : 'Sérum physiologique' }
+    ];
+
+    const getSupplyDisplay = (supply) => {
+        if (supply.supply_type === 'diapers') {
+            return {
+                text: `🧷 ${supply.quantity} ${isRTL ? 'حفاضات' : 'couches'}`,
+                className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
+            };
+        }
+        if (supply.supply_type === 'wipes') {
+            return {
+                text: `🧻 ${supply.description || (isRTL ? 'مناديل مبللة' : 'Lingettes')}`,
+                className: 'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300'
+            };
+        }
+        if (supply.supply_type === 'cream') {
+            return {
+                text: `🧴 ${supply.description || (isRTL ? 'مرهم / كريم' : 'Crème')}`,
+                className: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'
+            };
+        }
+        if (supply.supply_type === 'clothes') {
+            return {
+                text: `👕 ${supply.description || (isRTL ? 'ملابس إضافية' : 'Vêtements de rechange')}`,
+                className: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300'
+            };
+        }
+        return {
+            text: `📦 ${supply.description || (isRTL ? 'مستلزمات أخرى' : 'Produit consommable')}`,
+            className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+        };
+    };
 
     // Options de période pour les enfants (Matin, Midi, Goûter)
     const periodOptions = [
@@ -785,15 +793,13 @@ const DailyReportsPage = () => {
                                                                         <option key={opt.value} value={opt.value}>{opt.label}</option>
                                                                     ))}
                                                                 </select>
-                                                                {meal.meal_type === 'other' && (
-                                                                    <input
-                                                                        type="text"
-                                                                        placeholder={isRTL ? 'وصف...' : 'Description...'}
-                                                                        value={meal.meal_description || ''}
-                                                                        onChange={(e) => updateMeal(index, 'meal_description', e.target.value)}
-                                                                        className={`px-2 py-1 rounded border text-sm ${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
-                                                                    />
-                                                                )}
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder={isRTL ? 'تفاصيل الوجبة (اختياري)...' : 'Précision (ex: Soupe, Purée...)'}
+                                                                    value={meal.meal_description || ''}
+                                                                    onChange={(e) => updateMeal(index, 'meal_description', e.target.value)}
+                                                                    className={`px-2 py-1 rounded border text-sm ${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
+                                                                />
                                                                 <select
                                                                     value={meal.quantity || 'good'}
                                                                     onChange={(e) => updateMeal(index, 'quantity', e.target.value)}
@@ -898,17 +904,14 @@ const DailyReportsPage = () => {
                                                         ✅ {isRTL ? 'تم تسجيله اليوم:' : 'Enregistré aujourd\'hui :'}
                                                     </p>
                                                     <div className="flex flex-wrap gap-2">
-                                                        {suppliesBrought.map((supply, idx) => (
-                                                            <span key={idx} className={`px-2 py-1 text-xs rounded-full ${supply.supply_type === 'diapers'
-                                                                ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
-                                                                : 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300'
-                                                                }`}>
-                                                                {supply.supply_type === 'diapers'
-                                                                    ? `🧷 ${supply.quantity} ${isRTL ? 'حفاظات' : 'couches'}`
-                                                                    : `🍼 ${supply.description}`
-                                                                }
-                                                            </span>
-                                                        ))}
+                                                        {suppliesBrought.map((supply, idx) => {
+                                                            const badge = getSupplyDisplay(supply);
+                                                            return (
+                                                                <span key={idx} className={`px-2.5 py-1 text-xs font-medium rounded-full ${badge.className}`}>
+                                                                    {badge.text}
+                                                                </span>
+                                                            );
+                                                        })}
                                                     </div>
                                                 </div>
                                             )}
@@ -917,9 +920,9 @@ const DailyReportsPage = () => {
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                     <div className="p-3 bg-white dark:bg-gray-700 rounded-lg border border-green-200 dark:border-green-700">
                                                         <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                                                            🧷 {isRTL ? 'حفاظات' : 'Couches'}
+                                                            🧷 {isRTL ? 'حفاضات' : 'Couches'}
                                                         </label>
-                                                        <div className="flex gap-2">
+                                                        <div className="flex items-center gap-2">
                                                             <input
                                                                 type="number"
                                                                 min="0"
@@ -928,46 +931,65 @@ const DailyReportsPage = () => {
                                                                 onChange={(e) => setFormData(prev => ({ ...prev, supplies_diapers: parseInt(e.target.value) || 0 }))}
                                                                 className={`w-20 px-3 py-2 rounded border text-center ${isDark ? 'bg-gray-600 border-gray-500 text-white' : 'bg-white border-gray-300'}`}
                                                             />
-                                                            <span className={`flex items-center ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                                                            <span className={`flex items-center text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
                                                                 {isRTL ? 'قطعة' : 'pièces'}
                                                             </span>
+                                                            {formData.supplies_diapers > 0 && (
+                                                                <Button
+                                                                    size="sm"
+                                                                    type="button"
+                                                                    onClick={async () => {
+                                                                        await addSupplyBrought('diapers', formData.supplies_diapers, `Apporté le ${reportDate}`);
+                                                                        setFormData(prev => ({ ...prev, supplies_diapers: 0 }));
+                                                                    }}
+                                                                    className="bg-green-500 hover:bg-green-600 ml-auto"
+                                                                >
+                                                                    +
+                                                                </Button>
+                                                            )}
                                                         </div>
                                                     </div>
                                                     <div className="p-3 bg-white dark:bg-gray-700 rounded-lg border border-green-200 dark:border-green-700">
                                                         <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                                                            🍼 {isRTL ? 'طعام/حليب' : 'Nourriture/Lait'}
+                                                            🧴 {isRTL ? 'مستلزمات استهلاكية / نظافة' : 'Produits consommables & Hygiène'}
                                                         </label>
+                                                        <div className="flex flex-wrap gap-1.5 mb-2.5">
+                                                            {consumablePresets.map((preset, idx) => (
+                                                                <button
+                                                                    key={idx}
+                                                                    type="button"
+                                                                    onClick={() => addSupplyBrought(preset.type, 1, preset.description)}
+                                                                    className={`px-2.5 py-1 text-xs font-medium rounded-full border transition-colors ${isDark
+                                                                        ? 'bg-gray-600 border-gray-500 text-gray-100 hover:bg-green-800/60 hover:border-green-500'
+                                                                        : 'bg-green-50/80 border-green-200 text-green-800 hover:bg-green-100 hover:border-green-400'
+                                                                        }`}
+                                                                >
+                                                                    + {preset.icon} {preset.label}
+                                                                </button>
+                                                            ))}
+                                                        </div>
                                                         <div className="flex gap-2">
                                                             <input
                                                                 type="text"
-                                                                placeholder={isRTL ? 'مثال: حليب، كومبوت...' : 'Ex: Lait, Compote...'}
-                                                                value={formData.supplies_food || ''}
-                                                                onChange={(e) => setFormData(prev => ({ ...prev, supplies_food: e.target.value }))}
-                                                                className={`flex-1 px-3 py-2 rounded border ${isDark ? 'bg-gray-600 border-gray-500 text-white' : 'bg-white border-gray-300'}`}
+                                                                placeholder={isRTL ? 'منتج آخر (مثال: قطن، بودرة...)' : 'Autre produit (Ex: Lingettes, Coton, Crème...)'}
+                                                                value={formData.supplies_custom || ''}
+                                                                onChange={(e) => setFormData(prev => ({ ...prev, supplies_custom: e.target.value }))}
+                                                                className={`flex-1 px-3 py-2 text-sm rounded border ${isDark ? 'bg-gray-600 border-gray-500 text-white' : 'bg-white border-gray-300'}`}
                                                                 onKeyDown={async (e) => {
-                                                                    if (e.key === 'Enter' && formData.supplies_food.trim()) {
+                                                                    if (e.key === 'Enter' && formData.supplies_custom.trim()) {
                                                                         e.preventDefault();
-                                                                        await addSupplyBrought('food', 1, formData.supplies_food.trim());
-                                                                        setFormData(prev => ({ ...prev, supplies_food: '' }));
-                                                                        // Recharger les options de nourriture
-                                                                        const foodRes = await api.get(`/api/supplies/child/${selectedChild.id}/food-options?date=${reportDate}`);
-                                                                        if (foodRes.data.success) {
-                                                                            setFoodOptions(foodRes.data.food_options || []);
-                                                                        }
+                                                                        await addSupplyBrought('other', 1, formData.supplies_custom.trim());
+                                                                        setFormData(prev => ({ ...prev, supplies_custom: '' }));
                                                                     }
                                                                 }}
                                                             />
                                                             <Button
                                                                 size="sm"
+                                                                type="button"
                                                                 onClick={async () => {
-                                                                    if (formData.supplies_food.trim()) {
-                                                                        await addSupplyBrought('food', 1, formData.supplies_food.trim());
-                                                                        setFormData(prev => ({ ...prev, supplies_food: '' }));
-                                                                        // Recharger les options de nourriture
-                                                                        const foodRes = await api.get(`/api/supplies/child/${selectedChild.id}/food-options?date=${reportDate}`);
-                                                                        if (foodRes.data.success) {
-                                                                            setFoodOptions(foodRes.data.food_options || []);
-                                                                        }
+                                                                    if (formData.supplies_custom.trim()) {
+                                                                        await addSupplyBrought('other', 1, formData.supplies_custom.trim());
+                                                                        setFormData(prev => ({ ...prev, supplies_custom: '' }));
                                                                     }
                                                                 }}
                                                                 className="bg-green-500 hover:bg-green-600"
@@ -976,7 +998,7 @@ const DailyReportsPage = () => {
                                                             </Button>
                                                         </div>
                                                         <p className={`text-xs mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                                                            {isRTL ? 'اضغط Enter أو + للإضافة' : 'Appuyez sur Entrée ou + pour ajouter'}
+                                                            {isRTL ? 'اضغط على زر سريع أعلاه أو اكتب واضغط +' : 'Cliquez sur un produit rapide ci-dessus ou saisissez un autre produit puis +'}
                                                         </p>
                                                     </div>
                                                 </div>

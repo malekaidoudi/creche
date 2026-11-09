@@ -3,8 +3,6 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   User,
-  Mail,
-  Phone,
   Lock,
   Camera,
   Save,

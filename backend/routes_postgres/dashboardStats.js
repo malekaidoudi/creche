@@ -19,14 +19,26 @@ router.get('/stats', authenticateToken, async (req, res) => {
         `);
         const totalChildren = parseInt(childrenResult.rows[0].total) || 0;
 
-        // 2. Enfants présents aujourd'hui
+        // 2. Enfants présents aujourd'hui (adapté selon le mode journalier ou horaire)
         const today = new Date().toISOString().split('T')[0];
+        const [todayYear, todayMonth, todayDay] = today.split('-').map(Number);
+        const isSaturday = new Date(todayYear, todayMonth - 1, todayDay).getDay() === 6;
+
+        let isDailyMode = false;
+        try {
+          const modeRes = await db.query("SELECT value_fr FROM nursery_settings WHERE setting_key = 'attendance_mode' LIMIT 1");
+          isDailyMode = modeRes.rows[0]?.value_fr === 'daily';
+        } catch (e) {
+          isDailyMode = false;
+        }
+
         const presentResult = await db.query(`
             SELECT COUNT(DISTINCT child_id) as present 
             FROM attendance 
             WHERE date = $1 
-            AND check_in_time IS NOT NULL 
-            AND check_out_time IS NULL
+            AND ${isDailyMode 
+              ? "(COALESCE(status, 'present') = 'present' AND check_in_time IS NOT NULL)" 
+              : "(check_in_time IS NOT NULL AND check_out_time IS NULL AND COALESCE(status, 'present') = 'present')"}
         `, [today]);
         const presentToday = parseInt(presentResult.rows[0].present) || 0;
 
@@ -49,10 +61,31 @@ router.get('/stats', authenticateToken, async (req, res) => {
         // 5. Places disponibles
         const availablePlaces = Math.max(0, maxCapacity - totalChildren);
 
-        // 6. Taux de présence aujourd'hui
-        const attendanceRate = totalChildren > 0
-            ? Math.round((presentToday / totalChildren) * 100)
+        // 6. Effectif attendu et taux de présence aujourd'hui
+        let expectedToday = totalChildren;
+        if (isSaturday) {
+          const satEligibleRes = await db.query(`
+            SELECT COUNT(*) as count 
+            FROM children 
+            WHERE is_active = true AND status = 'approved' AND saturday_attendance = true
+          `);
+          const satExceptionalRes = await db.query(`
+            SELECT COUNT(DISTINCT a.child_id) as count 
+            FROM attendance a 
+            JOIN children c ON a.child_id = c.id
+            WHERE a.date = $1 
+              AND COALESCE(a.is_exceptional_saturday, false) = true
+              AND COALESCE(c.saturday_attendance, false) = false
+              AND c.is_active = true
+          `, [today]);
+          expectedToday = (parseInt(satEligibleRes.rows[0]?.count) || 0) + (parseInt(satExceptionalRes.rows[0]?.count) || 0);
+        }
+
+        const attendanceRate = expectedToday > 0
+            ? Math.round((presentToday / expectedToday) * 100)
             : 0;
+
+        const absentToday = Math.max(0, expectedToday - presentToday);
 
         // 7. Nouvelles inscriptions ce mois
         const firstDayOfMonth = new Date();

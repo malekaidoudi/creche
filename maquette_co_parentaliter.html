@@ -1,0 +1,1514 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maquette Interactive — Espace Co-parentalité (Crèche Mima Elghalia)</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons via unpkg -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --font-main: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+            --font-display: 'Outfit', sans-serif;
+
+            /* Couleurs Principales */
+            --primary: #4F46E5;
+            --primary-light: #6366F1;
+            --primary-subtle: #EEF2FF;
+            --primary-dark: #3730A3;
+
+            /* WhatsApp Brand */
+            --wa-green: #25D366;
+            --wa-green-dark: #128C7E;
+            --wa-green-light: #DCF8C6;
+
+            /* Accents */
+            --rose: #EC4899;
+            --rose-subtle: #FDF2F8;
+            --amber: #F59E0B;
+            --amber-subtle: #FFFBEB;
+            --emerald: #10B981;
+            --emerald-subtle: #ECFDF5;
+            --sky: #0EA5E9;
+            --sky-subtle: #F0F9FF;
+
+            /* Neutres */
+            --bg-body: #0F172A;
+            --panel-bg: #1E293B;
+            --panel-border: #334155;
+            --text-light: #F8FAFC;
+            --text-muted: #94A3B8;
+
+            /* Mobile Frame */
+            --phone-width: 390px;
+            --phone-height: 800px;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background: linear-gradient(135deg, #0b1120 0%, #0f172a 50%, #1e1b4b 100%);
+            color: var(--text-light);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* TOPBAR DE NAVIGATION DU SHOWCASE */
+        header.showcase-header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .brand-pill {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-badge {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #4F46E5, #EC4899);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 800;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+        }
+
+        .brand-title h1 {
+            font-family: var(--font-display);
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: white;
+            letter-spacing: -0.01em;
+        }
+
+        .brand-title span {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            display: block;
+        }
+
+        /* CONTROLS (Vues & Device) */
+        .controls-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(30, 41, 59, 0.8);
+            padding: 4px;
+            border-radius: 14px;
+            border: 1px solid var(--panel-border);
+        }
+
+        .view-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 8px 14px;
+            border-radius: 10px;
+            font-family: var(--font-main);
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .view-btn:hover {
+            color: white;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .view-btn.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+        }
+
+        .device-toggle {
+            display: flex;
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 10px;
+            padding: 2px;
+            border: 1px solid var(--panel-border);
+        }
+
+        .device-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 6px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .device-btn.active {
+            background: #334155;
+            color: white;
+        }
+
+        /* MAIN CONTAINER */
+        main.showcase-stage {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 32px 16px;
+            overflow-y: auto;
+        }
+
+        /* WRAPPER DU CANAL / FRAME */
+        .preview-container {
+            width: 100%;
+            max-width: 1140px;
+            transition: all 0.3s ease;
+            display: flex;
+            justify-content: center;
+        }
+
+        .preview-container.mobile-mode {
+            max-width: var(--phone-width);
+        }
+
+        /* CADRE SMARTPHONE */
+        .phone-frame {
+            width: 100%;
+            max-width: var(--phone-width);
+            height: var(--phone-height);
+            background: #F8FAFC;
+            border-radius: 44px;
+            box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7), 0 0 0 10px #1E293B, 0 0 0 12px #334155;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            color: #1E293B;
+        }
+
+        .phone-notch {
+            height: 30px;
+            background: #0F172A;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            color: white;
+            font-size: 0.72rem;
+            font-weight: 600;
+            position: relative;
+            z-index: 50;
+        }
+
+        .phone-notch .camera {
+            width: 90px;
+            height: 18px;
+            background: black;
+            border-radius: 12px;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            top: 6px;
+        }
+
+        .phone-screen {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            background: #F1F5F9;
+            position: relative;
+        }
+
+        /* CADRE DESKTOP */
+        .desktop-frame {
+            width: 100%;
+            background: #F8FAFC;
+            border-radius: 16px;
+            box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: 720px;
+            color: #1E293B;
+        }
+
+        .browser-bar {
+            height: 42px;
+            background: #0F172A;
+            border-bottom: 1px solid #1E293B;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            gap: 12px;
+        }
+
+        .browser-dots {
+            display: flex;
+            gap: 6px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+        .dot.red { background: #EF4444; }
+        .dot.yellow { background: #F59E0B; }
+        .dot.green { background: #10B981; }
+
+        .browser-address {
+            flex: 1;
+            max-width: 520px;
+            margin: 0 auto;
+            background: #1E293B;
+            border-radius: 8px;
+            height: 26px;
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            font-size: 0.75rem;
+            color: #94A3B8;
+            gap: 6px;
+        }
+
+        .browser-address span {
+            color: #F8FAFC;
+            font-weight: 500;
+        }
+
+        /* COMPOSANTS UI PARTAGÉS */
+        .ui-app-header {
+            background: white;
+            border-bottom: 1px solid #E2E8F0;
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .ui-app-header .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .ui-app-header .logo-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #4F46E5, #6366F1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 0.85rem;
+        }
+
+        .ui-app-header .user-pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #F8FAFC;
+            padding: 4px 10px 4px 6px;
+            border-radius: 20px;
+            border: 1px solid #E2E8F0;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .ui-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #E0E7FF;
+            color: #4F46E5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        /* CONTENU DES VUES */
+        .view-content {
+            display: none;
+            flex-direction: column;
+            width: 100%;
+        }
+
+        .view-content.active {
+            display: flex;
+        }
+
+        /* VUE 1 : ESPACE PARENT (DASHBOARD) */
+        .dashboard-body {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .welcome-card {
+            background: linear-gradient(135deg, #4338CA 0%, #6366F1 100%);
+            border-radius: 20px;
+            padding: 22px;
+            color: white;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 25px -5px rgba(79, 70, 229, 0.4);
+        }
+
+        .welcome-card::after {
+            content: '';
+            position: absolute;
+            right: -20px;
+            bottom: -20px;
+            width: 140px;
+            height: 140px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+        }
+
+        .welcome-card h2 {
+            font-family: var(--font-display);
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .welcome-card p {
+            font-size: 0.85rem;
+            opacity: 0.9;
+            max-width: 90%;
+        }
+
+        /* SECTION CO-PARENTALITÉ */
+        .coparenting-card {
+            background: white;
+            border-radius: 20px;
+            border: 1px solid #E2E8F0;
+            padding: 22px;
+            box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .card-header-line {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #EEF2FF;
+            color: #4F46E5;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .coparent-status-box {
+            border: 2px dashed #CBD5E1;
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 12px;
+            background: #F8FAFC;
+            transition: all 0.2s;
+        }
+
+        .coparent-status-box:hover {
+            border-color: #6366F1;
+            background: #F5F7FF;
+        }
+
+        .icon-circle-lg {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: #EEF2FF;
+            color: #4F46E5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-invite-coparent {
+            background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-family: var(--font-main);
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 4px 14px rgba(37, 211, 102, 0.35);
+            transition: all 0.2s;
+        }
+
+        .btn-invite-coparent:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(37, 211, 102, 0.45);
+        }
+
+        /* ÉTAT B : INVITATION EN COURS */
+        .pending-invite-card {
+            background: #FFFBEB;
+            border: 1px solid #FDE68A;
+            border-radius: 14px;
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .invite-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .badge-pending {
+            background: #FEF3C7;
+            color: #D97706;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.72rem;
+            font-weight: 700;
+        }
+
+        .btn-group-sm {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-action-sm {
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid #CBD5E1;
+            background: white;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.15s;
+        }
+
+        .btn-action-sm.wa {
+            background: #DCF8C6;
+            color: #075E54;
+            border-color: #A7F3D0;
+        }
+
+        .btn-action-sm.danger {
+            color: #DC2626;
+            border-color: #FECACA;
+        }
+
+        /* ÉTAT C : 2ÈME PARENT ACTIF */
+        .active-coparent-profile {
+            background: #F0FDF4;
+            border: 1px solid #BBF7D0;
+            border-radius: 16px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+        }
+
+        .coparent-identity {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .avatar-verified {
+            position: relative;
+        }
+
+        .avatar-verified .avatar-img {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: #6366F1;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+
+        .avatar-verified .check-badge {
+            position: absolute;
+            bottom: -2px;
+            right: -2px;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #10B981;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.65rem;
+            border: 2px solid white;
+        }
+
+        /* ENFANTS CARTES */
+        .children-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+        }
+
+        .child-tile {
+            background: white;
+            border: 1px solid #E2E8F0;
+            border-radius: 16px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+
+        .child-photo {
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            background: #FEE2E2;
+            color: #EF4444;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1.1rem;
+            overflow: hidden;
+        }
+
+        /* VUE 2 : MODALE D'INVITATION INTERACTIVE */
+        .modal-showcase-view {
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 550px;
+        }
+
+        .fake-modal {
+            background: white;
+            border-radius: 24px;
+            width: 100%;
+            max-width: 480px;
+            border: 1px solid #E2E8F0;
+            box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-head {
+            padding: 20px 24px;
+            background: linear-gradient(135deg, #1E1B4B 0%, #312E81 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-head h3 {
+            font-family: var(--font-display);
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+
+        .modal-body {
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .form-label {
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #334155;
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        .relation-chips {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+        }
+
+        .chip-option {
+            border: 2px solid #E2E8F0;
+            border-radius: 12px;
+            padding: 10px 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #F8FAFC;
+        }
+
+        .chip-option.selected {
+            border-color: #4F46E5;
+            background: #EEF2FF;
+            color: #4F46E5;
+            font-weight: 700;
+        }
+
+        .chip-icon {
+            font-size: 1.2rem;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        .input-stylish {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid #CBD5E1;
+            border-radius: 12px;
+            font-family: var(--font-main);
+            font-size: 0.9rem;
+            color: #1E293B;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .input-stylish:focus {
+            border-color: #4F46E5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+        }
+
+        /* MAGIC LINK DISPLAY BOX */
+        .magic-link-box {
+            background: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-radius: 14px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .link-text-preview {
+            background: white;
+            border: 1px solid #CBD5E1;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-family: monospace;
+            font-size: 0.78rem;
+            color: #475569;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .action-buttons-share {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .btn-wa-full {
+            background: #25D366;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .btn-wa-full:hover {
+            background: #128C7E;
+        }
+
+        .btn-copy-full {
+            background: #4F46E5;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .btn-copy-full:hover {
+            background: #4338CA;
+        }
+
+        /* VUE 3 : PAGE PUBLIQUE D'ACCEPTATION (AU CLIC WHATSAPP) */
+        .accept-flow-view {
+            padding: 24px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 600px;
+        }
+
+        .accept-card {
+            background: white;
+            border-radius: 28px;
+            width: 100%;
+            max-width: 440px;
+            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.1);
+            border: 1px solid #E2E8F0;
+            overflow: hidden;
+        }
+
+        .accept-banner {
+            background: linear-gradient(135deg, #4F46E5 0%, #EC4899 100%);
+            padding: 28px 24px;
+            color: white;
+            text-align: center;
+            position: relative;
+        }
+
+        .accept-icon-badge {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: white;
+            color: #4F46E5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 12px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .accept-banner h3 {
+            font-family: var(--font-display);
+            font-size: 1.25rem;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+
+        .accept-banner p {
+            font-size: 0.82rem;
+            opacity: 0.92;
+        }
+
+        .accept-body {
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .family-recap {
+            background: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-radius: 14px;
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .family-avatars {
+            display: flex;
+            margin-left: 6px;
+        }
+
+        .family-avatars .avatar-mini {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            border: 2px solid white;
+            margin-left: -8px;
+            background: #C7D2FE;
+            color: #312E81;
+            font-weight: 700;
+            font-size: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-submit-accept {
+            background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 14px;
+            font-weight: 700;
+            font-size: 0.95rem;
+            cursor: pointer;
+            box-shadow: 0 6px 18px rgba(79, 70, 229, 0.35);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-submit-accept:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(79, 70, 229, 0.45);
+        }
+
+        /* VUE 4 : FICHE ENFANT CÔTÉ ADMINISTRATION */
+        .admin-view {
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .admin-child-card {
+            background: white;
+            border-radius: 20px;
+            border: 1px solid #E2E8F0;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .parents-comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .parent-profile-box {
+            border: 1px solid #E2E8F0;
+            border-radius: 16px;
+            padding: 16px;
+            background: #F8FAFC;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            position: relative;
+        }
+
+        .parent-profile-box.primary {
+            border-color: #C7D2FE;
+            background: #F5F7FF;
+        }
+
+        .parent-profile-box.coparent {
+            border-color: #A7F3D0;
+            background: #F0FDF4;
+        }
+
+        .role-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 8px;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+
+        .role-tag.primary {
+            background: #E0E7FF;
+            color: #3730A3;
+        }
+
+        .role-tag.coparent {
+            background: #DCFCE7;
+            color: #166534;
+        }
+
+        /* DETAILS TECHNIQUES FOOTER */
+        .tech-specs-bar {
+            background: rgba(15, 23, 42, 0.9);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .tech-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 4px 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #E2E8F0;
+        }
+
+        /* TOAST COPIE */
+        .toast-copied {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #10B981;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4);
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .toast-copied.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- TOPBAR DU SHOWCASE INTERACTIF -->
+    <header class="showcase-header">
+        <div class="brand-pill">
+            <div class="brand-badge">🤝</div>
+            <div class="brand-title">
+                <h1>Espace Co-parentalité — Option B (WhatsApp & SMS)</h1>
+                <span>Crèche Mima Elghalia • Maquette Spécification Frontend & Backend</span>
+            </div>
+        </div>
+
+        <!-- SELECTEUR DES VUES DE L'EXPÉRIENCE -->
+        <div class="controls-group">
+            <button class="view-btn active" onclick="switchView('v1_parent_dashboard', this)">
+                <i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i>
+                <span>1. Espace Parent</span>
+            </button>
+            <button class="view-btn" onclick="switchView('v2_invite_modal', this)">
+                <i data-lucide="send" style="width:16px;height:16px;"></i>
+                <span>2. Modale Invitation</span>
+            </button>
+            <button class="view-btn" onclick="switchView('v3_magic_link_page', this)">
+                <i data-lucide="smartphone" style="width:16px;height:16px;"></i>
+                <span>3. Acceptation (2ème Parent)</span>
+            </button>
+            <button class="view-btn" onclick="switchView('v4_admin_view', this)">
+                <i data-lucide="shield-check" style="width:16px;height:16px;"></i>
+                <span>4. Fiche Admin Crèche</span>
+            </button>
+        </div>
+
+        <!-- BASCULE MOBILE / DESKTOP -->
+        <div class="device-toggle">
+            <button class="device-btn active" id="btn-device-mobile" onclick="setDeviceMode('mobile')">
+                <i data-lucide="smartphone" style="width:14px;height:14px;"></i>
+                <span>Mobile (390px)</span>
+            </button>
+            <button class="device-btn" id="btn-device-desktop" onclick="setDeviceMode('desktop')">
+                <i data-lucide="monitor" style="width:14px;height:14px;"></i>
+                <span>Desktop</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- ZONE DE RENDU DU COMPOSANT -->
+    <main class="showcase-stage">
+        <div class="preview-container mobile-mode" id="previewWrapper">
+
+            <!-- ================= MOBILE PHONE FRAME ================= -->
+            <div class="phone-frame" id="phoneContainer">
+                <div class="phone-notch">
+                    <span>09:41</span>
+                    <div class="camera"></div>
+                    <div style="display:flex;gap:4px;align-items:center;">
+                        <i data-lucide="wifi" style="width:14px;height:14px;"></i>
+                        <i data-lucide="battery-charging" style="width:14px;height:14px;"></i>
+                    </div>
+                </div>
+
+                <div class="phone-screen" id="phoneInnerScreen">
+
+                    <!-- VUE 1 : ESPACE PARENT -->
+                    <div class="view-content active" id="v1_parent_dashboard">
+                        <div class="ui-app-header">
+                            <div class="logo-area">
+                                <div class="logo-icon">M</div>
+                                <div>
+                                    <div style="font-weight:800;font-size:0.9rem;line-height:1;">Mima Elghalia</div>
+                                    <div style="font-size:0.7rem;color:#64748B;">Espace Parent</div>
+                                </div>
+                            </div>
+                            <div class="user-pill">
+                                <div class="ui-avatar">Y</div>
+                                <span>Yassine (Papa)</span>
+                            </div>
+                        </div>
+
+                        <div class="dashboard-body">
+                            <!-- Carte d'accueil -->
+                            <div class="welcome-card">
+                                <h2>Bonjour, Yassine 👋</h2>
+                                <p>Retrouvez le suivi en direct de vos enfants à la crèche.</p>
+                            </div>
+
+                            <!-- MODULE CO-PARENTALITÉ -->
+                            <div class="coparenting-card">
+                                <div class="card-header-line">
+                                    <div style="display:flex;align-items:center;gap:8px;">
+                                        <i data-lucide="users" style="width:18px;height:18px;color:#4F46E5;"></i>
+                                        <span style="font-weight:800;font-size:0.95rem;color:#1E293B;">Co-parentalité & Famille</span>
+                                    </div>
+                                    <span class="card-badge">Option B</span>
+                                </div>
+
+                                <p style="font-size:0.82rem;color:#64748B;line-height:1.4;">
+                                    Permettez à votre conjoint(e) d'accéder au dossier, aux photos, présences et carnet de liaison sur son propre téléphone.
+                                </p>
+
+                                <!-- ÉTAT 1 : AUCUN CO-PARENT (BOUTON D'INVITATION) -->
+                                <div id="state-no-coparent" class="coparent-status-box">
+                                    <div class="icon-circle-lg">
+                                        <i data-lucide="user-plus" style="width:26px;height:26px;"></i>
+                                    </div>
+                                    <div>
+                                        <div style="font-weight:700;font-size:0.9rem;color:#1E293B;">Le 2ème parent n'est pas encore connecté</div>
+                                        <div style="font-size:0.75rem;color:#64748B;margin-top:2px;">Envoyez une invitation WhatsApp ou SMS en 1 clic</div>
+                                    </div>
+                                    <button class="btn-invite-coparent" onclick="switchView('v2_invite_modal', document.querySelectorAll('.view-btn')[1])">
+                                        <i data-lucide="message-circle" style="width:18px;height:18px;"></i>
+                                        <span>Inviter l'autre parent</span>
+                                    </button>
+                                </div>
+
+                                <!-- ÉTAT 2 : INVITATION EN ATTENTE (SIMULATION) -->
+                                <div class="pending-invite-card" style="margin-top:6px;">
+                                    <div class="invite-meta">
+                                        <div style="width:36px;height:36px;border-radius:10px;background:#FDE68A;display:flex;align-items:center;justify-content:center;color:#B45309;">
+                                            <i data-lucide="clock" style="width:18px;height:18px;"></i>
+                                        </div>
+                                        <div>
+                                            <div style="display:flex;align-items:center;gap:6px;">
+                                                <span style="font-weight:700;font-size:0.85rem;color:#92400E;">Invitation Conjoint (Mère)</span>
+                                                <span class="badge-pending">En attente</span>
+                                            </div>
+                                            <div style="font-size:0.72rem;color:#B45309;">Expire dans 6 jours • +216 98 123 456</div>
+                                        </div>
+                                    </div>
+                                    <div class="btn-group-sm">
+                                        <button class="btn-action-sm wa" onclick="triggerWhatsAppShare()">
+                                            <i data-lucide="share-2" style="width:14px;height:14px;"></i>
+                                            <span>Renvoyer WhatsApp</span>
+                                        </button>
+                                        <button class="btn-action-sm danger" onclick="alert('Invitation révoquée avec succès.')">
+                                            <i data-lucide="x" style="width:14px;height:14px;"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- ÉTAT 3 : CO-PARENT ACTIF (VISUALISATION APRES ACCEPTATION) -->
+                                <div class="active-coparent-profile" style="margin-top:6px;">
+                                    <div class="coparent-identity">
+                                        <div class="avatar-verified">
+                                            <div class="avatar-img" style="background:#EC4899;">S</div>
+                                            <div class="check-badge">✓</div>
+                                        </div>
+                                        <div>
+                                            <div style="font-weight:700;font-size:0.85rem;color:#065F46;">Sarra Othmani (Maman)</div>
+                                            <div style="font-size:0.72rem;color:#047857;">Compte actif • Connectée via smartphone</div>
+                                        </div>
+                                    </div>
+                                    <span style="font-size:0.72rem;font-weight:700;background:#DCFCE7;color:#166534;padding:4px 8px;border-radius:8px;">
+                                        Co-parent lié
+                                    </span>
+                                </div>
+
+                            </div>
+
+                            <!-- ENFANTS RATTACHÉS -->
+                            <div style="display:flex;flex-direction:column;gap:12px;">
+                                <div style="font-weight:800;font-size:0.95rem;color:#1E293B;">Mes Enfants rattachés</div>
+                                <div class="children-grid">
+                                    <div class="child-tile">
+                                        <div class="child-photo">S</div>
+                                        <div style="flex:1;">
+                                            <div style="font-weight:700;font-size:0.9rem;color:#1E293B;">Sarah Othmani</div>
+                                            <div style="font-size:0.75rem;color:#64748B;">Section Grands (3 ans)</div>
+                                            <div style="font-size:0.72rem;color:#10B981;font-weight:600;margin-top:2px;">● Présente aujourd'hui (08:15)</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VUE 2 : MODALE D'INVITATION -->
+                    <div class="view-content" id="v2_invite_modal">
+                        <div class="modal-showcase-view">
+                            <div class="fake-modal">
+                                <div class="modal-head">
+                                    <div>
+                                        <h3>Inviter le 2ème parent</h3>
+                                        <p style="font-size:0.75rem;opacity:0.85;">Crèche Mima Elghalia • Accès partagé</p>
+                                    </div>
+                                    <button onclick="switchView('v1_parent_dashboard', document.querySelectorAll('.view-btn')[0])" style="background:transparent;border:none;color:white;cursor:pointer;">
+                                        <i data-lucide="x" style="width:20px;height:20px;"></i>
+                                    </button>
+                                </div>
+
+                                <div class="modal-body">
+                                    <!-- Lien de parenté -->
+                                    <div>
+                                        <label class="form-label">Lien de parenté de la personne invitée</label>
+                                        <div class="relation-chips">
+                                            <div class="chip-option selected" onclick="selectChip(this)">
+                                                <span class="chip-icon">👩‍🍼</span>
+                                                <span style="font-size:0.78rem;">Mère (Maman)</span>
+                                            </div>
+                                            <div class="chip-option" onclick="selectChip(this)">
+                                                <span class="chip-icon">👨‍🍼</span>
+                                                <span style="font-size:0.78rem;">Père (Papa)</span>
+                                            </div>
+                                            <div class="chip-option" onclick="selectChip(this)">
+                                                <span class="chip-icon">🛡️</span>
+                                                <span style="font-size:0.78rem;">Tuteur légal</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Numéro de téléphone -->
+                                    <div>
+                                        <label class="form-label">Numéro WhatsApp / Téléphone (Optionnel)</label>
+                                        <input type="tel" class="input-stylish" value="+216 98 123 456" placeholder="ex: +216 25 123 456">
+                                        <span style="font-size:0.72rem;color:#64748B;margin-top:4px;display:block;">
+                                            Prérempli automatiquement depuis les coordonnées du dossier de l'enfant.
+                                        </span>
+                                    </div>
+
+                                    <!-- Aperçu du Magic Link -->
+                                    <div class="magic-link-box">
+                                        <div style="display:flex;align-items:center;justify-content:space-between;">
+                                            <span style="font-size:0.75rem;font-weight:700;color:#334155;">Lien d'invitation sécurisé (Valable 7 jours)</span>
+                                            <span style="font-size:0.7rem;color:#10B981;font-weight:700;">● Prêt à partager</span>
+                                        </div>
+                                        <div class="link-text-preview" id="magicLinkText">
+                                            https://creche-mima.tn/rejoindre-foyer/c4f9a781b2e3
+                                        </div>
+                                    </div>
+
+                                    <!-- Boutons de partage direct -->
+                                    <div class="action-buttons-share">
+                                        <button class="btn-wa-full" onclick="triggerWhatsAppShare()">
+                                            <i data-lucide="message-circle" style="width:18px;height:18px;"></i>
+                                            <span>WhatsApp</span>
+                                        </button>
+                                        <button class="btn-copy-full" onclick="copyMagicLink()">
+                                            <i data-lucide="copy" style="width:18px;height:18px;"></i>
+                                            <span>Copier le lien</span>
+                                        </button>
+                                    </div>
+
+                                    <div style="font-size:0.72rem;color:#64748B;text-align:center;">
+                                        🔒 Le 2ème parent sera automatiquement rattaché à <strong>Sarah Othmani</strong> dès acceptation.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VUE 3 : PAGE D'ACCEPTATION DU LIEN PAR LE 2ÈME PARENT -->
+                    <div class="view-content" id="v3_magic_link_page">
+                        <div class="accept-flow-view">
+                            <div class="accept-card">
+                                <div class="accept-banner">
+                                    <div class="accept-icon-badge">
+                                        <i data-lucide="heart-handshake" style="width:32px;height:32px;"></i>
+                                    </div>
+                                    <h3>Rejoindre le dossier familial</h3>
+                                    <p>Crèche Mima Elghalia • Accès Co-parentalité</p>
+                                </div>
+
+                                <div class="accept-body">
+                                    <!-- Récapitulatif de l'invitation -->
+                                    <div class="family-recap">
+                                        <div class="family-avatars">
+                                            <div class="avatar-mini" style="background:#4F46E5;color:white;">Y</div>
+                                            <div class="avatar-mini" style="background:#F43F5E;color:white;">S</div>
+                                        </div>
+                                        <div>
+                                            <div style="font-weight:700;font-size:0.85rem;color:#1E293B;">Yassine vous invite</div>
+                                            <div style="font-size:0.75rem;color:#64748B;">au dossier de Sarah Othmani</div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Formulaire ultra-simple en 3 champs -->
+                                    <div>
+                                        <label class="form-label">Votre Prénom & Nom</label>
+                                        <input type="text" class="input-stylish" value="Sarra Othmani">
+                                    </div>
+
+                                    <div>
+                                        <label class="form-label">Votre Numéro de téléphone</label>
+                                        <input type="tel" class="input-stylish" value="+216 98 123 456">
+                                    </div>
+
+                                    <div>
+                                        <label class="form-label">Choisissez votre mot de passe secret</label>
+                                        <input type="password" class="input-stylish" placeholder="Au moins 6 caractères" value="••••••••">
+                                    </div>
+
+                                    <button class="btn-submit-accept" onclick="confirmAcceptInvitation()">
+                                        <i data-lucide="check-circle" style="width:18px;height:18px;"></i>
+                                        <span>Valider et accéder à l'espace</span>
+                                    </button>
+
+                                    <div style="font-size:0.72rem;color:#64748B;text-align:center;line-height:1.4;">
+                                        En validant, vous obtenez votre propre compte sécurisé pour suivre les activités, repas et présences de Sarah.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VUE 4 : FICHE ENFANT CÔTÉ ADMINISTRATION -->
+                    <div class="view-content" id="v4_admin_view">
+                        <div class="ui-app-header">
+                            <div class="logo-area">
+                                <div class="logo-icon" style="background:#0F172A;">A</div>
+                                <div>
+                                    <div style="font-weight:800;font-size:0.9rem;line-height:1;">Administration Crèche</div>
+                                    <div style="font-size:0.7rem;color:#64748B;">Fiche Enfant • Vue Co-parentalité</div>
+                                </div>
+                            </div>
+                            <span style="font-size:0.75rem;background:#DCFCE7;color:#166534;padding:4px 10px;border-radius:12px;font-weight:700;">
+                                Inscription Validée
+                            </span>
+                        </div>
+
+                        <div class="admin-view">
+                            <div class="admin-child-card">
+                                <div style="display:flex;align-items:center;gap:14px;">
+                                    <div class="child-photo" style="width:60px;height:60px;border-radius:16px;">S</div>
+                                    <div>
+                                        <h3 style="font-family:var(--font-display);font-size:1.15rem;font-weight:800;color:#0F172A;">
+                                            Sarah Othmani
+                                        </h3>
+                                        <div style="font-size:0.78rem;color:#64748B;">Née le 14/05/2023 (3 ans) • Section Grands</div>
+                                    </div>
+                                </div>
+
+                                <div style="font-weight:800;font-size:0.9rem;color:#1E293B;margin-top:6px;display:flex;align-items:center;gap:6px;">
+                                    <i data-lucide="shield" style="width:16px;height:16px;color:#4F46E5;"></i>
+                                    <span>Filiation & Co-parents déclarés (2 comptes autorisés)</span>
+                                </div>
+
+                                <div class="parents-comparison-grid">
+                                    <!-- Parent 1 (Titulaire principal) -->
+                                    <div class="parent-profile-box primary">
+                                        <div style="display:flex;align-items:center;justify-content:space-between;">
+                                            <span class="role-tag primary">👑 Parent Principal (Titulaire)</span>
+                                            <span style="font-size:0.7rem;color:#4F46E5;font-weight:700;">Compte Actif</span>
+                                        </div>
+                                        <div style="display:flex;align-items:center;gap:10px;">
+                                            <div class="ui-avatar" style="width:36px;height:36px;">Y</div>
+                                            <div>
+                                                <div style="font-weight:700;font-size:0.85rem;color:#1E293B;">Yassine Othmani (Père)</div>
+                                                <div style="font-size:0.72rem;color:#64748B;">yassine@creche.local • +216 25 953 532</div>
+                                            </div>
+                                        </div>
+                                        <div style="font-size:0.7rem;color:#475569;background:white;padding:6px 10px;border-radius:8px;border:1px solid #E2E8F0;">
+                                            ✓ Responsable financier & administratif principal
+                                        </div>
+                                    </div>
+
+                                    <!-- Parent 2 (Co-parent invité) -->
+                                    <div class="parent-profile-box coparent">
+                                        <div style="display:flex;align-items:center;justify-content:space-between;">
+                                            <span class="role-tag coparent">🤝 Co-parent (Invité via WhatsApp)</span>
+                                            <span style="font-size:0.7rem;color:#166534;font-weight:700;">Compte Actif</span>
+                                        </div>
+                                        <div style="display:flex;align-items:center;gap:10px;">
+                                            <div class="ui-avatar" style="width:36px;height:36px;background:#FBCFE8;color:#9D174D;">S</div>
+                                            <div>
+                                                <div style="font-weight:700;font-size:0.85rem;color:#1E293B;">Sarra Othmani (Mère)</div>
+                                                <div style="font-size:0.72rem;color:#64748B;">sarra@creche.local • +216 98 123 456</div>
+                                            </div>
+                                        </div>
+                                        <div style="font-size:0.7rem;color:#065F46;background:white;padding:6px 10px;border-radius:8px;border:1px solid #A7F3D0;display:flex;align-items:center;justify-content:space-between;">
+                                            <span>✓ Accès partagé journalier & photos</span>
+                                            <button style="border:none;background:transparent;color:#DC2626;cursor:pointer;font-weight:700;" onclick="alert('Réservé à la direction : dissociation du co-parent.')">Dissocier</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- BARRE TECHNIQUE INFORMATIVE -->
+    <footer class="tech-specs-bar">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <span class="tech-pill">📦 Migration DB : <code>parent_invitations</code> & <code>parent_children</code></span>
+            <span class="tech-pill">🌐 Routes API : <code>/api/coparenting/*</code></span>
+            <span class="tech-pill">📱 Option B : Magic Link WhatsApp (Token 7j)</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+            <span>Crèche Mima Elghalia • Architecture Validée</span>
+        </div>
+    </footer>
+
+    <!-- TOAST DE COPIE -->
+    <div class="toast-copied" id="copyToast">
+        <i data-lucide="check" style="width:16px;height:16px;"></i>
+        <span>Lien d'invitation copié dans le presse-papier !</span>
+    </div>
+
+    <!-- SCRIPTS INTERACTIFS DU SHOWCASE -->
+    <script>
+        lucide.createIcons();
+
+        // Bascule des Vues
+        function switchView(viewId, btnElement) {
+            document.querySelectorAll('.view-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.view-btn').forEach(el => el.classList.remove('active'));
+
+            const target = document.getElementById(viewId);
+            if (target) target.classList.add('active');
+            if (btnElement) btnElement.classList.add('active');
+
+            lucide.createIcons();
+        }
+
+        // Bascule Mobile / Desktop
+        function setDeviceMode(mode) {
+            const wrapper = document.getElementById('previewWrapper');
+            const phone = document.getElementById('phoneContainer');
+            const btnMobile = document.getElementById('btn-device-mobile');
+            const btnDesktop = document.getElementById('btn-device-desktop');
+
+            if (mode === 'mobile') {
+                wrapper.classList.add('mobile-mode');
+                phone.className = 'phone-frame';
+                btnMobile.classList.add('active');
+                btnDesktop.classList.remove('active');
+            } else {
+                wrapper.classList.remove('mobile-mode');
+                phone.className = 'desktop-frame';
+                btnDesktop.classList.add('active');
+                btnMobile.classList.remove('active');
+            }
+        }
+
+        // Sélection Chip Relation
+        function selectChip(element) {
+            document.querySelectorAll('.chip-option').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+        }
+
+        // Copier Magic Link
+        function copyMagicLink() {
+            const text = document.getElementById('magicLinkText').innerText.trim();
+            navigator.clipboard.writeText(text).catch(() => {});
+            showToast();
+        }
+
+        function showToast() {
+            const toast = document.getElementById('copyToast');
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2500);
+        }
+
+        // Simulation Partage WhatsApp
+        function triggerWhatsAppShare() {
+            const message = encodeURIComponent("Bonjour ! Rejoins le dossier crèche de Sarah à la crèche Mima Elghalia en cliquant sur ce lien sécurisé : https://creche-mima.tn/rejoindre-foyer/c4f9a781b2e3");
+            const phone = "21698123456";
+            const url = `https://wa.me/${phone}?text=${message}`;
+            window.open(url, '_blank');
+        }
+
+        // Confirmation Acceptation
+        function confirmAcceptInvitation() {
+            alert("🎉 Compte 2ème parent activé avec succès ! Connexion automatique et redirection vers l'espace parent...");
+            switchView('v1_parent_dashboard', document.querySelectorAll('.view-btn')[0]);
+        }
+    </script>
+</body>
+</html>
+

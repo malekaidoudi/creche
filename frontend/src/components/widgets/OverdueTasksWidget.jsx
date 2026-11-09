@@ -1,17 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { AlertCircle, CheckCircle, RefreshCw, MessageSquare } from 'lucide-react';
+import { AlertCircle, CheckCircle, RefreshCw, MessageSquare, Edit, Eye, Cake } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useAuth } from '../../hooks/useAuth';
+import useIsMobile from '../../hooks/useIsMobile';
 import api from '../../services/api';
 import { useDialogContext } from '../../contexts/DialogContext';
 import TaskDetailModal from '../modals/TaskDetailModal';
-import WidgetCard, { WidgetEmptyState } from '../ui/WidgetCard';
+import WidgetCard from '../ui/WidgetCard';
+import {
+  isDesktopOnlyTask,
+  isObsoleteDocTask,
+  getTaskAutoKind,
+  cleanTaskTitle,
+  resolveExpressChildTarget,
+  resolveEnrollmentTarget
+} from '../../utils/taskHelpers';
 
 const OverdueTasksWidget = () => {
   const { isRTL } = useLanguage();
-  const { user, isAdmin } = useAuth();
+  const isMobile = useIsMobile();
+  const { isAdmin } = useAuth();
   const dialog = useDialogContext();
   const navigate = useNavigate();
   const [tasks, setTasks] = useState([]);
@@ -47,7 +57,10 @@ const OverdueTasksWidget = () => {
 
   useEffect(() => {
     loadOverdueTasks();
-  }, []);
+    const handleRefresh = () => loadOverdueTasks(false);
+    window.addEventListener('taskUpdated', handleRefresh);
+    return () => window.removeEventListener('taskUpdated', handleRefresh);
+  }, [isMobile]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadOverdueTasks = async (showToast = false) => {
     try {
@@ -58,24 +71,37 @@ const OverdueTasksWidget = () => {
       const response = await api.get('/api/tasks/overdue');
 
       if (response.data.success) {
-        // Mapper les tâches pour avoir le bon format
-        const mappedTasks = (response.data.tasks || []).map(task => ({
-          id: task.id,
-          type: 'task',
-          title: task.title,
-          description: task.description,
-          start_date: task.due_date,
-          due_date: task.due_date,
-          priority: task.priority,
-          status: task.status,
-          assigned_to: task.assigned_to,
-          assigned_to_name: task.assigned_to_name,
-          assigned_to_role: task.assigned_to_role,
-          created_by: task.created_by,
-          created_by_name: task.created_by_name,
-          days_overdue: task.days_overdue,
-          source: 'tasks'
-        }));
+        // Mapper les tâches pour avoir le bon format et filtrer les tâches obsolètes ou desktop-only sur mobile
+        const mappedTasks = (response.data.tasks || [])
+          .filter(task => !isObsoleteDocTask(task) && !(isMobile && isDesktopOnlyTask(task)))
+          .map(task => ({
+            id: task.id,
+            type: 'task',
+            title: task.title,
+            description: task.description,
+            start_date: task.due_date,
+            due_date: task.due_date,
+            priority: task.priority,
+            status: task.status,
+            assigned_to: task.assigned_to,
+            assigned_to_name: task.assigned_to_name,
+            assigned_to_role: task.assigned_to_role,
+            created_by: task.created_by,
+            created_by_name: task.created_by_name,
+            edit_child_id: task.edit_child_id || null,
+            edit_child_name: task.edit_child_name || null,
+            enrollment_id: task.enrollment_id || null,
+            enrollment_child_name: task.enrollment_child_name || null,
+            desktop_only: Boolean(task.desktop_only),
+            auto_action_type: task.auto_action_type || null,
+            birthday_child_id: task.birthday_child_id || null,
+            birthday_decision: task.birthday_decision || null,
+            birthday_admin_status: task.birthday_admin_status || null,
+            birthday_assigned_staff_id: task.birthday_assigned_staff_id || null,
+            birthday_celebration_date: task.birthday_celebration_date || null,
+            days_overdue: task.days_overdue,
+            source: 'tasks'
+          }));
         setTasks(mappedTasks.slice(0, 10)); // Limiter à 10
       } else {
         setTasks([]);
@@ -191,9 +217,9 @@ const OverdueTasksWidget = () => {
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
-                    {/* Titre */}
+                    {/* Titre nettoyé sans #ID */}
                     <h4 className="font-semibold text-gray-900 dark:text-white text-sm truncate">
-                      {task.title}
+                      {cleanTaskTitle(task, isRTL)}
                     </h4>
 
                     {/* Retard */}
@@ -209,10 +235,11 @@ const OverdueTasksWidget = () => {
                     </div>
                   </div>
 
-                  {/* Actions selon l'assignation */}
+                  {/* Actions selon l'assignation et la nature de la tâche */}
                   <div className="flex items-center gap-1 flex-shrink-0">
                     {(() => {
                       const actions = getTaskActions(task);
+                      const autoKind = getTaskAutoKind(task);
                       return (
                         <>
                           {/* Bouton message si tâche assignée à un staff */}
@@ -225,8 +252,60 @@ const OverdueTasksWidget = () => {
                               <MessageSquare className="w-4 h-4" />
                             </button>
                           )}
-                          {/* Bouton compléter si tâche assignée au directeur ou non assignée */}
-                          {actions.showComplete && (
+
+                          {/* Action métier dédiée pour tâche Express Enfant */}
+                          {autoKind === 'express_child' && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const { childId, childName } = resolveExpressChildTarget(task);
+                                navigate('/dashboard/children', {
+                                  state: { editChildId: childId, editChildName: childName }
+                                });
+                              }}
+                              className="flex items-center gap-1 px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-colors"
+                              title={isRTL ? 'استكمال ملف الطفل' : 'Compléter la fiche enfant'}
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                              <span>{isRTL ? 'استكمال' : 'Compléter'}</span>
+                            </button>
+                          )}
+
+                          {/* Action métier dédiée pour Demande d'inscription */}
+                          {autoKind === 'enrollment_review' && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const { enrollmentId, childName } = resolveEnrollmentTarget(task);
+                                navigate('/dashboard/pending-enrollments', {
+                                  state: { highlightId: enrollmentId, highlightChildName: childName }
+                                });
+                              }}
+                              className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors"
+                              title={isRTL ? 'فحص الملف' : 'Examiner le dossier'}
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                              <span>{isRTL ? 'فحص' : 'Examiner'}</span>
+                            </button>
+                          )}
+
+                          {/* Action métier dédiée pour Anniversaire */}
+                          {autoKind === 'birthday' && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleTaskClick(task);
+                              }}
+                              className="flex items-center gap-1 px-2.5 py-1.5 bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold rounded-lg transition-colors"
+                              title={isRTL ? 'إدارة عيد الميلاد' : 'Gérer l\'anniversaire'}
+                            >
+                              <Cake className="w-3.5 h-3.5" />
+                              <span>{isRTL ? 'إدارة' : 'Gérer'}</span>
+                            </button>
+                          )}
+
+                          {/* Bouton compléter UNIQUEMENT pour les tâches manuelles */}
+                          {actions.showComplete && autoKind === 'manual' && (
                             <button
                               onClick={(e) => { e.stopPropagation(); markAsCompleted(task.id); }}
                               disabled={processingId === task.id}

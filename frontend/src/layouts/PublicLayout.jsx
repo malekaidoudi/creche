@@ -10,10 +10,13 @@ const PublicLayout = () => {
   const location = useLocation()
   const normalizedPath = location.pathname.replace(/\/+$/, '') || '/'
   const showFooter = normalizedPath === '/' || normalizedPath === '/contact'
+  const isMessagesRoute = normalizedPath.startsWith('/mon-espace/messages')
 
   return (
     <div className={`min-h-screen flex flex-col ${isRTL ? 'font-arabic' : 'font-sans'}`}>
-      <PublicHeader />
+      <div className={isMessagesRoute ? 'hidden lg:block' : ''}>
+        <PublicHeader />
+      </div>
 
       <main className="flex-1">
         <ErrorBoundary>

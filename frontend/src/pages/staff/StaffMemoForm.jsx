@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, MessageSquare, CheckSquare } from 'lucide-react';
+import { X, Send, MessageSquare, CheckSquare } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
+import useIsMobile from '../../hooks/useIsMobile';
+import MobileNavigation from '../../components/mobile/MobileNavigation';
 import api from '../../services/api';
 import { useDialogContext } from '../../contexts/DialogContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 
 const StaffMemoForm = () => {
+  const isMobile = useIsMobile();
   const { isRTL } = useLanguage();
   const dialog = useDialogContext();
   const navigate = useNavigate();
@@ -69,20 +72,31 @@ const StaffMemoForm = () => {
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className={`max-w-3xl mx-auto space-y-6 px-4 py-4 ${isMobile ? 'pb-24 pt-[calc(env(safe-area-inset-top,0px)+0.75rem)]' : ''}`}>
       {/* Header */}
       <div className="flex items-center justify-between">
-        <button
-          onClick={() => navigate('/dashboard')}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          <span>Retour</span>
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+            <MessageSquare className="w-5 h-5" />
+          </div>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white leading-tight">
+              {isRTL ? 'إرسال إلى الإدارة' : 'Envoyer à l\'Admin'}
+            </h1>
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+              {isRTL ? 'إرسال مذكرة أو طلب إلى الإدارة' : 'Transmettre une note ou une demande à la direction'}
+            </p>
+          </div>
+        </div>
 
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          Envoyer à l'Admin
-        </h1>
+        <button
+          type="button"
+          onClick={() => navigate('/dashboard')}
+          className="p-2 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          title={isRTL ? 'إغلاق' : 'Fermer'}
+        >
+          <X className="w-6 h-6" />
+        </button>
       </div>
 
       {/* Form */}
@@ -220,6 +234,9 @@ const StaffMemoForm = () => {
           </form>
         </CardContent>
       </Card>
+
+      {/* Navigation mobile */}
+      {isMobile && <MobileNavigation />}
     </div>
   );
 };

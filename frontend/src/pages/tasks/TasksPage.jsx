@@ -1,29 +1,45 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   CheckSquare,
   Clock,
   AlertCircle,
   CheckCircle,
   XCircle,
-  ArrowLeft,
   Plus,
   Edit2,
   Trash2,
   User,
-  Filter
+  Filter,
+  Edit,
+  Eye,
+  Cake,
+  Calendar
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useAuth } from '../../hooks/useAuth';
 import { useAccess, FEATURES } from '../../access';
-import api from '../../services/api';
 import { useDialogContext } from '../../contexts/DialogContext';
+import useIsMobile from '../../hooks/useIsMobile';
+import MobileNavigation from '../../components/mobile/MobileNavigation';
 import TaskModal from '../../components/modals/TaskModal';
+import TaskDetailModal from '../../components/modals/TaskDetailModal';
+import {
+  isDesktopOnlyTask,
+  isObsoleteDocTask,
+  getTaskAutoKind,
+  cleanTaskTitle,
+  cleanTaskDescription,
+  resolveExpressChildTarget,
+  resolveEnrollmentTarget
+} from '../../utils/taskHelpers';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3003/api';
+const API_URL = `${(import.meta.env.VITE_API_URL || 'http://localhost:3003/api').replace(/\/api\/?$/, '').replace(/\/+$/, '')}/api`;
 
 export default function TasksPage() {
+  const isMobile = useIsMobile();
+  const navigate = useNavigate();
   const { isRTL } = useLanguage();
   const dialog = useDialogContext();
   const { user } = useAuth();
@@ -38,6 +54,7 @@ export default function TasksPage() {
   const [dateFilter, setDateFilter] = useState('all'); // all, today, week, overdue
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
+  const [detailTask, setDetailTask] = useState(null);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   useEffect(() => {
@@ -177,6 +194,10 @@ export default function TasksPage() {
   };
 
   const filteredTasks = tasks.filter(task => {
+    // Exclure la tâche obsolète #3 et exclure sur mobile les tâches réservées au Desktop
+    if (isObsoleteDocTask(task)) return false;
+    if (isMobile && isDesktopOnlyTask(task)) return false;
+
     // Filtre par statut
     if (filter !== 'all' && task.status !== filter) return false;
 
@@ -220,18 +241,9 @@ export default function TasksPage() {
   }
 
   return (
-    <div className="min-h-screen max-w-6xl mx-auto p-6">
+    <div className={`min-h-screen max-w-6xl mx-auto p-6 ${isMobile ? 'pb-24' : ''}`}>
       {/* Header */}
       <div className="mb-6">
-        {/* Bouton retour pour dashboard */}
-        <button
-          onClick={() => navigate('/dashboard')}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          <span>Retour au Dashboard</span>
-        </button>
-
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-3 mb-2">
@@ -393,6 +405,8 @@ export default function TasksPage() {
         <div className="space-y-4">
           {filteredTasks.map((task) => {
             const overdue = isOverdue(task);
+            const autoKind = getTaskAutoKind(task);
+            const cleanedDesc = cleanTaskDescription(task.description);
 
             return (
               <div
@@ -406,7 +420,7 @@ export default function TasksPage() {
                     {getStatusIcon(task.status)}
                     <div className="flex-1">
                       <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                        {task.title}
+                        {cleanTaskTitle(task, isRTL)}
                       </h3>
                       <div className="flex flex-wrap items-center gap-2">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(task.status)}`}>
@@ -432,11 +446,61 @@ export default function TasksPage() {
                     </div>
                   </div>
 
-                  {/* Actions */}
+                  {/* Actions contextuelles */}
                   <div className="flex items-center gap-2">
                     {task.status !== 'completed' && task.status !== 'cancelled' && (
                       <>
-                        {task.status === 'pending' && (
+                        {autoKind === 'express_child' && (
+                          <button
+                            onClick={() => {
+                              const { childId, childName } = resolveExpressChildTarget(task);
+                              navigate('/dashboard/children', {
+                                state: { editChildId: childId, editChildName: childName }
+                              });
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors"
+                          >
+                            <Edit className="w-4 h-4" />
+                            {isRTL ? 'استكمال ملف الطفل' : 'Compléter la fiche enfant'}
+                          </button>
+                        )}
+
+                        {autoKind === 'enrollment_review' && (
+                          <button
+                            onClick={() => {
+                              const { enrollmentId, childName } = resolveEnrollmentTarget(task);
+                              navigate('/dashboard/pending-enrollments', {
+                                state: { highlightId: enrollmentId, highlightChildName: childName }
+                              });
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+                          >
+                            <Eye className="w-4 h-4" />
+                            {isRTL ? 'فحص الملف' : 'Examiner le dossier'}
+                          </button>
+                        )}
+
+                        {autoKind === 'birthday' && (
+                          <button
+                            onClick={() => setDetailTask(task)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500 hover:bg-rose-600 text-white text-sm font-medium rounded-lg transition-colors"
+                          >
+                            <Cake className="w-4 h-4" />
+                            {isRTL ? 'إدارة عيد الميلاد' : 'Gérer l\'anniversaire'}
+                          </button>
+                        )}
+
+                        {(autoKind === 'pending_appointment' || autoKind === 'inscription_appointment' || autoKind === 'standard_appointment') && (
+                          <button
+                            onClick={() => setDetailTask(task)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors"
+                          >
+                            <Calendar className="w-4 h-4" />
+                            {isRTL ? 'إدارة الموعد' : 'Gérer le RDV'}
+                          </button>
+                        )}
+
+                        {autoKind === 'manual' && task.status === 'pending' && (
                           <button
                             onClick={() => handleStatusChange(task.id, 'in_progress')}
                             className="px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 text-sm rounded-lg transition-colors"
@@ -444,7 +508,7 @@ export default function TasksPage() {
                             Commencer
                           </button>
                         )}
-                        {task.status === 'in_progress' && (
+                        {autoKind === 'manual' && task.status === 'in_progress' && (
                           <button
                             onClick={() => handleStatusChange(task.id, 'completed')}
                             className="px-3 py-1 bg-green-100 hover:bg-green-200 text-green-700 text-sm rounded-lg transition-colors"
@@ -454,7 +518,7 @@ export default function TasksPage() {
                         )}
                       </>
                     )}
-                    {canManageTasks && (
+                    {canManageTasks && autoKind === 'manual' && (
                       <>
                         <button
                           onClick={() => setEditingTask(task)}
@@ -476,9 +540,9 @@ export default function TasksPage() {
                 </div>
 
                 {/* Description */}
-                {task.description && (
+                {cleanedDesc && (
                   <p className="text-gray-700 whitespace-pre-wrap leading-relaxed mb-4">
-                    {task.description}
+                    {cleanedDesc}
                   </p>
                 )}
 
@@ -516,6 +580,15 @@ export default function TasksPage() {
         task={editingTask}
         onSuccess={loadTasks}
       />
+
+      <TaskDetailModal
+        isOpen={!!detailTask}
+        onClose={() => setDetailTask(null)}
+        task={detailTask}
+        onComplete={loadTasks}
+      />
+
+      {isMobile && <MobileNavigation />}
     </div>
   );
 }

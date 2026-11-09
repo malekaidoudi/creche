@@ -146,10 +146,13 @@ const StaffChildDetailPage = () => {
       <div className="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 pt-[env(safe-area-inset-top,0px)]">
         <div className="flex items-center justify-between px-4 py-4">
           <button
+            type="button"
             onClick={() => navigate('/dashboard/children')}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            className="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors shrink-0"
+            title={isRTL ? 'رجوع' : 'Retour'}
+            aria-label={isRTL ? 'رجوع' : 'Retour'}
           >
-            <ArrowLeft className={`w-6 h-6 text-gray-900 dark:text-white ${isRTL ? 'rotate-180' : ''}`} />
+            <ArrowLeft className={`w-5 h-5 ${isRTL ? 'rotate-180' : ''}`} />
           </button>
           <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
             {isRTL ? 'بطاقة الطفل' : 'Fiche enfant'}

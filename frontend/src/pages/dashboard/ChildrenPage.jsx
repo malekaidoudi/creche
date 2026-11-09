@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   Baby,
   Search,
@@ -118,7 +118,7 @@ const ChildrenPage = () => {
 
   // Récupérer le numéro de téléphone de contact de la direction / admin pour les urgences
   useEffect(() => {
-    api.get('/contact/info')
+    api.get('/api/contact/info')
       .then((res) => {
         if (res.data?.contact?.phone) {
           setDirectorPhone(res.data.contact.phone);
@@ -247,6 +247,27 @@ const ChildrenPage = () => {
   };
 
   // Chargement initial
+  const location = useLocation();
+  const pendingAutoEditRef = useRef(null);
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const queryChildId = urlParams.get('editChildId');
+    const queryChildName = urlParams.get('editChildName');
+    const stateChildId = location.state?.editChildId;
+    const stateChildName = location.state?.editChildName;
+
+    if (queryChildId || queryChildName || stateChildId || stateChildName) {
+      pendingAutoEditRef.current = {
+        childId: Number(stateChildId || queryChildId) || null,
+        childName: (stateChildName || queryChildName || '').trim()
+      };
+      if (window.location.search) {
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
+  }, [location.state]);
+
   useEffect(() => {
     console.log('🎬 Chargement initial de la page');
     loadChildren(false); // false = utilise loading au lieu de searchLoading
@@ -258,6 +279,44 @@ const ChildrenPage = () => {
       }
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Ouverture automatique du modal d'édition lorsqu'on vient de la tâche "Compléter dossier admin & cotisation"
+  useEffect(() => {
+    if (!pendingAutoEditRef.current || loading) return;
+    const { childId, childName } = pendingAutoEditRef.current;
+
+    const openTargetChild = async () => {
+      let target = null;
+      if (childId && children.length > 0) {
+        target = children.find(c => Number(c.id) === Number(childId));
+      }
+      if (!target && childName && children.length > 0) {
+        const norm = childName.toLowerCase();
+        target = children.find(c => {
+          const full = `${c.first_name || ''} ${c.last_name || ''}`.trim().toLowerCase();
+          return full === norm || full.includes(norm) || norm.includes(full);
+        });
+      }
+      if (!target && childId) {
+        try {
+          const res = await childrenService.getChildById(childId);
+          if (res?.success && res?.data) {
+            target = res.data.child || res.data;
+          }
+        } catch (err) {
+          console.warn('Impossible de charger directement l\'enfant cible:', err);
+        }
+      }
+      if (target) {
+        pendingAutoEditRef.current = null;
+        handleEditChild(target);
+      } else if (children.length > 0) {
+        pendingAutoEditRef.current = null;
+      }
+    };
+
+    openTargetChild();
+  }, [children, loading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Changements de filtre/page (après le chargement initial)
   useEffect(() => {
@@ -656,6 +715,9 @@ const ChildrenPage = () => {
       }
 
       dialog.success(isRTL ? 'تم تحديث بيانات الطفل بنجاح' : 'Informations de l\'enfant mises à jour avec succès');
+
+      // Notifier les widgets de tâches (auto-complétion de la tâche dossier enfant)
+      window.dispatchEvent(new Event('taskUpdated'));
 
       // Fermer le modal
       setShowEditModal(false);

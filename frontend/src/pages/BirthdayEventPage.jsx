@@ -2142,14 +2142,22 @@ const BirthdayEventPage = () => {
               <div className="bg-white rounded-3xl border border-amber-200 p-5 sm:p-7 shadow-sm space-y-5">
                 {/* En-tête Tâche Urgente Direction */}
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-100 pb-4">
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex flex-wrap items-center gap-2.5">
                     {isCancelledByParent ? (
                       <span className="px-3 py-1 rounded-full bg-rose-100 text-rose-800 text-xs font-extrabold uppercase tracking-wider">
                         🚫 Annulé par le parent
                       </span>
+                    ) : celebration?.admin_approval_status === 'rejected' ? (
+                      <span className="px-3 py-1 rounded-full bg-rose-100 text-rose-800 text-xs font-extrabold uppercase tracking-wider">
+                        ❌ Demande refusée
+                      </span>
                     ) : celebration?.decision_status === 'no' ? (
                       <span className="px-3 py-1 rounded-full bg-stone-100 text-stone-700 text-xs font-extrabold uppercase tracking-wider">
                         🏠 Fête en famille (Rien à prévoir)
+                      </span>
+                    ) : celebration?.decision_status !== 'yes' ? (
+                      <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-extrabold uppercase tracking-wider">
+                        {isRTL ? '⏳ بدون طلب من الولي' : '⏳ Aucune demande du parent'}
                       </span>
                     ) : (
                       <span className="px-3 py-1 rounded-full bg-rose-100 text-rose-700 text-xs font-extrabold uppercase tracking-wider">
@@ -2161,9 +2169,33 @@ const BirthdayEventPage = () => {
                       <strong className="text-stone-800 uppercase">
                         {isCancelledByParent
                           ? 'ANNULÉ (NO)'
-                          : celebration?.decision_status || 'En attente'}
+                          : celebration?.decision_status === 'yes'
+                          ? (isRTL ? 'طلب مُرسل (YES)' : 'Demande soumise (YES)')
+                          : celebration?.decision_status === 'no'
+                          ? (isRTL ? 'عائلياً (NO)' : 'En famille (NO)')
+                          : (isRTL ? 'لم يرسل أي طلب' : 'Aucune demande soumise')}
                       </strong>
                     </span>
+                    {celebration?.decision_status === 'yes' && (
+                      <span className="text-xs font-semibold text-stone-500">
+                        · Direction :{' '}
+                        <strong
+                          className={`uppercase ${
+                            celebration?.admin_approval_status === 'rejected'
+                              ? 'text-rose-600'
+                              : celebration?.admin_approval_status === 'accepted'
+                              ? 'text-emerald-700'
+                              : 'text-amber-700'
+                          }`}
+                        >
+                          {celebration?.admin_approval_status === 'rejected'
+                            ? (isRTL ? 'مرفوض' : 'Refusée')
+                            : celebration?.admin_approval_status === 'accepted'
+                            ? (isRTL ? 'مقبول' : 'Acceptée')
+                            : (isRTL ? 'قيد الانتظار' : 'En attente')}
+                        </strong>
+                      </span>
+                    )}
                   </div>
 
                   {/* Action 1 : Appeler le parent */}
@@ -2181,6 +2213,44 @@ const BirthdayEventPage = () => {
                     </span>
                   </a>
                 </div>
+
+                {/* Bannière explicite si le parent n'a envoyé aucune demande */}
+                {celebration?.decision_status !== 'yes' && celebration?.decision_status !== 'no' && (
+                  <div className="rounded-2xl p-4 border-2 bg-amber-50/90 border-amber-300 text-amber-950 space-y-1.5">
+                    <div className="flex items-center gap-2 text-sm font-extrabold">
+                      <Clock className="w-5 h-5 shrink-0 text-amber-600" />
+                      <span>
+                        {isRTL
+                          ? `ℹ️ لم يرسل ولي ${child.first_name} أي طلب لتنظيم عيد الميلاد في الروضة`
+                          : `ℹ️ Aucune demande d'organisation n'a été envoyée par le parent de ${child.first_name}`}
+                      </span>
+                    </div>
+                    <p className="text-xs sm:text-sm leading-relaxed">
+                      {isRTL
+                        ? 'هذا التاريخ معروض للتذكير فقط. بما أن الولي لم يقدّم أي طلب للاحتفال في الروضة، لا يوجد أي طلب لقبوله أو رفضه ولا أية مهمة تحضير مطلوبة.'
+                        : "Cette fiche d'anniversaire est affichée à titre informatif uniquement. Le parent ne s'est pas manifesté et n'a soumis aucune demande pour fêter l'anniversaire à la crèche : vous n'avez donc aucune demande à accepter ou refuser."}
+                    </p>
+                  </div>
+                )}
+
+                {/* Bannière explicite si la demande a été refusée par la direction */}
+                {celebration?.admin_approval_status === 'rejected' && (
+                  <div className="rounded-2xl p-4 border-2 bg-rose-50 border-rose-300 text-rose-950 space-y-1.5">
+                    <div className="flex items-center gap-2 text-sm font-extrabold">
+                      <XCircle className="w-5 h-5 shrink-0 text-rose-600" />
+                      <span>
+                        {isRTL
+                          ? '❌ تم رفض طلب تنظيم الحفل من قِبل الإدارة'
+                          : '❌ Cette demande a été refusée par la direction'}
+                      </span>
+                    </div>
+                    <p className="text-xs sm:text-sm leading-relaxed">
+                      {isRTL
+                        ? 'تم إشعار الولي وإلغاء المناسبة من الروزنامة. يمكنكم إعادة قبول الطلب أدناه إذا تم الاتفاق مع الولي.'
+                        : "Le parent a été notifié et l'événement a été retiré du calendrier. Vous pouvez toujours accepter la demande ci-dessous si vous convenez d'une organisation avec le parent."}
+                    </p>
+                  </div>
+                )}
 
                 {/* Bannière explicite si le parent a annulé ou choisi Non */}
                 {celebration?.decision_status === 'no' && (
@@ -2229,14 +2299,85 @@ const BirthdayEventPage = () => {
                   </div>
                   <div>
                     <span className="text-stone-400 font-semibold block">
-                      {isRTL ? 'اليوم المطلوب للحفل :' : 'Jour demandé pour la fête :'}
+                      {isRTL ? 'تاريخ الميلاد الفعلي :' : "Date d'anniversaire réelle :"}
                     </span>
-                    <span className="font-bold text-rose-600">
-                      {celebration?.decision_status === 'no'
-                        ? (isRTL ? 'لا يوجد (احتفال عائلي)' : 'Aucun (Fête en famille)')
-                        : celebration?.celebration_date
-                        ? String(celebration.celebration_date).slice(0, 10)
-                        : celebrationDay || birthday.this_year_date}
+                    <span className="font-bold text-stone-800 capitalize">
+                      {formattedBirthDate}
+                    </span>
+                  </div>
+                  <div className="bg-white rounded-xl p-2.5 border border-stone-200">
+                    <span className="text-stone-400 font-semibold block">
+                      {isRTL ? '🕒 تاريخ إرسال الطلب من الولي :' : '🕒 Demande faite par le parent le :'}
+                    </span>
+                    <span className="font-bold text-stone-800 capitalize">
+                      {(() => {
+                        if (celebration?.decision_status !== 'yes' && celebration?.decision_status !== 'no') {
+                          return isRTL
+                            ? 'لم يتم إرسال أي طلب من الولي'
+                            : 'Aucune demande envoyée par le parent';
+                        }
+                        const rawReq =
+                          celebration?.requested_at ||
+                          celebration?.decided_at ||
+                          celebration?.created_at ||
+                          celebration?.updated_at;
+                        if (!rawReq) {
+                          return isRTL ? 'مسجّل في النظام' : 'Enregistrée';
+                        }
+                        const dObj = new Date(rawReq);
+                        if (isNaN(dObj.getTime())) return String(rawReq);
+                        const dStr = dObj.toLocaleDateString(currentLanguage === 'ar' ? 'ar-TN' : 'fr-FR', {
+                          weekday: 'long',
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric'
+                        });
+                        const tStr = dObj.toLocaleTimeString(currentLanguage === 'ar' ? 'ar-TN' : 'fr-FR', {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        });
+                        return tStr && tStr !== '00:00' ? `${dStr} à ${tStr}` : dStr;
+                      })()}
+                    </span>
+                  </div>
+                  <div className="bg-white rounded-xl p-2.5 border border-rose-200">
+                    <span className="text-stone-400 font-semibold block">
+                      {isRTL ? '🎂 التاريخ المطلوب للحفل في الطلب :' : '🎂 Date demandée pour la fête :'}
+                    </span>
+                    <span className="font-bold text-rose-600 capitalize">
+                      {(() => {
+                        if (celebration?.decision_status === 'no') {
+                          return isRTL ? 'لا يوجد (احتفال عائلي)' : 'Aucun (Fête en famille)';
+                        }
+                        if (celebration?.decision_status !== 'yes') {
+                          return isRTL
+                            ? 'لا يوجد تاريخ مطلوب (لم يرسل الولي طلباً)'
+                            : 'Aucune date demandée (pas de demande du parent)';
+                        }
+                        const iso =
+                          celebration?.celebration_date
+                            ? String(celebration.celebration_date).slice(0, 10)
+                            : celebrationDay || birthday.this_year_date;
+                        if (celebration?.celebration_date_label) {
+                          return `${celebration.celebration_date_label}${iso ? ` (${iso})` : ''}`;
+                        }
+                        if (iso && /^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+                          const dObj = new Date(`${iso}T12:00:00`);
+                          if (!isNaN(dObj.getTime())) {
+                            const fmt = dObj.toLocaleDateString(
+                              currentLanguage === 'ar' ? 'ar-TN' : 'fr-FR',
+                              {
+                                weekday: 'long',
+                                day: 'numeric',
+                                month: 'long',
+                                year: 'numeric'
+                              }
+                            );
+                            return `${fmt} (${iso})`;
+                          }
+                        }
+                        return celebration?.preferred_date || iso;
+                      })()}
                     </span>
                   </div>
                   <div className="sm:col-span-2">
@@ -2300,50 +2441,65 @@ const BirthdayEventPage = () => {
                   )}
                 </div>
 
-                {/* Action 2 : Accepter ou Refuser si demande tardive (< 5 jours, même J-1) */}
-                {celebration?.decision_status !== 'no' &&
-                  (isLateWindow || celebration?.is_late_request) && (
-                    <div className="rounded-2xl bg-amber-50 border border-amber-300 p-4 space-y-3">
-                      <div className="flex items-start gap-2.5">
-                        <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                        <div className="text-xs sm:text-sm text-amber-950">
-                          <span className="font-extrabold">
-                            {isRTL
-                              ? `قرار الإدارة (طلب في أقل من 5 أيام — ي-${daysUntil}) :`
-                              : `Décision de la Direction (Demande à moins de 5 jours — J-${daysUntil}) :`}
-                          </span>
-                          <p className="mt-0.5">
-                            {isRTL
-                              ? 'حتى في ي-1، القرار يعود إليكم. هل توافقون على تنظيم الحفل في الروضة؟'
-                              : 'Même à J-1, la décision vous appartient. Acceptez-vous d\'organiser la fête à la crèche ?'}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap gap-2.5">
-                        <button
-                          type="button"
-                          disabled={submitting}
-                          onClick={() => handleAdminAction('accept')}
-                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow-sm transition"
-                        >
-                          <CheckCircle2 className="w-4 h-4" />
-                          <span>{isRTL ? '✅ قبول الطلب المتأخر' : '✅ Accepter la demande tardive'}</span>
-                        </button>
-                        <button
-                          type="button"
-                          disabled={submitting}
-                          onClick={() => handleAdminAction('reject')}
-                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-extrabold shadow-sm transition"
-                        >
-                          <XCircle className="w-4 h-4" />
-                          <span>{isRTL ? '❌ رفض (الأجل قصير جداً)' : '❌ Refuser (Délai trop court)'}</span>
-                        </button>
+                {/* Action 2 : Accepter ou Refuser la demande (UNIQUEMENT si le parent a réellement fait une demande decision_status === 'yes') */}
+                {celebration?.decision_status === 'yes' && (
+                  <div className="rounded-2xl bg-amber-50 border border-amber-300 p-4 space-y-3">
+                    <div className="flex items-start gap-2.5">
+                      <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                      <div className="text-xs sm:text-sm text-amber-950">
+                        <span className="font-extrabold">
+                          {isLateWindow || celebration?.is_late_request
+                            ? (isRTL
+                                ? `قرار الإدارة (طلب في أقل من 5 أيام — ي-${daysUntil}) :`
+                                : `Décision de la Direction (Demande à moins de 5 jours — J-${daysUntil}) :`)
+                            : (isRTL
+                                ? 'قرار الإدارة بخصوص طلب تنظيم الحفل :'
+                                : 'Décision de la Direction concernant la demande :')}
+                        </span>
+                        <p className="mt-0.5">
+                          {isLateWindow || celebration?.is_late_request
+                            ? (isRTL
+                                ? 'حتى في ي-1، القرار يعود إليكم. هل توافقون على تنظيم الحفل في الروضة؟'
+                                : "Même à J-1, la décision vous appartient. Acceptez-vous d'organiser la fête à la crèche ?")
+                            : (isRTL
+                                ? 'يمكنكم تأكيد قبول الطلب أو رفضه مع إشعار الولي تلقائياً.'
+                                : 'Vous pouvez confirmer ou refuser cette demande (le parent sera notifié automatiquement).')}
+                        </p>
                       </div>
                     </div>
-                  )}
+                    <div className="flex flex-wrap gap-2.5">
+                      <button
+                        type="button"
+                        disabled={submitting}
+                        onClick={() => handleAdminAction('accept')}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow-sm transition disabled:opacity-50"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>
+                          {isLateWindow || celebration?.is_late_request
+                            ? (isRTL ? '✅ قبول الطلب المتأخر' : '✅ Accepter la demande tardive')
+                            : (isRTL ? '✅ قبول الطلب' : '✅ Accepter la demande')}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        disabled={submitting}
+                        onClick={() => handleAdminAction('reject')}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-extrabold shadow-sm transition disabled:opacity-50"
+                      >
+                        <XCircle className="w-4 h-4" />
+                        <span>
+                          {isLateWindow || celebration?.is_late_request
+                            ? (isRTL ? '❌ رفض (الأجل قصير جداً)' : '❌ Refuser (Délai trop court)')
+                            : (isRTL ? '❌ رفض الطلب' : '❌ Refuser la demande')}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                )}
 
-                {/* Action 3 : Assigner la tâche à un membre du staff avec texte pré-rempli */}
-                {celebration?.decision_status !== 'no' && (
+                {/* Action 3 : Assigner la tâche à un membre du staff avec texte pré-rempli (UNIQUEMENT si decision_status === 'yes') */}
+                {celebration?.decision_status === 'yes' && (
                   <div className="space-y-3 pt-2 border-t border-stone-100">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <h3 className="text-sm font-extrabold text-stone-800 flex items-center gap-2">

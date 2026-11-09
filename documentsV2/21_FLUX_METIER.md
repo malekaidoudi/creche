@@ -128,7 +128,50 @@ sequenceDiagram
 7. **Droit d'annulation jusqu'à J-1 23h59** :
    - Le parent peut annuler sa décision jusqu'à la veille de l'événement à 23h59. Le système supprime alors l'événement associé en base et clôture silencieusement la tâche de l'équipe sans spammer les utilisateurs.
 
-## 9. Limites et points à vérifier
+## 9. Flux de gestion financière, cotisations et remises (Billing & Invoicing)
+
+```mermaid
+sequenceDiagram
+    participant A as Direction (Admin)
+    participant M as Modale Cotisations (BillingManagementModal)
+    participant B as Service Facturation (billingService)
+    participant D as PostgreSQL (child_invoices, users, children)
+    participant P as Parent (Mon Espace / ParentBillingPage)
+
+    Note over A,B: 1. Début de mois : Génération maîtrisée
+    A->>M: Sélectionne le mois et clique sur "Générer ce mois"
+    M->>B: POST /api/billing/generate-monthly { month, year }
+    B->>D: Vérifie date d'admission (admission_date <= fin du mois)
+    B->>D: Calcule base_price, samedi, assurance annuelle (+60 DT 1ère facture)
+    B->>D: Applique remise récurrente (monthly_discount) ou ponctuelle
+    B->>D: Reporte les arriérés impayés (previous_arrears)
+    B->>D: INSERT child_invoices (status='pending')
+    Note over A,P: 2. Encaissement au guichet
+    A->>M: Clique sur "Encaisser" pour la famille (ex: 200 DT)
+    M->>B: POST /api/billing/family-payment { parentId, amount, paymentMethod: 'cash' }
+    B->>D: Imputation FIFO stricte (mois le plus ancien soldé en priorité)
+    B->>D: Génère numéro de reçu unique (REC-YYYYMM-XXXX)
+    B->>D: Si surplus -> crédite users.credit_balance (avance / acompte)
+    B-->>P: Facture soldée visible en vert sur Mon Espace + Reçu PDF téléchargeable
+```
+
+### Règles de gestion des remises et des assurances
+1. **Remise Ponctuelle vs Remise Récurrente** :
+   - **Remise Ponctuelle (spécifique à un mois donné)** : S'applique uniquement sur la facture du mois sélectionné (`child_invoices.discount_amount`). Elle ne se reporte **JAMAIS** sur les mois suivants.
+     * *Cas d'usage type* : Déduire l'assurance de 60 DT sur le mois de novembre si le parent l'avait déjà réglée en espèces lors de son inscription papier. Les mois de décembre, janvier, etc. ne subiront aucune déduction et conserveront le tarif normal de l'enfant.
+   - **Remise Récurrente (permanente sur tous les mois)** : Enregistrée directement sur la fiche de l'enfant (`children.monthly_discount`). Elle s'applique automatiquement à chaque génération mensuelle pour tous les mois futurs.
+     * *Cas d'usage type* : Remise fratrie permanente (-20 DT/mois) ou avantage personnel de crèche. Modifiable à tout moment dans la fiche enfant de `ChildrenPage` ou via la case « Appliquer cette remise à tous les mois futurs » dans l'ajustement de facture.
+2. **Assurance scolaire annuelle (60 DT)** :
+   - L'assurance est **annuelle et unique** par enfant pour toute l'année scolaire (`children.insurance_paid_school_year`).
+   - Le système l'ajoute automatiquement sur la **première facture** générée pour l'enfant dans l'année scolaire (ou en septembre).
+   - Dès qu'elle a été comptabilisée une fois, **aucun des mois suivants (décembre, janvier, etc.) n'inclut l'assurance**.
+3. **Régularisation des paiements historiques antérieurs au logiciel (`settle-past`)** :
+   - Pour les enfants inscrits physiquement avant l'informatisation (septembre/octobre) et dont les parents ont déjà tout payé en espèces :
+   - L'administrateur peut régulariser ces mois passés en 1 clic via `handleSettlePastInvoice` (`POST /api/billing/invoices/:id/settle-past`) ou `handleSettlePastFamily`.
+   - La facture passe au statut `paid` avec date de paiement fixée au 15 du mois d'origine.
+   - **Impact trésorerie** : Zéro impact sur la trésorerie du mois en cours (la caisse de novembre n'est pas faussée), et aucun faux arriéré n'est reporté vers le mois courant.
+
+## 10. Limites et points à vérifier
 - Étape exacte de « finalisation » de l'inscription (création définitive de la fiche `children` à partir des champs `enrollments.child_*`) : fonction non identifiée avec certitude dans `enrollmentsController.js` au-delà de `approveEnrollment`/`rejectEnrollment` — probablement déclenchée à la confirmation du rendez-vous (`appointmentsController.confirmAppointment`, mentionné en commentaire ligne 358 de `enrollmentsController.js`) ; non auditée en détail.
 - Comportement exact du job de clôture automatique des présences (`attendanceJob.js`).
 - Mécanisme précis de déclenchement des rappels de traitement (`treatmentEvents`).

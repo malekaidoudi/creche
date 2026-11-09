@@ -1,39 +1,48 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, CheckCircle, Clock, AlertCircle, CalendarPlus, FileText, StickyNote, Cake, User, Phone, ClipboardCheck } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Calendar, CheckCircle, Clock, AlertCircle, CalendarPlus, FileText, StickyNote, Cake, User, Phone, ClipboardCheck, Edit, Eye } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useDialogContext } from '../../contexts/DialogContext';
 import { useLanguage } from '../../hooks/useLanguage';
+import useIsMobile from '../../hooks/useIsMobile';
 import api from '../../services/api';
 import CreateAppointmentModal from '../modals/CreateAppointmentModal';
 import TaskDetailModal from '../modals/TaskDetailModal';
 import AppointmentActionModal from '../modals/AppointmentActionModal';
 import RejectWithProposalModal from '../modals/RejectWithProposalModal';
 import WidgetCard, { WidgetEmptyState } from '../ui/WidgetCard';
+import {
+  isDesktopOnlyTask,
+  isObsoleteDocTask,
+  getTaskAutoKind,
+  cleanTaskTitle,
+  cleanTaskDescription,
+  resolveExpressChildTarget,
+  resolveEnrollmentTarget
+} from '../../utils/taskHelpers';
 
 /**
  * Composant de carte unifié pour toutes les tâches
  * Design inspiré des cartes de RDV avec bordure colorée à gauche
  */
-const isBirthdayRelatedTask = (task) =>
-  Boolean(
-    task?.type === 'birthday' ||
-      task?.birthday_child_id ||
-      /anniversaire/i.test(task?.title || '') ||
-      /\/anniversaire\/\d+/.test(task?.description || '')
-  );
+const isBirthdayRelatedTask = (task) => getTaskAutoKind(task) === 'birthday';
 
-const cleanTaskCardDescription = (desc) => {
-  if (!desc) return '';
-  return String(desc)
-    .replace(/🔗\s*Lien\s*:\s*\/[^\s]+/gi, '')
-    .replace(/^[ \t]*•[ \t]*Vérifier les allergies[^\n]*\n?/gim, '')
-    .replace(/Notes médicales\/allergies\s*:\s*[^.\n]+\.?\s*/gi, '')
-    .trim();
-};
-
-const TaskCard = ({ task, index, isRTL, onTaskClick, onValidate, onComplete, onSchedule, onConfirmAppointment, onProposeNewDate }) => {
-  const isBirthdayTask = isBirthdayRelatedTask(task);
+const TaskCard = ({
+  task,
+  index,
+  isRTL,
+  onTaskClick,
+  onValidate,
+  onManageAppointment,
+  onComplete,
+  onSchedule,
+  onConfirmAppointment,
+  onProposeNewDate,
+  onEditExpressChild,
+  onReviewEnrollment
+}) => {
+  const autoKind = getTaskAutoKind(task);
+  const isBirthdayTask = autoKind === 'birthday';
 
   // Couleurs selon le type
   const getTypeConfig = () => {
@@ -79,8 +88,8 @@ const TaskCard = ({ task, index, isRTL, onTaskClick, onValidate, onComplete, onS
     rawTime !== '00:00' &&
     rawTime !== '01:00';
 
-  let cleanedDescription = cleanTaskCardDescription(task.description);
-  let displayTitle = task.title;
+  let cleanedDescription = cleanTaskDescription(task.description);
+  let displayTitle = cleanTaskTitle(task, isRTL);
 
   if (isRTL && isBirthdayTask) {
     if (displayTitle) {
@@ -167,10 +176,38 @@ const TaskCard = ({ task, index, isRTL, onTaskClick, onValidate, onComplete, onS
             </p>
           ) : null}
 
-          {/* Boutons d'action */}
+          {/* Boutons d'action contextuels selon le type de tâche automatique ou manuelle */}
           <div className="flex flex-wrap items-center gap-2 mt-3">
-            {/* Boutons dédiés pour les tâches d'anniversaire */}
-            {isBirthdayTask && (
+            {/* 1. Tâche Express Enfant : ouvrir directement la modale d'édition de l'enfant */}
+            {autoKind === 'express_child' && task.status !== 'completed' && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEditExpressChild(task);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white text-xs font-bold rounded-lg transition-all shadow-sm hover:shadow"
+              >
+                <Edit className="w-3.5 h-3.5" />
+                {isRTL ? 'استكمال ملف الطفل' : 'Compléter la fiche enfant'}
+              </button>
+            )}
+
+            {/* 2. Tâche Demande d'inscription : ouvrir la page des demandes en attente sur le dossier */}
+            {autoKind === 'enrollment_review' && task.status !== 'completed' && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onReviewEnrollment(task);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold rounded-lg transition-all shadow-sm hover:shadow"
+              >
+                <Eye className="w-3.5 h-3.5" />
+                {isRTL ? 'فحص الملف' : 'Examiner le dossier'}
+              </button>
+            )}
+
+            {/* 3. Tâche Anniversaire */}
+            {autoKind === 'birthday' && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -187,15 +224,15 @@ const TaskCard = ({ task, index, isRTL, onTaskClick, onValidate, onComplete, onS
               </button>
             )}
 
-            {/* Boutons Valider/Autre date pour RDV en attente de réponse admin */}
-            {task.type === 'pending_appointment' && (
+            {/* 4. RDV en attente de confirmation admin */}
+            {autoKind === 'pending_appointment' && task.status !== 'completed' && !task.metadata?.is_urgent_appointment && (
               <>
                 <button
                   onClick={(e) => { e.stopPropagation(); onConfirmAppointment(task); }}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white text-xs font-medium rounded-lg transition-all shadow-sm hover:shadow"
                 >
                   <CheckCircle className="w-3.5 h-3.5" />
-                  {isRTL ? 'تأكيد' : 'Valider'}
+                  {isRTL ? 'تأكيد الموعد' : 'Valider le RDV'}
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); onProposeNewDate(task); }}
@@ -207,8 +244,8 @@ const TaskCard = ({ task, index, isRTL, onTaskClick, onValidate, onComplete, onS
               </>
             )}
 
-            {/* Bouton pour RDV inscription */}
-            {task.type === 'appointment' && task.metadata?.is_inscription && task.status !== 'completed' && (
+            {/* 5. RDV Inscription confirmé */}
+            {autoKind === 'inscription_appointment' && task.status !== 'completed' && (
               <button
                 onClick={(e) => { e.stopPropagation(); onValidate(task); }}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white text-xs font-medium rounded-lg transition-all shadow-sm hover:shadow"
@@ -218,18 +255,18 @@ const TaskCard = ({ task, index, isRTL, onTaskClick, onValidate, onComplete, onS
               </button>
             )}
 
-            {/* Bouton Terminer pour autres types (masqué pour les tâches d'anniversaire afin d'éviter un clic accidentel sans organisation) */}
-            {!isBirthdayTask && task.type !== 'birthday' && task.type !== 'pending_appointment' && task.status !== 'completed' && !(task.type === 'appointment' && task.metadata?.is_inscription) && (
+            {/* 6. RDV standard confirmé */}
+            {autoKind === 'standard_appointment' && task.status !== 'completed' && !task.metadata?.is_urgent_appointment && (
               <button
-                onClick={(e) => { e.stopPropagation(); onComplete(task); }}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white text-xs font-medium rounded-lg transition-all shadow-sm hover:shadow"
+                onClick={(e) => { e.stopPropagation(); onManageAppointment(task); }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white text-xs font-medium rounded-lg transition-all shadow-sm hover:shadow"
               >
-                <CheckCircle className="w-3.5 h-3.5" />
-                {isRTL ? 'إنهاء' : 'Terminer'}
+                <Calendar className="w-3.5 h-3.5" />
+                {isRTL ? 'إدارة الموعد' : 'Gérer le RDV'}
               </button>
             )}
 
-            {/* Bouton Fixer date pour RDV urgents */}
+            {/* 7. Bouton Fixer date pour RDV urgents */}
             {task.metadata?.is_urgent_appointment && (
               <button
                 onClick={(e) => { e.stopPropagation(); onSchedule(task); }}
@@ -237,6 +274,17 @@ const TaskCard = ({ task, index, isRTL, onTaskClick, onValidate, onComplete, onS
               >
                 <CalendarPlus className="w-3.5 h-3.5" />
                 {isRTL ? 'تحديد موعد' : 'Fixer date'}
+              </button>
+            )}
+
+            {/* 8. Bouton Terminer UNIQUEMENT pour les tâches manuelles et mémos personnels */}
+            {autoKind === 'manual' && task.status !== 'completed' && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onComplete(task); }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white text-xs font-medium rounded-lg transition-all shadow-sm hover:shadow"
+              >
+                <CheckCircle className="w-3.5 h-3.5" />
+                {isRTL ? 'إنهاء' : 'Terminer'}
               </button>
             )}
           </div>
@@ -248,7 +296,10 @@ const TaskCard = ({ task, index, isRTL, onTaskClick, onValidate, onComplete, onS
 
 const TodayTasksWidget = ({ onOpenMemoModal, onOpenTaskModal, onOpenAppointmentModal, isMobileView = false }) => {
   const { isRTL } = useLanguage();
+  const isMobile = useIsMobile();
+  const navigate = useNavigate();
   const dialog = useDialogContext();
+  const hideDesktopOnly = Boolean(isMobileView || isMobile);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAppointmentModal, setShowAppointmentModal] = useState(false);
@@ -302,26 +353,34 @@ const TodayTasksWidget = ({ onOpenMemoModal, onOpenTaskModal, onOpenAppointmentM
       // 1. Charger les TÂCHES depuis la table tasks (via /api/tasks/today)
       let tasksFromDb = [];
       if (tasksResult.status === 'fulfilled' && tasksResult.value.data.success) {
-        tasksFromDb = (tasksResult.value.data.tasks || []).map(task => ({
-          id: task.id,
-          type: 'task',
-          title: task.title,
-          description: task.description,
-          start_date: task.due_date,
-          priority: task.priority,
-          status: task.status,
-          assigned_to: task.assigned_to,
-          assigned_to_name: task.assigned_to_name,
-          assigned_to_role: task.assigned_to_role,
-          created_by: task.created_by,
-          created_by_name: task.created_by_name,
-          birthday_child_id: task.birthday_child_id || null,
-          birthday_decision: task.birthday_decision || null,
-          birthday_admin_status: task.birthday_admin_status || null,
-          birthday_assigned_staff_id: task.birthday_assigned_staff_id || null,
-          birthday_celebration_date: task.birthday_celebration_date || null,
-          source: 'tasks' // Pour identifier la source
-        }));
+        tasksFromDb = (tasksResult.value.data.tasks || [])
+          .filter(task => !isObsoleteDocTask(task) && !(hideDesktopOnly && isDesktopOnlyTask(task)))
+          .map(task => ({
+            id: task.id,
+            type: 'task',
+            title: task.title,
+            description: task.description,
+            start_date: task.due_date,
+            priority: task.priority,
+            status: task.status,
+            assigned_to: task.assigned_to,
+            assigned_to_name: task.assigned_to_name,
+            assigned_to_role: task.assigned_to_role,
+            created_by: task.created_by,
+            created_by_name: task.created_by_name,
+            edit_child_id: task.edit_child_id || null,
+            edit_child_name: task.edit_child_name || null,
+            enrollment_id: task.enrollment_id || null,
+            enrollment_child_name: task.enrollment_child_name || null,
+            desktop_only: Boolean(task.desktop_only),
+            auto_action_type: task.auto_action_type || null,
+            birthday_child_id: task.birthday_child_id || null,
+            birthday_decision: task.birthday_decision || null,
+            birthday_admin_status: task.birthday_admin_status || null,
+            birthday_assigned_staff_id: task.birthday_assigned_staff_id || null,
+            birthday_celebration_date: task.birthday_celebration_date || null,
+            source: 'tasks' // Pour identifier la source
+          }));
       } else if (tasksResult.status === 'rejected') {
         console.log('Erreur chargement tâches:', tasksResult.reason?.message);
       }
@@ -363,31 +422,9 @@ const TodayTasksWidget = ({ onOpenMemoModal, onOpenTaskModal, onOpenAppointmentM
         console.log('Pas de RDV aujourd\'hui:', appointmentsResult.reason?.message);
       }
 
-      // 3. Charger les anniversaires du jour
+      // 3. Les tâches d'anniversaire ne sont plus générées automatiquement depuis /api/children :
+      // elles proviennent uniquement de /api/tasks/today lorsque le parent a soumis une demande (decision = 'yes').
       let birthdays = [];
-      if (childrenResult.status === 'fulfilled' && childrenResult.value.data.success) {
-        const todayMonth = today.getMonth() + 1;
-        const todayDay = today.getDate();
-
-        birthdays = (childrenResult.value.data.children || [])
-          .filter(child => {
-            if (!child.date_of_birth) return false;
-            const birthDate = new Date(child.date_of_birth);
-            return birthDate.getMonth() + 1 === todayMonth && birthDate.getDate() === todayDay;
-          })
-          .map(child => ({
-            id: `birthday-${child.id}`,
-            type: 'birthday',
-            title: `🎂 Anniversaire de ${child.first_name} ${child.last_name}`,
-            description: `${child.first_name} fête son anniversaire aujourd'hui !`,
-            start_date: todayStr,
-            priority: 'medium',
-            status: 'pending',
-            metadata: { child_id: child.id, child_name: `${child.first_name} ${child.last_name}` }
-          }));
-      } else if (childrenResult.status === 'rejected') {
-        console.log('Erreur chargement anniversaires:', childrenResult.reason?.message);
-      }
 
       // 4. Charger les mémos personnels du jour
       let memos = [];
@@ -574,11 +611,23 @@ const TodayTasksWidget = ({ onOpenMemoModal, onOpenTaskModal, onOpenAppointmentM
                 index={index}
                 isRTL={isRTL}
                 onTaskClick={handleTaskClick}
+                onEditExpressChild={(t) => {
+                  const { childId, childName } = resolveExpressChildTarget(t);
+                  navigate('/dashboard/children', {
+                    state: { editChildId: childId, editChildName: childName }
+                  });
+                }}
+                onReviewEnrollment={(t) => {
+                  const { enrollmentId, childName } = resolveEnrollmentTarget(t);
+                  navigate('/dashboard/pending-enrollments', {
+                    state: { highlightId: enrollmentId, highlightChildName: childName }
+                  });
+                }}
                 onValidate={(t) => {
-                  const apptId = t.metadata?.appointment_id || t.id.replace('appt-', '');
+                  const apptId = t.metadata?.appointment_id || String(t.id).replace('appt-', '');
                   setSelectedAppointment({
                     id: parseInt(apptId),
-                    child_name: t.metadata?.child_name || t.title,
+                    child_name: t.metadata?.child_name || cleanTaskTitle(t, isRTL),
                     parent_name: t.metadata?.parent_name,
                     parent_phone: t.metadata?.parent_phone,
                     parent_email: t.metadata?.parent_email,
@@ -587,6 +636,25 @@ const TodayTasksWidget = ({ onOpenMemoModal, onOpenTaskModal, onOpenAppointmentM
                     enrollment_id: t.metadata?.enrollment_id
                   });
                   setShowActionModal(true);
+                }}
+                onManageAppointment={(t) => {
+                  const apptId = t.metadata?.appointment_id || (String(t.id).startsWith('appt-') ? String(t.id).replace('appt-', '') : null);
+                  if (apptId) {
+                    setSelectedAppointment({
+                      id: parseInt(apptId),
+                      subject: cleanTaskTitle(t, isRTL),
+                      child_name: t.metadata?.child_name || cleanTaskTitle(t, isRTL),
+                      parent_name: t.metadata?.parent_name,
+                      parent_phone: t.metadata?.parent_phone,
+                      parent_email: t.metadata?.parent_email,
+                      proposed_date: t.start_date,
+                      appointment_type: t.metadata?.appointment_type || 'general',
+                      enrollment_id: t.metadata?.enrollment_id
+                    });
+                    setShowActionModal(true);
+                  } else {
+                    handleTaskClick(t);
+                  }
                 }}
                 onComplete={async (t) => {
                   try {

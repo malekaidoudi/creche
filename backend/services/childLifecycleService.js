@@ -72,7 +72,7 @@ async function createChild(childData, options = {}) {
         enrollment_id,
         created_by,
         transfer_documents = true,
-        create_birthday_event = true,
+        create_birthday_event = false,
         create_notification = true,
         archive_enrollment = !!enrollment_id,
         enrollment_data = {}
@@ -129,6 +129,7 @@ async function createChild(childData, options = {}) {
         }
 
         // 3. Créer l'enfant
+        const admissionDateVal = options.enrollment_date || new Date().toISOString().split('T')[0];
         const childResult = await db.query(`
             INSERT INTO children (
                 first_name, last_name, birth_date, gender, 
@@ -137,12 +138,12 @@ async function createChild(childData, options = {}) {
                 father_name, father_phone, mother_name, mother_phone, account_holder,
                 photo_url, saturday_attendance, care_schedule, monthly_discount,
                 doctor_name, doctor_phone, allergies, habits_notes, weight_kg, height_cm,
-                trusted_contacts, growth_measured_at, is_active, created_at
+                trusted_contacts, growth_measured_at, is_active, admission_date, created_at
             ) VALUES (
                 $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
                 $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25,
                 CASE WHEN $23::numeric IS NOT NULL OR $24::numeric IS NOT NULL THEN NOW() ELSE NULL END,
-                true, NOW()
+                true, $26::date, NOW()
             )
             RETURNING *
         `, [
@@ -178,7 +179,8 @@ async function createChild(childData, options = {}) {
             habits_notes || null,
             parsedWeight,
             parsedHeight,
-            safeTrustedContacts
+            safeTrustedContacts,
+            admissionDateVal
         ]);
 
         const child = childResult.rows[0];
@@ -516,50 +518,12 @@ async function transferEnrollmentDocuments(enrollmentId, childId) {
 }
 
 /**
- * Crée l'événement anniversaire récurrent
+ * Crée l'événement anniversaire récurrent (Désactivé : un événement anniversaire dans `events`
+ * ne doit être créé QUE lorsque le parent soumet explicitement une demande avec decision = 'yes'
+ * via POST /api/birthdays/child/:childId/decision).
  */
-async function createBirthdayEvent(childId, firstName, lastName, birthDate, createdBy) {
-    try {
-        const birth = new Date(birthDate);
-        const currentYear = new Date().getFullYear();
-
-        // Calculer la prochaine date d'anniversaire
-        let nextBirthday = new Date(currentYear, birth.getMonth(), birth.getDate());
-        if (nextBirthday < new Date()) {
-            nextBirthday = new Date(currentYear + 1, birth.getMonth(), birth.getDate());
-        }
-
-        // Vérifier si l'événement existe déjà
-        const existingEvent = await db.query(`
-            SELECT id FROM events 
-            WHERE child_id = $1 AND type = 'birthday'
-        `, [childId]);
-
-        if (existingEvent.rows.length > 0) {
-            console.log(`🎂 [ChildLifecycle] Événement anniversaire existe déjà pour enfant #${childId}`);
-            return;
-        }
-
-        await db.query(`
-            INSERT INTO events (
-                title, description, type, start_date, end_date, all_day,
-                is_recurring, recurrence_rule, child_id, status, priority,
-                created_by, color, source_table, source_id
-            ) VALUES ($1, $2, 'birthday', $3, $3, true, true, $4, $5, 'pending', 'medium', $6, '#f472b6', 'children', $5)
-        `, [
-            `🎂 Anniversaire de ${firstName}`,
-            `${firstName} ${lastName || ''} fête son anniversaire !`,
-            nextBirthday,
-            JSON.stringify({ frequency: 'yearly', interval: 1 }),
-            childId,
-            createdBy || null
-        ]);
-
-        console.log(`🎂 [ChildLifecycle] Événement anniversaire créé pour ${firstName} (${nextBirthday.toLocaleDateString('fr-FR')})`);
-
-    } catch (error) {
-        console.error(`❌ [ChildLifecycle] Erreur création événement anniversaire:`, error);
-    }
+async function createBirthdayEvent(childId, firstName) {
+    console.log(`ℹ️ [ChildLifecycle] Aucun événement anniversaire auto-créé pour ${firstName} (#${childId}) — attente décision explicite du parent.`);
 }
 
 /**

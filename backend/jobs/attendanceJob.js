@@ -21,9 +21,9 @@ let eveningSafetyJob = null;
 
 const startAttendanceJob = () => {
   try {
-    // 1. Clôture automatique aux heures de fermeture (semaine 18h00-18h30, samedi 13h00-13h30)
-    attendanceJob = cron.schedule('0,15,30 13,18 * * 1-6', async () => {
-      console.log('⏰ [CRON PRÉSENCE] Exécution de la clôture automatique à l\'heure de fermeture...');
+    // 1. Clôture automatique différée de 1 heure après les fermetures (demi-journée & samedi 14h00-14h30, semaine 19h00-19h30)
+    attendanceJob = cron.schedule('0,15,30 14,19 * * 1-6', async () => {
+      console.log('⏰ [CRON PRÉSENCE] Exécution de la clôture automatique différée (+1h après fermeture)...');
       const res = await autoCloseExpiredAttendances();
       if (res.totalClosed > 0) {
         console.log(`✅ [CRON PRÉSENCE] ${res.totalClosed} départ(s) automatique(s) clôturé(s) avec succès`);
@@ -33,9 +33,9 @@ const startAttendanceJob = () => {
       timezone: 'Africa/Tunis'
     });
 
-    // 2. Filet de sécurité en fin de soirée (18h00)
-    eveningSafetyJob = cron.schedule('0 18 * * 1-6', async () => {
-      console.log('⏰ [CRON PRÉSENCE] Filet de sécurité de 18h00 : vérification des présences orphelines...');
+    // 2. Filet de sécurité en fin de soirée (20h30)
+    eveningSafetyJob = cron.schedule('30 20 * * 1-6', async () => {
+      console.log('⏰ [CRON PRÉSENCE] Filet de sécurité de 20h30 : vérification des présences orphelines...');
       const res = await autoCloseExpiredAttendances();
       if (res.totalClosed > 0) {
         console.log(`✅ [CRON PRÉSENCE] ${res.totalClosed} départ(s) clôturé(s) par le filet de sécurité`);
@@ -45,7 +45,7 @@ const startAttendanceJob = () => {
       timezone: 'Africa/Tunis'
     });
 
-    console.log('👶 [CRON PRÉSENCE] Job de clôture automatique initialisé (fermetures 13h/18h + 20h) ✅');
+    console.log('👶 [CRON PRÉSENCE] Job de clôture automatique initialisé (différé 14h/19h + sécurité 20h30) ✅');
     return true;
   } catch (error) {
     console.error('❌ Erreur démarrage job présence:', error.message);

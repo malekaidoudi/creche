@@ -68,14 +68,14 @@ Décrire chaque table identifiée, ses attributs principaux, ses relations, les 
 **Finalité** : bilan journalier détaillé d'un enfant (repas, sommeil, couches, observations), rédigé par le personnel et consultable par les parents.
 **Source** : [M-001].
 **Attributs de `daily_reports`** : `child_id`, `report_date` (unique par enfant/jour), `report_type` (`baby|child`), `status` (`draft|completed|sent`), `temperature`, `medication`, `meals_count`, `meal_type`, `period`, `appetite`(+notes), `diaper_changes`, `diaper_nature`(+notes), `skin_condition`(+notes), `sleep_quality`, `sleep_start/end`(+notes), `activities`, `observations`, `created_by`.
-**Tables liées** : `daily_meals` (repas détaillés par créneau), `daily_diaper_changes` (changes détaillés).
+**Tables liées** : `daily_meals` (repas détaillés par créneau : `bottle`, `meal`, `compote`, `fruit`, `other` + description libre ; migration [M-020]), `daily_diaper_changes` (changes détaillés).
 **CRUD** : création/consultation par le staff avec permission `daily_reports.manage` ; consultation par le parent concerné (`GET /parent/my-children`, `/:childId/history`).
 **Fichiers** : `routes_postgres/dailyReports.js`, `controllers/dailyReportsController.js`.
 
 ## `child_supplies`, `daily_supplies_brought`
-**Finalité** : suivi du stock de fournitures d'un enfant (couches, lingettes, crème) et des apports quotidiens par les parents.
-**Source** : [M-001].
-**Attributs** : `child_supplies` : `supply_type`, `quantity`, `alert_threshold`, `last_refill_date/quantity` (unique par enfant/type) ; `daily_supplies_brought` : `brought_date`, `supply_type`, `quantity`, `description`, `recorded_by`.
+**Finalité** : suivi du stock de fournitures et produits consommables d'un enfant (couches, lingettes, crème, mouchoirs, vêtements de rechange, sérum physiologique, autres consommables) et des apports quotidiens par les parents.
+**Source** : [M-001], [M-020].
+**Attributs** : `child_supplies` : `supply_type` (`diapers`, `wipes`, `cream`, `other`), `quantity`, `alert_threshold`, `last_refill_date/quantity` (unique par enfant/type) ; `daily_supplies_brought` : `brought_date`, `supply_type` (`diapers`, `wipes`, `cream`, `clothes`, `other`), `quantity`, `description`, `recorded_by`.
 **Fichiers** : `routes_postgres/supplies.js`, `controllers/suppliesController.js`. Fonctionnalité fusionnée côté permission avec `daily_reports.manage` (voir [11_AUTORISATION_ET_PERMISSIONS.md](./11_AUTORISATION_ET_PERMISSIONS.md)).
 
 ## `child_treatments`, `treatment_administrations`

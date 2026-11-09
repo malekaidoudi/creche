@@ -47,10 +47,4 @@ router.get('/today/:childId',
     suppliesController.getTodaySupplies
 );
 
-// GET - Options de nourriture apportées pour un enfant (pour les repas)
-router.get('/child/:childId/food-options',
-    authenticateToken,
-    suppliesController.getFoodOptions
-);
-
 module.exports = router;

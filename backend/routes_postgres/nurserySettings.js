@@ -281,7 +281,8 @@ router.post('/simple-update', auth.authenticateToken, auth.requireRole('admin', 
       const sameValueKeys = [
         'opening_time', 'closing_time',
         'saturday_opening_time', 'saturday_closing_time',
-        'saturday_open', 'max_capacity', 'phone', 'email'
+        'saturday_open', 'max_capacity', 'phone', 'email',
+        'attendance_mode'
       ];
 
       // Pour chaque autre paramètre à mettre à jour

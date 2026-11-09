@@ -527,6 +527,7 @@ router.get('/birthdays/month', auth.authenticateToken, auth.requireStaff, async 
   try {
     const now = new Date();
     const currentMonth = now.getMonth() + 1; // JavaScript months are 0-indexed
+    const currentYear = now.getFullYear();
 
     const sql = `
       SELECT 
@@ -541,15 +542,21 @@ router.get('/birthdays/month', auth.authenticateToken, auth.requireStaff, async 
         EXTRACT(DAY FROM c.birth_date) as birth_day,
         EXTRACT(YEAR FROM AGE(c.birth_date)) as age,
         u.first_name as parent_first_name,
-        u.last_name as parent_last_name
+        u.last_name as parent_last_name,
+        bc.decision as celebration_decision,
+        bc.admin_status as celebration_admin_status,
+        bc.preferred_date as celebration_preferred_date,
+        bc.celebration_iso_date as celebration_iso_date,
+        bc.decided_at as celebration_decided_at
       FROM children c
       LEFT JOIN users u ON c.parent_id = u.id
+      LEFT JOIN birthday_celebrations bc ON bc.child_id = c.id AND bc.year = $2
       WHERE c.is_active = true 
         AND EXTRACT(MONTH FROM c.birth_date) = $1
       ORDER BY EXTRACT(DAY FROM c.birth_date) ASC
     `;
 
-    const result = await pool.query(sql, [currentMonth]);
+    const result = await pool.query(sql, [currentMonth, currentYear]);
 
     // Calculer les jours restants et formater les données
     const todayZero = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -573,6 +580,9 @@ router.get('/birthdays/month', auth.authenticateToken, auth.requireStaff, async 
         days_until: daysUntil,
         is_today: isToday,
         is_past: isPast,
+        celebration_decision: child.celebration_decision || 'pending',
+        celebration_admin_status: child.celebration_admin_status || 'pending',
+        has_parent_request: child.celebration_decision === 'yes',
         start_date: `${now.getFullYear()}-${String(birthMonth).padStart(2, '0')}-${String(birthDay).padStart(2, '0')}`
       };
     });
@@ -863,7 +873,7 @@ router.get('/', auth.authenticateToken, async (req, res) => {
         c.emergency_contact_name, c.emergency_contact_phone, c.photo_url,
         COALESCE(c.photo_shared_with_staff, true) as photo_shared_with_staff,
         c.saturday_attendance,
-        c.care_schedule, c.monthly_discount,
+        c.care_schedule, c.monthly_discount, c.insurance_paid_school_year,
         c.is_active, c.created_at, c.updated_at, c.parent_id,
         COALESCE(c.status, 'active') as status,
         c.suspension_reason, c.suspended_at, c.expected_return_date,
@@ -946,7 +956,7 @@ router.get('/', auth.authenticateToken, async (req, res) => {
              c.allergies, c.medical_notes, c.doctor_name, c.doctor_phone, c.blood_type,
              c.weight_kg, c.height_cm, c.growth_measured_at,
              c.emergency_contact_name, c.emergency_contact_phone, c.photo_url, 
-             c.photo_shared_with_staff, c.saturday_attendance, c.care_schedule, c.monthly_discount, c.is_active, c.created_at, c.updated_at, c.parent_id,
+             c.photo_shared_with_staff, c.saturday_attendance, c.care_schedule, c.monthly_discount, c.insurance_paid_school_year, c.is_active, c.created_at, c.updated_at, c.parent_id,
              c.status, c.suspension_reason, c.suspended_at, c.expected_return_date,
              c.father_name, c.father_phone, c.mother_name, c.mother_phone, c.account_holder,
              c.emergency_contact_choice, c.trusted_contacts,
@@ -1212,7 +1222,7 @@ router.post('/', [
       {
         created_by: req.user?.id,
         transfer_documents: false, // Pas de documents à transférer (création directe)
-        create_birthday_event: true,
+        create_birthday_event: false,
         create_notification: !!parent_id, // Notification seulement si parent associé
         archive_enrollment: false, // Pas d'inscription à archiver
         enrollment_date: enrollment_date || null,
@@ -1271,28 +1281,6 @@ router.post('/', [
       );
     } catch (archiveError) {
       console.warn('⚠️ Erreur création archive inscription:', archiveError.message);
-    }
-
-    // Créer une tâche admin pour compléter le dossier
-    try {
-      const adminResult = await pool.query(`SELECT id FROM users WHERE role = 'admin' ORDER BY id LIMIT 1`);
-      const adminId = adminResult.rows.length > 0 ? adminResult.rows[0].id : req.user?.id || 1;
-
-      await pool.query(
-        `INSERT INTO tasks (
-          title, description, assigned_to, created_by, 
-          due_date, priority, status, created_at
-        ) VALUES ($1, $2, $3, $4, $5, 'medium', 'pending', NOW())`,
-        [
-          `📄 Compléter le dossier de ${first_name} ${last_name}`,
-          `Documents manquants pour l'enfant ${first_name} ${last_name} (ID: ${result.childId}).\n\n🔗 Accéder aux documents: /dashboard/documents\n\nDocuments requis:\n- Carnet médical\n- Acte de naissance\n- Certificat médical`,
-          adminId,
-          req.user?.id || adminId,
-          new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-        ]
-      );
-    } catch (taskError) {
-      console.warn('⚠️ Erreur création tâche documents:', taskError.message);
     }
 
     res.status(201).json({
@@ -1693,6 +1681,12 @@ router.put('/:id', [
       params.push(parseFloat(req.body.monthly_discount) || 0);
     }
 
+    if (req.body.insurance_paid_school_year !== undefined) {
+      paramCount++;
+      updates.push(`insurance_paid_school_year = $${paramCount}`);
+      params.push(req.body.insurance_paid_school_year ? String(req.body.insurance_paid_school_year).trim() : null);
+    }
+
     if (updates.length === 0) {
       if (parentUserUpdated) {
         return res.json({
@@ -1743,6 +1737,28 @@ router.put('/:id', [
         ]);
       } catch (growthErr) {
         console.warn('⚠️ Erreur historique croissance (ignorée):', growthErr.message);
+      }
+    }
+
+    // Auto-compléter la tâche administrative liée à cet enfant (ex: création express mobile)
+    const updatedChild = result.rows[0];
+    if (updatedChild) {
+      try {
+        const childFullName = `${updatedChild.first_name || ''} ${updatedChild.last_name || ''}`.trim();
+        await pool.query(`
+          UPDATE tasks
+          SET status = 'completed', completed_at = NOW(), updated_at = NOW()
+          WHERE status != 'completed'
+            AND (
+              description ILIKE $1
+              OR (
+                (title ILIKE '📋 Compléter dossier%' OR title ILIKE '📄 Compléter le dossier%')
+                AND ($2 <> '' AND title ILIKE '%' || $2 || '%')
+              )
+            )
+        `, [`%editChildId=${id}%`, childFullName]);
+      } catch (taskUpdateErr) {
+        console.warn('⚠️ Erreur auto-complétion tâche enfant (ignorée):', taskUpdateErr.message);
       }
     }
 

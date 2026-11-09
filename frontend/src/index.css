@@ -473,3 +473,47 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Règle anti-coupure stricte des montants monétaires (DT) */
+.nowrap-dt {
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
+/* Modale Financière : Protection Safe Area iOS / Dynamic Island & Défilement */
+.modal-ios-safe-header {
+  padding-top: max(calc(env(safe-area-inset-top, 0px) + 1.25rem), 3.75rem);
+}
+@media (min-width: 640px) {
+  .modal-ios-safe-header {
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+  }
+}
+
+.modal-ios-safe-scroll {
+  padding-bottom: max(calc(env(safe-area-inset-bottom, 0px) + 7rem), 7rem);
+}
+@media (min-width: 640px) {
+  .modal-ios-safe-scroll {
+    padding-bottom: 2.5rem !important;
+  }
+}
+
+/* Style C — Maquette Financière Cotisations & Dépenses (Photo 1 & 2) */
+.cotis-card-stripe {
+  border-left-width: 4px !important;
+}
+.cotis-stripe-pending { border-left-color: #3B82F6 !important; }
+.cotis-stripe-partial { border-left-color: #F59E0B !important; }
+.cotis-stripe-paid { border-left-color: #10B981 !important; }
+.cotis-stripe-advance { border-left-color: #0D9488 !important; }
+.cotis-stripe-expense { border-left-color: #E11D48 !important; }
+
+.kpi-stripe {
+  border-left-width: 3.5px !important;
+}
+.kpi-stripe-expected { border-left-color: #94A3B8 !important; }
+.kpi-stripe-collected { border-left-color: #10B981 !important; }
+.kpi-stripe-remaining { border-left-color: #F43F5E !important; }
+.kpi-stripe-expenses { border-left-color: #F59E0B !important; }

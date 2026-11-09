@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Baby,
   User,
@@ -21,7 +21,10 @@ import {
   CheckCircle2,
   Calendar,
   Sparkles,
-  AlertCircle
+  AlertCircle,
+  Clock,
+  ChevronDown,
+  FolderArchive
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -45,6 +48,7 @@ import TestimonialForm from '../../components/testimonials/TestimonialForm';
 import ParentBirthdayBanner from '../../components/widgets/ParentBirthdayBanner';
 import { getEmergencyContactDisplay } from '../../utils/emergencyContacts';
 import PreInterviewPreparationModal from '../../components/modals/PreInterviewPreparationModal';
+import PaymentsHistoryModal from '../../components/modals/PaymentsHistoryModal';
 import enrollmentsService from '../../services/enrollmentsService';
 
 // Cache mémoire pour affichage instantané lors du retour à l'espace parent
@@ -60,6 +64,7 @@ const MySpacePage = () => {
   const dialog = useDialogContext();
   const { getImageUrl, hasImage } = useProfileImage();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(() => cachedParentChildren === null);
   const [children, setChildren] = useState(() => cachedParentChildren || []);
   const [appointments, setAppointments] = useState(() => cachedParentAppointments || []);
@@ -76,9 +81,33 @@ const MySpacePage = () => {
   const [showChildModal, setShowChildModal] = useState(false);
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);
   const [myInvoices, setMyInvoices] = useState([]);
+  const [creditBalance, setCreditBalance] = useState(0);
   const [loadingInvoices, setLoadingInvoices] = useState(false);
+  const [showAllHistory, setShowAllHistory] = useState(false);
+  const [showPaymentsModal, setShowPaymentsModal] = useState(false);
   const [myApplication, setMyApplication] = useState(null);
   const [showPreparationModal, setShowPreparationModal] = useState(false);
+
+  // Ouverture automatique du menu enfant si demandé dans l'URL (ex: retour depuis Fiche enfant, Médical, etc.)
+  useEffect(() => {
+    const openChildId = searchParams.get('openChild');
+    if (openChildId && children && children.length > 0) {
+      const found = children.find(c => String(c.id) === String(openChildId) || String(c.child_id) === String(openChildId));
+      if (found) {
+        setSelectedChildForModal(found);
+        setShowChildModal(true);
+      }
+    }
+  }, [searchParams, children]);
+
+  const handleCloseChildModal = () => {
+    setShowChildModal(false);
+    if (searchParams.get('openChild')) {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete('openChild');
+      setSearchParams(nextParams, { replace: true });
+    }
+  };
 
   useEffect(() => {
     loadChildren();
@@ -110,6 +139,7 @@ const MySpacePage = () => {
       const res = await api.get('/api/billing/my-invoices');
       if (res.data?.success) {
         setMyInvoices(res.data.invoices || []);
+        setCreditBalance(parseFloat(res.data.credit_balance || res.data.invoices?.[0]?.parent_credit_balance || 0));
       }
     } catch (err) {
       console.log('Factures non disponibles pour le parent:', err.message);
@@ -696,255 +726,487 @@ const MySpacePage = () => {
           </div>
 
           {/* Section Cotisations & Reçus (si facturation active) */}
-          {myInvoices.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.45 }}
-              className="mb-8"
-            >
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
-                <div className="flex items-center justify-between mb-4 border-b border-gray-100 dark:border-gray-700 pb-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
-                      <Receipt className="w-5 h-5" />
+          {(() => {
+            const now = new Date();
+            const curY = now.getFullYear();
+            const curM = now.getMonth() + 1;
+            const isFuture = (m, y) => parseInt(y, 10) > curY || (parseInt(y, 10) === curY && parseInt(m, 10) > curM);
+            const isCurrent = (m, y) => parseInt(y, 10) === curY && parseInt(m, 10) === curM;
+
+            // RÈGLE MÉTIER STRICTE : Les mois futurs ne sont JAMAIS affichés sous forme de cartes de cotisation
+            // aux parents. Seuls les mois passés et le mois en cours (point courant) sont visibles.
+            // Les périodes de vacances fermées (ex: Août 0 DT) et factures annulées sont totalement exclues.
+            const visibleInvoices = myInvoices.filter(inv => {
+              if (isFuture(inv.period_month, inv.period_year)) return false;
+              if (inv.status === 'cancelled') return false;
+              const due = parseFloat(inv.amount_due ?? inv.total_due ?? inv.amount ?? 0) || 0;
+              const paid = parseFloat(inv.amount_paid || 0) || 0;
+              if (due === 0 && paid === 0) return false;
+              return true;
+            });
+
+            if (visibleInvoices.length === 0 && creditBalance <= 0) return null;
+
+            const totalRemainingDue = visibleInvoices.reduce((sum, inv) => {
+              if (inv.status === 'paid' || inv.status === 'cancelled') return sum;
+              const due = parseFloat(inv.amount_due ?? inv.total_due ?? inv.amount ?? 0) || 0;
+              const paid = parseFloat(inv.amount_paid || 0) || 0;
+              return sum + Math.max(0, due - paid);
+            }, 0);
+
+            const groups = [];
+            const processedIds = new Set();
+
+            visibleInvoices.forEach(inv => {
+              if (processedIds.has(inv.id)) return;
+
+              // Regrouper par fratrie pour la même période mensuelle (mois / année)
+              const siblings = visibleInvoices.filter(other => 
+                other.id !== inv.id &&
+                !processedIds.has(other.id) &&
+                parseInt(other.period_month, 10) === parseInt(inv.period_month, 10) &&
+                parseInt(other.period_year, 10) === parseInt(inv.period_year, 10)
+              );
+
+              if (siblings.length > 0) {
+                const allFamily = [inv, ...siblings];
+                allFamily.forEach(f => processedIds.add(f.id));
+
+                const totalDueFamily = allFamily.reduce((sum, f) => sum + (parseFloat(f.amount_due ?? f.total_due ?? f.amount ?? 0) || 0), 0);
+                const totalPaidFamily = allFamily.reduce((sum, f) => sum + (parseFloat(f.amount_paid || 0) || 0), 0);
+                const isFamilyPaid = allFamily.every(f => 
+                  f.status === 'paid' || 
+                  parseFloat(f.total_due || 0) === 0 || 
+                  (parseFloat(f.amount_paid || 0) >= parseFloat(f.total_due || 0) && parseFloat(f.total_due || 0) > 0)
+                );
+                const isAdvancePaid = allFamily.every(f => f.is_advance_paid);
+                const advancePaidDate = allFamily.find(f => f.advance_paid_date)?.advance_paid_date || null;
+                const sharedReceipt = allFamily.find(f => f.receipt_number)?.receipt_number || inv.receipt_number;
+                const sharedPaidAt = allFamily.find(f => f.paid_at)?.paid_at || inv.paid_at || null;
+
+                groups.push({
+                  type: 'family',
+                  id: `family-${inv.period_year}-${inv.period_month}`,
+                  period_month: inv.period_month,
+                  period_year: inv.period_year,
+                  receipt_number: sharedReceipt,
+                  paid_at: sharedPaidAt,
+                  isPaid: isFamilyPaid,
+                  isAdvancePaid,
+                  advancePaidDate,
+                  totalDue: totalDueFamily,
+                  totalPaid: totalPaidFamily,
+                  invoices: allFamily,
+                  primaryInvoice: inv
+                });
+              } else {
+                processedIds.add(inv.id);
+                const invDue = parseFloat(inv.amount_due ?? inv.total_due ?? inv.amount ?? 0) || 0;
+                const invPaid = parseFloat(inv.amount_paid || 0) || 0;
+                const isPaid = inv.status === 'paid' || invDue === 0 || (invPaid >= invDue && invDue > 0);
+
+                groups.push({
+                  type: 'single',
+                  id: inv.id,
+                  period_month: inv.period_month,
+                  period_year: inv.period_year,
+                  receipt_number: inv.receipt_number,
+                  paid_at: inv.paid_at || null,
+                  isPaid,
+                  isAdvancePaid: inv.is_advance_paid,
+                  advancePaidDate: inv.advance_paid_date || null,
+                  totalDue: invDue,
+                  totalPaid: invPaid,
+                  invoices: [inv],
+                  primaryInvoice: inv
+                });
+              }
+            });
+
+            // Classification et ordonnancement : Dettes réelles -> Point courant -> Historique
+            const dueArrearsGroups = groups.filter(g => !g.isPaid);
+            const currentPaidGroups = groups.filter(g => g.isPaid && isCurrent(g.period_month, g.period_year));
+            const pastPaidGroups = groups.filter(g => g.isPaid && !isCurrent(g.period_month, g.period_year));
+            const olderPaidCount = Math.max(0, pastPaidGroups.length - 3);
+            const visiblePastPaidGroups = showAllHistory ? pastPaidGroups : pastPaidGroups.slice(0, 3);
+
+            const displayedGroups = [
+              ...dueArrearsGroups,
+              ...currentPaidGroups,
+              ...visiblePastPaidGroups
+            ];
+
+            return (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.45 }}
+                className="mb-8"
+              >
+                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-5">
+                  <div className="flex items-center justify-between mb-4 border-b border-gray-100 dark:border-gray-700 pb-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
+                        <Receipt className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-gray-900 dark:text-white text-base">
+                          {isRTL ? 'اشتراكات أطفالي وإيصالات الدفع' : 'Mes Cotisations & Reçus de Paiement'}
+                        </h3>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {isRTL ? 'متابعة الدفع نقداً والإيصالات الرسمية المستلمة' : 'Suivi des mensualités et encaissements en espèces'}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-bold text-gray-900 dark:text-white text-base">
-                        {isRTL ? 'اشتراكات أطفالي وإيصالات الدفع' : 'Mes Cotisations & Reçus de Paiement'}
-                      </h3>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {isRTL ? 'متابعة الدفع نقداً والإيصالات الرسمية المستلمة' : 'Suivi des mensualités et encaissements en espèces'}
-                      </p>
-                    </div>
+                    <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-semibold border border-emerald-200 dark:border-emerald-800/40">
+                      {visibleInvoices.length} {visibleInvoices.length > 1 ? (isRTL ? 'اشتراكات' : 'cotisations') : (isRTL ? 'اشتراك' : 'cotisation')}
+                    </span>
                   </div>
-                  <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-semibold border border-emerald-200 dark:border-emerald-800/40">
-                    {myInvoices.length} {myInvoices.length > 1 ? (isRTL ? 'اشتراكات' : 'cotisations') : (isRTL ? 'اشتراك' : 'cotisation')}
-                  </span>
-                </div>
 
-                {/* Cartes de cotisations (Regroupées par reçu / fratrie si applicable) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {(() => {
-                    const groups = [];
-                    const processedIds = new Set();
+                  {/* Solde d'avoir / Crédit d'avance disponible */}
+                  {creditBalance > 0 && (
+                    <div className="mb-4 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between shadow-xs">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-emerald-500 text-white flex items-center justify-center font-bold text-sm">
+                          💳
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-emerald-900 dark:text-emerald-200">
+                            {isRTL ? 'رصيد فائض / تسبيق متاح لحسابكم' : 'Avoir disponible sur votre compte famille'}
+                          </p>
+                          <p className="text-[11px] text-emerald-700 dark:text-emerald-300">
+                            {isRTL ? 'سيتم خصم هذا المبلغ تلقائياً من فاتورتكم القادمة' : 'Ce montant sera automatiquement déduit de votre prochaine cotisation'}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-base font-extrabold text-emerald-700 dark:text-emerald-300 nowrap-dt whitespace-nowrap shrink-0 ml-2">
+                        +{creditBalance.toFixed(0)}&nbsp;DT
+                      </span>
+                    </div>
+                  )}
 
-                    myInvoices.forEach(inv => {
-                      if (processedIds.has(inv.id)) return;
+                  {/* Reste à régler / Solde restant dû sur le compte famille (Bannière rouge) */}
+                  {totalRemainingDue > 0 && (
+                    <div className="mb-4 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 flex items-center justify-between shadow-xs gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <div className="w-8 h-8 rounded-lg bg-rose-500 text-white flex items-center justify-center font-bold text-sm shrink-0">
+                          ⏳
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-rose-900 dark:text-rose-200 truncate">
+                            {isRTL ? 'المبلغ المتبقي للخلاص على حساب العائلة' : 'Reste à payer sur votre compte famille'}
+                          </p>
+                          <p className="text-[11px] text-rose-700 dark:text-rose-300 truncate">
+                            {isRTL ? 'المبلغ المستحق للدفع نقداً في مقر الروضة' : 'Montant restant dû à régler en espèces à l\'accueil de la crèche'}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-base font-extrabold text-rose-700 dark:text-rose-300 nowrap-dt whitespace-nowrap shrink-0 ml-2">
+                        {totalRemainingDue.toFixed(0)}&nbsp;DT
+                      </span>
+                    </div>
+                  )}
 
-                      // Détecter si d'autres factures partagent le même reçu ou la même période
-                      const siblings = myInvoices.filter(other => 
-                        other.id !== inv.id &&
-                        !processedIds.has(other.id) &&
-                        (
-                          (inv.receipt_number && other.receipt_number && other.receipt_number === inv.receipt_number) ||
-                          (parseInt(other.period_month, 10) === parseInt(inv.period_month, 10) && parseInt(other.period_year, 10) === parseInt(inv.period_year, 10))
-                        )
-                      );
+                  {/* Bouton d'accès direct à l'Historique des Règlements Réels */}
+                  <div className="mb-4 p-3.5 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between shadow-xs gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
+                        <Receipt className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-emerald-950 dark:text-emerald-200 truncate">
+                          {isRTL ? 'سجل مدفوعاتي والوصولات' : 'Historique de mes versements'}
+                        </p>
+                        <p className="text-[11px] text-emerald-700 dark:text-emerald-300 truncate">
+                          {isRTL ? 'تواريخ ومبالغ الدفعات الفعلية مع الوصولات الرسمية PDF' : 'Consulter vos paiements réels et télécharger vos reçus PDF'}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowPaymentsModal(true)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors shrink-0 whitespace-nowrap cursor-pointer flex items-center gap-1"
+                    >
+                      <span>{isRTL ? 'عرض السجل' : 'Consulter'}</span>
+                      <span className="text-[10px]">→</span>
+                    </button>
+                  </div>
 
-                      if (siblings.length > 0) {
-                        const allFamily = [inv, ...siblings];
-                        allFamily.forEach(f => processedIds.add(f.id));
+                  {/* Cartes de cotisations (Regroupées par reçu / fratrie si applicable) */}
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {displayedGroups.map((group) => {
+                          const isFamily = group.type === 'family' || group.invoices.length > 1;
+                          const isFutureGroup = isFuture(group.period_month, group.period_year);
+                          const isCurrentGroup = isCurrent(group.period_month, group.period_year);
+                          const remainingDue = Math.max(0, group.totalDue - group.totalPaid);
+                          const groupArrears = group.invoices.reduce((sum, inv) => sum + (parseFloat(inv.previous_arrears || 0) || 0), 0);
+                          const groupDiscount = group.invoices.reduce((sum, inv) => sum + (parseFloat(inv.discount_amount || 0) || 0), 0);
 
-                        const totalDueFamily = allFamily.reduce((sum, f) => sum + (parseFloat(f.amount_due ?? f.total_due ?? f.amount ?? 0) || 0), 0);
-                        const totalPaidFamily = allFamily.reduce((sum, f) => sum + (parseFloat(f.amount_paid || 0) || 0), 0);
-                        const isFamilyPaid = allFamily.every(f => f.status === 'paid' || (parseFloat(f.amount_paid || 0) >= parseFloat(f.total_due || 0) && parseFloat(f.total_due || 0) > 0));
-                        const sharedReceipt = allFamily.find(f => f.receipt_number)?.receipt_number || inv.receipt_number;
-
-                        groups.push({
-                          type: 'family',
-                          id: `family-${inv.period_year}-${inv.period_month}`,
-                          period_month: inv.period_month,
-                          period_year: inv.period_year,
-                          receipt_number: sharedReceipt,
-                          isPaid: isFamilyPaid,
-                          totalDue: totalDueFamily,
-                          totalPaid: totalPaidFamily,
-                          invoices: allFamily,
-                          primaryInvoice: inv
-                        });
-                      } else {
-                        processedIds.add(inv.id);
-                        const invDue = parseFloat(inv.amount_due ?? inv.total_due ?? inv.amount ?? 0) || 0;
-                        const invPaid = parseFloat(inv.amount_paid || 0) || 0;
-                        const isPaid = inv.status === 'paid' || (invPaid >= invDue && invDue > 0);
-
-                        groups.push({
-                          type: 'single',
-                          id: inv.id,
-                          period_month: inv.period_month,
-                          period_year: inv.period_year,
-                          receipt_number: inv.receipt_number,
-                          isPaid,
-                          totalDue: invDue,
-                          totalPaid: invPaid,
-                          invoices: [inv],
-                          primaryInvoice: inv
-                        });
-                      }
-                    });
-
-                    return groups.map((group) => {
-                      if (group.type === 'family') {
-                        return (
-                          <div
-                            key={group.id}
-                            className="p-4 rounded-xl border border-gray-200 dark:border-gray-700/80 bg-gray-50/70 dark:bg-gray-800 flex flex-col justify-between gap-3 shadow-xs"
-                          >
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <span className="font-bold text-gray-900 dark:text-white text-sm">
-                                    {isRTL ? 'اشتراك العائلة (إخوة)' : 'Cotisation Famille (Fratrie)'}
-                                  </span>
-                                  <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
-                                    👨‍👩‍👧‍👦 {group.invoices.length} {isRTL ? 'أطفال' : 'enfants'}
-                                  </span>
-                                </div>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                  {isRTL ? 'شهر' : 'Mois'} {group.period_month}/{group.period_year}
-                                </p>
-                              </div>
-                              {group.isPaid ? (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
-                                  <CheckCircle2 className="w-3.5 h-3.5" />
-                                  {isRTL ? 'مدفوع' : 'Payé'}
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
-                                  <Wallet className="w-3.5 h-3.5" />
-                                  {isRTL ? 'في انتظار الدفع' : 'À régler'}
-                                </span>
-                              )}
-                            </div>
-
-                            {/* Liste détaillée des enfants */}
-                            <div className="space-y-1.5 py-2 border-y border-gray-200/60 dark:border-gray-700 text-xs">
-                              {group.invoices.map((item) => (
-                                <div key={item.id} className="flex items-center justify-between text-gray-700 dark:text-gray-300">
-                                  <span>
-                                    • <strong className="text-gray-900 dark:text-white">{item.child_first_name} {item.child_last_name}</strong> ({item.care_schedule === 'half_day' ? (isRTL ? 'نصف يوم' : 'Demi-journée') : (isRTL ? 'Journée complète' : 'Journée complète')})
-                                  </span>
-                                  <span className="font-semibold text-gray-900 dark:text-white">
-                                    {(parseFloat(item.amount_due ?? item.total_due ?? item.amount ?? 0) || 0).toFixed(0)} DT
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-
-                            {/* Bas de carte : Un seul reçu familial, un seul bouton, total combiné */}
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-2 pt-1">
-                              <div>
-                                {group.receipt_number || group.isPaid ? (
+                          return (
+                            <div
+                              key={group.id}
+                              className={`p-4 rounded-xl border flex flex-col justify-between gap-3 shadow-xs overflow-hidden ${
+                                isCurrentGroup
+                                  ? 'border-emerald-300 dark:border-emerald-700/80 bg-white dark:bg-gray-800/95 ring-1 ring-emerald-500/20'
+                                  : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/90'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-2 flex-wrap">
+                                <div>
                                   <div className="flex items-center gap-2 flex-wrap">
-                                    {group.receipt_number && (
-                                      <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">
-                                        N° Reçu: {group.receipt_number}
+                                    <span className="font-bold text-gray-900 dark:text-white text-sm">
+                                      {isFamily 
+                                        ? (isRTL ? 'اشتراك العائلة (إخوة)' : 'Cotisation Famille (Fratrie)') 
+                                        : (isRTL ? 'اشتراك شهري' : 'Cotisation Mensuelle')}
+                                    </span>
+                                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                                      isFamily 
+                                        ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300' 
+                                        : 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
+                                    }`}>
+                                      {isFamily 
+                                        ? `👨‍👩‍👧‍👦 ${group.invoices.length} ${isRTL ? 'أطفال' : 'enfants'}` 
+                                        : `👤 1 ${isRTL ? 'طفل' : 'enfant'}`}
+                                    </span>
+                                    {isCurrentGroup && (
+                                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-600 text-white uppercase tracking-wider shadow-2xs">
+                                        {isRTL ? 'الشهر الحالي' : 'Point courant'}
                                       </span>
                                     )}
-                                    <button
-                                      type="button"
-                                      onClick={() => handleOpenReceipt(group.primaryInvoice)}
-                                      className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800 rounded-lg transition-colors shadow-xs cursor-pointer"
-                                      title={isRTL ? 'معاينة وتنزيل الوصل العائلي الموحد' : 'Consulter et télécharger le reçu familial officiel'}
-                                    >
-                                      <FileText className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                                      <span>{isRTL ? 'وصل الخلاص العائلي PDF' : 'Consulter le reçu PDF'}</span>
-                                    </button>
+                                    {isFutureGroup && (
+                                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300 border border-teal-200 dark:border-teal-700">
+                                        {isRTL ? 'شهر قادم' : 'Mois futur'}
+                                      </span>
+                                    )}
                                   </div>
-                                ) : (
-                                  <span className="text-gray-500">
-                                    {isRTL ? 'الدفع نقداً في مقر الروضة' : 'Paiement en espèces à la crèche'}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="text-sm font-bold text-gray-900 dark:text-white sm:text-right">
-                                <span className="text-xs font-normal text-gray-500 mr-1">{isRTL ? 'المجموع :' : 'Total :'}</span>
-                                {group.totalDue.toFixed(0)} <span className="text-xs text-gray-400 font-normal">DT</span>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      }
+                                  <div className="flex items-center gap-2 flex-wrap text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                    <span>
+                                      {isRTL ? 'شهر' : 'Mois'} {group.period_month}/{group.period_year}
+                                    </span>
+                                    {group.receipt_number && (
+                                      <>
+                                        <span className="text-gray-300 dark:text-gray-600">•</span>
+                                        <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                                          N° Reçu: {group.receipt_number}
+                                        </span>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
 
-                      // Enfant individuel
-                      const inv = group.primaryInvoice;
-                      return (
-                        <div
-                          key={inv.id}
-                          className="p-3.5 rounded-xl border border-gray-100 dark:border-gray-700/80 bg-gray-50/60 dark:bg-gray-750 flex flex-col justify-between gap-2"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="font-semibold text-gray-900 dark:text-white text-sm">
-                                {inv.child_first_name} {inv.child_last_name}
-                              </p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400">
-                                {isRTL ? 'شهر' : 'Mois'} {inv.period_month}/{inv.period_year} • {inv.care_schedule === 'half_day' ? '🌤️ Demi-journée 13h' : '☀️ Journée complète'}
-                              </p>
-                            </div>
-                            {group.isPaid ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                {isRTL ? 'مدفوع' : 'Payé'}
-                              </span>
-                            ) : inv.status === 'partial' || parseFloat(inv.amount_paid || 0) > 0 ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
-                                <Clock className="w-3.5 h-3.5" />
-                                {isRTL ? 'دفع جزئي' : 'Partiel'} ({parseFloat(inv.amount_paid).toFixed(0)}/{parseFloat(inv.total_due).toFixed(0)} DT)
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
-                                <Wallet className="w-3.5 h-3.5" />
-                                {isRTL ? 'في انتظار الدفع' : 'À régler'}
-                              </span>
-                            )}
-                          </div>
-
-                          {parseFloat(inv.previous_arrears || 0) > 0 && (
-                            <div className="text-[11px] text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/30 px-2 py-0.5 rounded flex justify-between">
-                              <span>{isRTL ? 'يتضمن متخلدات من شهر سابق:' : 'Inclut report mois précédent :'}</span>
-                              <span className="font-semibold">+{parseFloat(inv.previous_arrears).toFixed(0)} DT</span>
-                            </div>
-                          )}
-
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-2 border-t border-gray-200/60 dark:border-gray-700 text-xs gap-2">
-                            <div>
-                              {inv.receipt_number || group.isPaid ? (
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  {inv.receipt_number && (
-                                    <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">
-                                      N° Reçu: {inv.receipt_number}
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  {groupArrears > 0 && (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-300 border border-rose-300 dark:border-rose-700 inline-flex items-center whitespace-nowrap nowrap-dt shrink-0">
+                                      {isRTL ? `متخلدات : +${groupArrears.toFixed(0)} د.ت` : `Arriéré : +${groupArrears.toFixed(0)} DT`}
                                     </span>
                                   )}
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenReceipt(inv)}
-                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800 rounded-lg transition-colors shadow-xs cursor-pointer"
-                                    title={isRTL ? 'معاينة وتنزيل الوصل الرسمي بصيغة PDF' : 'Consulter et télécharger le reçu officiel en PDF'}
-                                  >
-                                    <FileText className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                                    <span>{isRTL ? 'وصل الخلاص PDF' : 'Consulter le reçu PDF'}</span>
-                                  </button>
+                                  {groupDiscount > 0 && (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 inline-flex items-center whitespace-nowrap nowrap-dt shrink-0">
+                                      {isRTL ? `تخفيض : -${groupDiscount.toFixed(0)} د.ت` : `Remise : -${groupDiscount.toFixed(0)} DT`}
+                                    </span>
+                                  )}
+                                  {isFutureGroup && (group.totalPaid > 0 || group.isAdvancePaid) ? (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300 border border-teal-200 dark:border-teal-700 whitespace-nowrap nowrap-dt shrink-0">
+                                      <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" />
+                                      {isRTL ? 'تسبيق مسبق' : '✓ Règlement anticipé'} ({group.totalPaid.toFixed(0)}/{group.totalDue.toFixed(0)}&nbsp;DT)
+                                    </span>
+                                  ) : isFutureGroup && group.totalPaid === 0 ? (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 whitespace-nowrap nowrap-dt shrink-0">
+                                      <Clock className="w-3.5 h-3.5 text-gray-500" />
+                                      {isRTL ? 'استحقاق قادم' : 'Échéance à venir'}
+                                    </span>
+                                  ) : group.isAdvancePaid ? (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300 border border-teal-200 dark:border-teal-700 whitespace-nowrap nowrap-dt shrink-0">
+                                      <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" />
+                                      {isRTL ? 'خالص مسبقاً' : '✓ Soldé par anticipation'}
+                                    </span>
+                                  ) : group.isPaid ? (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 whitespace-nowrap nowrap-dt shrink-0">
+                                      <CheckCircle2 className="w-3.5 h-3.5" />
+                                      {isRTL ? 'مدفوع بالكامل' : 'Payé'}
+                                    </span>
+                                  ) : group.totalPaid > 0 ? (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 whitespace-nowrap nowrap-dt shrink-0">
+                                      <Clock className="w-3.5 h-3.5" />
+                                      {isRTL ? 'دفع جزئي' : 'Partiel'} ({group.totalPaid.toFixed(0)}/{group.totalDue.toFixed(0)}&nbsp;DT)
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 whitespace-nowrap nowrap-dt shrink-0">
+                                      <Wallet className="w-3.5 h-3.5" />
+                                      {isRTL ? 'في انتظار الدفع' : 'À régler'}
+                                    </span>
+                                  )}
                                 </div>
-                              ) : (
-                                <span className="text-gray-500">
-                                  {isRTL ? 'الدفع نقداً في مقر الروضة' : 'Paiement en espèces à la crèche'}
-                                </span>
-                              )}
+                              </div>
+
+                              {/* Liste détaillée des enfants */}
+                              <div className="space-y-2 py-2.5 border-y border-gray-200/60 dark:border-gray-700 text-xs">
+                                {group.invoices.map((item) => {
+                                  const itemDue = parseFloat(item.amount_due ?? item.total_due ?? item.amount ?? 0) || 0;
+                                  const itemPaid = parseFloat(item.amount_paid || 0) || 0;
+                                  const itemArrears = parseFloat(item.previous_arrears || 0) || 0;
+                                  const itemInsurance = parseFloat(item.insurance_price || 0) || 0;
+                                  const itemBase = parseFloat(item.base_price || 0) || (itemDue - itemArrears - itemInsurance);
+                                  const isItemPaid = item.status === 'paid' || (itemPaid >= itemDue && itemDue > 0);
+                                  const isItemPartial = !isItemPaid && itemPaid > 0;
+
+                                  return (
+                                    <div key={item.id} className="space-y-1">
+                                      <div className="flex items-center justify-between gap-2 text-gray-700 dark:text-gray-300">
+                                        <span className="flex items-center gap-1.5 flex-wrap min-w-0">
+                                          • <strong className="text-gray-900 dark:text-white">{item.child_first_name} {item.child_last_name}</strong>
+                                          <span className="text-gray-500 dark:text-gray-400 text-[11px] whitespace-nowrap">
+                                            ({item.care_schedule === 'half_day' ? (isRTL ? '🌤️ نصف يوم' : '🌤️ Demi-journée') : (isRTL ? '☀️ يوم كامل' : '☀️ Journée complète')})
+                                          </span>
+                                          {isFutureGroup && itemPaid > 0 ? (
+                                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300 font-bold border border-teal-200 dark:border-teal-700 whitespace-nowrap nowrap-dt shrink-0">
+                                              ✓ {isRTL ? 'تسبيق' : 'Règlement anticipé'} ({itemPaid.toFixed(0)}/{itemDue.toFixed(0)} DT)
+                                            </span>
+                                          ) : item.is_advance_paid ? (
+                                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300 font-bold border border-teal-200 dark:border-teal-700 whitespace-nowrap nowrap-dt shrink-0">
+                                              ✓ {isRTL ? 'خالص مسبقاً' : 'Soldé par anticipation'}
+                                            </span>
+                                          ) : isItemPaid ? (
+                                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 font-medium whitespace-nowrap nowrap-dt shrink-0">
+                                              ✓ {isRTL ? 'خالص' : 'Réglé'}
+                                            </span>
+                                          ) : isItemPartial ? (
+                                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 font-medium whitespace-nowrap nowrap-dt shrink-0">
+                                              {isRTL ? 'دفع جزئي' : 'Partiel'} ({itemPaid.toFixed(0)}/{itemDue.toFixed(0)}&nbsp;DT)
+                                            </span>
+                                          ) : isFutureGroup ? (
+                                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 font-medium whitespace-nowrap nowrap-dt shrink-0">
+                                              {isRTL ? 'استحقاق قادم' : 'À venir'}
+                                            </span>
+                                          ) : null}
+                                        </span>
+                                        <span className="font-semibold text-gray-900 dark:text-white nowrap-dt whitespace-nowrap shrink-0 ml-2">
+                                          {itemDue.toFixed(0)}&nbsp;DT
+                                        </span>
+                                      </div>
+
+                                      {/* Explication transparente si arriéré reporté (ex: +20 DT du mois précédent) */}
+                                      {itemArrears > 0 && (
+                                        <div className="text-[11px] text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/40 rounded px-2 py-0.5 flex items-center justify-between gap-2">
+                                          <span className="min-w-0">
+                                            ↳ {isRTL 
+                                              ? `معلوم الشهر (${itemBase.toFixed(0)} د.ت) + متخلدات من شهر سابق:` 
+                                              : `Forfait mensuel (${itemBase.toFixed(0)} DT) + report arriéré antérieur :`}
+                                          </span>
+                                          <span className="font-bold nowrap-dt whitespace-nowrap shrink-0 ml-2">+{itemArrears.toFixed(0)}&nbsp;DT</span>
+                                        </div>
+                                      )}
+
+                                      {/* Explication si assurance annuelle incluse */}
+                                      {itemInsurance > 0 && itemDue > 0 && (
+                                        <div className="text-[11px] text-indigo-800 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/40 rounded px-2 py-0.5 flex items-center justify-between gap-2">
+                                          <span className="min-w-0">
+                                            ↳ {isRTL ? 'يشمل معلوماً سنوياً للتأمين :' : 'Dont assurance scolaire annuelle :'}
+                                          </span>
+                                          <span className="font-bold nowrap-dt whitespace-nowrap shrink-0 ml-2">+{itemInsurance.toFixed(0)}&nbsp;DT</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+
+                              {/* Bas de carte (Section dédiée stylisée anti-débordement) */}
+                              <div className="mt-2.5 pt-2.5 border-t border-gray-100 dark:border-gray-700/80 bg-gray-50/70 dark:bg-gray-800/60 -mx-4 -mb-4 px-4 py-3 rounded-b-xl flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  {(() => {
+                                    const now = new Date();
+                                    const isFuturePeriod = (group.period_year > now.getFullYear()) || (group.period_year === now.getFullYear() && group.period_month > (now.getMonth() + 1));
+                                    const hasReceipt = group.receipt_number || group.isPaid || group.totalPaid > 0;
+
+                                    if (isFuturePeriod && hasReceipt) {
+                                      return (
+                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold text-teal-800 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 rounded-lg">
+                                          <Sparkles className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
+                                          <span>
+                                            {isRTL 
+                                              ? `خالص مسبقاً • الوصل متاح يوم 01/${String(group.period_month).padStart(2, '0')}/${group.period_year}`
+                                              : `Réglé d'avance • Quittance disponible le 01/${String(group.period_month).padStart(2, '0')}/${group.period_year}`}
+                                          </span>
+                                        </span>
+                                      );
+                                    }
+
+                                    if (hasReceipt) {
+                                      return (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleOpenReceipt(group.primaryInvoice)}
+                                          className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-white dark:bg-gray-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-700 rounded-lg transition-colors shadow-xs cursor-pointer"
+                                          title={isRTL ? (isFamily ? 'معاينة وتنزيل الوصل العائلي الموحد' : 'معاينة وتنزيل وصل الخلاص الرسمي بصيغة PDF') : 'Consulter et télécharger le reçu officiel en PDF'}
+                                        >
+                                          <FileText className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                                          <span>{isRTL ? (isFamily ? 'وصل الخلاص العائلي PDF' : 'وصل الخلاص PDF') : 'Consulter le reçu PDF'}</span>
+                                        </button>
+                                      );
+                                    }
+
+                                    return (
+                                      <span className="text-gray-500 dark:text-gray-400 font-medium">
+                                        {isRTL ? 'الدفع نقداً في مقر الروضة' : 'Paiement en espèces à la crèche'}
+                                      </span>
+                                    );
+                                  })()}
+                                  {group.paid_at && (
+                                    <span className="text-[11px] text-gray-500 dark:text-gray-400 font-medium">
+                                      • {isRTL ? 'بتاريخ' : 'Le'} {new Date(group.paid_at).toLocaleDateString(isRTL ? 'ar-TN' : 'fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-sm font-bold text-gray-900 dark:text-white sm:text-right shrink-0 min-w-fit">
+                                  <div className="flex items-center sm:justify-end gap-1.5 whitespace-nowrap nowrap-dt">
+                                    <span className="text-xs font-normal text-gray-500 dark:text-gray-400 mr-1">{isRTL ? 'المجموع :' : 'Total :'}</span>
+                                    <span className="nowrap-dt whitespace-nowrap shrink-0 font-bold">{group.totalDue.toFixed(0)}&nbsp;<span className="text-xs text-gray-400 font-normal">DT</span></span>
+                                  </div>
+                                  {group.totalPaid > 0 && !group.isPaid ? (
+                                    <div className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 mt-0.5 break-words">
+                                      {isRTL 
+                                        ? `(تم دفع: ${group.totalPaid.toFixed(0)} د.ت • المتبقي: ${remainingDue.toFixed(0)} د.ت)` 
+                                        : `(Payé : ${group.totalPaid.toFixed(0)} DT • Reste dû : ${remainingDue.toFixed(0)} DT)`}
+                                    </div>
+                                  ) : null}
+                                  {group.isPaid && (
+                                    <div className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5 whitespace-nowrap nowrap-dt">
+                                      {isRTL ? '✓ تم الخلاص بالكامل' : '✓ Intégralement réglé'}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                            <div className="text-sm font-bold text-gray-900 dark:text-white sm:text-right">
-                              {group.totalDue.toFixed(0)} <span className="text-xs text-gray-400 font-normal">DT</span>
-                            </div>
-                          </div>
+                          );
+                        })}
+                      </div>
+
+                      {olderPaidCount > 0 && (
+                        <div className="pt-2 flex justify-center">
+                          <button
+                            type="button"
+                            onClick={() => setShowAllHistory(!showAllHistory)}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-750 transition-colors shadow-xs cursor-pointer"
+                          >
+                            <FolderArchive className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                            <span>
+                              {showAllHistory
+                                ? (isRTL ? 'إخفاء الأرشيف القديم' : 'Masquer l\'historique des mois précédents')
+                                : (isRTL 
+                                    ? `عرض الأرشيف للأشهر السابقة (${olderPaidCount})` 
+                                    : `Voir l'historique des mois précédents (${olderPaidCount})`)}
+                            </span>
+                            <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showAllHistory ? 'rotate-180' : ''}`} />
+                          </button>
                         </div>
-                      );
-                    });
-                  })()}
-                </div>
-              </div>
-            </motion.div>
-          )}
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })()}
 
         </div>
 
@@ -998,7 +1260,7 @@ const MySpacePage = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-              onClick={() => setShowChildModal(false)}
+              onClick={handleCloseChildModal}
             >
               <motion.div
                 initial={{ scale: 0.95, opacity: 0 }}
@@ -1024,7 +1286,7 @@ const MySpacePage = () => {
                       </div>
                     </div>
                     <button
-                      onClick={() => setShowChildModal(false)}
+                      onClick={handleCloseChildModal}
                       className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
                     >
                       <X className="w-5 h-5" />
@@ -1126,7 +1388,7 @@ const MySpacePage = () => {
                 {/* Footer */}
                 <div className="p-4 border-t border-gray-200 dark:border-gray-700">
                   <button
-                    onClick={() => setShowChildModal(false)}
+                    onClick={handleCloseChildModal}
                     className="w-full py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-xl font-medium transition-colors"
                   >
                     {isRTL ? 'إغلاق' : 'Fermer'}
@@ -1297,6 +1559,12 @@ const MySpacePage = () => {
               onUpdated={loadMyApplication}
             />
           )}
+
+          {/* Modal Historique des versements pour le parent */}
+          <PaymentsHistoryModal
+            isOpen={showPaymentsModal}
+            onClose={() => setShowPaymentsModal(false)}
+          />
         </AnimatePresence>
 
         {/* Menu latéral sur grand écran */}

@@ -6,7 +6,8 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { createPortal } from 'react-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Baby,
@@ -62,6 +63,7 @@ const MobileParentSpace = ({
     const { isRTL } = useLanguage();
     const { getImageUrl, hasImage } = useProfileImage();
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
     const [greeting, setGreeting] = useState('');
     const [selectedAppointment, setSelectedAppointment] = useState(null);
     const [showDetailModal, setShowDetailModal] = useState(false);
@@ -70,6 +72,27 @@ const MobileParentSpace = ({
     const [showChildModal, setShowChildModal] = useState(false);
     const [showEmergencyModal, setShowEmergencyModal] = useState(false);
     const [nurseryPhone, setNurseryPhone] = useState(null);
+
+    // Ouverture automatique du menu enfant si demandé dans l'URL (ex: retour depuis Fiche enfant, Médical, etc.)
+    useEffect(() => {
+        const openChildId = searchParams.get('openChild');
+        if (openChildId && children && children.length > 0) {
+            const found = children.find(c => String(c.id) === String(openChildId) || String(c.child_id) === String(openChildId));
+            if (found) {
+                setSelectedChild(found);
+                setShowChildModal(true);
+            }
+        }
+    }, [searchParams, children]);
+
+    const handleCloseChildModal = () => {
+        setShowChildModal(false);
+        if (searchParams.get('openChild')) {
+            const nextParams = new URLSearchParams(searchParams);
+            nextParams.delete('openChild');
+            setSearchParams(nextParams, { replace: true });
+        }
+    };
 
     // Charger le numéro de téléphone de la crèche
     useEffect(() => {
@@ -524,7 +547,7 @@ const MobileParentSpace = ({
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+                        className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50"
                         onClick={() => setShowDetailModal(false)}
                     >
                         <motion.div
@@ -627,7 +650,7 @@ const MobileParentSpace = ({
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+                        className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50"
                         onClick={() => setShowRescheduleModal(false)}
                     >
                         <motion.div
@@ -729,25 +752,26 @@ const MobileParentSpace = ({
                 )}
             </AnimatePresence>
 
-            {/* Modal Actions Enfant */}
-            <AnimatePresence>
-                {showChildModal && selectedChild && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50"
-                        onClick={() => setShowChildModal(false)}
-                    >
+            {/* Modal Actions Enfant (Monté sur document.body via Portal) */}
+            {typeof document !== 'undefined' && createPortal(
+                <AnimatePresence>
+                    {showChildModal && selectedChild && (
                         <motion.div
-                            initial={{ y: 100, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            exit={{ y: 100, opacity: 0 }}
-                            className="bg-white dark:bg-gray-800 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md overflow-hidden"
-                            onClick={e => e.stopPropagation()}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs"
+                            onClick={handleCloseChildModal}
                         >
+                            <motion.div
+                                initial={{ y: 100, opacity: 0 }}
+                                animate={{ y: 0, opacity: 1 }}
+                                exit={{ y: 100, opacity: 0 }}
+                                className="bg-white dark:bg-gray-800 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md overflow-hidden max-h-[85vh] flex flex-col"
+                                onClick={e => e.stopPropagation()}
+                            >
                             {/* Header */}
-                            <div className="p-5 border-b border-gray-200 dark:border-gray-700">
+                            <div className="p-5 border-b border-gray-200 dark:border-gray-700 shrink-0">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-3">
                                         <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
@@ -763,7 +787,7 @@ const MobileParentSpace = ({
                                         </div>
                                     </div>
                                     <button
-                                        onClick={() => setShowChildModal(false)}
+                                        onClick={handleCloseChildModal}
                                         className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
                                     >
                                         <X className="w-5 h-5 text-gray-500" />
@@ -772,7 +796,7 @@ const MobileParentSpace = ({
                             </div>
 
                             {/* Actions */}
-                            <div className="p-4 space-y-2">
+                            <div className="p-4 space-y-2 overflow-y-auto flex-1">
                                 {/* Fiche enfant */}
                                 <button
                                     onClick={() => {
@@ -863,9 +887,9 @@ const MobileParentSpace = ({
                             </div>
 
                             {/* Fermer */}
-                            <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+                            <div className="p-4 pb-[max(1.5rem,calc(env(safe-area-inset-bottom,0px)+1.5rem))] border-t border-gray-200 dark:border-gray-700 shrink-0 bg-white dark:bg-gray-800">
                                 <button
-                                    onClick={() => setShowChildModal(false)}
+                                    onClick={handleCloseChildModal}
                                     className="w-full py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-xl font-medium transition-colors"
                                 >
                                     {isRTL ? 'إغلاق' : 'Fermer'}
@@ -874,27 +898,30 @@ const MobileParentSpace = ({
                         </motion.div>
                     </motion.div>
                 )}
-            </AnimatePresence>
+            </AnimatePresence>,
+            document.body
+        )}
 
-            {/* Modal Contacts d'urgence */}
+        {/* Modal Contacts d'urgence (Monté sur document.body via Portal) */}
+        {typeof document !== 'undefined' && createPortal(
             <AnimatePresence>
                 {showEmergencyModal && selectedChild && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50"
+                        className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs"
                         onClick={() => setShowEmergencyModal(false)}
                     >
                         <motion.div
                             initial={{ y: 100, opacity: 0 }}
                             animate={{ y: 0, opacity: 1 }}
                             exit={{ y: 100, opacity: 0 }}
-                            className="bg-white dark:bg-gray-800 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md overflow-hidden max-h-[80vh] overflow-y-auto"
+                            className="bg-white dark:bg-gray-800 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md overflow-hidden max-h-[85vh] flex flex-col"
                             onClick={e => e.stopPropagation()}
                         >
                             {/* Header */}
-                            <div className="p-5 border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800">
+                            <div className="p-4 sm:p-5 border-b border-gray-200 dark:border-gray-700 shrink-0 bg-white dark:bg-gray-800">
                                 <div className="flex items-center justify-between">
                                     <h3 className="font-bold text-lg text-gray-900 dark:text-white">
                                         {isRTL ? 'جهات الاتصال في حالات الطوارئ' : 'Contacts d\'urgence'}
@@ -906,28 +933,28 @@ const MobileParentSpace = ({
                                         <X className="w-5 h-5 text-gray-500" />
                                     </button>
                                 </div>
-                                <p className="text-sm text-gray-500 mt-1">
+                                <p className="text-sm text-gray-500 mt-0.5">
                                     {selectedChild.first_name} {selectedChild.last_name}
                                 </p>
                             </div>
 
                             {/* Contenu */}
-                            <div className="p-4 space-y-4">
+                            <div className="p-4 space-y-3 overflow-y-auto flex-1">
                                 {/* Contact d'urgence principal */}
                                 {(selectedChild.emergency_contact_name || selectedChild.emergency_contact_phone || ['father', 'mother'].includes(selectedChild.emergency_contact_choice)) && (
-                                    <div className="bg-orange-50 dark:bg-orange-900/20 rounded-xl p-4">
-                                        <div className="flex items-center gap-3 mb-3">
-                                            <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/40 flex items-center justify-center">
-                                                <Phone className="w-5 h-5 text-orange-600" />
+                                    <div className="bg-orange-50 dark:bg-orange-900/20 rounded-xl p-3.5">
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <div className="w-9 h-9 rounded-full bg-orange-100 dark:bg-orange-900/40 flex items-center justify-center shrink-0">
+                                                <Phone className="w-4 h-4 text-orange-600" />
                                             </div>
                                             <div>
-                                                <p className="font-semibold text-gray-900 dark:text-white">
+                                                <p className="font-semibold text-gray-900 dark:text-white text-sm">
                                                     {isRTL ? 'جهة الاتصال الرئيسية' : 'Contact principal'}
                                                 </p>
                                             </div>
                                         </div>
                                         {['father', 'mother'].includes(selectedChild.emergency_contact_choice) && (
-                                            <p className="text-gray-700 dark:text-gray-300 mb-1">
+                                            <p className="text-xs text-gray-700 dark:text-gray-300 mb-1">
                                                 <span className="font-medium">{isRTL ? 'جهة الاتصال:' : 'Contact :'}</span>{' '}
                                                 {selectedChild.emergency_contact_choice === 'father'
                                                     ? (isRTL ? 'الأب' : 'Le Père')
@@ -935,20 +962,20 @@ const MobileParentSpace = ({
                                             </p>
                                         )}
                                         {emergencyContactInfo.name && (
-                                            <p className="text-gray-700 dark:text-gray-300 mb-1">
+                                            <p className="text-xs text-gray-700 dark:text-gray-300 mb-1">
                                                 <span className="font-medium">{isRTL ? 'الاسم:' : 'Nom:'}</span> {emergencyContactInfo.name}
                                             </p>
                                         )}
                                         {emergencyContactInfo.phone ? (
                                             <a
                                                 href={`tel:${emergencyContactInfo.phone}`}
-                                                className="flex items-center gap-2 text-orange-600 dark:text-orange-400 font-medium"
+                                                className="flex items-center gap-2 text-orange-600 dark:text-orange-400 font-semibold text-xs"
                                             >
-                                                <Phone className="w-4 h-4" />
+                                                <Phone className="w-3.5 h-3.5" />
                                                 {emergencyContactInfo.phone}
                                             </a>
                                         ) : (
-                                            <p className="text-xs text-orange-500 dark:text-orange-400 italic mt-1">
+                                            <p className="text-[11px] text-orange-500 dark:text-orange-400 italic mt-1">
                                                 {isRTL ? 'لم يتم إدخال رقم الهاتف بعد' : 'Numéro non renseigné — complétez-le depuis « Gérer les contacts »'}
                                             </p>
                                         )}
@@ -957,28 +984,28 @@ const MobileParentSpace = ({
 
                                 {/* Médecin traitant */}
                                 {(selectedChild.doctor_name || selectedChild.doctor_phone) && (
-                                    <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4">
-                                        <div className="flex items-center gap-3 mb-3">
-                                            <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
-                                                <Stethoscope className="w-5 h-5 text-blue-600" />
+                                    <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-3.5">
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
+                                                <Stethoscope className="w-4 h-4 text-blue-600" />
                                             </div>
                                             <div>
-                                                <p className="font-semibold text-gray-900 dark:text-white">
+                                                <p className="font-semibold text-gray-900 dark:text-white text-sm">
                                                     {isRTL ? 'الطبيب المعالج' : 'Médecin traitant'}
                                                 </p>
                                             </div>
                                         </div>
                                         {selectedChild.doctor_name && (
-                                            <p className="text-gray-700 dark:text-gray-300 mb-1">
+                                            <p className="text-xs text-gray-700 dark:text-gray-300 mb-1">
                                                 <span className="font-medium">{isRTL ? 'الاسم:' : 'Nom:'}</span> {selectedChild.doctor_name}
                                             </p>
                                         )}
                                         {selectedChild.doctor_phone && (
                                             <a
                                                 href={`tel:${selectedChild.doctor_phone}`}
-                                                className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-medium"
+                                                className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-semibold text-xs"
                                             >
-                                                <Phone className="w-4 h-4" />
+                                                <Phone className="w-3.5 h-3.5" />
                                                 {selectedChild.doctor_phone}
                                             </a>
                                         )}
@@ -987,9 +1014,9 @@ const MobileParentSpace = ({
 
                                 {/* Message si aucun contact */}
                                 {!selectedChild.emergency_contact_name && !selectedChild.emergency_contact_phone && !['father', 'mother'].includes(selectedChild.emergency_contact_choice) && !selectedChild.doctor_name && !selectedChild.doctor_phone && (
-                                    <div className="text-center py-8">
-                                        <Phone className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                                        <p className="text-gray-500 dark:text-gray-400">
+                                    <div className="text-center py-4">
+                                        <Phone className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                                        <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm">
                                             {isRTL ? 'لا توجد جهات اتصال مسجلة' : 'Aucun contact d\'urgence enregistré'}
                                         </p>
                                         <button
@@ -997,7 +1024,7 @@ const MobileParentSpace = ({
                                                 setShowEmergencyModal(false);
                                                 navigate(`/mon-espace/child/${selectedChild.id}/emergency-contacts`);
                                             }}
-                                            className="mt-4 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-medium transition-colors"
+                                            className="mt-3 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs sm:text-sm font-semibold transition-colors"
                                         >
                                             {isRTL ? 'إضافة جهة اتصال' : 'Ajouter un contact'}
                                         </button>
@@ -1006,19 +1033,19 @@ const MobileParentSpace = ({
                             </div>
 
                             {/* Boutons gérer / fermer */}
-                            <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex gap-2">
+                            <div className="p-3.5 pb-[max(1.5rem,calc(env(safe-area-inset-bottom,0px)+1.5rem))] border-t border-gray-200 dark:border-gray-700 flex gap-2 shrink-0 bg-white dark:bg-gray-800">
                                 <button
                                     onClick={() => {
                                         setShowEmergencyModal(false);
                                         navigate(`/mon-espace/child/${selectedChild.id}/emergency-contacts`);
                                     }}
-                                    className="flex-1 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-medium transition-colors"
+                                    className="flex-1 py-2.5 sm:py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs sm:text-sm font-bold transition-colors"
                                 >
                                     {isRTL ? 'إدارة جهات الاتصال' : 'Gérer les contacts'}
                                 </button>
                                 <button
                                     onClick={() => setShowEmergencyModal(false)}
-                                    className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-xl font-medium transition-colors"
+                                    className="flex-1 py-2.5 sm:py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-xl text-xs sm:text-sm font-semibold transition-colors"
                                 >
                                     {isRTL ? 'إغلاق' : 'Fermer'}
                                 </button>
@@ -1026,7 +1053,9 @@ const MobileParentSpace = ({
                         </motion.div>
                     </motion.div>
                 )}
-            </AnimatePresence>
+            </AnimatePresence>,
+            document.body
+        )}
         </div>
     );
 };

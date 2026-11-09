@@ -997,13 +997,16 @@ router.post('/add-child',
 
         if (adminId) {
           const now = new Date();
+          const childDisplayName = `${child_first_name || ''} ${child_last_name || ''}`.trim() || 'Nouvel enfant';
+          const parentDisplayName = `${parent.first_name || ''} ${parent.last_name || ''}`.trim();
 
           const taskResult = await taskService.createTask({
-            title: `📋 Traiter dossier inscription #${enrollment.id}`,
-            description: `Demande d'ajout d'enfant par ${parent.first_name} ${parent.last_name} (parent existant). Email: ${parent.email}. Lien: /dashboard/pending-enrollments`,
+            title: `📋 Demande d'inscription : ${childDisplayName}`,
+            description: `Demande d'ajout d'enfant pour ${childDisplayName} par ${parentDisplayName} (parent existant). Email : ${parent.email}.\n\n🔗 Lien: /dashboard/pending-enrollments?highlight=${enrollment.id}`,
             assigned_to: adminId,
             due_date: now,
-            priority: 'high'
+            priority: 'high',
+            enrollment_id: enrollment.id
           }, adminId);
 
           if (taskResult.success) {

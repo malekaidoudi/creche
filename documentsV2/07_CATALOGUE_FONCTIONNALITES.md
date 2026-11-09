@@ -46,6 +46,7 @@ Statuts utilisés : **Implémentée** (route frontend + API confirmées), **Part
 | Messagerie avec le personnel | `/mon-espace/messages` | `parent` | Implémentée | `pages/messages/MessagesPage.jsx`, `routes_postgres/staff-messages.js` |
 | Fil d'activités (vue parent) | `/mon-espace/activities` | `parent` | Implémentée | `pages/activities/ActivitiesPage.jsx` |
 | Célébration d'anniversaire & Diaporama souvenirs | `/mon-espace/child/:id/birthday`, `/anniversaire/:id` | `parent` (propriétaire) | Implémentée | `pages/BirthdayEventPage.jsx`, `components/widgets/ParentBirthdayBanner.jsx`, `routes_postgres/birthdays.js` |
+| Facturation parent & Historique des versements réels | `/mon-espace` (section Cotisations), modale versements | `parent` | Implémentée | `pages/parent/MySpacePage.jsx`, `components/modals/PaymentsHistoryModal.jsx`, `routes_postgres/billing.js` |
 | Profil unifié (modification de ses propres informations) | `/profile` | `parent`, `staff`, `admin`, `developer` | Implémentée | `pages/UnifiedProfilePage.jsx`, `routes_postgres/profile.js` |
 | Soumettre un témoignage | — (intégré) | `parent` | Implémentée | `POST /api/testimonials` |
 
@@ -86,6 +87,7 @@ Statuts utilisés : **Implémentée** (route frontend + API confirmées), **Part
 | Messagerie — boîte de réception des messages de contact | `/dashboard/mailbox` | Implémentée | `pages/dashboard/MailboxPage.jsx`, `routes_postgres/contactMessages.js` |
 | Modération des témoignages | `/dashboard/testimonials` | Implémentée | `pages/dashboard/TestimonialsManagementPage.jsx` |
 | Arbitrage des demandes tardives & Supervision anniversaires | `/dashboard/children/:id/birthday` | Implémentée | `pages/BirthdayEventPage.jsx`, `POST /api/birthdays/child/:id/admin-action` |
+| Module financier & Gestion des cotisations (famille/enfant) | Modale Cotisations & Dépenses (tiroir Plus mobile & dashboard) | Implémentée | `components/modals/BillingManagementModal.jsx`, `routes_postgres/billing.js`, `services/billingService.js` |
 | Sauvegardes (créer, lister, restaurer) | intégré aux paramètres (composant `BackupManager.jsx`) | Implémentée | `routes_postgres/backup.js` |
 
 ### C.3 Réservé exclusivement à `developer`

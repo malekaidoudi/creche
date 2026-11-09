@@ -11,7 +11,8 @@ import {
   LogOut,
   Save,
   Laptop,
-  FileText
+  FileText,
+  ArrowLeft
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useTheme } from '../../hooks/useTheme';
@@ -20,6 +21,7 @@ import { usePushNotifications } from '../../hooks/usePushNotifications';
 import { useDialogContext } from '../../contexts/DialogContext';
 import api from '../../services/api';
 import ToggleSwitch from '../ui/ToggleSwitch';
+import MobileNavigation from './MobileNavigation';
 
 const DAYS_OF_WEEK = [
   { id: 1, labelFr: 'Lun', labelAr: 'إثن' },
@@ -155,7 +157,28 @@ const MobileSettingsView = ({ onSwitchToDesktopView }) => {
   };
 
   return (
-    <div className="pb-24 pt-[max(1rem,calc(env(safe-area-inset-top,0px)+0.75rem))] px-3 sm:px-4 max-w-md mx-auto space-y-3.5">
+    <div className="pb-28 pt-[max(1rem,calc(env(safe-area-inset-top,0px)+0.75rem))] px-3 sm:px-4 max-w-md mx-auto space-y-3.5">
+      {/* En-tête avec bouton retour vers le dashboard */}
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => navigate('/dashboard')}
+          className="p-2 rounded-xl bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors shrink-0"
+          title={isRTL ? 'رجوع' : 'Retour'}
+          aria-label={isRTL ? 'رجوع' : 'Retour'}
+        >
+          <ArrowLeft className={`w-5 h-5 ${isRTL ? 'rotate-180' : ''}`} />
+        </button>
+        <div>
+          <h1 className="text-lg font-bold text-gray-900 dark:text-white leading-tight">
+            {isRTL ? 'الإعدادات' : 'Paramètres'}
+          </h1>
+          <p className="text-xs text-gray-500 dark:text-slate-400">
+            {isRTL ? 'تفضيلات التطبيق والحساب' : 'Préférences & configuration'}
+          </p>
+        </div>
+      </div>
+
       {/* 1. CARTE PROFIL (iOS Inset - Palette Centre d'Aide) */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}
@@ -490,6 +513,9 @@ const MobileSettingsView = ({ onSwitchToDesktopView }) => {
           <span>{isRTL ? 'تسجيل الخروج' : 'Se déconnecter'}</span>
         </button>
       </motion.div>
+
+      {/* Navigation Mobile en bas */}
+      <MobileNavigation />
     </div>
   );
 };

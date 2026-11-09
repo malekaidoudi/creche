@@ -67,11 +67,24 @@ async function ensureBirthdayTables() {
       )
     `);
 
+    await pool.query(`ALTER TABLE birthday_celebrations ADD COLUMN IF NOT EXISTS decision VARCHAR(20) DEFAULT 'pending'`);
+    await pool.query(`ALTER TABLE birthday_celebrations ADD COLUMN IF NOT EXISTS preferred_date VARCHAR(120)`);
     await pool.query(`ALTER TABLE birthday_celebrations ADD COLUMN IF NOT EXISTS celebration_iso_date VARCHAR(20)`);
+    await pool.query(`ALTER TABLE birthday_celebrations ADD COLUMN IF NOT EXISTS parent_message TEXT`);
+    await pool.query(`ALTER TABLE birthday_celebrations ADD COLUMN IF NOT EXISTS contact_channel VARCHAR(30)`);
     await pool.query(`ALTER TABLE birthday_celebrations ADD COLUMN IF NOT EXISTS notify_other_parents BOOLEAN DEFAULT false`);
     await pool.query(`ALTER TABLE birthday_celebrations ADD COLUMN IF NOT EXISTS event_id INTEGER`);
     await pool.query(`ALTER TABLE birthday_celebrations ADD COLUMN IF NOT EXISTS staff_event_task_id INTEGER`);
     await pool.query(`ALTER TABLE birthday_celebrations ADD COLUMN IF NOT EXISTS activity_id INTEGER`);
+    await pool.query(`ALTER TABLE birthday_celebrations ADD COLUMN IF NOT EXISTS is_late_request BOOLEAN DEFAULT false`);
+    await pool.query(`ALTER TABLE birthday_celebrations ADD COLUMN IF NOT EXISTS admin_status VARCHAR(30) DEFAULT 'pending'`);
+    await pool.query(`ALTER TABLE birthday_celebrations ADD COLUMN IF NOT EXISTS assigned_staff_id INTEGER`);
+    await pool.query(`ALTER TABLE birthday_celebrations ADD COLUMN IF NOT EXISTS task_id INTEGER`);
+    await pool.query(`ALTER TABLE birthday_celebrations ADD COLUMN IF NOT EXISTS task_instructions TEXT`);
+    await pool.query(`ALTER TABLE birthday_celebrations ADD COLUMN IF NOT EXISTS decided_at TIMESTAMP`);
+    await pool.query(`ALTER TABLE birthday_celebrations ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW()`);
+    await pool.query(`ALTER TABLE birthday_celebrations ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW()`);
+    await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_birthday_celebrations_child_year ON birthday_celebrations (child_id, year)`);
 
     // Garantir que la table `events` possède toutes les colonnes nécessaires et accepte type='birthday' et type='task'
     try {
@@ -155,8 +168,8 @@ async function ensureBirthdayTables() {
       // Ignorer silencieusement
     }
 
-    // Nettoyer les anciens événements d'anniversaire créés automatiquement par l'ancien cron
-    // pour des enfants dont les parents n'ont pas explicitement choisi 'yes'
+    // Nettoyer les anciens événements d'anniversaire créés automatiquement par l'ancien code (childLifecycleService / cron)
+    // Seuls les événements explicitement liés à une demande parent active (decision = 'yes' et non refusée) restent actifs.
     try {
       await pool.query(`
         UPDATE events
@@ -164,8 +177,12 @@ async function ensureBirthdayTables() {
         WHERE type = 'birthday'
           AND child_id IS NOT NULL
           AND deleted_at IS NULL
-          AND child_id NOT IN (
-            SELECT child_id FROM birthday_celebrations WHERE decision = 'yes'
+          AND id NOT IN (
+            SELECT event_id
+            FROM birthday_celebrations
+            WHERE decision = 'yes'
+              AND COALESCE(admin_status, 'pending') != 'rejected'
+              AND event_id IS NOT NULL
           )
       `);
     } catch (cleanOrphansErr) {
@@ -880,19 +897,39 @@ router.get('/child/:childId', auth.authenticateToken, async (req, res) => {
     const timing = computeBirthdayTiming(child.birth_date);
     const targetIsoDate = fmtIsoDate(timing.targetBirthday);
 
-    // Récupérer l'enregistrement de célébration pour l'année cible
+    // Récupérer l'enregistrement de célébration pour l'année cible (ou demande récente active)
     const celebRes = await pool.query(
       `SELECT bc.*,
               s.first_name as staff_first_name,
-              s.last_name as staff_last_name
+              s.last_name as staff_last_name,
+              s.first_name as assigned_staff_first_name,
+              s.last_name as assigned_staff_last_name
        FROM birthday_celebrations bc
        LEFT JOIN users s ON bc.assigned_staff_id = s.id
-       WHERE bc.child_id = $1 AND bc.year = $2
+       WHERE bc.child_id = $1
+         AND (bc.year = $2 OR bc.updated_at >= NOW() - INTERVAL '60 days')
+       ORDER BY CASE WHEN bc.year = $2 THEN 0 ELSE 1 END, bc.updated_at DESC
        LIMIT 1`,
       [childId, timing.targetYear]
     );
 
     const existingCelebration = celebRes.rows[0] || null;
+
+    // Chercher une éventuelle tâche liée dans `tasks` (pour connaître la date exacte de la demande même sur d'anciennes tâches)
+    let linkedAdminOrStaffTask = null;
+    try {
+      const taskLookupRes = await pool.query(
+        `SELECT * FROM tasks
+         WHERE id = $1
+            OR description LIKE $2
+         ORDER BY id DESC
+         LIMIT 1`,
+        [existingCelebration?.task_id || -1, `%/anniversaire/${childId}%`]
+      );
+      linkedAdminOrStaffTask = taskLookupRes.rows[0] || null;
+    } catch (taskLookupErr) {
+      // Silencieux
+    }
 
     // Vérification de sécurité : Parent propriétaire OU Événement partagé aux autres parents OU Staff/Admin/Developer
     const isStaffOrAdmin = ['admin', 'staff', 'directrice', 'developer'].includes(role);
@@ -934,16 +971,18 @@ router.get('/child/:childId', auth.authenticateToken, async (req, res) => {
 
     const suggestedDays = buildSuggestedDays(timing.targetBirthday, coBirthdays);
 
+    const hasParentRequest = existingCelebration?.decision === 'yes';
+
     const celebration = existingCelebration || {
       child_id: childId,
       year: timing.targetYear,
       decision: 'pending',
-      preferred_date: suggestedDays[0]?.date || targetIsoDate,
-      celebration_iso_date: suggestedDays[0]?.date || targetIsoDate,
+      preferred_date: null,
+      celebration_iso_date: null,
       parent_message: '',
       notify_other_parents: false,
       event_id: null,
-      is_late_request: timing.isLateWindow,
+      is_late_request: false,
       admin_status: 'pending',
       assigned_staff_id: null,
       task_id: null,
@@ -1117,14 +1156,38 @@ router.get('/child/:childId', auth.authenticateToken, async (req, res) => {
       days_remaining_slideshow: timing.daysRemainingInSlideshow
     };
 
-    const resolvedIsoDate =
-      celebration.celebration_iso_date ||
-      (/^\d{4}-\d{2}-\d{2}/.test(String(celebration.preferred_date || ''))
-        ? String(celebration.preferred_date).slice(0, 10)
-        : suggestedDays[0]?.date || targetIsoDate);
+    const resolvedIsoDate = hasParentRequest
+      ? (celebration.celebration_iso_date ||
+        (/^\d{4}-\d{2}-\d{2}/.test(String(celebration.preferred_date || ''))
+          ? String(celebration.preferred_date).slice(0, 10)
+          : suggestedDays[0]?.date || targetIsoDate))
+      : null;
 
-    res.json({
-      success: true,
+    // Date lisible de la fête demandée (uniquement si le parent a réellement fait une demande)
+    let celebrationDateLabel = hasParentRequest ? (celebration.preferred_date || resolvedIsoDate) : null;
+    if (hasParentRequest && /^\d{4}-\d{2}-\d{2}$/.test(String(resolvedIsoDate || ''))) {
+      const parsedDate = new Date(`${resolvedIsoDate}T12:00:00`);
+      if (!isNaN(parsedDate.getTime())) {
+        celebrationDateLabel = parsedDate.toLocaleDateString('fr-FR', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric'
+        });
+      }
+    }
+
+    // Date & heure auxquelles le parent a soumis sa demande (uniquement si decision !== 'pending')
+    const resolvedRequestedAt =
+      existingCelebration && existingCelebration.decision && existingCelebration.decision !== 'pending'
+        ? (existingCelebration.decided_at ||
+          existingCelebration.created_at ||
+          existingCelebration.updated_at ||
+          linkedAdminOrStaffTask?.created_at ||
+          null)
+        : null;
+
+    const responsePayload = {
       child: {
         id: child.id,
         first_name: child.first_name,
@@ -1137,6 +1200,7 @@ router.get('/child/:childId', auth.authenticateToken, async (req, res) => {
         medical_notes: child.medical_notes,
         parent_id: child.parent_id,
         parent_first_name: child.parent_first_name || child.mother_name || 'Parent',
+        parent_last_name: child.parent_last_name || '',
         parent_name: `${child.parent_first_name || ''} ${child.parent_last_name || ''}`.trim() || child.mother_name || child.father_name || 'Parent',
         parent_phone: parentPhone
       },
@@ -1146,9 +1210,15 @@ router.get('/child/:childId', auth.authenticateToken, async (req, res) => {
       suggested_days: suggestedDays,
       celebration: {
         ...celebration,
+        has_parent_request: hasParentRequest,
         decision_status: celebration.decision,
         admin_approval_status: celebration.admin_status,
         celebration_date: resolvedIsoDate,
+        celebration_date_label: celebrationDateLabel,
+        requested_at: resolvedRequestedAt,
+        decided_at: resolvedRequestedAt,
+        assigned_staff_first_name: celebration.assigned_staff_first_name || celebration.staff_first_name || null,
+        assigned_staff_last_name: celebration.assigned_staff_last_name || celebration.staff_last_name || null,
         parent_notes: celebration.parent_message || '',
         admin_task_notes: defaultTaskInstructions,
         task_instructions: defaultTaskInstructions,
@@ -1157,7 +1227,7 @@ router.get('/child/:childId', auth.authenticateToken, async (req, res) => {
         created_event: createdEvent,
         activity_id: celebration.activity_id || createdActivity?.id || null,
         created_activity: createdActivity,
-        assigned_task: assignedTask,
+        assigned_task: assignedTask || linkedAdminOrStaffTask,
         can_change_mind_from_no: canChangeMindFromNo
       },
       memories: {
@@ -1171,6 +1241,12 @@ router.get('/child/:childId', auth.authenticateToken, async (req, res) => {
       },
       nursery_phone: nurseryPhone,
       staff_list: staffList
+    };
+
+    res.json({
+      success: true,
+      ...responsePayload,
+      data: responsePayload
     });
   } catch (error) {
     console.error('❌ Erreur GET /api/birthdays/child/:childId:', error);
@@ -1409,33 +1485,69 @@ router.post('/child/:childId/decision', auth.authenticateToken, async (req, res)
         ? `🚨 Demande Anniversaire Tardive (J-${Math.max(0, timing.daysUntil)}) — ${child.first_name} ${child.last_name}`
         : `🎂 Organisation Anniversaire — ${child.first_name} ${child.last_name} (${timing.ageTurning} ans)`;
 
+      const requestSubmittedAtLabel = new Date().toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      let chosenDateHumanLabel = chosenDateStr || 'À définir';
+      if (/^\d{4}-\d{2}-\d{2}$/.test(String(isoDate || ''))) {
+        const parsedChosen = new Date(`${isoDate}T12:00:00`);
+        if (!isNaN(parsedChosen.getTime())) {
+          const formattedChosen = parsedChosen.toLocaleDateString('fr-FR', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+          });
+          chosenDateHumanLabel = `${formattedChosen} (${isoDate})`;
+        }
+      }
+
       const urgentDesc =
         `Parent : ${child.parent_first_name || ''} ${child.parent_last_name || ''} (${child.parent_phone || child.mother_phone || 'Tél non renseigné'})\n` +
-        `Jour souhaité : ${chosenDateStr || 'À définir'}\n` +
+        `Demande envoyée le : ${requestSubmittedAtLabel}\n` +
+        `Jour souhaité pour la fête : ${chosenDateHumanLabel}\n` +
         `${visibilityNote}\n` +
         (isLateRequest ? `⚠️ Demande effectuée à moins de 5 jours : en attente de votre validation.\n` : '') +
         `Message : ${parentMsg || 'Souhaite fêter l\'anniversaire à la crèche.'}\n` +
         `🔗 Lien: /anniversaire/${child.id}`;
 
-      // Créer une tâche urgente pour le premier admin si pas encore créée
+      // Créer ou mettre à jour la tâche urgente pour le premier admin
       const firstAdminId = adminsRes.rows[0]?.id;
-      if (firstAdminId && !celebration.task_id) {
+      if (firstAdminId) {
         try {
-          const taskResult = await pool.query(
-            `INSERT INTO tasks (title, description, assigned_to, created_by, due_date, priority, status)
-             VALUES ($1, $2, $3, $4, CURRENT_DATE, 'urgent', 'pending')
-             RETURNING id`,
-            [urgentTitle, urgentDesc, firstAdminId, req.user.userId || firstAdminId]
-          );
-          if (taskResult.rows[0]?.id) {
+          if (celebration.task_id) {
             await pool.query(
-              `UPDATE birthday_celebrations SET task_id = $1 WHERE id = $2`,
-              [taskResult.rows[0].id, celebration.id]
+              `UPDATE tasks
+               SET title = $1,
+                   description = $2,
+                   priority = 'urgent',
+                   status = 'pending'
+               WHERE id = $3`,
+              [urgentTitle, urgentDesc, celebration.task_id]
             );
-            celebration.task_id = taskResult.rows[0].id;
+          } else {
+            const taskResult = await pool.query(
+              `INSERT INTO tasks (title, description, assigned_to, created_by, due_date, priority, status)
+               VALUES ($1, $2, $3, $4, CURRENT_DATE, 'urgent', 'pending')
+               RETURNING id`,
+              [urgentTitle, urgentDesc, firstAdminId, req.user.userId || firstAdminId]
+            );
+            if (taskResult.rows[0]?.id) {
+              await pool.query(
+                `UPDATE birthday_celebrations SET task_id = $1 WHERE id = $2`,
+                [taskResult.rows[0].id, celebration.id]
+              );
+              celebration.task_id = taskResult.rows[0].id;
+            }
           }
         } catch (taskErr) {
-          console.warn('⚠️ Création tâche urgente anniversaire:', taskErr.message);
+          console.warn('⚠️ Création/mise à jour tâche urgente anniversaire:', taskErr.message);
         }
       }
 
@@ -1611,33 +1723,83 @@ router.post('/child/:childId/admin-action', auth.authenticateToken, async (req, 
     }
     const timing = computeBirthdayTiming(child.birth_date);
 
-    // S'assurer qu'une ligne birthday_celebrations existe
-    await pool.query(
-      `INSERT INTO birthday_celebrations (child_id, year, decision, admin_status)
-       VALUES ($1, $2, 'yes', 'pending')
-       ON CONFLICT (child_id, year) DO NOTHING`,
+    // Chercher une ligne existante (année cible ou demande récente active) ou la créer
+    const existingRowRes = await pool.query(
+      `SELECT * FROM birthday_celebrations
+       WHERE child_id = $1
+       ORDER BY CASE WHEN year = $2 THEN 0 ELSE 1 END, updated_at DESC
+       LIMIT 1`,
       [childId, timing.targetYear]
     );
+    let targetYearToUse = existingRowRes.rows[0]?.year || timing.targetYear;
+
+    if (!existingRowRes.rows[0]) {
+      await pool.query(
+        `INSERT INTO birthday_celebrations (child_id, year, decision, admin_status, decided_at, updated_at)
+         VALUES ($1, $2, 'yes', 'pending', NOW(), NOW())
+         ON CONFLICT (child_id, year) DO NOTHING`,
+        [childId, targetYearToUse]
+      );
+    }
 
     if (action === 'accept' || action === 'reject') {
       const newStatus = action === 'accept' ? 'accepted' : 'rejected';
+      const isAccept = action === 'accept';
       const upd = await pool.query(
         `UPDATE birthday_celebrations
-         SET admin_status = $1,
-             decision = CASE WHEN $1 = 'accepted' THEN 'yes' ELSE decision END,
+         SET admin_status = $1::varchar,
+             decision = CASE WHEN $2::boolean THEN 'yes' ELSE decision END,
              updated_at = NOW()
-         WHERE child_id = $2 AND year = $3
+         WHERE child_id = $3 AND year = $4
          RETURNING *`,
-        [newStatus, childId, timing.targetYear]
+        [newStatus, isAccept, childId, targetYearToUse]
       );
 
-      const updatedCelebration = upd.rows[0];
+      const updatedCelebration = upd.rows[0] || existingRowRes.rows[0] || {
+        child_id: childId,
+        year: targetYearToUse,
+        decision: isAccept ? 'yes' : 'pending',
+        admin_status: newStatus
+      };
+
       const syncedEvent = await syncBirthdayEventInEventsTable({
         child,
         timing,
         celebration: updatedCelebration,
         actorUserId: req.user.userId || req.user.id
       });
+
+      // Si refus de la demande : annuler/clôturer également les tâches et événements liés pour qu'ils ne restent pas en attente
+      if (action === 'reject') {
+        try {
+          if (updatedCelebration.task_id) {
+            await pool.query(
+              `UPDATE tasks SET status = 'completed', completed_at = NOW() WHERE id = $1`,
+              [updatedCelebration.task_id]
+            );
+          }
+          await pool.query(
+            `UPDATE tasks
+             SET status = 'completed', completed_at = NOW()
+             WHERE status != 'completed'
+               AND description LIKE $1`,
+            [`%/anniversaire/${childId}%`]
+          );
+        } catch (rejectTaskErr) {
+          console.warn('⚠️ Clôture tâche anniversaire lors du refus:', rejectTaskErr.message);
+        }
+
+        try {
+          await pool.query(
+            `UPDATE events
+             SET status = 'cancelled', deleted_at = NOW(), updated_at = NOW()
+             WHERE child_id = $1 AND type IN ('birthday', 'task') AND deleted_at IS NULL`,
+            [childId]
+          );
+        } catch (rejectEvErr) {
+          console.warn('⚠️ Annulation événement anniversaire lors du refus:', rejectEvErr.message);
+        }
+      }
 
       // Notifier le parent
       if (child.parent_id) {
@@ -1679,9 +1841,9 @@ router.post('/child/:childId/admin-action', auth.authenticateToken, async (req, 
 
       const existingCelebRes = await pool.query(
         `SELECT * FROM birthday_celebrations WHERE child_id = $1 AND year = $2 LIMIT 1`,
-        [childId, timing.targetYear]
+        [childId, targetYearToUse]
       );
-      const currentCeleb = existingCelebRes.rows[0] || {};
+      const currentCeleb = existingCelebRes.rows[0] || existingRowRes.rows[0] || {};
 
       const dueDate = resolvedDate && /^\d{4}-\d{2}-\d{2}/.test(String(resolvedDate))
         ? String(resolvedDate).slice(0, 10)
@@ -1720,11 +1882,11 @@ router.post('/child/:childId/admin-action', auth.authenticateToken, async (req, 
           taskRow?.id || null,
           eventTaskRow?.id || null,
           childId,
-          timing.targetYear
+          targetYearToUse
         ]
       );
 
-      const updatedCelebration = upd.rows[0];
+      const updatedCelebration = upd.rows[0] || currentCeleb;
       const syncedEvent = await syncBirthdayEventInEventsTable({
         child,
         timing,
@@ -1749,9 +1911,9 @@ router.post('/child/:childId/admin-action', auth.authenticateToken, async (req, 
     if (action === 'complete_staff_task') {
       const celebRes = await pool.query(
         `SELECT * FROM birthday_celebrations WHERE child_id = $1 AND year = $2 LIMIT 1`,
-        [childId, timing.targetYear]
+        [childId, targetYearToUse]
       );
-      const celeb = celebRes.rows[0];
+      const celeb = celebRes.rows[0] || existingRowRes.rows[0];
       if (celeb?.task_id) {
         await pool.query(
           `UPDATE tasks SET status = 'completed', completed_at = NOW() WHERE id = $1`,

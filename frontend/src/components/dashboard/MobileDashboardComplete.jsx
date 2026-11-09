@@ -169,7 +169,8 @@ const MobileDashboardComplete = ({
         const loadUnreadCount = async () => {
             try {
                 const token = localStorage.getItem('token');
-                const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3003/api';
+                const rawBase = import.meta.env.VITE_API_URL || 'http://localhost:3003/api';
+                const API_URL = `${rawBase.replace(/\/api\/?$/, '').replace(/\/+$/, '')}/api`;
                 const response = await fetch(`${API_URL}/staff-messages/unread`, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
@@ -221,7 +222,9 @@ const MobileDashboardComplete = ({
                     : cachedWidgetData.appointments;
 
                 const overdue = overdueRes.status === 'fulfilled' && overdueRes.value.data?.success
-                    ? (overdueRes.value.data.tasks || [])
+                    ? (overdueRes.value.data.tasks || []).filter(
+                        t => !/Compléter dossier admin/i.test(t.title || '') && !/^📄\s*Compléter le dossier/i.test(t.title || '') && !t.desktop_only
+                    )
                     : cachedWidgetData.overdue;
 
                 const birthdays = birthdaysRes.status === 'fulfilled' && birthdaysRes.value.data?.success
@@ -1165,6 +1168,7 @@ const FocusModal = ({
                                     onOpenMemoModal={onOpenMemoModal}
                                     onOpenTaskModal={onOpenTaskModal}
                                     onOpenAppointmentModal={onOpenAppointmentModal}
+                                    isMobileView={true}
                                 />
                             </div>
                         )}

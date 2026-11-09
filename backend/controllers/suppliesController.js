@@ -42,28 +42,29 @@ const getChildSupplies = async (req, res) => {
 const refillSupply = async (req, res) => {
     try {
         const { childId } = req.params;
-        const { supply_type, quantity, notes } = req.body;
+        const { supply_type, quantity = 1, notes, date } = req.body;
         const recordedBy = req.user.id;
+        const targetDate = date || new Date().toISOString().split('T')[0];
 
         // Mettre à jour ou créer le stock
         const result = await db.query(`
             INSERT INTO child_supplies (child_id, supply_type, quantity, last_refill_date, last_refill_quantity, notes)
-            VALUES ($1, $2, $3, CURRENT_DATE, $3, $4)
+            VALUES ($1, $2, $3, $5::date, $3, $4)
             ON CONFLICT (child_id, supply_type)
             DO UPDATE SET 
                 quantity = child_supplies.quantity + $3,
-                last_refill_date = CURRENT_DATE,
+                last_refill_date = $5::date,
                 last_refill_quantity = $3,
                 notes = COALESCE($4, child_supplies.notes),
                 updated_at = CURRENT_TIMESTAMP
             RETURNING *
-        `, [childId, supply_type, quantity, notes]);
+        `, [childId, supply_type, quantity, notes, targetDate]);
 
         // Enregistrer dans l'historique des fournitures apportées
         await db.query(`
-            INSERT INTO daily_supplies_brought (child_id, supply_type, quantity, description, recorded_by)
-            VALUES ($1, $2, $3, $4, $5)
-        `, [childId, supply_type, quantity, notes, recordedBy]);
+            INSERT INTO daily_supplies_brought (child_id, brought_date, supply_type, quantity, description, recorded_by)
+            VALUES ($1, $2::date, $3, $4, $5, $6)
+        `, [childId, targetDate, supply_type, quantity, notes, recordedBy]);
 
         res.json({
             success: true,
@@ -137,6 +138,9 @@ const createLowStockNotification = async (childId, supplyType, remainingQuantity
             diapers: 'couches',
             wipes: 'lingettes',
             cream: 'crème',
+            tissues: 'mouchoirs',
+            clothes: 'vêtements de rechange',
+            serum: 'sérum physiologique',
             other: 'fournitures'
         };
 
@@ -194,36 +198,42 @@ const getSuppliesHistory = async (req, res) => {
 
 /**
  * POST /api/supplies/daily-brought
- * Enregistrer ce que le parent a apporté aujourd'hui (nourriture, vêtements, etc.)
+ * Enregistrer ce que le parent a apporté aujourd'hui (couches, lingettes, crème, mouchoirs, vêtements, autres consommables)
  */
 const recordDailySupplies = async (req, res) => {
     try {
-        const { child_id, supplies } = req.body;
+        const { child_id, supplies, date } = req.body;
         const recordedBy = req.user.id;
+        const targetDate = date || new Date().toISOString().split('T')[0];
 
         const results = [];
 
         for (const supply of supplies) {
+            const supplyType = supply.type || 'other';
+            const qty = supply.quantity || 1;
+            const desc = supply.description || null;
+
             const result = await db.query(`
-                INSERT INTO daily_supplies_brought (child_id, supply_type, quantity, description, recorded_by)
-                VALUES ($1, $2, $3, $4, $5)
+                INSERT INTO daily_supplies_brought (child_id, brought_date, supply_type, quantity, description, recorded_by)
+                VALUES ($1, $2::date, $3, $4, $5, $6)
                 RETURNING *
-            `, [child_id, supply.type, supply.quantity || 1, supply.description, recordedBy]);
+            `, [child_id, targetDate, supplyType, qty, desc, recordedBy]);
 
             results.push(result.rows[0]);
 
-            // Si c'est des couches, mettre à jour le stock
-            if (supply.type === 'diapers' && supply.quantity) {
+            // Mettre à jour le stock pour les couches et produits consommables suivis
+            if (['diapers', 'wipes', 'cream', 'other'].includes(supplyType) && qty > 0) {
                 await db.query(`
-                    INSERT INTO child_supplies (child_id, supply_type, quantity, last_refill_date, last_refill_quantity)
-                    VALUES ($1, 'diapers', $2, CURRENT_DATE, $2)
+                    INSERT INTO child_supplies (child_id, supply_type, quantity, last_refill_date, last_refill_quantity, notes)
+                    VALUES ($1, $2, $3, $4::date, $3, $5)
                     ON CONFLICT (child_id, supply_type)
                     DO UPDATE SET 
-                        quantity = child_supplies.quantity + $2,
-                        last_refill_date = CURRENT_DATE,
-                        last_refill_quantity = $2,
+                        quantity = child_supplies.quantity + $3,
+                        last_refill_date = $4::date,
+                        last_refill_quantity = $3,
+                        notes = COALESCE($5, child_supplies.notes),
                         updated_at = CURRENT_TIMESTAMP
-                `, [child_id, supply.quantity]);
+                `, [child_id, supplyType, qty, targetDate, desc]);
             }
         }
 
@@ -240,18 +250,18 @@ const recordDailySupplies = async (req, res) => {
 
 /**
  * GET /api/supplies/today/:childId
- * Récupérer les fournitures apportées aujourd'hui pour un enfant
+ * Récupérer les fournitures apportées à une date donnée (ou aujourd'hui) pour un enfant
  */
 const getTodaySupplies = async (req, res) => {
     try {
         const { childId } = req.params;
-        const today = new Date().toISOString().split('T')[0];
+        const targetDate = req.query.date || new Date().toISOString().split('T')[0];
 
         const result = await db.query(`
             SELECT * FROM daily_supplies_brought
-            WHERE child_id = $1 AND brought_date = $2
+            WHERE child_id = $1 AND brought_date = $2::date
             ORDER BY created_at DESC
-        `, [childId, today]);
+        `, [childId, targetDate]);
 
         res.json({
             success: true,
@@ -263,57 +273,11 @@ const getTodaySupplies = async (req, res) => {
     }
 };
 
-/**
- * GET /api/supplies/child/:childId/food-options
- * Récupérer la liste des nourritures apportées pour un enfant (pour les options de repas)
- * Retourne les items food apportés CE JOUR uniquement
- */
-const getFoodOptions = async (req, res) => {
-    try {
-        const { childId } = req.params;
-        const { date } = req.query;
-
-        // Utiliser la date fournie ou aujourd'hui
-        const targetDate = date || new Date().toISOString().split('T')[0];
-
-        // Récupérer les descriptions de nourriture apportées CE JOUR uniquement
-        const result = await db.query(`
-            SELECT DISTINCT description
-            FROM daily_supplies_brought
-            WHERE child_id = $1 
-              AND supply_type = 'food' 
-              AND description IS NOT NULL 
-              AND description != ''
-              AND brought_date = $2
-            ORDER BY description
-        `, [childId, targetDate]);
-
-        // Parser les descriptions (peuvent contenir plusieurs items séparés par virgule)
-        const allItems = new Set();
-        result.rows.forEach(row => {
-            const items = row.description.split(',').map(item => item.trim()).filter(item => item);
-            items.forEach(item => allItems.add(item));
-        });
-
-        // Convertir en array et trier
-        const foodOptions = Array.from(allItems).sort();
-
-        res.json({
-            success: true,
-            food_options: foodOptions
-        });
-    } catch (error) {
-        console.error('Erreur getFoodOptions:', error);
-        res.status(500).json({ success: false, message: 'Erreur serveur', error: error.message });
-    }
-};
-
 module.exports = {
     getChildSupplies,
     refillSupply,
     useSupply,
     getSuppliesHistory,
     recordDailySupplies,
-    getTodaySupplies,
-    getFoodOptions
+    getTodaySupplies
 };

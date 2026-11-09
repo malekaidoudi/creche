@@ -21,6 +21,7 @@
  */
 
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import {
   Send,
@@ -107,6 +108,32 @@ export default function MessagesPage() {
   const messagesContainerRef = useRef(null);
   const messageInputRef = useRef(null);
   const hasOpenedFromNotification = useRef(false);
+  const touchStartRef = useRef({ x: 0, y: 0, time: 0 });
+
+  // Gestion du geste tactile de glissement (Swipe horizontal pour fermer la conversation sur mobile)
+  const handleTouchStart = (e) => {
+    if (e.touches && e.touches[0]) {
+      touchStartRef.current = {
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY,
+        time: Date.now()
+      };
+    }
+  };
+
+  const handleTouchEnd = (e) => {
+    if (e.changedTouches && e.changedTouches[0]) {
+      const deltaX = e.changedTouches[0].clientX - touchStartRef.current.x;
+      const deltaY = e.changedTouches[0].clientY - touchStartRef.current.y;
+      const deltaTime = Date.now() - touchStartRef.current.time;
+
+      // Glissement horizontal vers la droite en LTR (ou vers la gauche en RTL) pour fermer
+      const isSwipeReturn = isRTL ? deltaX < -60 : deltaX > 60;
+      if (isSwipeReturn && Math.abs(deltaX) > Math.abs(deltaY) * 1.3 && deltaTime < 450) {
+        handleCloseConversation();
+      }
+    }
+  };
 
   // Helper: déterminer si un contact est en ligne (last_active < 5 min)
   const isContactOnline = (contact) => {
@@ -175,14 +202,14 @@ export default function MessagesPage() {
       e.stopPropagation();
     }
 
-    // Nettoyer les paramètres de requête de l'URL
+    // Nettoyer les paramètres de requête de l'URL pour refléter la fermeture de la conversation
     const messageId = searchParams.get('messageId');
     const userParam = searchParams.get('user');
     const contactIdParam = searchParams.get('contactId');
 
     if (messageId || userParam || contactIdParam) {
       hasOpenedFromNotification.current = false;
-      navigate(location.pathname, { replace: true });
+      setSearchParams({}, { replace: true });
     }
 
     setSelectedContact(null);
@@ -471,7 +498,7 @@ export default function MessagesPage() {
   // HANDLERS
   // ============================================================================
 
-  async function handleSelectContact(contact) {
+  async function handleSelectContact(contact, updateHistory = true) {
     if (selectedContact && conversation.length > 0) {
       const cacheKey = `contact_${selectedContact.id}`;
       setConversationCache((prev) => ({
@@ -487,6 +514,11 @@ export default function MessagesPage() {
 
     setConversation([]);
     setSelectedContact(contact);
+
+    // Mettre à jour l'URL avec contactId pour que le geste de retour / swipe natif retourne à la liste
+    if (updateHistory && searchParams.get('contactId') !== String(contact.id)) {
+      setSearchParams({ contactId: String(contact.id) });
+    }
 
     const cacheKey = `contact_${contact.id}`;
     if (conversationCache[cacheKey]) {
@@ -684,14 +716,23 @@ export default function MessagesPage() {
 
   useEffect(() => {
     const userId = searchParams.get('user') || searchParams.get('contactId');
-    if (userId && contacts.length > 0 && !selectedContact && !hasOpenedFromNotification.current) {
-      const contact = contacts.find((c) => c.id === parseInt(userId));
-      if (contact) {
-        hasOpenedFromNotification.current = true;
-        handleSelectContact(contact);
+    const messageId = searchParams.get('messageId');
+
+    if (userId && contacts.length > 0) {
+      if (!selectedContact || selectedContact.id !== parseInt(userId)) {
+        const contact = contacts.find((c) => c.id === parseInt(userId));
+        if (contact) {
+          hasOpenedFromNotification.current = true;
+          handleSelectContact(contact, false);
+        }
       }
+    } else if (!userId && !messageId && selectedContact) {
+      // Lorsque l'utilisateur utilise le swipe de retour iOS/Android ou le bouton retour navigateur
+      setSelectedContact(null);
+      setConversation([]);
+      setReplyContent('');
     }
-  }, [searchParams, contacts]);
+  }, [searchParams, contacts, selectedContact]);
 
   // ============================================================================
   // RENDER
@@ -707,7 +748,7 @@ export default function MessagesPage() {
   }
 
   return (
-    <div className="fixed inset-0 z-30 lg:static lg:z-auto lg:h-[calc(100vh-4rem)] flex flex-col bg-white dark:bg-gray-900 overflow-hidden">
+    <div className="fixed inset-0 z-[60] lg:static lg:z-auto lg:h-[calc(100vh-4rem)] flex flex-col bg-white dark:bg-gray-900 overflow-hidden">
       {/* ================================================================ */}
       {/* VUE PRINCIPALE : MASTER-DETAIL ADAPTATIF                           */}
       {/* ================================================================ */}
@@ -730,23 +771,13 @@ export default function MessagesPage() {
                 </div>
                 <div>
                   <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white leading-tight">
-                    Messages
+                    {isRTL ? 'الرسائل' : 'Messages'}
                   </h1>
                   <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                    {contacts.length} contact{contacts.length > 1 ? 's' : ''} disponible{contacts.length > 1 ? 's' : ''}
+                    {contacts.length} {isRTL ? 'جهة اتصال' : `contact${contacts.length > 1 ? 's' : ''}`}
                   </p>
                 </div>
               </div>
-
-              {/* Bouton retour vers Espace Parent sur mobile */}
-              {user?.role === 'parent' && (
-                <button
-                  onClick={() => navigate('/mon-espace')}
-                  className="px-3 py-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 rounded-xl transition-colors cursor-pointer"
-                >
-                  Mon Espace
-                </button>
-              )}
             </div>
 
             {/* Barre de Recherche */}
@@ -901,20 +932,29 @@ export default function MessagesPage() {
         {/* COLONNE DROITE : CONVERSATION ACTIVE (Fullscreen sur mobile)   */}
         {/* ============================================================== */}
         {selectedContact ? (
-          <div
-            className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-gray-900 lg:relative lg:inset-auto lg:z-auto lg:flex-1 lg:rounded-2xl lg:shadow-sm lg:border lg:border-gray-200/80 lg:dark:border-gray-800 overflow-hidden"
-          >
-            {/* Header de conversation avec Safe Area iOS (Bouton retour spacieux et accessible) */}
-            <div className="pt-[calc(env(safe-area-inset-top,0px)+0.75rem)] pb-3 px-3.5 sm:px-5 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-xs flex items-center justify-between shrink-0 z-20">
+          (() => {
+            const chatContent = (
+              <div
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+                className={
+                  isMobile
+                    ? "fixed inset-0 z-[100] flex flex-col bg-white dark:bg-gray-900 overflow-hidden"
+                    : "relative flex-1 rounded-2xl shadow-sm border border-gray-200/80 dark:border-gray-800 flex flex-col bg-white dark:bg-gray-900 overflow-hidden"
+                }
+              >
+                {/* Header de conversation avec Safe Area iOS (Bouton retour spacieux et accessible) */}
+                <div className="pt-[calc(env(safe-area-inset-top,0px)+0.75rem)] pb-3 px-3.5 sm:px-5 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-xs flex items-center justify-between shrink-0 z-20">
               <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
-                {/* Bouton retour - Très confortable au toucher (42x42px) */}
+                {/* Bouton retour - Standard tactile pill */}
                 <button
+                  type="button"
                   onClick={handleCloseConversation}
-                  className="p-2 sm:p-2.5 -ml-1 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full active:scale-95 transition-all flex items-center justify-center shrink-0 min-w-[42px] min-h-[42px] cursor-pointer"
-                  aria-label="Retour aux contacts"
-                  title="Retour aux contacts"
+                  className="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors shrink-0"
+                  aria-label={isRTL ? 'رجوع' : 'Retour'}
+                  title={isRTL ? 'رجوع' : 'Retour'}
                 >
-                  <ArrowLeft className={`w-5 h-5 sm:w-6 sm:h-6 ${isRTL ? 'rotate-180' : ''}`} />
+                  <ArrowLeft className={`w-5 h-5 ${isRTL ? 'rotate-180' : ''}`} />
                 </button>
 
                 {/* Avatar du contact */}
@@ -1069,7 +1109,12 @@ export default function MessagesPage() {
               </div>
             </form>
           </div>
-        ) : (
+        );
+        return isMobile && typeof document !== 'undefined'
+          ? createPortal(chatContent, document.body)
+          : chatContent;
+      })()
+    ) : (
           /* Écran d'accueil de la messagerie sur Desktop (Aucune conversation sélectionnée) */
           <div className="hidden lg:flex flex-1 flex-col items-center justify-center bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200/80 dark:border-gray-800 p-8 text-center">
             <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-4 shadow-sm border border-blue-100 dark:border-blue-900/50">

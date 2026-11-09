@@ -11,8 +11,7 @@ import {
   Filter,
   ChevronDown,
   BarChart3,
-  Lock,
-  ArrowLeft
+  Lock
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useAuth } from '../../hooks/useAuth';
@@ -190,14 +189,10 @@ const AbsenceManagementPage = () => {
       {/* Header Sticky */}
       <div className="sticky top-0 z-30 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-4 py-3 shadow-xs pt-[calc(env(safe-area-inset-top,0px)+0.75rem)]">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-colors"
-              title={isRTL ? 'العودة' : 'Retour'}
-            >
-              <ArrowLeft className="w-5 h-5 rtl:rotate-180" />
-            </button>
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+              <Calendar className="w-5 h-5" />
+            </div>
             <div>
               <h1 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white leading-tight">
                 {isRTL ? 'إدارة طلبات الغياب' : 'Gestion des absences'}

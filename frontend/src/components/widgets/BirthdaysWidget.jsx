@@ -234,12 +234,32 @@ const EventsWidget = ({ isMobileView = false }) => {
                         {calculateAge(item.child_birth_date, item.start_date)} {isRTL ? 'سنة' : 'ans'}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                    <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 flex-wrap">
                       <span className={`font-medium ${item.child_gender === 'male' ? 'text-blue-600' : 'text-pink-600'}`}>
                         {getDaysUntil(item.start_date)}
                       </span>
                       <span>•</span>
                       <span>{formatDate(item.start_date)}</span>
+                      <span>•</span>
+                      {item.celebration_decision === 'yes' ? (
+                        item.celebration_admin_status === 'rejected' ? (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300">
+                            {isRTL ? '❌ طلب مرفوض' : '❌ Demande refusée'}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                            {isRTL ? '✅ طلب حفل' : '✅ Fête demandée'}
+                          </span>
+                        )
+                      ) : item.celebration_decision === 'no' ? (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                          {isRTL ? '🏠 عائلياً' : '🏠 En famille'}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100/80 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                          {isRTL ? '⏳ بدون طلب ولي' : '⏳ Aucune demande parent'}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>

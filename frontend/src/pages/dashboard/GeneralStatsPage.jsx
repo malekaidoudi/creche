@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   BarChart3,
@@ -14,9 +15,12 @@ import {
   Target,
   Award,
   AlertTriangle,
-  CheckCircle
+  CheckCircle,
+  ArrowLeft
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
+import useIsMobile from '../../hooks/useIsMobile';
+import MobileNavigation from '../../components/mobile/MobileNavigation';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
@@ -24,6 +28,8 @@ import { useDialogContext } from '../../contexts/DialogContext';
 import api from '../../services/api';
 
 const GeneralStatsPage = () => {
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const { isRTL } = useLanguage();
   const dialog = useDialogContext();
   const [loading, setLoading] = useState(true);
@@ -162,15 +168,16 @@ const GeneralStatsPage = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className={`flex items-center justify-center min-h-[60vh] ${isMobile ? 'pb-24' : ''}`}>
         <LoadingSpinner size="lg" />
+        {isMobile && <MobileNavigation />}
       </div>
     );
   }
 
   if (!stats) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className={`flex items-center justify-center min-h-[60vh] ${isMobile ? 'pb-24' : ''}`}>
         <div className="text-center">
           <AlertTriangle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
           <p className="text-gray-600 dark:text-gray-400">
@@ -180,28 +187,42 @@ const GeneralStatsPage = () => {
             {isRTL ? 'إعادة المحاولة' : 'Réessayer'}
           </Button>
         </div>
+        {isMobile && <MobileNavigation />}
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${isMobile ? 'pb-24 pt-[calc(env(safe-area-inset-top,0px)+0.75rem)] px-3 sm:px-4' : ''}`}>
       {/* En-tête */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="flex flex-col sm:flex-row sm:items-center sm:justify-between"
+        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
       >
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            {isRTL ? 'الإحصائيات العامة' : 'Statistiques Générales'}
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            {isRTL ? 'نظرة شاملة على أداء الحضانة ومؤشرات النجاح' : 'Vue d\'ensemble des performances et indicateurs de succès'}
-          </p>
+        <div className="flex items-center gap-3">
+          {isMobile && (
+            <button
+              type="button"
+              onClick={() => navigate('/dashboard')}
+              className="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors shrink-0"
+              title={isRTL ? 'رجوع' : 'Retour'}
+              aria-label={isRTL ? 'رجوع' : 'Retour'}
+            >
+              <ArrowLeft className={`w-5 h-5 ${isRTL ? 'rotate-180' : ''}`} />
+            </button>
+          )}
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+              {isRTL ? 'الإحصائيات العامة' : 'Statistiques Générales'}
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">
+              {isRTL ? 'نظرة شاملة على أداء الحضانة ومؤشرات النجاح' : 'Vue d\'ensemble des performances et indicateurs de succès'}
+            </p>
+          </div>
         </div>
-        <div className="flex space-x-3 rtl:space-x-reverse mt-4 sm:mt-0">
+        <div className="flex space-x-3 rtl:space-x-reverse">
           <Button
             onClick={exportStats}
             variant="outline"
@@ -487,6 +508,7 @@ const GeneralStatsPage = () => {
           </Card>
         </motion.div>
       </div>
+      {isMobile && <MobileNavigation />}
     </div>
   );
 };

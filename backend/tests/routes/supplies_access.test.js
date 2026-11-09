@@ -33,8 +33,7 @@ jest.mock('../../controllers/suppliesController', () => ({
   useSupply: jest.fn((req, res) => res.json({ success: true })),
   getSuppliesHistory: jest.fn((req, res) => res.json({ success: true })),
   recordDailySupplies: jest.fn((req, res) => res.json({ success: true })),
-  getTodaySupplies: jest.fn((req, res) => res.json({ success: true })),
-  getFoodOptions: jest.fn((req, res) => res.json({ success: true }))
+  getTodaySupplies: jest.fn((req, res) => res.json({ success: true }))
 }));
 
 describe('Supplies Access Control (unified with daily_reports.manage)', () => {

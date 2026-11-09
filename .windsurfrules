@@ -70,6 +70,90 @@ global_rules:
   - "Inclut des recommandations sur la scalabilité horizontale (load balancer, pool de workers)."
 
   
+  # 🧹 NETTOYAGE POST-INTERVENTION & HYGIÈNE DU CODE (OBLIGATOIRE)
+  - |
+    ### 🧹 Nettoyage Post-Intervention & Hygiène du Code (OBLIGATOIRE)
+
+    **Principe fondamental :** Après chaque intervention sur le projet, qu'il s'agisse d'une correction de bug, d'un refactoring, d'une optimisation ou de l'implémentation d'une nouvelle fonctionnalité, tu dois systématiquement effectuer une phase de nettoyage et de contrôle qualité avant de considérer le travail comme terminé.
+
+    Le code livré doit être propre, cohérent, maintenable, optimisé et exempt de résidus liés à l'intervention.
+
+    #### 1. Suppression du code mort et inutilisé
+    - Supprimer les imports, variables, constantes, fonctions, composants et paramètres inutilisés.
+    - Supprimer les états React orphelins (`useState`, `useEffect`, `useMemo`, etc.), handlers et callbacks devenus inutiles.
+    - Supprimer les props obsolètes, les interfaces, types et déclarations qui ne sont plus utilisés.
+    - Éliminer les blocs de code commentés, les anciennes implémentations et les doublons.
+    - Supprimer les dépendances devenues inutiles uniquement après vérification de leur utilisation dans l'ensemble du projet.
+
+    #### 2. Élimination des résidus de développement
+    - Supprimer les `console.log`, `debugger`, traces de diagnostic et autres outils de débogage temporaires.
+    - Retirer les données mockées, fixtures temporaires et valeurs codées en dur introduites uniquement pour le développement.
+    - Supprimer les `TODO`, `FIXME` et `HACK` résolus.
+    - Éliminer les fichiers temporaires, scripts de test ponctuels et artefacts générés inutilement.
+    - Vérifier qu'aucune information sensible, clé API, token ou donnée confidentielle n'a été exposée pendant l'intervention.
+
+    #### 3. Nettoyage de l'ancienne logique
+    - Identifier et supprimer les anciennes logiques remplacées par la nouvelle implémentation.
+    - Éliminer les conditions devenues inutiles, les branches inaccessibles et les traitements redondants.
+    - Supprimer les anciens composants, hooks, services, endpoints ou utilitaires devenus obsolètes.
+    - Vérifier qu'aucune référence résiduelle ne pointe vers l'ancienne implémentation.
+    - Éviter de conserver deux mécanismes qui remplissent désormais la même fonction.
+
+    #### 4. Cohérence architecturale et qualité du code
+    - Respecter strictement l'architecture, les conventions et les patterns déjà établis dans le projet.
+    - Éviter la duplication de logique (DRY) et privilégier la réutilisation des composants, hooks et fonctions existants lorsqu'elle est pertinente.
+    - Vérifier la cohérence des types, interfaces, contrats API, validations et gestion des erreurs.
+    - Éviter les abstractions inutiles, les sur-architectures et les dépendances superflues.
+    - Vérifier que chaque modification reste limitée au périmètre fonctionnel concerné.
+    - Ne pas modifier ou reformater massivement des fichiers sans nécessité.
+
+    #### 5. Vérification des régressions et intégrité fonctionnelle
+    - Vérifier que la nouvelle implémentation ne casse aucune fonctionnalité existante.
+    - Contrôler les interactions entre les composants, les appels API, les états et les flux de données impactés.
+    - Vérifier les cas limites, les états de chargement, les erreurs et les comportements inattendus.
+    - Exécuter les tests pertinents disponibles dans le projet.
+    - Vérifier le lint, le type-check et le build lorsque les scripts correspondants sont disponibles.
+    - Corriger les problèmes introduits par l'intervention avant de la considérer comme terminée.
+
+    #### 6. Vérification finale obligatoire
+    Avant de terminer chaque intervention, effectuer une dernière revue du diff pour identifier :
+    - Les modifications accidentelles ou hors périmètre.
+    - Les fichiers modifiés inutilement.
+    - Les imports, variables ou fonctions devenus inutiles.
+    - Les incohérences introduites par les changements.
+    - Les éventuels résidus de développement.
+    - Les problèmes de sécurité ou de qualité évidents.
+
+    #### 7. Règles de sécurité du nettoyage
+    - Ne jamais supprimer un élément sans avoir vérifié qu'il n'est plus utilisé ou nécessaire.
+    - Ne jamais supprimer du code simplement parce qu'il semble inutilisé localement : vérifier ses usages dynamiques, indirects, ses exports publics et ses dépendances.
+    - Ne jamais modifier le comportement métier dans le seul but de simplifier le code.
+    - Ne jamais supprimer des tests, configurations, commentaires documentaires ou mécanismes de compatibilité encore utiles.
+    - Ne jamais masquer une erreur en désactivant une règle de lint, un test ou une vérification.
+    - Si un nettoyage présente un risque de régression, le signaler plutôt que de procéder à une suppression hasardeuse.
+
+    ### Règle de clôture
+
+    **Une intervention n'est considérée comme terminée que lorsque son implémentation est fonctionnelle, que son périmètre a été nettoyé et que les vérifications pertinentes ont été effectuées.**
+
+    Ne te contente jamais de faire fonctionner le code : laisse systématiquement derrière toi une base de code aussi propre, voire plus propre, qu'avant ton intervention.
+
+    À la fin de chaque intervention, fournis un bref compte rendu indiquant :
+    1. Les modifications fonctionnelles réalisées.
+    2. Les éléments inutilisés ou obsolètes supprimés.
+    3. Les optimisations et nettoyages effectués.
+    4. Les vérifications exécutées et leurs résultats.
+    5. Les éventuels problèmes restants ou vérifications impossibles à effectuer.
+
+    Ne prétends jamais qu'un test, un build ou une vérification a réussi s'il n'a pas réellement été exécuté.
+
+  # 📋 SUIVI PROJET — IDEES.md / corrections.md / documentsV2 (OBLIGATOIRE)
+  - "À chaque feature ou nouvelle idée réalisée ou évoquée ensemble : demander systématiquement à l'utilisateur : 'Est-ce qu'on ajoute au fichier IDEES.md ?'"
+  - "Pour chaque correction effectuée : consigner OBLIGATOIREMENT la correction dans documentation/09-audit/corrections.md (fiche détaillée + tableau de synthèse) ET dans IDEES.md (cocher [x] ou ajouter l'item)."
+  - "Dès qu'une idée listée dans IDEES.md est réalisée, la cocher [x] immédiatement dans le fichier."
+  - "Pour chaque nouvelle feature ajoutée, alimenter OBLIGATOIREMENT le dossier documentsV2/ avec la documentation correspondante (ex: 07_CATALOGUE_FONCTIONNALITES.md, 14_API_REST.md, 15_FRONTEND_ET_INTERFACE.md, etc.)."
+  - "Vérifier IDEES.md avant de déclarer une feature non implémentée : certains items non cochés peuvent être déjà faits (signaler les checkboxes obsolètes)."
+
   # ✨ FINAL GUIDELINES
   - "Fournis toujours du code prêt pour la production, propre et commenté."
   - "Explique chaque amélioration proposée dans un style concis et technique."

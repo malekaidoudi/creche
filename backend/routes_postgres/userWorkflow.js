@@ -272,8 +272,10 @@ router.post('/create-parent', auth.authenticateToken, auth.requireRole('admin'),
         try {
             const adminRes = await pool.query("SELECT id FROM users WHERE role = 'admin' LIMIT 1");
             const adminId = adminRes.rows[0]?.id || req.user.userId;
-            const childNamesList = children.map(c => `${c.first_name} ${c.last_name}`).join(', ') || 'nouvel enfant';
-            
+            const childNamesList = children.map(c => `${c.first_name} ${c.last_name}`.trim()).join(', ') || 'nouvel enfant';
+            const firstChildId = children[0]?.id || activeChildIds[0] || null;
+            const childLinkSuffix = firstChildId ? `\n\n🔗 Lien: /dashboard/children?editChildId=${firstChildId}` : '';
+
             await pool.query(`
                 INSERT INTO tasks (
                     title, description, assigned_to, created_by, 
@@ -281,7 +283,7 @@ router.post('/create-parent', auth.authenticateToken, auth.requireRole('admin'),
                 ) VALUES ($1, $2, $3, $4, CURRENT_DATE, 'high', 'pending', NOW())
             `, [
                 `📋 Compléter dossier admin & cotisation : ${childNamesList}`,
-                `Compte créé via mobile pour ${first_name} ${last_name}.\n\n` + (express_child?.regime ? `📌 Régime pré-sélectionné : ${express_child.regime === 'demi' ? 'Demi-journée' : 'Journée complète'}\n` : '') + `Veuillez vérifier les informations et définir la cotisation mensuelle.`,
+                `Compte créé via mobile pour ${first_name} ${last_name}.\n\n` + (express_child?.regime ? `📌 Régime pré-sélectionné : ${express_child.regime === 'demi' ? 'Demi-journée' : 'Journée complète'}\n` : '') + `Veuillez vérifier les informations et définir la cotisation mensuelle.${childLinkSuffix}`,
                 adminId,
                 req.user.userId
             ]);

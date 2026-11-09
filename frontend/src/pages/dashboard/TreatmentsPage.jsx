@@ -20,6 +20,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useTheme } from '../../hooks/useTheme';
 import useIsMobile from '../../hooks/useIsMobile';
+import MobileNavigation from '../../components/mobile/MobileNavigation';
 import { useAccess } from '../../access';
 import api from '../../services/api';
 import { Button } from '../../components/ui/Button';
@@ -217,7 +218,7 @@ const TreatmentsPage = () => {
     // VERSION MOBILE - Style identique à l'app mobile
     if (isMobile) {
         return (
-            <div style={{ backgroundColor: dirColors.background, minHeight: '100vh' }}>
+            <div style={{ backgroundColor: dirColors.background, minHeight: '100vh', paddingBottom: 110 }}>
                 {/* Header style app mobile */}
                 <div
                     style={{
@@ -232,8 +233,14 @@ const TreatmentsPage = () => {
                         zIndex: 10
                     }}
                 >
-                    <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
-                        <ArrowLeft size={24} color={dirColors.text} />
+                    <button
+                        type="button"
+                        onClick={() => navigate('/dashboard')}
+                        className="p-2 rounded-xl bg-slate-800 text-gray-200 hover:bg-slate-700 transition-colors shrink-0"
+                        title={isRTL ? 'رجوع' : 'Retour'}
+                        aria-label={isRTL ? 'رجوع' : 'Retour'}
+                    >
+                        <ArrowLeft className={`w-5 h-5 ${isRTL ? 'rotate-180' : ''}`} />
                     </button>
                     <span style={{ fontSize: 18, fontWeight: 600, color: dirColors.text }}>
                         💊 Traitements Médicaux
@@ -861,6 +868,7 @@ const TreatmentsPage = () => {
                         </motion.div>
                     </div>
                 )}
+                <MobileNavigation />
             </div>
         );
     }

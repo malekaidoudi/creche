@@ -7,7 +7,7 @@ import {
     Calendar,
     Clock,
     User,
-    ChevronLeft,
+    ArrowLeft,
     X,
     Check,
     AlertCircle,
@@ -19,6 +19,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useTheme } from '../../hooks/useTheme';
 import useIsMobile from '../../hooks/useIsMobile';
+import MobileNavigation from '../../components/mobile/MobileNavigation';
 import api from '../../services/api';
 import { Button } from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
@@ -139,17 +140,19 @@ const TreatmentsPage = () => {
     }
 
     return (
-        <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} pb-6`}>
+        <div className={`min-h-screen ${isDark ? 'bg-gray-900' : 'bg-gray-50'} ${isMobile ? 'pb-32' : 'pb-6'}`}>
             {/* Header Sticky */}
             <div className={`sticky top-0 z-30 ${isDark ? 'bg-gray-900/95 border-gray-800' : 'bg-white/95 border-gray-200'} backdrop-blur-md border-b px-4 py-3 shadow-xs pt-[calc(env(safe-area-inset-top,0px)+0.75rem)]`}>
                 <div className="max-w-6xl mx-auto flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <button
+                            type="button"
                             onClick={() => navigate(-1)}
-                            className={`p-2 rounded-xl transition-colors ${isDark ? 'hover:bg-gray-800 text-gray-300' : 'hover:bg-gray-100 text-gray-600'}`}
+                            className="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors shrink-0"
                             title={isRTL ? 'رجوع' : 'Retour'}
+                            aria-label={isRTL ? 'رجوع' : 'Retour'}
                         >
-                            <ChevronLeft className={`w-5 h-5 ${isRTL ? 'rotate-180' : ''}`} />
+                            <ArrowLeft className={`w-5 h-5 ${isRTL ? 'rotate-180' : ''}`} />
                         </button>
                         <div>
                             <h1 className={`text-lg sm:text-2xl font-bold leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
@@ -317,6 +320,9 @@ const TreatmentsPage = () => {
                     childrenList={children}
                 />
             </div>
+
+            {/* Navigation mobile */}
+            {isMobile && <MobileNavigation />}
         </div>
     );
 };

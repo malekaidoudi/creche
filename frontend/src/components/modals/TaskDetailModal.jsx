@@ -20,21 +20,23 @@ import {
     UserCheck,
     MessageCircle,
     ExternalLink,
-    XCircle
+    XCircle,
+    Edit,
+    Eye
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useAuth } from '../../hooks/useAuth';
 import { useDialogContext } from '../../contexts/DialogContext';
 import api from '../../services/api';
+import {
+    getTaskAutoKind,
+    cleanTaskTitle,
+    cleanTaskDescription,
+    resolveExpressChildTarget,
+    resolveEnrollmentTarget
+} from '../../utils/taskHelpers';
 
-const cleanTaskDescriptionText = (rawText) => {
-    if (!rawText) return '';
-    return String(rawText)
-        .replace(/🔗\s*Lien\s*:\s*\/[^\s]+/gi, '')
-        .replace(/^[ \t]*•[ \t]*Vérifier les allergies[^\n]*\n?/gim, '')
-        .replace(/Notes médicales\/allergies\s*:\s*[^.\n]+\.?\s*/gi, '')
-        .trim();
-};
+const cleanTaskDescriptionText = (rawText) => cleanTaskDescription(rawText);
 
 /**
  * Modal de détails d'une tâche/mémo/RDV/événement
@@ -108,8 +110,8 @@ const TaskDetailModal = ({ isOpen, onClose, task, onComplete, onStartAdmission }
 
                 setBirthdayChildId(cId);
                 const detailRes = await api.get(`/api/birthdays/child/${cId}`);
-                if (!cancelled && detailRes.data?.success && detailRes.data?.data) {
-                    const d = detailRes.data.data;
+                if (!cancelled && detailRes.data?.success) {
+                    const d = detailRes.data.data || detailRes.data;
                     setBirthdayData(d);
 
                     const defaultDay = d.celebration?.celebration_date
@@ -339,7 +341,9 @@ const TaskDetailModal = ({ isOpen, onClose, task, onComplete, onStartAdmission }
     };
 
     const taskLink = extractLinkFromDescription();
+    const autoKind = getTaskAutoKind(task);
     const cleanedModalDescription = cleanTaskDescriptionText(task.description);
+    const cleanedModalTitle = cleanTaskTitle(task, isRTL);
     const formattedTaskTime = task.start_date ? formatTime(task.start_date) : '';
     const showTaskTime =
         Boolean(formattedTaskTime) &&
@@ -350,6 +354,18 @@ const TaskDetailModal = ({ isOpen, onClose, task, onComplete, onStartAdmission }
 
     // Naviguer vers la page liée
     const handleNavigateToLink = () => {
+        if (autoKind === 'express_child') {
+            const { childId, childName } = resolveExpressChildTarget(task);
+            onClose();
+            navigate('/dashboard/children', { state: { editChildId: childId, editChildName: childName } });
+            return;
+        }
+        if (autoKind === 'enrollment_review') {
+            const { enrollmentId, childName } = resolveEnrollmentTarget(task);
+            onClose();
+            navigate('/dashboard/pending-enrollments', { state: { highlightId: enrollmentId, highlightChildName: childName } });
+            return;
+        }
         if (taskLink) {
             onClose();
             navigate(taskLink);
@@ -406,12 +422,12 @@ const TaskDetailModal = ({ isOpen, onClose, task, onComplete, onStartAdmission }
                                             <h2 className="text-lg sm:text-xl font-bold truncate">
                                                 {isRTL && isInscriptionAppointment
                                                     ? `📋 موعد تسجيل : ${task.metadata?.child_name || task.metadata?.child_first_name || ''}`
-                                                    : isRTL && isBirthdayTask && task.title
-                                                    ? task.title
+                                                    : isRTL && isBirthdayTask && cleanedModalTitle
+                                                    ? cleanedModalTitle
                                                         .replace(/^Organisation\s+Anniversaire\s*—\s*/i, 'تنظيم عيد ميلاد — ')
                                                         .replace(/^Préparer\s+l'anniversaire\s+de\s*/i, 'تحضير عيد ميلاد ')
                                                         .replace(/\s*\((\d+)\s*ans\)/i, ' ($1 سنوات)')
-                                                    : task.title}
+                                                    : cleanedModalTitle}
                                             </h2>
                                         </div>
                                     </div>
@@ -483,8 +499,130 @@ const TaskDetailModal = ({ isOpen, onClose, task, onComplete, onStartAdmission }
                                                         </p>
                                                     </div>
                                                 ) : (
-                                                    /* ---- VUE ADMIN DANS LE MODAL : Contacter Parent + Accepter/Refuser + Assigner Staff ---- */
+                                                    /* ---- VUE ADMIN DANS LE MODAL : Détails dates + Contacter Parent + Accepter/Refuser + Assigner Staff ---- */
                                                     <div className="space-y-4">
+                                                        {/* Carte récapitulative claire : Quand la demande a été faite & Pour quelle date */}
+                                                        <div className="rounded-xl bg-amber-50/70 dark:bg-gray-700/60 border border-amber-200 dark:border-gray-600 p-3.5 space-y-2.5 text-xs">
+                                                            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-200/70 pb-2">
+                                                                <span className="font-extrabold uppercase tracking-wider text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
+                                                                    <CalendarDays className="w-4 h-4 text-rose-500" />
+                                                                    <span>
+                                                                        {isRTL ? 'تفاصيل تواريخ الطلب' : 'Détails & Dates de la demande'}
+                                                                    </span>
+                                                                </span>
+                                                                <span
+                                                                    className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                                                                        birthdayData.celebration?.decision_status !== 'yes'
+                                                                            ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                                                                            : birthdayData.celebration?.admin_approval_status === 'rejected'
+                                                                            ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                                                                            : birthdayData.celebration?.admin_approval_status === 'accepted'
+                                                                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                                                            : 'bg-amber-100 text-amber-900 border border-amber-300'
+                                                                    }`}
+                                                                >
+                                                                    {birthdayData.celebration?.decision_status !== 'yes'
+                                                                        ? (isRTL ? '⏳ بدون طلب من الولي' : '⏳ Aucune demande du parent')
+                                                                        : birthdayData.celebration?.admin_approval_status === 'rejected'
+                                                                        ? (isRTL ? '❌ مرفوض من الإدارة' : '❌ Refusée par la direction')
+                                                                        : birthdayData.celebration?.admin_approval_status === 'accepted'
+                                                                        ? (isRTL ? '✅ مقبول' : '✅ Acceptée')
+                                                                        : (isRTL ? '⏳ في انتظار التأكيد' : '⏳ En attente de validation')}
+                                                                </span>
+                                                            </div>
+
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                                                <div className="bg-white dark:bg-gray-800 rounded-lg p-2.5 border border-amber-200/80 dark:border-gray-700">
+                                                                    <span className="text-gray-500 dark:text-gray-400 block text-[11px] font-semibold">
+                                                                        {isRTL ? '🕒 تاريخ إرسال الطلب من الولي :' : '🕒 Demande faite par le parent le :'}
+                                                                    </span>
+                                                                    <strong className="text-gray-900 dark:text-white text-xs sm:text-sm block mt-0.5 capitalize">
+                                                                        {(() => {
+                                                                            if (birthdayData.celebration?.decision_status !== 'yes' && birthdayData.celebration?.decision_status !== 'no') {
+                                                                                return isRTL ? 'لم يرسل الولي أي طلب' : 'Aucune demande envoyée par le parent';
+                                                                            }
+                                                                            const rawReqDate =
+                                                                                birthdayData.celebration?.requested_at ||
+                                                                                birthdayData.celebration?.decided_at ||
+                                                                                birthdayData.celebration?.updated_at ||
+                                                                                task?.created_at ||
+                                                                                task?.start_date;
+                                                                            if (!rawReqDate) {
+                                                                                return isRTL ? 'اليوم (عند إنشاء المهمة)' : "Aujourd'hui (lors de la création)";
+                                                                            }
+                                                                            const dObj = new Date(rawReqDate);
+                                                                            if (isNaN(dObj.getTime())) return String(rawReqDate);
+                                                                            const dStr = dObj.toLocaleDateString(isRTL ? 'ar-TN' : 'fr-FR', {
+                                                                                weekday: 'long',
+                                                                                day: 'numeric',
+                                                                                month: 'long',
+                                                                                year: 'numeric'
+                                                                            });
+                                                                            const tStr = dObj.toLocaleTimeString(isRTL ? 'ar-TN' : 'fr-FR', {
+                                                                                hour: '2-digit',
+                                                                                minute: '2-digit'
+                                                                            });
+                                                                            return tStr && tStr !== '00:00' ? `${dStr} à ${tStr}` : dStr;
+                                                                        })()}
+                                                                    </strong>
+                                                                </div>
+
+                                                                <div className="bg-white dark:bg-gray-800 rounded-lg p-2.5 border border-rose-200 dark:border-gray-700">
+                                                                    <span className="text-gray-500 dark:text-gray-400 block text-[11px] font-semibold">
+                                                                        {isRTL ? '🎂 التاريخ المطلوب للاحتفال في الروضة :' : '🎂 Date demandée pour la fête :'}
+                                                                    </span>
+                                                                    <strong className="text-rose-600 dark:text-rose-400 text-xs sm:text-sm block mt-0.5 capitalize">
+                                                                        {(() => {
+                                                                            if (birthdayData.celebration?.decision_status !== 'yes') {
+                                                                                return isRTL ? 'لا يوجد تاريخ مطلوب' : 'Aucune date demandée (pas de demande)';
+                                                                            }
+                                                                            const iso =
+                                                                                birthdayData.celebration?.celebration_date ||
+                                                                                celebrationDateInput ||
+                                                                                birthdayData.birthday?.this_year_date;
+                                                                            if (birthdayData.celebration?.celebration_date_label) {
+                                                                                return `${birthdayData.celebration.celebration_date_label}${
+                                                                                    iso ? ` (${String(iso).slice(0, 10)})` : ''
+                                                                                }`;
+                                                                            }
+                                                                            if (iso && /^\d{4}-\d{2}-\d{2}/.test(String(iso))) {
+                                                                                const cleanIso = String(iso).slice(0, 10);
+                                                                                const dObj = new Date(`${cleanIso}T12:00:00`);
+                                                                                if (!isNaN(dObj.getTime())) {
+                                                                                    const fmt = dObj.toLocaleDateString(
+                                                                                        isRTL ? 'ar-TN' : 'fr-FR',
+                                                                                        {
+                                                                                            weekday: 'long',
+                                                                                            day: 'numeric',
+                                                                                            month: 'long',
+                                                                                            year: 'numeric'
+                                                                                        }
+                                                                                    );
+                                                                                    return `${fmt} (${cleanIso})`;
+                                                                                }
+                                                                            }
+                                                                            return birthdayData.celebration?.preferred_date || iso || (isRTL ? 'غير محدد' : 'À définir');
+                                                                        })()}
+                                                                    </strong>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[11px] text-gray-600 dark:text-gray-300">
+                                                                <span>
+                                                                    {isRTL ? '🎈 تاريخ الميلاد الفعلي :' : '🎈 Date d’anniversaire réelle :'}{' '}
+                                                                    <strong className="text-gray-900 dark:text-white capitalize">
+                                                                        {birthdayData.birthday?.target_birthday_label || birthdayData.birthday?.this_year_date} (
+                                                                        {birthdayData.birthday?.turning_age} {isRTL ? 'سنوات' : 'ans'})
+                                                                    </strong>
+                                                                </span>
+                                                                {birthdayData.celebration?.parent_notes && (
+                                                                    <span className="italic text-gray-700 dark:text-gray-200">
+                                                                        💬 « {birthdayData.celebration.parent_notes} »
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+
                                                         {/* Actions rapides de contact Parent */}
                                                         <div className="flex flex-wrap items-center justify-between gap-2 bg-gray-50 dark:bg-gray-700/40 p-3 rounded-xl border border-gray-200 dark:border-gray-700">
                                                             <div className="text-xs">
@@ -521,114 +659,132 @@ const TaskDetailModal = ({ isOpen, onClose, task, onComplete, onStartAdmission }
                                                             </div>
                                                         </div>
 
-                                                        {/* Si demande tardive (< 5 jours) : Accepter / Refuser */}
-                                                        {(birthdayData.birthday?.is_late_window ||
-                                                            birthdayData.celebration?.is_late_request) && (
-                                                            <div className="rounded-xl bg-amber-50 border border-amber-300 p-3.5 space-y-2.5">
-                                                                <div className="text-xs font-bold text-amber-950">
+                                                        {birthdayData.celebration?.decision_status !== 'yes' ? (
+                                                            <div className="rounded-xl bg-amber-50 border border-amber-300 p-3.5 text-xs text-amber-950">
+                                                                <strong>
                                                                     {isRTL
-                                                                        ? `⚠️ طلب متأخر (ي-${birthdayData.birthday?.days_until}) — قرار الإدارة :`
-                                                                        : `⚠️ Demande tardive (J-${birthdayData.birthday?.days_until}) — Décision Direction :`}
-                                                                </div>
-                                                                <div className="flex flex-wrap gap-2">
-                                                                    <button
-                                                                        type="button"
-                                                                        disabled={submittingBirthdayAction}
-                                                                        onClick={() => handleBirthdayModalAction('accept')}
-                                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition"
-                                                                    >
-                                                                        <CheckCircle className="w-3.5 h-3.5" />
-                                                                        <span>{isRTL ? 'قبول الطلب' : 'Accepter la demande'}</span>
-                                                                    </button>
-                                                                    <button
-                                                                        type="button"
-                                                                        disabled={submittingBirthdayAction}
-                                                                        onClick={() => handleBirthdayModalAction('reject')}
-                                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition"
-                                                                    >
-                                                                        <XCircle className="w-3.5 h-3.5" />
-                                                                        <span>{isRTL ? 'رفض (الأجل قصير)' : 'Refuser (Délai court)'}</span>
-                                                                    </button>
-                                                                </div>
+                                                                        ? 'ℹ️ لم يرسل الولي أي طلب للاحتفال في الروضة'
+                                                                        : "ℹ️ Aucune demande d'organisation envoyée par le parent"}
+                                                                </strong>
+                                                                <p className="mt-1">
+                                                                    {isRTL
+                                                                        ? 'لا يوجد أي طلب لقبوله أو رفضه حالياً.'
+                                                                        : "Le parent n'ayant soumis aucune demande de fête à la crèche, vous n'avez aucune demande à accepter ou refuser."}
+                                                                </p>
                                                             </div>
+                                                        ) : (
+                                                            <>
+                                                                {/* Décision Direction : Accepter / Refuser la demande */}
+                                                                <div className="rounded-xl bg-amber-50 border border-amber-300 p-3.5 space-y-2.5">
+                                                                    <div className="text-xs font-bold text-amber-950">
+                                                                        {birthdayData.birthday?.is_late_window || birthdayData.celebration?.is_late_request
+                                                                            ? (isRTL
+                                                                                ? `⚠️ طلب متأخر (ي-${birthdayData.birthday?.days_until}) — قرار الإدارة :`
+                                                                                : `⚠️ Demande tardive (J-${birthdayData.birthday?.days_until}) — Décision Direction :`)
+                                                                            : (isRTL
+                                                                                ? '📋 قرار الإدارة بخصوص الطلب :'
+                                                                                : '📋 Décision de la Direction sur la demande :')}
+                                                                    </div>
+                                                                    <div className="flex flex-wrap gap-2">
+                                                                        <button
+                                                                            type="button"
+                                                                            disabled={submittingBirthdayAction}
+                                                                            onClick={() => handleBirthdayModalAction('accept')}
+                                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition disabled:opacity-50"
+                                                                        >
+                                                                            <CheckCircle className="w-3.5 h-3.5" />
+                                                                            <span>{isRTL ? 'قبول الطلب' : 'Accepter la demande'}</span>
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            disabled={submittingBirthdayAction}
+                                                                            onClick={() => handleBirthdayModalAction('reject')}
+                                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition disabled:opacity-50"
+                                                                        >
+                                                                            <XCircle className="w-3.5 h-3.5" />
+                                                                            <span>{isRTL ? 'رفض الطلب' : 'Refuser la demande'}</span>
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Assigner directement au Staff depuis le modal */}
+                                                                <div className="rounded-xl border border-rose-200 bg-rose-50/40 p-3.5 space-y-3">
+                                                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                                                        <h4 className="text-xs sm:text-sm font-extrabold text-gray-900 flex items-center gap-1.5">
+                                                                            <UserCheck className="w-4 h-4 text-rose-500" />
+                                                                            <span>
+                                                                                {isRTL
+                                                                                    ? 'إسناد التحضير إلى موظف'
+                                                                                    : 'Assigner la préparation à un membre du staff'}
+                                                                            </span>
+                                                                        </h4>
+                                                                        {birthdayData.celebration?.assigned_staff_first_name && (
+                                                                            <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold">
+                                                                                {isRTL
+                                                                                    ? `✅ مسند إلى ${birthdayData.celebration.assigned_staff_first_name}`
+                                                                                    : `✅ Assigné à ${birthdayData.celebration.assigned_staff_first_name}`}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+
+                                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                                                        <div>
+                                                                            <label className="block text-[11px] font-bold text-gray-600 mb-1">
+                                                                                {isRTL ? 'المربي / الموظف :' : 'Éducateur / Staff :'}
+                                                                            </label>
+                                                                            <select
+                                                                                value={selectedStaffId}
+                                                                                onChange={(e) => setSelectedStaffId(e.target.value)}
+                                                                                className="w-full rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-gray-800"
+                                                                            >
+                                                                                {(birthdayData.staff_list || []).map((s) => (
+                                                                                    <option key={s.id} value={s.id}>
+                                                                                        {s.first_name} {s.last_name} ({s.role})
+                                                                                    </option>
+                                                                                ))}
+                                                                            </select>
+                                                                        </div>
+                                                                        <div>
+                                                                            <label className="block text-[11px] font-bold text-gray-600 mb-1">
+                                                                                {isRTL ? 'اليوم المعتمد للحفل :' : 'Jour retenu pour la fête :'}
+                                                                            </label>
+                                                                            <input
+                                                                                type="date"
+                                                                                value={celebrationDateInput}
+                                                                                onChange={(e) => setCelebrationDateInput(e.target.value)}
+                                                                                className="w-full rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-gray-800"
+                                                                            />
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <div>
+                                                                        <label className="block text-[11px] font-bold text-gray-600 mb-1">
+                                                                            {isRTL ? 'تعليمات للموظف :' : 'Instructions pour le staff :'}
+                                                                        </label>
+                                                                        <textarea
+                                                                            rows={2}
+                                                                            value={staffTaskNotesInput}
+                                                                            onChange={(e) => setStaffTaskNotesInput(e.target.value)}
+                                                                            className="w-full rounded-lg border border-gray-300 bg-white p-2 text-xs text-gray-800"
+                                                                        />
+                                                                    </div>
+
+                                                                    <button
+                                                                        type="button"
+                                                                        disabled={submittingBirthdayAction}
+                                                                        onClick={() => handleBirthdayModalAction('assign_staff')}
+                                                                        className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 hover:opacity-95 text-white font-bold text-xs sm:text-sm shadow transition disabled:opacity-50"
+                                                                    >
+                                                                        <UserCheck className="w-4 h-4" />
+                                                                        <span>
+                                                                            {submittingBirthdayAction
+                                                                                ? (isRTL ? 'جارٍ الإسناد...' : 'Assignation en cours...')
+                                                                                : (isRTL ? '✅ إسناد للموظف وتأكيد التنظيم' : '✅ Assigner au staff & Valider l’organisation')}
+                                                                        </span>
+                                                                    </button>
+                                                                </div>
+                                                            </>
                                                         )}
-
-                                                        {/* Assigner directement au Staff depuis le modal */}
-                                                        <div className="rounded-xl border border-rose-200 bg-rose-50/40 p-3.5 space-y-3">
-                                                            <div className="flex flex-wrap items-center justify-between gap-2">
-                                                                <h4 className="text-xs sm:text-sm font-extrabold text-gray-900 flex items-center gap-1.5">
-                                                                    <UserCheck className="w-4 h-4 text-rose-500" />
-                                                                    <span>
-                                                                        {isRTL
-                                                                            ? 'إسناد التحضير إلى موظف'
-                                                                            : 'Assigner la préparation à un membre du staff'}
-                                                                    </span>
-                                                                </h4>
-                                                                {birthdayData.celebration?.assigned_staff_first_name && (
-                                                                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold">
-                                                                        {isRTL
-                                                                            ? `✅ مسند إلى ${birthdayData.celebration.assigned_staff_first_name}`
-                                                                            : `✅ Assigné à ${birthdayData.celebration.assigned_staff_first_name}`}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-
-                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                                                                <div>
-                                                                    <label className="block text-[11px] font-bold text-gray-600 mb-1">
-                                                                        {isRTL ? 'المربي / الموظف :' : 'Éducateur / Staff :'}
-                                                                    </label>
-                                                                    <select
-                                                                        value={selectedStaffId}
-                                                                        onChange={(e) => setSelectedStaffId(e.target.value)}
-                                                                        className="w-full rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-gray-800"
-                                                                    >
-                                                                        {(birthdayData.staff_list || []).map((s) => (
-                                                                            <option key={s.id} value={s.id}>
-                                                                                {s.first_name} {s.last_name} ({s.role})
-                                                                            </option>
-                                                                        ))}
-                                                                    </select>
-                                                                </div>
-                                                                <div>
-                                                                    <label className="block text-[11px] font-bold text-gray-600 mb-1">
-                                                                        {isRTL ? 'اليوم المعتمد للحفل :' : 'Jour retenu pour la fête :'}
-                                                                    </label>
-                                                                    <input
-                                                                        type="date"
-                                                                        value={celebrationDateInput}
-                                                                        onChange={(e) => setCelebrationDateInput(e.target.value)}
-                                                                        className="w-full rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-gray-800"
-                                                                    />
-                                                                </div>
-                                                            </div>
-
-                                                            <div>
-                                                                <label className="block text-[11px] font-bold text-gray-600 mb-1">
-                                                                    {isRTL ? 'تعليمات للموظف :' : 'Instructions pour le staff :'}
-                                                                </label>
-                                                                <textarea
-                                                                    rows={2}
-                                                                    value={staffTaskNotesInput}
-                                                                    onChange={(e) => setStaffTaskNotesInput(e.target.value)}
-                                                                    className="w-full rounded-lg border border-gray-300 bg-white p-2 text-xs text-gray-800"
-                                                                />
-                                                            </div>
-
-                                                            <button
-                                                                type="button"
-                                                                disabled={submittingBirthdayAction}
-                                                                onClick={() => handleBirthdayModalAction('assign_staff')}
-                                                                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 hover:opacity-95 text-white font-bold text-xs sm:text-sm shadow transition disabled:opacity-50"
-                                                            >
-                                                                <UserCheck className="w-4 h-4" />
-                                                                <span>
-                                                                    {submittingBirthdayAction
-                                                                        ? (isRTL ? 'جارٍ الإسناد...' : 'Assignation en cours...')
-                                                                        : (isRTL ? '✅ إسناد للموظف وتأكيد التنظيم' : '✅ Assigner au staff & Valider l’organisation')}
-                                                                </span>
-                                                            </button>
-                                                        </div>
                                                     </div>
                                                 )}
                                             </>
@@ -787,7 +943,7 @@ const TaskDetailModal = ({ isOpen, onClose, task, onComplete, onStartAdmission }
                                                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white text-xs sm:text-sm font-bold rounded-xl transition-all shadow-sm disabled:opacity-50"
                                             >
                                                 <CheckCircle className="w-4 h-4" />
-                                                <span>✅ Marquer la préparation comme terminée</span>
+                                                <span>{isRTL ? '✅ تأكيد انتهاء التحضير' : '✅ Marquer la préparation comme terminée'}</span>
                                             </button>
                                         )}
 
@@ -798,21 +954,29 @@ const TaskDetailModal = ({ isOpen, onClose, task, onComplete, onStartAdmission }
                                                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-white hover:bg-rose-50 text-rose-700 border border-rose-300 text-xs sm:text-sm font-bold rounded-xl transition-all"
                                             >
                                                 <ExternalLink className="w-4 h-4" />
-                                                <span>🎂 Ouvrir la fiche d&apos;anniversaire</span>
+                                                <span>{isRTL ? '🎂 فتح ملف عيد الميلاد' : '🎂 Ouvrir la fiche d\'anniversaire'}</span>
                                             </button>
                                         )}
-
-                                        {!isStaffPreparationTask && task.type !== 'birthday' && (
-                                            <button
-                                                type="button"
-                                                onClick={handleComplete}
-                                                disabled={completing}
-                                                className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold rounded-xl transition-all disabled:opacity-50"
-                                            >
-                                                <CheckCircle className="w-4 h-4" />
-                                                <span>{completing ? 'En cours...' : 'Terminer la tâche'}</span>
-                                            </button>
-                                        )}
+                                    </div>
+                                ) : autoKind === 'express_child' ? (
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={handleNavigateToLink}
+                                            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-bold rounded-xl transition-all hover:shadow-lg"
+                                        >
+                                            <Edit className="w-5 h-5" />
+                                            {isRTL ? 'استكمال ملف الطفل' : 'Compléter la fiche enfant'}
+                                        </button>
+                                    </div>
+                                ) : autoKind === 'enrollment_review' ? (
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={handleNavigateToLink}
+                                            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl transition-all hover:shadow-lg"
+                                        >
+                                            <Eye className="w-5 h-5" />
+                                            {isRTL ? 'فحص الملف' : 'Examiner le dossier'}
+                                        </button>
                                     </div>
                                 ) : (
                                     <>
@@ -829,18 +993,21 @@ const TaskDetailModal = ({ isOpen, onClose, task, onComplete, onStartAdmission }
 
                                         <div className="flex gap-3">
                                             {/* Bouton spécial pour RDV d'inscription */}
-                                            {isInscriptionAppointment ? (
+                                            {isInscriptionAppointment && onStartAdmission && (
                                                 <button
                                                     onClick={() => {
                                                         onClose();
-                                                        onStartAdmission && onStartAdmission(task);
+                                                        onStartAdmission(task);
                                                     }}
                                                     className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white font-medium rounded-xl transition-all hover:shadow-lg"
                                                 >
                                                     <ClipboardCheck className="w-5 h-5" />
                                                     {isRTL ? 'بدء مقابلة القبول' : 'Entretien d\'admission'}
                                                 </button>
-                                            ) : (
+                                            )}
+
+                                            {/* Bouton Terminer UNIQUEMENT pour les tâches manuelles et mémos */}
+                                            {autoKind === 'manual' && task.status !== 'completed' && (
                                                 <button
                                                     onClick={handleComplete}
                                                     disabled={completing}
@@ -853,6 +1020,7 @@ const TaskDetailModal = ({ isOpen, onClose, task, onComplete, onStartAdmission }
                                                     }
                                                 </button>
                                             )}
+
                                             <button
                                                 onClick={handleViewPlanning}
                                                 className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-primary-500 to-purple-500 hover:from-primary-600 hover:to-purple-600 text-white font-medium rounded-xl transition-all hover:shadow-lg"

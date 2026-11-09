@@ -3,25 +3,55 @@ const router = express.Router();
 const db = require('../config/db_postgres');
 const auth = require('../middleware/auth');
 const { autoCloseExpiredAttendances } = require('../services/attendanceAutoCheckoutService');
+const pushNotificationService = require('../services/pushNotificationService');
+
+/**
+ * Récupère le mode de pointage configuré dans nursery_settings ('hourly' ou 'daily')
+ */
+const getAttendanceMode = async () => {
+  try {
+    const res = await db.query("SELECT value_fr FROM nursery_settings WHERE setting_key = 'attendance_mode' LIMIT 1");
+    return res.rows[0]?.value_fr || 'hourly';
+  } catch (e) {
+    return 'hourly';
+  }
+};
 
 // GET /api/attendance/today - Présences d'aujourd'hui
 router.get('/today', auth.authenticateToken, async (req, res) => {
   try {
+    const today = new Date().toISOString().split('T')[0];
+
+    // Réconciliation : corriger les pointages créés avec une fausse heure de sortie immédiate
+    await db.query(`
+      UPDATE attendance 
+      SET check_out_time = NULL 
+      WHERE date = $1 
+        AND status = 'present' 
+        AND check_in_time IS NOT NULL 
+        AND check_out_time IS NOT NULL 
+        AND (notes IS NULL OR (notes NOT LIKE '%[Départ automatique%' AND notes NOT LIKE '%[Départ enregistré%'))
+        AND (check_out_time::time = '13:00:00'::time OR check_out_time::time = '18:00:00'::time)
+    `, [today]);
+
     // Clôturer automatiquement tout enfant non pointé si la crèche est fermée
     await autoCloseExpiredAttendances();
 
     const { page = 1, limit = 50 } = req.query;
-    const today = new Date().toISOString().split('T')[0];
+    const attendanceMode = await getAttendanceMode();
 
     const sql = `
       SELECT a.id, a.child_id, a.date, a.check_in_time, a.check_out_time, 
+             COALESCE(a.status, 'present') as status,
+             COALESCE(a.is_exceptional_saturday, false) as is_exceptional_saturday,
              a.notes, a.created_at, a.updated_at,
              c.first_name as child_first_name, c.last_name as child_last_name,
-             c.birth_date as child_birth_date, c.gender as child_gender
+             c.birth_date as child_birth_date, c.gender as child_gender,
+             c.care_schedule, c.saturday_attendance
       FROM attendance a
       JOIN children c ON a.child_id = c.id
       WHERE a.date = $1
-      ORDER BY a.check_in_time DESC
+      ORDER BY a.check_in_time DESC NULLS LAST, a.created_at DESC
       LIMIT $2 OFFSET $3
     `;
 
@@ -31,6 +61,9 @@ router.get('/today', auth.authenticateToken, async (req, res) => {
     res.json({
       success: true,
       attendance: result.rows,
+      settings: {
+        attendance_mode: attendanceMode
+      },
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -101,20 +134,59 @@ router.get('/child/:id/month', auth.authenticateToken, async (req, res) => {
 // GET /api/attendance/currently-present - Enfants actuellement présents
 router.get('/currently-present', auth.authenticateToken, async (req, res) => {
   try {
-    // Clôturer automatiquement tout enfant non pointé si la crèche est fermée
-    await autoCloseExpiredAttendances();
-
     const today = new Date().toISOString().split('T')[0];
+    const mode = await getAttendanceMode();
+    const isDaily = mode === 'daily';
 
-    const sql = `
-      SELECT a.id as attendance_id, a.child_id, a.check_in_time, a.notes,
-             c.id, c.first_name, c.last_name,
-             c.birth_date, c.gender
-      FROM attendance a
-      JOIN children c ON a.child_id = c.id
-      WHERE a.date = $1 AND a.check_in_time IS NOT NULL AND a.check_out_time IS NULL
-      ORDER BY a.check_in_time DESC
-    `;
+    // Réconciliation : tout pointage du jour qui avait reçu à tort une heure de départ anticipée est remis à NULL
+    await db.query(`
+      UPDATE attendance 
+      SET check_out_time = NULL 
+      WHERE date = $1 
+        AND status = 'present' 
+        AND check_in_time IS NOT NULL 
+        AND check_out_time IS NOT NULL 
+        AND (notes IS NULL OR (notes NOT LIKE '%[Départ automatique%' AND notes NOT LIKE '%[Départ enregistré%'))
+        AND (check_out_time::time = '13:00:00'::time OR check_out_time::time = '18:00:00'::time)
+    `, [today]);
+
+    // En mode horaire, clôturer automatiquement les départs expirés si la crèche est fermée
+    if (!isDaily) {
+      await autoCloseExpiredAttendances();
+    }
+
+    let sql;
+    if (isDaily) {
+      // En mode journalier, tout enfant pointé présent aujourd'hui est actuellement présent
+      sql = `
+        SELECT a.id as attendance_id, a.child_id, a.check_in_time, a.check_out_time, a.notes,
+               COALESCE(a.status, 'present') as status,
+               COALESCE(a.is_exceptional_saturday, false) as is_exceptional_saturday,
+               c.id, c.first_name, c.last_name,
+               c.birth_date, c.gender, c.care_schedule
+        FROM attendance a
+        JOIN children c ON a.child_id = c.id
+        WHERE a.date = $1 
+          AND COALESCE(a.status, 'present') = 'present' 
+          AND a.check_in_time IS NOT NULL
+        ORDER BY a.check_in_time DESC
+      `;
+    } else {
+      sql = `
+        SELECT a.id as attendance_id, a.child_id, a.check_in_time, a.check_out_time, a.notes,
+               COALESCE(a.status, 'present') as status,
+               COALESCE(a.is_exceptional_saturday, false) as is_exceptional_saturday,
+               c.id, c.first_name, c.last_name,
+               c.birth_date, c.gender, c.care_schedule
+        FROM attendance a
+        JOIN children c ON a.child_id = c.id
+        WHERE a.date = $1 
+          AND a.check_in_time IS NOT NULL 
+          AND a.check_out_time IS NULL
+          AND COALESCE(a.status, 'present') = 'present'
+        ORDER BY a.check_in_time DESC
+      `;
+    }
 
     const result = await db.query(sql, [today]);
 
@@ -135,35 +207,86 @@ router.get('/currently-present', auth.authenticateToken, async (req, res) => {
 // GET /api/attendance/stats - Statistiques de présence
 router.get('/stats', auth.authenticateToken, async (req, res) => {
   try {
-    // Clôturer automatiquement tout enfant non pointé si la crèche est fermée
-    await autoCloseExpiredAttendances();
+    const mode = await getAttendanceMode();
+    const isDaily = mode === 'daily';
+
+    if (!isDaily) {
+      await autoCloseExpiredAttendances();
+    }
 
     const { date } = req.query;
     const targetDate = date || new Date().toISOString().split('T')[0];
 
-    // Statistiques de base
-    const statsQuery = `
-      SELECT 
-        COUNT(*) as total_records,
-        COUNT(CASE WHEN check_in_time IS NOT NULL THEN 1 END) as present_count,
-        COUNT(CASE WHEN check_in_time IS NOT NULL AND check_out_time IS NOT NULL THEN 1 END) as completed_count,
-        COUNT(CASE WHEN check_in_time IS NOT NULL AND check_out_time IS NULL THEN 1 END) as still_present_count
-      FROM attendance 
-      WHERE date = $1
-    `;
+    // Calcul du jour de la semaine (0 = Dimanche, 6 = Samedi)
+    const [year, month, day] = targetDate.split('-').map(Number);
+    const targetDayOfWeek = new Date(year, month - 1, day).getDay();
+    const isSaturday = targetDayOfWeek === 6;
 
-    const statsResult = await db.query(statsQuery, [targetDate]);
-    const stats = statsResult.rows[0];
+    // 1. Récupérer tous les enfants actifs et approuvés
+    const childrenRes = await db.query(
+      `SELECT id, COALESCE(saturday_attendance, false) as saturday_attendance
+       FROM children
+       WHERE is_active = true AND status = 'approved'`
+    );
+    const activeChildren = childrenRes.rows;
+
+    // 2. Récupérer les présences enregistrées pour la date cible
+    const attendanceRes = await db.query(
+      `SELECT a.id, a.child_id, a.check_in_time, a.check_out_time, 
+              COALESCE(a.status, 'present') as status,
+              COALESCE(a.is_exceptional_saturday, false) as is_exceptional_saturday
+       FROM attendance a
+       WHERE a.date = $1`,
+      [targetDate]
+    );
+    const attendanceRows = attendanceRes.rows;
+
+    // 3. Identifier les enfants exceptionnels du samedi non inscrits d'office au samedi
+    const exceptionalChildIds = new Set(
+      attendanceRows
+        .filter(a => a.is_exceptional_saturday)
+        .map(a => a.child_id)
+    );
+
+    // 4. Calcul de l'effectif attendu (Total)
+    let totalEligible = 0;
+    if (isSaturday) {
+      // Inscrits au samedi régulier + cas exceptionnels accueillis ce samedi
+      totalEligible = activeChildren.filter(c => c.saturday_attendance || exceptionalChildIds.has(c.id)).length;
+    } else {
+      totalEligible = activeChildren.length;
+    }
+
+    // 5. Calcul des présents et terminés
+    let presentCount = 0;
+    let completedCount = 0;
+
+    if (isDaily) {
+      // En mode journalier : tout enregistrement présent avec heure d'arrivée
+      presentCount = attendanceRows.filter(a => a.status === 'present' && a.check_in_time).length;
+      completedCount = 0;
+    } else {
+      // En mode horaire :
+      // Présents actuels : arrivés et pas encore repartis
+      presentCount = attendanceRows.filter(a => a.status !== 'absent' && a.check_in_time && !a.check_out_time).length;
+      // Terminés : ont effectué leur départ
+      completedCount = attendanceRows.filter(a => a.check_in_time && a.check_out_time).length;
+    }
+
+    // 6. Absents = effectif attendu - ceux qui sont venus (présents ou terminés)
+    const absentCount = Math.max(0, totalEligible - presentCount - (isDaily ? 0 : completedCount));
 
     res.json({
       success: true,
       stats: {
         date: targetDate,
-        total: parseInt(stats.total_records),
-        present: parseInt(stats.present_count),
-        completed: parseInt(stats.completed_count),
-        stillPresent: parseInt(stats.still_present_count),
-        absent: 0 // À calculer selon le nombre total d'enfants inscrits
+        total: totalEligible,
+        present: presentCount,
+        completed: completedCount,
+        stillPresent: presentCount,
+        absent: absentCount,
+        isSaturday: isSaturday,
+        mode: mode
       }
     });
   } catch (error) {
@@ -186,13 +309,16 @@ router.get('/date/:date', auth.authenticateToken, async (req, res) => {
 
     const sql = `
       SELECT a.id, a.child_id, a.date, a.check_in_time, a.check_out_time, 
+             COALESCE(a.status, 'present') as status,
+             COALESCE(a.is_exceptional_saturday, false) as is_exceptional_saturday,
              a.notes, a.created_at, a.updated_at,
              c.first_name as child_first_name, c.last_name as child_last_name,
-             c.birth_date as child_birth_date, c.gender as child_gender
+             c.birth_date as child_birth_date, c.gender as child_gender,
+             c.care_schedule, c.saturday_attendance
       FROM attendance a
       JOIN children c ON a.child_id = c.id
       WHERE a.date = $1
-      ORDER BY a.check_in_time DESC
+      ORDER BY a.check_in_time DESC NULLS LAST, a.created_at DESC
       LIMIT $2 OFFSET $3
     `;
 
@@ -439,54 +565,83 @@ router.get('/stats/overview', auth.authenticateToken, async (req, res) => {
   }
 });
 
-// POST /api/attendance/check-in - Enregistrer une arrivée
+// POST /api/attendance/check-in - Enregistrer une arrivée / présence
 router.post('/check-in', auth.authenticateToken, auth.requirePermission('attendance.manage'), async (req, res) => {
   try {
-    const { child_id, notes } = req.body;
-    const today = new Date().toISOString().split('T')[0];
+    const { child_id, notes, date, check_in_time, check_out_time } = req.body;
+    const today = date || new Date().toISOString().split('T')[0];
     const now = new Date();
 
-    // Vérifier si l'enfant existe
-    const childCheck = await db.query('SELECT id FROM children WHERE id = $1 AND is_active = true', [child_id]);
+    // Vérifier si l'enfant existe et récupérer sa formule
+    const childCheck = await db.query(
+      'SELECT id, first_name, last_name, care_schedule, saturday_attendance FROM children WHERE id = $1 AND is_active = true',
+      [child_id]
+    );
     if (childCheck.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Enfant non trouvé' });
     }
+    const child = childCheck.rows[0];
 
-    // Vérifier s'il y a déjà un check-in aujourd'hui
+    const mode = await getAttendanceMode();
+    const isDaily = mode === 'daily';
+
+    const dayOfWeek = new Date(`${today}T12:00:00`).getDay(); // 0 = Dimanche, 6 = Samedi
+    const isSaturday = dayOfWeek === 6;
+
+    let checkInTime = check_in_time || now;
+    let checkOutTime = check_out_time || null;
+
+    if (isDaily && !check_in_time) {
+      // Mode forfaitaire : heure contractuelle de début 07h00.
+      // Le départ reste NULL tant que l'enfant est présent à la crèche (pas de départ anticipé à l'arrivée).
+      checkInTime = `${today} 07:00:00`;
+      checkOutTime = null;
+    }
+
+    // Vérifier s'il y a déjà un enregistrement pour aujourd'hui
     const existing = await db.query(
-      'SELECT id, check_in_time FROM attendance WHERE child_id = $1 AND date = $2',
+      'SELECT id, check_in_time, check_out_time, status FROM attendance WHERE child_id = $1 AND date = $2',
       [child_id, today]
     );
 
-    if (existing.rows.length > 0 && existing.rows[0].check_in_time) {
+    if (existing.rows.length > 0 && existing.rows[0].check_in_time && existing.rows[0].status === 'present' && !isDaily && !check_in_time) {
       return res.status(400).json({ success: false, error: 'L\'enfant est déjà arrivé aujourd\'hui' });
     }
 
-    // Créer ou mettre à jour l'enregistrement
+    let result;
     if (existing.rows.length > 0) {
-      await db.query(
-        'UPDATE attendance SET check_in_time = $1, notes = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
-        [now, notes, existing.rows[0].id]
+      result = await db.query(
+        `UPDATE attendance 
+         SET check_in_time = $1, check_out_time = $2, notes = COALESCE($3, notes), status = 'present', updated_by = $4, updated_at = CURRENT_TIMESTAMP 
+         WHERE id = $5 
+         RETURNING *`,
+        [checkInTime, checkOutTime, notes || null, req.user.id || req.user.userId, existing.rows[0].id]
       );
     } else {
-      await db.query(
-        'INSERT INTO attendance (child_id, date, check_in_time, notes) VALUES ($1, $2, $3, $4)',
-        [child_id, today, now, notes]
+      result = await db.query(
+        `INSERT INTO attendance (child_id, date, check_in_time, check_out_time, notes, status, updated_by) 
+         VALUES ($1, $2, $3, $4, $5, 'present', $6) 
+         RETURNING *`,
+        [child_id, today, checkInTime, checkOutTime, notes || null, req.user.id || req.user.userId]
       );
     }
 
-    res.json({ success: true, message: 'Arrivée enregistrée avec succès' });
+    res.json({
+      success: true,
+      message: isDaily ? 'Présence enregistrée avec succès' : 'Arrivée enregistrée avec succès',
+      attendance: result.rows[0]
+    });
   } catch (error) {
     console.error('Erreur check-in:', error);
     res.status(500).json({ success: false, error: 'Erreur lors de l\'enregistrement de l\'arrivée' });
   }
 });
 
-// POST /api/attendance/check-out - Enregistrer un départ
+// POST /api/attendance/check-out - Enregistrer un départ (mode horaire)
 router.post('/check-out', auth.authenticateToken, auth.requirePermission('attendance.manage'), async (req, res) => {
   try {
-    const { child_id, notes } = req.body;
-    const today = new Date().toISOString().split('T')[0];
+    const { child_id, notes, date } = req.body;
+    const today = date || new Date().toISOString().split('T')[0];
     const now = new Date();
 
     // Vérifier s'il y a un check-in aujourd'hui
@@ -504,15 +659,253 @@ router.post('/check-out', auth.authenticateToken, auth.requirePermission('attend
     }
 
     // Mettre à jour avec le check-out
-    await db.query(
-      'UPDATE attendance SET check_out_time = $1, notes = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
-      [now, notes, existing.rows[0].id]
+    const result = await db.query(
+      `UPDATE attendance 
+       SET check_out_time = $1, notes = COALESCE($2, notes), updated_by = $3, updated_at = CURRENT_TIMESTAMP 
+       WHERE id = $4
+       RETURNING *`,
+      [now, notes || null, req.user.id || req.user.userId, existing.rows[0].id]
     );
 
-    res.json({ success: true, message: 'Départ enregistré avec succès' });
+    res.json({
+      success: true,
+      message: 'Départ enregistré avec succès',
+      attendance: result.rows[0]
+    });
   } catch (error) {
     console.error('Erreur check-out:', error);
     res.status(500).json({ success: false, error: 'Erreur lors de l\'enregistrement du départ' });
+  }
+});
+
+// POST /api/attendance/toggle - Basculer directement Présent / Absent (1 clic)
+router.post('/toggle', auth.authenticateToken, auth.requirePermission('attendance.manage'), async (req, res) => {
+  try {
+    const { child_id, date, target_status, notes } = req.body;
+    const targetDate = date || new Date().toISOString().split('T')[0];
+    const now = new Date();
+
+    const childCheck = await db.query(
+      'SELECT id, first_name, last_name, care_schedule, saturday_attendance FROM children WHERE id = $1 AND is_active = true',
+      [child_id]
+    );
+    if (childCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Enfant non trouvé' });
+    }
+    const child = childCheck.rows[0];
+
+    const existing = await db.query(
+      'SELECT * FROM attendance WHERE child_id = $1 AND date = $2',
+      [child_id, targetDate]
+    );
+
+    const mode = await getAttendanceMode();
+    const isDaily = mode === 'daily';
+    const dayOfWeek = new Date(`${targetDate}T12:00:00`).getDay();
+    const isSaturday = dayOfWeek === 6;
+    const isHalfDay = child.care_schedule === 'half_day';
+    const closeHour = (isSaturday || isHalfDay) ? '13:00:00' : '18:00:00';
+
+    const isCurrentlyPresent = existing.rows.length > 0 && (existing.rows[0].status === 'present' || existing.rows[0].check_in_time !== null);
+
+    // Si on veut marquer l'enfant absent (ou bascule vers absent)
+    if (target_status === 'absent' || (!target_status && isCurrentlyPresent)) {
+      if (existing.rows.length > 0) {
+        await db.query('DELETE FROM attendance WHERE id = $1', [existing.rows[0].id]);
+      }
+      return res.json({
+        success: true,
+        message: 'Enfant marqué absent pour cette journée',
+        status: 'absent',
+        child_id
+      });
+    }
+
+    // Sinon, marquer présent : le départ reste NULL tant que l'enfant est présent
+    const checkInTime = isDaily ? `${targetDate} 07:00:00` : now;
+    const checkOutTime = null;
+
+    let result;
+    if (existing.rows.length > 0) {
+      result = await db.query(
+        `UPDATE attendance 
+         SET check_in_time = $1, check_out_time = $2, notes = COALESCE($3, notes), status = 'present', updated_by = $4, updated_at = CURRENT_TIMESTAMP 
+         WHERE id = $5 
+         RETURNING *`,
+        [checkInTime, checkOutTime, notes || null, req.user.id || req.user.userId, existing.rows[0].id]
+      );
+    } else {
+      result = await db.query(
+        `INSERT INTO attendance (child_id, date, check_in_time, check_out_time, notes, status, updated_by) 
+         VALUES ($1, $2, $3, $4, $5, 'present', $6) 
+         RETURNING *`,
+        [child_id, targetDate, checkInTime, checkOutTime, notes || null, req.user.id || req.user.userId]
+      );
+    }
+
+    res.json({
+      success: true,
+      message: 'Présence enregistrée avec succès',
+      status: 'present',
+      attendance: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Erreur toggle présence:', error);
+    res.status(500).json({ success: false, error: 'Erreur lors de la mise à jour de présence' });
+  }
+});
+
+// PUT /api/attendance/:id - Rectifier / corriger un pointage (Heure non obligatoire)
+router.put('/:id', auth.authenticateToken, auth.requirePermission('attendance.manage'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { check_in_time, check_out_time, status, notes } = req.body;
+
+    const check = await db.query(`
+      SELECT a.*, c.care_schedule, c.first_name, c.last_name 
+      FROM attendance a 
+      JOIN children c ON a.child_id = c.id 
+      WHERE a.id = $1
+    `, [id]);
+
+    if (check.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Enregistrement de présence introuvable' });
+    }
+
+    const existing = check.rows[0];
+    const recordDate = existing.date instanceof Date ? existing.date.toISOString().split('T')[0] : String(existing.date).split('T')[0];
+    const dayOfWeek = new Date(`${recordDate}T12:00:00`).getDay();
+    const isSaturday = dayOfWeek === 6;
+    const isHalfDay = existing.care_schedule === 'half_day';
+    const defaultCloseTime = (isSaturday || isHalfDay) ? '13:00:00' : '18:00:00';
+
+    // Si on le passe en absent : suppression du pointage
+    if (status === 'absent') {
+      await db.query('DELETE FROM attendance WHERE id = $1', [id]);
+      return res.json({ success: true, message: 'Pointage annulé (enfant marqué absent)' });
+    }
+
+    let finalCheckIn = check_in_time !== undefined ? check_in_time : existing.check_in_time;
+    let finalCheckOut = check_out_time !== undefined ? check_out_time : existing.check_out_time;
+
+    // Si l'utilisateur rectifie la présence sans spécifier d'heure (heure non obligatoire)
+    if (!finalCheckIn || String(finalCheckIn).trim() === '') {
+      finalCheckIn = `${recordDate} 07:00:00`;
+      finalCheckOut = `${recordDate} ${defaultCloseTime}`;
+    }
+
+    const result = await db.query(`
+      UPDATE attendance 
+      SET check_in_time = $1,
+          check_out_time = $2,
+          notes = COALESCE($3, notes),
+          status = COALESCE($4, 'present'),
+          updated_by = $5,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $6
+      RETURNING *
+    `, [finalCheckIn, finalCheckOut || null, notes || null, status || 'present', req.user.id || req.user.userId, id]);
+
+    res.json({
+      success: true,
+      message: 'Pointage rectifié avec succès',
+      attendance: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Erreur rectification pointage:', error);
+    res.status(500).json({ success: false, error: 'Erreur lors de la rectification' });
+  }
+});
+
+// DELETE /api/attendance/:id - Annuler un pointage (Droit à l'erreur / Remise à l'état absent)
+router.delete('/:id', auth.authenticateToken, auth.requirePermission('attendance.manage'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const check = await db.query('SELECT id FROM attendance WHERE id = $1', [id]);
+    if (check.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Pointage non trouvé' });
+    }
+
+    await db.query('DELETE FROM attendance WHERE id = $1', [id]);
+
+    res.json({ success: true, message: 'Pointage annulé avec succès' });
+  } catch (error) {
+    console.error('Erreur annulation pointage:', error);
+    res.status(500).json({ success: false, error: 'Erreur lors de l\'annulation du pointage' });
+  }
+});
+
+// POST /api/attendance/exceptional-saturday - Accueil exceptionnel du samedi avec notification parent
+router.post('/exceptional-saturday', auth.authenticateToken, auth.requirePermission('attendance.manage'), async (req, res) => {
+  try {
+    const { child_id, notes, date } = req.body;
+    const targetDate = date || new Date().toISOString().split('T')[0];
+
+    const childRes = await db.query(`
+      SELECT c.id, c.first_name, c.last_name, c.parent_id, u.id as user_parent_id, u.first_name as parent_first_name
+      FROM children c
+      LEFT JOIN users u ON c.parent_id = u.id
+      WHERE c.id = $1 AND c.is_active = true
+    `, [child_id]);
+
+    if (childRes.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Enfant non trouvé' });
+    }
+    const child = childRes.rows[0];
+
+    const mode = await getAttendanceMode();
+    const isDaily = mode === 'daily';
+    const now = new Date();
+
+    const checkInTime = isDaily ? `${targetDate} 07:00:00` : now;
+    const checkOutTime = null; // Présent à la crèche, départ NULL
+    const auditNote = notes ? `${notes} | [Accueil exceptionnel samedi]` : `[Accueil exceptionnel samedi]`;
+
+    const result = await db.query(`
+      INSERT INTO attendance (child_id, date, check_in_time, check_out_time, notes, status, is_exceptional_saturday, updated_by)
+      VALUES ($1, $2, $3, $4, $5, 'present', true, $6)
+      ON CONFLICT (child_id, date)
+      DO UPDATE SET
+        check_in_time = EXCLUDED.check_in_time,
+        check_out_time = EXCLUDED.check_out_time,
+        notes = EXCLUDED.notes,
+        status = 'present',
+        is_exceptional_saturday = true,
+        updated_by = EXCLUDED.updated_by,
+        updated_at = CURRENT_TIMESTAMP
+      RETURNING *
+    `, [child_id, targetDate, checkInTime, checkOutTime, auditNote, req.user.id || req.user.userId]);
+
+    // Notification immédiate au parent (In-App + Push)
+    const parentUserId = child.parent_id || child.user_parent_id;
+    if (parentUserId) {
+      const notifTitle = 'ℹ️ Accueil exceptionnel du samedi';
+      const notifMsg = `Votre enfant ${child.first_name} ${child.last_name} a été accueilli(e) exceptionnellement aujourd'hui (Samedi).`;
+
+      try {
+        await db.query(`
+          INSERT INTO notifications (user_id, title, message, type, is_read, created_at)
+          VALUES ($1, $2, $3, 'saturday_exception', false, NOW())
+        `, [parentUserId, notifTitle, notifMsg]);
+
+        await pushNotificationService.sendPushToUser(parentUserId, {
+          title: notifTitle,
+          message: notifMsg,
+          url: '/mon-espace'
+        });
+      } catch (notifErr) {
+        console.warn('⚠️ Erreur notification parent samedi exceptionnel:', notifErr.message);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Accueil exceptionnel enregistré pour ${child.first_name} et parent notifié`,
+      attendance: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Erreur accueil exceptionnel samedi:', error);
+    res.status(500).json({ success: false, error: 'Erreur lors de l\'enregistrement de l\'accueil exceptionnel' });
   }
 });
 

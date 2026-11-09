@@ -173,36 +173,42 @@ const ChildMedicalPage = () => {
         );
     }
 
-    return (
-        <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 ${isMobile ? 'pb-24 pt-[calc(env(safe-area-inset-top,0px)+0.75rem)]' : ''}`}>
-            <div className="max-w-2xl mx-auto px-4 py-6">
-                {/* Header */}
-                {!isMobile && (
-                    <button
-                        onClick={() => navigate('/mon-espace')}
-                        className="mb-6 flex items-center gap-2 text-gray-600 hover:text-gray-900 dark:text-gray-400"
-                    >
-                        <ArrowLeft className="w-5 h-5" />
-                        <span>{isRTL ? 'العودة' : 'Retour'}</span>
-                    </button>
-                )}
+    const targetChildId = id || child?.id;
 
-                {/* Titre */}
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-                        <Stethoscope className="w-6 h-6 text-red-600" />
+    return (
+        <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 ${isMobile ? 'pb-32' : 'pb-12'}`}>
+            {/* Header Sticky */}
+            <div className="sticky top-0 z-20 bg-white/95 dark:bg-gray-900/95 backdrop-blur border-b border-gray-200 dark:border-gray-800 shadow-xs px-4 py-3 pt-[calc(env(safe-area-inset-top,0px)+0.75rem)]">
+                <div className="flex items-center justify-between max-w-2xl mx-auto">
+                    <button
+                        type="button"
+                        onClick={() => navigate(targetChildId ? `/mon-espace?openChild=${targetChildId}` : '/mon-espace')}
+                        className="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors shrink-0"
+                        title={isRTL ? 'رجوع' : 'Retour'}
+                        aria-label={isRTL ? 'رجوع' : 'Retour'}
+                    >
+                        <ArrowLeft className={`w-5 h-5 ${isRTL ? 'rotate-180' : ''}`} />
+                    </button>
+                    <div className="flex items-center gap-2.5">
+                        <div className="w-9 h-9 rounded-xl bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
+                            <Stethoscope className="w-5 h-5" />
+                        </div>
+                        <div className="text-left rtl:text-right">
+                            <h1 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white leading-tight">
+                                {isRTL ? 'البيانات الطبية' : 'Données médicales'}
+                            </h1>
+                            {child && (
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    {child.first_name} {child.last_name}
+                                </p>
+                            )}
+                        </div>
                     </div>
-                    <div>
-                        <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                            {isRTL ? 'البيانات الطبية' : 'Données médicales'}
-                        </h1>
-                        {child && (
-                            <p className="text-gray-500">
-                                {child.first_name} {child.last_name}
-                            </p>
-                        )}
-                    </div>
+                    <div className="w-9" />
                 </div>
+            </div>
+
+            <div className="max-w-2xl mx-auto px-4 py-6">
 
                 {/* Croissance & Groupe sanguin */}
                 <motion.div

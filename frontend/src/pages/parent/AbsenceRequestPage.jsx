@@ -4,20 +4,16 @@ import { useNavigate } from 'react-router-dom';
 import {
   Calendar,
   AlertCircle,
-  Send,
   Baby,
   Clock,
   FileText,
   CheckCircle,
-  XCircle,
-  ArrowLeft,
   Phone
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
 import useIsMobile from '../../hooks/useIsMobile';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import CalendarPicker from '../../components/ui/CalendarPicker';
 import { useDialogContext } from '../../contexts/DialogContext';
@@ -194,14 +190,10 @@ const AbsenceRequestPage = () => {
       {/* Header Sticky */}
       <div className="sticky top-0 z-30 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-4 py-3 shadow-xs pt-[calc(env(safe-area-inset-top,0px)+0.75rem)]">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/mon-espace')}
-              className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-colors"
-              title={isRTL ? 'العودة إلى مساحتي' : 'Retour à Mon Espace'}
-            >
-              <ArrowLeft className="w-5 h-5 rtl:rotate-180" />
-            </button>
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+              <Calendar className="w-5 h-5" />
+            </div>
             <div>
               <h1 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white leading-tight">
                 {isRTL ? 'طلب غياب' : 'Demande d\'absence'}

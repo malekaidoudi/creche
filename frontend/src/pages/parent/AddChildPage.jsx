@@ -9,6 +9,8 @@ import { convertToISO } from '../../utils/dateUtils'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
 import DatePicker from '../../components/ui/DatePicker'
 import DocumentUpload from '../../components/ui/DocumentUpload'
+import useIsMobile from '../../hooks/useIsMobile'
+import MobileNavigation from '../../components/mobile/MobileNavigation'
 import {
     Baby,
     Upload,
@@ -23,6 +25,7 @@ import {
 } from 'lucide-react'
 
 const AddChildPage = () => {
+    const isMobile = useIsMobile()
     const { isRTL } = useLanguage()
     const dialog = useDialogContext()
     const navigate = useNavigate()
@@ -216,27 +219,31 @@ const AddChildPage = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-8 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] md:py-8">
+        <div className={`min-h-screen bg-gray-50 dark:bg-gray-900 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] md:py-8 ${isMobile ? 'pb-24' : 'pb-8'}`}>
             <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
                 {/* Header */}
                 <div className="mb-6">
-                    <button
-                        onClick={() => navigate('/mon-espace')}
-                        className="flex items-center text-gray-600 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 mb-4"
-                    >
-                        <ArrowLeft className={`w-5 h-5 ${isRTL ? 'ml-2 rotate-180' : 'mr-2'}`} />
-                        {isRTL ? 'العودة إلى حسابي' : 'Retour à mon espace'}
-                    </button>
-
-                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-                        {isRTL ? 'إضافة طفل جديد' : 'Ajouter un enfant'}
-                    </h1>
-                    <p className="text-gray-600 dark:text-gray-300 mt-2">
-                        {isRTL
-                            ? 'أكمل النموذج أدناه لتسجيل طفل جديد'
-                            : 'Complétez le formulaire ci-dessous pour inscrire un nouvel enfant'
-                        }
-                    </p>
+                    <div className="flex items-center gap-3">
+                        <button
+                            type="button"
+                            onClick={() => navigate('/mon-espace')}
+                            className="p-2 -ml-1 rtl:-mr-1 rtl:ml-0 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors shrink-0"
+                            title={isRTL ? 'العودة إلى حسابي' : 'Retour à mon espace'}
+                        >
+                            <ArrowLeft className={`w-5 h-5 ${isRTL ? 'rotate-180' : ''}`} />
+                        </button>
+                        <div>
+                            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white leading-tight">
+                                {isRTL ? 'إضافة طفل جديد' : 'Ajouter un enfant'}
+                            </h1>
+                            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+                                {isRTL
+                                    ? 'أكمل النموذج أدناه لتسجيل طفل جديد'
+                                    : 'Complétez le formulaire ci-dessous pour inscrire un nouvel enfant'
+                                }
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Barre de progression */}
@@ -690,6 +697,9 @@ const AddChildPage = () => {
                     </div>
                 </motion.div>
             </div>
+
+            {/* Navigation mobile */}
+            {isMobile && <MobileNavigation />}
         </div>
     )
 }

@@ -7,7 +7,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Baby,
-  ArrowLeft,
   CheckCircle,
   XCircle,
   Minus
@@ -16,7 +15,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useTheme } from '../../hooks/useTheme';
 import useIsMobile from '../../hooks/useIsMobile';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/Card';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import api from '../../services/api';
 import { useDialogContext } from '../../contexts/DialogContext';
@@ -388,14 +387,10 @@ const AttendanceParentPage = () => {
       {/* Header Sticky Mobile/Desktop */}
       <div className={`sticky top-0 z-30 ${isDark ? 'bg-gray-900/95 border-gray-800' : 'bg-white/95 border-gray-200'} backdrop-blur-md border-b px-4 py-3 shadow-xs pt-[calc(env(safe-area-inset-top,0px)+0.75rem)]`}>
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/mon-espace')}
-              className={`p-2 rounded-xl transition-colors ${isDark ? 'hover:bg-gray-800 text-gray-300' : 'hover:bg-gray-100 text-gray-600'}`}
-              title={isRTL ? 'رجوع' : 'Retour'}
-            >
-              <ArrowLeft className={`w-5 h-5 ${isRTL ? 'rotate-180' : ''}`} />
-            </button>
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+              <Calendar className="w-5 h-5" />
+            </div>
             <div>
               <h1 className={`text-lg sm:text-2xl font-bold leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
                 {isRTL ? 'تقرير حضور الأطفال' : 'Calendrier de Présence'}

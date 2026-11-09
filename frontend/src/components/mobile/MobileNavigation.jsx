@@ -29,7 +29,9 @@ import {
     Clock,
     CalendarX,
     Pill,
-    ChevronRight
+    ChevronRight,
+    CreditCard,
+    Receipt
 } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useAuth } from '../../contexts/AuthContext';
@@ -37,6 +39,7 @@ import { useProfileImage } from '../../hooks/useProfileImage';
 import { useAccess } from '../../access';
 import PwaMobileBar from '../pwa/PwaMobileBar';
 import ParentOptionsModals from './ParentOptionsModals';
+import BillingManagementModal from '../modals/BillingManagementModal';
 
 const MobileNavigation = ({ hideSpacer = false }) => {
     const { isRTL } = useLanguage();
@@ -51,6 +54,7 @@ const MobileNavigation = ({ hideSpacer = false }) => {
     const [showHolidaysModal, setShowHolidaysModal] = useState(false);
     const [showNewsModal, setShowNewsModal] = useState(false);
     const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+    const [showBillingModal, setShowBillingModal] = useState(false);
 
     // Navigation principale (5 éléments) : Accueil, Enfant, Inscription, Soins, Plus
     const mainNavItems = [
@@ -132,6 +136,17 @@ const MobileNavigation = ({ hideSpacer = false }) => {
 
     // Menu étendu "Plus" : Planning, Statistiques, Activité récentes, Paramètres
     const moreMenuItems = [
+        // Gestion Financière : Cotisations, Dépenses & Trésorerie (Admin / Développeur)
+        {
+            icon: Receipt,
+            label: isRTL ? 'المالية، الاشتراكات والمصاريف' : 'Cotisations & Dépenses',
+            action: () => {
+                setShowMore(false);
+                setShowBillingModal(true);
+            },
+            color: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400',
+            roles: ['admin', 'developer']
+        },
         {
             icon: Calendar,
             label: isRTL ? 'التخطيط' : 'Planning',
@@ -142,12 +157,6 @@ const MobileNavigation = ({ hideSpacer = false }) => {
             icon: BarChart3,
             label: isRTL ? 'الإحصائيات' : 'Statistiques',
             path: '/dashboard/general-stats',
-            roles: ['admin', 'staff', 'developer']
-        },
-        {
-            icon: Clock,
-            label: isRTL ? 'الأنشطة الأخيرة' : 'Activité récentes',
-            path: '/dashboard/activities',
             roles: ['admin', 'staff', 'developer']
         },
         {
@@ -171,6 +180,13 @@ const MobileNavigation = ({ hideSpacer = false }) => {
             roles: ['staff']
         },
         // Options spécifiques aux parents dans le menu Plus
+        {
+            icon: CreditCard,
+            label: isRTL ? 'الاشتراكات والوصولات' : 'Mes Cotisations & Reçus',
+            path: '/mon-espace/cotisations',
+            color: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400',
+            roles: ['parent']
+        },
         {
             icon: CalendarX,
             label: isRTL ? 'أيام الإغلاق' : 'Jours de fermeture',
@@ -409,6 +425,14 @@ const MobileNavigation = ({ hideSpacer = false }) => {
                     onCloseNews={() => setShowNewsModal(false)}
                     showFeedback={showFeedbackModal}
                     onCloseFeedback={() => setShowFeedbackModal(false)}
+                />
+            )}
+
+            {/* Modale de Gestion Financière (Admin & Développeur sur mobile) */}
+            {showBillingModal && (
+                <BillingManagementModal
+                    isOpen={showBillingModal}
+                    onClose={() => setShowBillingModal(false)}
                 />
             )}
 

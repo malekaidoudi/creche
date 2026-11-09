@@ -54,6 +54,7 @@ Chaque domaine est monté sous `/api/<préfixe>`. Table complète :
 | `/api/treatments` | `routes_postgres/treatments.js` |
 | `/api/staff-permissions` | `routes_postgres/staffPermissions.js` |
 | `/api/birthdays` | `routes_postgres/birthdays.js` |
+| `/api/billing` | `routes_postgres/billing.js` |
 
 ## Authentification (`/api/auth`)
 Voir le détail complet en [10_AUTHENTIFICATION.md](./10_AUTHENTIFICATION.md).
@@ -123,7 +124,9 @@ Voir détail du workflow en [21_FLUX_METIER.md](./21_FLUX_METIER.md).
 | Méthode | Chemin | Auth |
 |---|---|---|
 | GET | `/today`, `/child/:id/month`, `/currently-present`, `/stats`, `/date/:date`, `/report`, `/`, `/:id`, `/stats/overview`, `/child/:id/calendar` | authentifié |
-| POST | `/check-in`, `/check-out` | permission `attendance.manage` |
+| POST | `/check-in`, `/check-out`, `/toggle`, `/exceptional-saturday` | permission `attendance.manage` |
+| PUT | `/:id` (rectification rétroactive, heures optionnelles) | permission `attendance.manage` |
+| DELETE | `/:id` (annulation pointage / droit à l'erreur) | permission `attendance.manage` |
 
 ## Rendez-vous (`/api/appointments`)
 | Méthode | Chemin | Auth |
@@ -220,6 +223,31 @@ Module complet de gestion du cycle de vie des anniversaires (J-30 à J+30).
 | Enfants du parent connecté (`/api/user`) | authentifié | `userChildren.js` |
 | Notifications (`/api/notifications`) | authentifié (création/diffusion en masse via `/broadcast` — rôle non systématiquement précisé, à vérifier) | `notifications.js` |
 | Documents (`/api/documents`) | mixte public/authentifié/protégé par ressource (voir [11_AUTORISATION_ET_PERMISSIONS.md](./11_AUTORISATION_ET_PERMISSIONS.md)) | `documents.js` |
+| Facturation, Cotisations & Dépenses (`/api/billing`) | `admin`, `staff` (génération factures, encaissement espèces, annulation paiement, CRUD dépenses, reçu PDF) ; espace parent (`/my-invoices`) | `billing.js` |
+
+## Facturation, Cotisations & Dépenses (`/api/billing`)
+| Méthode | Chemin | Auth | Description |
+|---|---|---|---|
+| GET | `/settings` | `admin` | Paramètres généraux de facturation (tarifs horaires, jour, demi-journée, assurance) |
+| PUT | `/settings` | `admin` | Mise à jour des paramètres de tarification |
+| GET | `/invoices` | `admin`, `staff` | Liste des factures/cotisations mensuelles avec filtres (année, mois, statut, enfant) |
+| POST | `/invoices/generate` | `admin`, `staff` | Génération automatique des cotisations du mois pour les enfants actifs |
+| POST | `/invoices/:id/pay` | `admin`, `staff` | Encaissement d'un règlement en espèces/chèque/virement et émission du reçu |
+| POST | `/family-pay` | `admin`, `staff` | **Règlement groupé familial** (multi-enfants, multi-mois d'avance, déduction avoir, reçu unique) |
+| POST | `/invoices/:id/void-payment` | `admin`, `staff` | **Annulation d'un encaissement** (remise en attente, motif d'annulation archivé, audit trail) |
+| POST | `/family-void-payment` | `admin`, `staff` | **Annulation d'un encaissement familial** groupé |
+| POST | `/invoices/:id/settle-past` | `admin`, `staff` | **Régularisation historique d'une cotisation passée** (espèces antérieures, horodatage au mois d'origine sans impacter le cash-flow actuel) |
+| POST | `/family-settle-past` | `admin`, `staff` | **Régularisation historique d'une famille pour un mois passé** |
+| PUT | `/invoices/:id/adjust` | `admin`, `staff` | Ajustement manuel du montant / prorata ou remise mensuelle récurrente |
+| GET | `/invoices/:id/receipt` | `admin`, `staff` | Téléchargement du reçu officiel de paiement en PDF (individuel ou fratrie) |
+| POST | `/invoices/:id/remind` | `admin`, `staff` | Envoi d'un rappel de paiement in-app et push au parent |
+| GET | `/summary` | `admin`, `staff` | Bilan financier consolidé : attendu, encaissé, restant dû, dépenses et trésorerie nette |
+| GET | `/my-invoices` | parent connecté | Consultation de l'historique de facturation et reçus de ses enfants |
+| GET | `/my-payments` | parent connecté | **Historique chronologique des versements réels** effectués en espèces à la crèche (date, montant net, mode, enfants, périodes couvertes, reçu PDF) |
+| GET | `/expenses` | `admin`, `staff` | Liste des dépenses de fonctionnement de la crèche (filtre mois, année, catégorie) |
+| POST | `/expenses` | `admin`, `staff` | Enregistrement d'une nouvelle dépense de la crèche |
+| PUT | `/expenses/:id` | `admin`, `staff` | **Mise à jour d'une dépense** (titre, catégorie, montant, date, mode de règlement, notes) |
+| DELETE | `/expenses/:id` | `admin`, `staff` | **Suppression d'une dépense** avec confirmation |
 
 ## Format de réponse
 Deux formes principales cohabitent :

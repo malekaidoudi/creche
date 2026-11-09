@@ -53,16 +53,16 @@ const attendanceService = {
   },
 
   // Enregistrer l'arrivée d'un enfant (check-in)
-  checkIn: async (childId, notes = null) => {
+  checkIn: async (childId, options = null) => {
     try {
-      const response = await api.post('/api/attendance/check-in', {
-        child_id: childId,
-        notes
-      })
-      return response.data
+      const payload = typeof options === 'string'
+        ? { child_id: childId, notes: options }
+        : { child_id: childId, ...(options || {}) };
+      const response = await api.post('/api/attendance/check-in', payload);
+      return response.data;
     } catch (error) {
-      console.error('Erreur lors de l\'enregistrement de l\'arrivée:', error)
-      throw error
+      console.error('Erreur lors de l\'enregistrement de l\'arrivée:', error);
+      throw error;
     }
   },
 
@@ -102,6 +102,60 @@ const attendanceService = {
     } catch (error) {
       console.error('Erreur lors de la récupération de la présence du jour:', error)
       throw error
+    }
+  },
+
+  // Basculer l'état de présence (mode journalier en 1 clic ou toggle)
+  togglePresence: async (childId, options = {}) => {
+    try {
+      const { date, target_status, notes } = options;
+      const response = await api.post('/api/attendance/toggle', {
+        child_id: childId,
+        date,
+        target_status,
+        notes
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Erreur lors du basculement de la présence:', error);
+      throw error;
+    }
+  },
+
+  // Rectifier / corriger un pointage (heures optionnelles)
+  updateAttendance: async (attendanceId, data = {}) => {
+    try {
+      const response = await api.put(`/api/attendance/${attendanceId}`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Erreur lors de la modification du pointage:', error);
+      throw error;
+    }
+  },
+
+  // Annuler / supprimer un pointage (droit à l'erreur / remise à l'état absent)
+  deleteAttendance: async (attendanceId) => {
+    try {
+      const response = await api.delete(`/api/attendance/${attendanceId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Erreur lors de l\'annulation du pointage:', error);
+      throw error;
+    }
+  },
+
+  // Enregistrer un accueil exceptionnel le samedi avec notification parent
+  recordExceptionalSaturday: async (childId, notes = null, date = null) => {
+    try {
+      const response = await api.post('/api/attendance/exceptional-saturday', {
+        child_id: childId,
+        notes,
+        date
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Erreur lors de l\'enregistrement de l\'accueil exceptionnel du samedi:', error);
+      throw error;
     }
   }
 }

@@ -1,0 +1,3376 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maquette Interactive — Cotisations, Dépenses & Modale Nouvelle Dépense (Petit & Moyen Écran)</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --font-main: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+            --font-display: 'Outfit', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+
+            /* Palette Émeraude / Crèche Financière */
+            --emerald-50: #ECFDF5;
+            --emerald-100: #D1FAE5;
+            --emerald-200: #A7F3D0;
+            --emerald-500: #10B981;
+            --emerald-600: #059669;
+            --emerald-700: #047857;
+            --emerald-800: #065F46;
+            --emerald-900: #064E3B;
+
+            --teal-50: #F0FDFA;
+            --teal-100: #CCFBF1;
+            --teal-600: #0D9488;
+            --teal-700: #0F766E;
+
+            --amber-50: #FFFBEB;
+            --amber-100: #FEF3C7;
+            --amber-500: #F59E0B;
+            --amber-600: #D97706;
+            --amber-700: #B45309;
+            --amber-800: #92400E;
+
+            --rose-50: #FFF1F2;
+            --rose-100: #FFE4E6;
+            --rose-200: #FECDD3;
+            --rose-500: #F43F5E;
+            --rose-600: #E11D48;
+            --rose-700: #BE123C;
+
+            --blue-50: #EFF6FF;
+            --blue-100: #DBEAFE;
+            --blue-600: #2563EB;
+            --blue-700: #1D4ED8;
+
+            --purple-50: #FAF5FF;
+            --purple-100: #F3E8FF;
+            --purple-600: #9333EA;
+            --purple-700: #7E22CE;
+
+            --cyan-50: #ECFEFF;
+            --cyan-100: #CFFAFE;
+            --cyan-700: #0E7490;
+
+            /* Thème Clair */
+            --app-bg: #F4F7FA;
+            --card-bg: #FFFFFF;
+            --card-bg-subtle: #F8FAFC;
+            --border-color: #E2E8F0;
+            --border-subtle: #F1F5F9;
+            --text-main: #0F172A;
+            --text-secondary: #475569;
+            --text-muted: #64748B;
+            --shadow-card: 0 2px 8px -2px rgba(15, 23, 42, 0.06), 0 1px 3px -1px rgba(15, 23, 42, 0.04);
+            --shadow-hover: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 4px 10px -2px rgba(15, 23, 42, 0.04);
+        }
+
+        [data-theme="dark"] {
+            --app-bg: #0B1120;
+            --card-bg: #1E293B;
+            --card-bg-subtle: #151F32;
+            --border-color: #334155;
+            --border-subtle: #1E293B;
+            --text-main: #F8FAFC;
+            --text-secondary: #CBD5E1;
+            --text-muted: #94A3B8;
+            --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.25);
+            --shadow-hover: 0 12px 28px rgba(0, 0, 0, 0.4);
+        }
+
+        /* Règle globale anti-coupure sur tous les montants en DT */
+        .nowrap-dt {
+            white-space: nowrap !important;
+            flex-shrink: 0 !important;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background: radial-gradient(circle at 20% 0%, #132338 0%, #090e17 75%);
+            color: #F8FAFC;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* =========================================================
+           BARRE DE CONTRÔLE DU SHOWCASE (TOPBAR)
+           ========================================================= */
+        .showcase-topbar {
+            position: sticky;
+            top: 0;
+            z-index: 200;
+            background: rgba(11, 17, 32, 0.88);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .showcase-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .showcase-logo {
+            width: 38px;
+            height: 38px;
+            border-radius: 11px;
+            background: linear-gradient(135deg, #10B981, #0D9488);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+            flex-shrink: 0;
+        }
+
+        .showcase-title h1 {
+            font-family: var(--font-display);
+            font-size: 1rem;
+            font-weight: 700;
+            color: #FFFFFF;
+            letter-spacing: -0.01em;
+        }
+
+        .showcase-title p {
+            font-size: 0.74rem;
+            color: #94A3B8;
+        }
+
+        .showcase-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .control-pill-group {
+            display: flex;
+            align-items: center;
+            background: rgba(30, 41, 59, 0.9);
+            padding: 3px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            gap: 2px;
+        }
+
+        .ctrl-label {
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #94A3B8;
+            padding: 0 8px;
+            font-weight: 700;
+        }
+
+        .ctrl-btn {
+            background: transparent;
+            border: none;
+            color: #CBD5E1;
+            padding: 6px 11px;
+            border-radius: 9px;
+            font-family: var(--font-main);
+            font-size: 0.76rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.18s ease;
+            white-space: nowrap;
+        }
+
+        .ctrl-btn:hover {
+            color: #FFFFFF;
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .ctrl-btn.active {
+            background: linear-gradient(135deg, #10B981, #059669);
+            color: #FFFFFF;
+            box-shadow: 0 2px 10px rgba(16, 185, 129, 0.35);
+        }
+
+        .ctrl-btn.active-alt {
+            background: #3B82F6;
+            color: #FFFFFF;
+            box-shadow: 0 2px 10px rgba(59, 130, 246, 0.35);
+        }
+
+        /* Sous-barre de choix de design */
+        .design-subbar {
+            background: rgba(15, 23, 42, 0.75);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+            padding: 8px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .design-tab {
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #CBD5E1;
+            padding: 6px 13px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+
+        .design-tab:hover {
+            border-color: rgba(16, 185, 129, 0.5);
+            color: white;
+        }
+
+        .design-tab.active {
+            background: rgba(16, 185, 129, 0.18);
+            border-color: #10B981;
+            color: #34D399;
+            box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.3);
+        }
+
+        .design-tab.btn-demo-expense {
+            background: linear-gradient(135deg, rgba(225, 29, 72, 0.25), rgba(190, 18, 60, 0.35));
+            border-color: #F43F5E;
+            color: #FFE4E6;
+            font-weight: 700;
+        }
+
+        .design-tab.btn-demo-expense:hover {
+            background: linear-gradient(135deg, #E11D48, #BE123C);
+            color: white;
+        }
+
+        .design-tab .badge-rec {
+            background: #10B981;
+            color: #052E16;
+            font-size: 0.64rem;
+            font-weight: 800;
+            padding: 1px 6px;
+            border-radius: 99px;
+            text-transform: uppercase;
+        }
+
+        /* =========================================================
+           STAGE & SIMULATEUR D'ÉCRAN (CONTAINER QUERIES)
+           ========================================================= */
+        .showcase-stage {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 12px 60px;
+            gap: 16px;
+        }
+
+        .viewport-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.76rem;
+            color: #94A3B8;
+            background: rgba(30, 41, 59, 0.65);
+            padding: 5px 14px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .viewport-indicator strong {
+            color: #34D399;
+            font-family: var(--font-mono);
+        }
+
+        .device-simulator {
+            width: 100%;
+            max-width: 390px;
+            background: var(--app-bg);
+            color: var(--text-main);
+            border-radius: 36px;
+            box-shadow: 0 28px 70px -15px rgba(0, 0, 0, 0.75), 0 0 0 8px #1E293B, 0 0 0 10px #334155;
+            overflow: hidden;
+            transition: max-width 0.35s cubic-bezier(0.16, 1, 0.3, 1), border-radius 0.3s ease;
+            container-type: inline-size;
+            container-name: viewport;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            min-height: 760px;
+        }
+
+        .device-simulator.size-sm {
+            max-width: 390px;
+            border-radius: 38px;
+        }
+
+        .device-simulator.size-md-sm {
+            max-width: 540px;
+            border-radius: 28px;
+        }
+
+        .device-simulator.size-md {
+            max-width: 768px;
+            border-radius: 22px;
+        }
+
+        .device-simulator.size-lg {
+            max-width: 1024px;
+            border-radius: 18px;
+        }
+
+        .device-statusbar {
+            height: 28px;
+            background: #064E3B;
+            color: rgba(255, 255, 255, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        /* =========================================================
+           HEADER DE L'APPLICATION
+           ========================================================= */
+        .app-header {
+            background: linear-gradient(135deg, #059669 0%, #0D9488 60%, #0E7490 100%);
+            color: white;
+            padding: 14px 16px 12px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .app-header::after {
+            content: '';
+            position: absolute;
+            right: -30px;
+            top: -30px;
+            width: 140px;
+            height: 140px;
+            background: radial-gradient(circle, rgba(255,255,255,0.14) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .header-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .header-title-wrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+
+        .header-icon-box {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.18);
+            backdrop-filter: blur(6px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+        }
+
+        .header-title-text h2 {
+            font-family: var(--font-display);
+            font-size: 0.98rem;
+            font-weight: 700;
+            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .header-title-text p {
+            font-size: 0.71rem;
+            color: rgba(255, 255, 255, 0.84);
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* =========================================================
+           CORRECTIF PHOTO 4 : BARRE DES 2 ONGLETS PRINCIPAUX
+           Zéro débordement, badge '4' jamais coupé même en 390px !
+           ========================================================= */
+        .main-nav-strip {
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border-color);
+            padding: 8px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        @container viewport (min-width: 720px) {
+            .main-nav-strip {
+                flex-direction: row;
+                align-items: center;
+                justify-content: space-between;
+                padding: 8px 16px;
+            }
+        }
+
+        .primary-tabs-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            gap: 4px;
+            background: var(--card-bg-subtle);
+            padding: 3.5px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            width: 100%;
+            overflow: hidden;
+        }
+
+        @container viewport (min-width: 720px) {
+            .primary-tabs-grid {
+                width: auto;
+                min-width: 410px;
+            }
+        }
+
+        .primary-tab-btn {
+            min-width: 0;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            padding: 7px 6px;
+            border-radius: 9px;
+            font-family: var(--font-main);
+            font-size: 0.72rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            transition: all 0.18s ease;
+            white-space: nowrap;
+        }
+
+        /* Sur petit écran (< 480px), libellé court pour laisser respirer le badge "4" */
+        .tab-label-long {
+            display: none;
+        }
+        .tab-label-short {
+            display: inline;
+        }
+
+        @container viewport (min-width: 480px) {
+            .primary-tab-btn {
+                padding: 7.5px 12px;
+                font-size: 0.76rem;
+                gap: 6px;
+            }
+            .tab-label-long {
+                display: inline;
+            }
+            .tab-label-short {
+                display: none;
+            }
+        }
+
+        .primary-tab-btn:hover {
+            color: var(--text-main);
+        }
+
+        .primary-tab-btn.active-invoices {
+            background: var(--card-bg);
+            color: var(--emerald-600);
+            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+        }
+        [data-theme="dark"] .primary-tab-btn.active-invoices {
+            color: #34D399;
+        }
+
+        .primary-tab-btn.active-expenses {
+            background: var(--card-bg);
+            color: var(--rose-600);
+            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+        }
+        [data-theme="dark"] .primary-tab-btn.active-expenses {
+            color: #FB7185;
+        }
+
+        .tab-badge {
+            font-size: 0.65rem;
+            padding: 1.5px 6.5px;
+            border-radius: 99px;
+            font-weight: 800;
+            flex-shrink: 0;
+            line-height: 1.2;
+        }
+
+        .tab-badge.badge-emerald {
+            background: var(--emerald-100);
+            color: var(--emerald-800);
+        }
+        [data-theme="dark"] .tab-badge.badge-emerald {
+            background: rgba(16, 185, 129, 0.2);
+            color: #6EE7B7;
+        }
+
+        .tab-badge.badge-rose {
+            background: var(--rose-100);
+            color: var(--rose-700);
+        }
+        [data-theme="dark"] .tab-badge.badge-rose {
+            background: rgba(244, 63, 94, 0.2);
+            color: #FDA4AF;
+        }
+
+        /* Ligne Période + Bouton d'action contextuel */
+        .period-and-action-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .period-selector-pill {
+            display: flex;
+            align-items: center;
+            background: var(--card-bg-subtle);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 2px;
+            gap: 2px;
+        }
+
+        .period-arrow-btn {
+            width: 26px;
+            height: 26px;
+            border-radius: 7px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .period-arrow-btn:hover {
+            background: var(--card-bg);
+            color: var(--text-main);
+        }
+
+        .period-label-text {
+            padding: 0 8px;
+            font-size: 0.76rem;
+            font-weight: 800;
+            color: var(--text-main);
+            white-space: nowrap;
+        }
+
+        .btn-this-month-pill {
+            background: var(--emerald-50);
+            color: var(--emerald-700);
+            border: 1px solid var(--emerald-200);
+            font-size: 0.65rem;
+            font-weight: 800;
+            padding: 3px 7px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-right: 2px;
+        }
+        [data-theme="dark"] .btn-this-month-pill {
+            background: rgba(16, 185, 129, 0.15);
+            color: #6EE7B7;
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-context-generate {
+            background: linear-gradient(135deg, #10B981, #059669);
+            color: white;
+            border: none;
+            height: 32px;
+            padding: 0 12px;
+            border-radius: 9px;
+            font-family: var(--font-main);
+            font-size: 0.73rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            white-space: nowrap;
+            box-shadow: 0 2px 6px rgba(5, 150, 105, 0.25);
+        }
+
+        .btn-context-expense {
+            background: linear-gradient(135deg, #F43F5E, #E11D48);
+            color: white;
+            border: none;
+            height: 32px;
+            padding: 0 12px;
+            border-radius: 9px;
+            font-family: var(--font-main);
+            font-size: 0.73rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            gap: 5px;
+            white-space: nowrap;
+            box-shadow: 0 3px 10px rgba(225, 29, 72, 0.3);
+            transition: transform 0.15s;
+        }
+
+        /* =========================================================
+           BANDEAU FINANCIER SYNTHÉTIQUE
+           ========================================================= */
+        .app-body {
+            padding: 12px 14px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .kpi-section {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .kpi-treasury-hero {
+            background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 11px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        [data-theme="dark"] .kpi-treasury-hero {
+            background: linear-gradient(135deg, #064E3B 0%, #0F766E 100%);
+        }
+
+        .treasury-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .treasury-badge-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            color: #34D399;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .treasury-label {
+            font-size: 0.68rem;
+            color: #94A3B8;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        [data-theme="dark"] .treasury-label {
+            color: #A7F3D0;
+        }
+
+        .treasury-sub {
+            font-size: 0.7rem;
+            color: #CBD5E1;
+            margin-top: 1px;
+        }
+
+        .treasury-amount {
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        .treasury-amount .val {
+            font-family: var(--font-display);
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: #34D399;
+            line-height: 1.1;
+            white-space: nowrap;
+        }
+
+        [data-theme="dark"] .treasury-amount .val {
+            color: #FFFFFF;
+        }
+
+        .treasury-amount .rate-pill {
+            display: inline-block;
+            margin-top: 3px;
+            font-size: 0.64rem;
+            font-weight: 700;
+            padding: 1.5px 7px;
+            border-radius: 99px;
+            background: rgba(16, 185, 129, 0.2);
+            color: #6EE7B7;
+            white-space: nowrap;
+        }
+
+        .kpi-grid-4 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        @container viewport (min-width: 640px) {
+            .kpi-section {
+                display: grid;
+                grid-template-columns: 1.35fr 2.65fr;
+                align-items: stretch;
+            }
+            .kpi-grid-4 {
+                grid-template-columns: repeat(4, 1fr);
+            }
+            .app-body {
+                padding: 16px 18px 24px;
+            }
+        }
+
+        .kpi-mini-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 9px 11px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: var(--shadow-card);
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.15s;
+        }
+
+        .kpi-mini-card:hover {
+            transform: translateY(-1px);
+        }
+
+        .kpi-mini-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3.5px;
+        }
+
+        .kpi-mini-card.kpi-expected::before { background: #64748B; }
+        .kpi-mini-card.kpi-collected::before { background: #10B981; }
+        .kpi-mini-card.kpi-remaining::before { background: #F43F5E; }
+        .kpi-mini-card.kpi-expenses::before { background: #F59E0B; }
+
+        .kpi-mini-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 4px;
+            font-size: 0.67rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .kpi-mini-val {
+            font-family: var(--font-display);
+            font-size: 1.02rem;
+            font-weight: 800;
+            color: var(--text-main);
+            margin-top: 3px;
+            display: flex;
+            align-items: baseline;
+            gap: 3px;
+            white-space: nowrap;
+        }
+
+        .kpi-mini-val span.unit {
+            font-size: 0.66rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .kpi-collected .kpi-mini-val { color: var(--emerald-600); }
+        [data-theme="dark"] .kpi-collected .kpi-mini-val { color: #34D399; }
+
+        .kpi-remaining .kpi-mini-val { color: var(--rose-600); }
+        [data-theme="dark"] .kpi-remaining .kpi-mini-val { color: #FB7185; }
+
+        .kpi-expenses .kpi-mini-val { color: var(--amber-600); }
+        [data-theme="dark"] .kpi-expenses .kpi-mini-val { color: #FBBF24; }
+
+        .kpi-mini-foot {
+            font-size: 0.62rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* =========================================================
+           BARRE DE NAVIGATION & FILTRES COMPACTE
+           ========================================================= */
+        .toolbar-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            box-shadow: var(--shadow-card);
+        }
+
+        @container viewport (min-width: 680px) {
+            .toolbar-card {
+                flex-direction: row;
+                align-items: center;
+                justify-content: space-between;
+                padding: 8px 12px;
+            }
+        }
+
+        .segmented-switch {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            background: var(--card-bg-subtle);
+            border: 1px solid var(--border-color);
+            padding: 3px;
+            border-radius: 10px;
+            gap: 3px;
+        }
+
+        .seg-btn {
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            padding: 6px 11px;
+            border-radius: 8px;
+            font-family: var(--font-main);
+            font-size: 0.74rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+
+        .seg-btn.active {
+            background: var(--card-bg);
+            color: var(--emerald-600);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+        }
+
+        [data-theme="dark"] .seg-btn.active {
+            color: #34D399;
+        }
+
+        .seg-count {
+            font-size: 0.64rem;
+            padding: 1px 6px;
+            border-radius: 99px;
+            background: rgba(16, 185, 129, 0.14);
+            color: var(--emerald-700);
+            font-weight: 800;
+        }
+
+        [data-theme="dark"] .seg-count {
+            color: #6EE7B7;
+        }
+
+        .search-filter-row {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex: 1;
+        }
+
+        @container viewport (min-width: 500px) {
+            .search-filter-row {
+                flex-direction: row;
+                align-items: center;
+                justify-content: flex-end;
+            }
+        }
+
+        .search-input-wrap {
+            position: relative;
+            flex: 1;
+            max-width: 100%;
+        }
+
+        @container viewport (min-width: 680px) {
+            .search-input-wrap {
+                max-width: 230px;
+            }
+        }
+
+        .search-input-wrap i, .search-input-wrap svg {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            width: 15px;
+            height: 15px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 7px 10px 7px 32px;
+            border-radius: 9px;
+            border: 1px solid var(--border-color);
+            background: var(--card-bg-subtle);
+            color: var(--text-main);
+            font-family: var(--font-main);
+            font-size: 0.76rem;
+            outline: none;
+        }
+
+        .search-input:focus {
+            border-color: var(--emerald-500);
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.15);
+        }
+
+        .filter-pills {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            overflow-x: auto;
+            scrollbar-width: none;
+            padding-bottom: 1px;
+        }
+
+        .filter-pill {
+            border: 1px solid var(--border-color);
+            background: var(--card-bg-subtle);
+            color: var(--text-secondary);
+            padding: 5px 10px;
+            border-radius: 8px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .filter-pill.active {
+            background: var(--text-main);
+            color: var(--card-bg);
+            border-color: var(--text-main);
+            font-weight: 700;
+        }
+
+        .filter-pill.active-rose {
+            background: var(--rose-600);
+            color: #FFFFFF;
+            border-color: var(--rose-600);
+            font-weight: 700;
+        }
+
+        /* =========================================================
+           LISTE DES CARTES DE COTISATIONS & DÉPENSES
+           ========================================================= */
+        .cotisations-list {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+
+        .cotisations-list.layout-grid-md {
+            grid-template-columns: 1fr;
+        }
+
+        @container viewport (min-width: 680px) {
+            .cotisations-list.layout-grid-md {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .cotis-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 13px 14px;
+            box-shadow: var(--shadow-card);
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cotis-card:hover {
+            box-shadow: var(--shadow-hover);
+            border-color: rgba(16, 185, 129, 0.4);
+        }
+
+        .cotis-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+        }
+        .cotis-card.status-pending::before { background: #3B82F6; }
+        .cotis-card.status-partial::before { background: #F59E0B; }
+        .cotis-card.status-paid::before { background: #10B981; }
+        .cotis-card.status-advance::before { background: #0D9488; }
+        .cotis-card.status-expense::before { background: #E11D48; }
+
+        .cotis-card-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .cotis-identity {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+
+        .cotis-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #10B981, #0F766E);
+            color: white;
+            font-family: var(--font-display);
+            font-weight: 800;
+            font-size: 0.92rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);
+        }
+
+        .cotis-avatar.avatar-amber {
+            background: linear-gradient(135deg, #F59E0B, #D97706);
+            box-shadow: 0 2px 6px rgba(245, 158, 11, 0.25);
+        }
+
+        .cotis-avatar.avatar-blue {
+            background: linear-gradient(135deg, #3B82F6, #1D4ED8);
+            box-shadow: 0 2px 6px rgba(59, 130, 246, 0.25);
+        }
+
+        .cotis-avatar.avatar-teal {
+            background: linear-gradient(135deg, #14B8A6, #0E7490);
+            box-shadow: 0 2px 6px rgba(20, 184, 166, 0.25);
+        }
+
+        .cotis-avatar.avatar-expense {
+            background: var(--rose-50);
+            border: 1px solid var(--rose-200);
+            color: var(--rose-600);
+            font-size: 1.15rem;
+            box-shadow: none;
+        }
+        [data-theme="dark"] .cotis-avatar.avatar-expense {
+            background: rgba(244, 63, 94, 0.15);
+            border-color: rgba(244, 63, 94, 0.3);
+            color: #FDA4AF;
+        }
+
+        .cotis-title-block {
+            min-width: 0;
+        }
+
+        .cotis-name-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .cotis-name {
+            font-weight: 800;
+            font-size: 0.88rem;
+            color: var(--text-main);
+        }
+
+        .cotis-sub-row {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            margin-top: 2px;
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            flex-wrap: wrap;
+        }
+
+        .phone-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+
+        .phone-link:hover {
+            color: var(--emerald-600);
+        }
+
+        .cotis-price-box {
+            text-align: right;
+            flex-shrink: 0;
+            white-space: nowrap;
+        }
+
+        .cotis-main-amount {
+            font-family: var(--font-display);
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: var(--text-main);
+            line-height: 1.1;
+            white-space: nowrap;
+        }
+
+        .cotis-main-amount .dt {
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--text-muted);
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            margin-top: 3px;
+            white-space: nowrap;
+        }
+
+        .status-pill.pill-paid {
+            background: var(--emerald-100);
+            color: var(--emerald-800);
+        }
+        [data-theme="dark"] .status-pill.pill-paid {
+            background: rgba(16, 185, 129, 0.2);
+            color: #6EE7B7;
+        }
+
+        .status-pill.pill-partial {
+            background: var(--amber-100);
+            color: var(--amber-800);
+        }
+        [data-theme="dark"] .status-pill.pill-partial {
+            background: rgba(245, 158, 11, 0.2);
+            color: #FCD34D;
+        }
+
+        .status-pill.pill-pending {
+            background: var(--blue-100);
+            color: var(--blue-700);
+        }
+        [data-theme="dark"] .status-pill.pill-pending {
+            background: rgba(59, 130, 246, 0.2);
+            color: #93C5FD;
+        }
+
+        .status-pill.pill-advance {
+            background: var(--teal-100);
+            color: var(--teal-700);
+        }
+        [data-theme="dark"] .status-pill.pill-advance {
+            background: rgba(20, 184, 166, 0.2);
+            color: #5EEAD4;
+        }
+
+        .cotis-badges-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .meta-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2.5px 8px;
+            border-radius: 7px;
+            font-size: 0.67rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .meta-tag.tag-children {
+            background: var(--purple-50);
+            color: var(--purple-700);
+            border: 1px solid var(--purple-100);
+        }
+        [data-theme="dark"] .meta-tag.tag-children {
+            background: rgba(147, 51, 234, 0.15);
+            color: #D8B4FE;
+            border-color: rgba(147, 51, 234, 0.3);
+        }
+
+        .meta-tag.tag-arrears {
+            background: var(--rose-50);
+            color: var(--rose-700);
+            border: 1px solid #FECDD3;
+        }
+        [data-theme="dark"] .meta-tag.tag-arrears {
+            background: rgba(244, 63, 94, 0.15);
+            color: #FDA4AF;
+            border-color: rgba(244, 63, 94, 0.3);
+        }
+
+        .meta-tag.tag-discount {
+            background: var(--emerald-50);
+            color: var(--emerald-700);
+            border: 1px solid var(--emerald-200);
+        }
+        [data-theme="dark"] .meta-tag.tag-discount {
+            background: rgba(16, 185, 129, 0.15);
+            color: #6EE7B7;
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+
+        .meta-tag.tag-credit {
+            background: var(--cyan-50);
+            color: var(--cyan-700);
+            border: 1px solid var(--cyan-100);
+        }
+        [data-theme="dark"] .meta-tag.tag-credit {
+            background: rgba(6, 182, 212, 0.15);
+            color: #67E8F9;
+            border-color: rgba(6, 182, 212, 0.3);
+        }
+
+        .meta-tag.tag-remaining {
+            background: var(--amber-50);
+            color: var(--amber-800);
+            border: 1px solid #FDE68A;
+        }
+        [data-theme="dark"] .meta-tag.tag-remaining {
+            background: rgba(245, 158, 11, 0.15);
+            color: #FCD34D;
+            border-color: rgba(245, 158, 11, 0.3);
+        }
+
+        .meta-tag.tag-receipt {
+            font-family: var(--font-mono);
+            background: var(--card-bg-subtle);
+            color: var(--emerald-700);
+            border: 1px solid var(--border-color);
+        }
+        [data-theme="dark"] .meta-tag.tag-receipt {
+            color: #34D399;
+        }
+
+        /* =========================================================
+           CORRECTIF PHOTOS 2 & 3 : ACCORDÉON DÉTAIL FRATRIE
+           Montant en DT à droite strictement sur 1 seule ligne (nowrap) !
+           ========================================================= */
+        .children-breakdown {
+            background: var(--card-bg-subtle);
+            border: 1px solid var(--border-color);
+            border-radius: 11px;
+            padding: 8px 11px;
+            display: none;
+            flex-direction: column;
+            gap: 7px;
+            font-size: 0.74rem;
+        }
+
+        .children-breakdown.open {
+            display: flex;
+        }
+
+        .child-line {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding-bottom: 6px;
+            border-bottom: 1px dashed var(--border-color);
+        }
+
+        .child-line:last-child {
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .child-line-left {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            min-width: 0;
+            flex: 1;
+        }
+
+        .child-schedule-badge {
+            font-size: 0.65rem;
+            padding: 1.5px 6.5px;
+            border-radius: 6px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .child-line-amount {
+            font-family: var(--font-display);
+            font-weight: 800;
+            font-size: 0.8rem;
+            color: var(--text-main);
+            white-space: nowrap !important;
+            flex-shrink: 0 !important;
+            text-align: right;
+        }
+
+        .cotis-actions-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding-top: 8px;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .btn-toggle-details {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-family: var(--font-main);
+            font-size: 0.72rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 6px;
+            border-radius: 6px;
+            white-space: nowrap;
+        }
+
+        .btn-toggle-details:hover {
+            background: var(--card-bg-subtle);
+            color: var(--text-main);
+        }
+
+        .action-buttons-right {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+
+        .btn-primary-pay {
+            background: linear-gradient(135deg, #10B981, #059669);
+            color: white;
+            border: none;
+            height: 33px;
+            padding: 0 13px;
+            border-radius: 9px;
+            font-family: var(--font-main);
+            font-size: 0.73rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);
+            white-space: nowrap !important;
+            flex-shrink: 0;
+        }
+
+        .btn-secondary-receipt {
+            background: var(--emerald-50);
+            color: var(--emerald-700);
+            border: 1px solid var(--emerald-200);
+            height: 33px;
+            padding: 0 11px;
+            border-radius: 9px;
+            font-family: var(--font-main);
+            font-size: 0.72rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            white-space: nowrap !important;
+            flex-shrink: 0;
+        }
+
+        [data-theme="dark"] .btn-secondary-receipt {
+            background: rgba(16, 185, 129, 0.12);
+            color: #6EE7B7;
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-icon-ghost {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--card-bg-subtle);
+            color: var(--text-secondary);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.15s;
+            flex-shrink: 0;
+        }
+
+        .btn-icon-ghost:hover {
+            border-color: var(--rose-500);
+            color: var(--rose-600);
+            background: var(--rose-50);
+        }
+
+        @container viewport (min-width: 680px) {
+            .cotisations-list.layout-row-md .cotis-card {
+                flex-direction: row;
+                align-items: center;
+                justify-content: space-between;
+                padding: 12px 16px;
+                flex-wrap: wrap;
+            }
+            .cotisations-list.layout-row-md .cotis-card-main {
+                flex: 1;
+                min-width: 280px;
+            }
+            .cotisations-list.layout-row-md .cotis-actions-bar {
+                border-top: none;
+                padding-top: 0;
+            }
+            .cotisations-list.layout-row-md .children-breakdown {
+                width: 100%;
+                margin-top: 6px;
+            }
+        }
+
+        /* =========================================================
+           STYLE C (FAVORI UTILISATEUR) : VUE COMPACTE ÉLÉGANTE
+           ========================================================= */
+        .cotisations-list.layout-compact {
+            gap: 8px;
+        }
+        .cotisations-list.layout-compact .cotis-card {
+            padding: 10px 13px;
+            border-radius: 13px;
+            gap: 7px;
+        }
+        .cotisations-list.layout-compact .cotis-avatar {
+            width: 36px;
+            height: 36px;
+            font-size: 0.82rem;
+            border-radius: 10px;
+        }
+        .cotisations-list.layout-compact .cotis-badges-row {
+            display: none;
+        }
+
+        /* =========================================================
+           VUE PARENT (/mon-espace/cotisations)
+           ========================================================= */
+        .parent-balance-banner {
+            border-radius: 16px;
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            background: linear-gradient(135deg, #FFF1F2 0%, #FFE4E6 100%);
+            border: 1px solid #FECDD3;
+            color: #881337;
+        }
+
+        [data-theme="dark"] .parent-balance-banner {
+            background: linear-gradient(135deg, rgba(190, 18, 60, 0.25) 0%, rgba(136, 19, 55, 0.35) 100%);
+            border-color: rgba(244, 63, 94, 0.35);
+            color: #FFE4E6;
+        }
+
+        .parent-credit-banner {
+            border-radius: 14px;
+            padding: 11px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            background: var(--emerald-50);
+            border: 1px solid var(--emerald-200);
+            color: var(--emerald-900);
+        }
+
+        [data-theme="dark"] .parent-credit-banner {
+            background: rgba(16, 185, 129, 0.14);
+            border-color: rgba(16, 185, 129, 0.3);
+            color: #D1FAE5;
+        }
+
+        /* =========================================================
+           MODALES / BOTTOM SHEETS INTERACTIFS (ENCAISSEMENT & DÉPENSE)
+           ========================================================= */
+        .sheet-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(5px);
+            z-index: 120;
+            display: none;
+            align-items: flex-end;
+            justify-content: center;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .sheet-overlay.open {
+            display: flex;
+        }
+
+        @container viewport (min-width: 600px) {
+            .sheet-overlay {
+                align-items: center;
+                padding: 16px;
+            }
+        }
+
+        .bottom-sheet {
+            width: 100%;
+            max-width: 520px;
+            max-height: 92%;
+            overflow-y: auto;
+            background: var(--card-bg);
+            color: var(--text-main);
+            border-radius: 24px 24px 0 0;
+            padding: 16px 18px 20px;
+            box-shadow: 0 -12px 45px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 13px;
+            animation: slideUp 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @container viewport (min-width: 600px) {
+            .bottom-sheet {
+                border-radius: 22px;
+                box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.45);
+                padding: 20px 22px;
+            }
+            .sheet-handle {
+                display: none;
+            }
+        }
+
+        .sheet-handle {
+            width: 42px;
+            height: 4px;
+            border-radius: 99px;
+            background: var(--border-color);
+            margin: -4px auto 2px;
+            flex-shrink: 0;
+        }
+
+        /* =========================================================
+           DESIGN SPÉCIFIQUE DE LA MODALE "+ NOUVELLE DÉPENSE"
+           ========================================================= */
+        .expense-modal-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
+            padding-bottom: 11px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .expense-header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .expense-header-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #F43F5E, #E11D48);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(225, 29, 72, 0.3);
+        }
+
+        .expense-period-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 3px;
+            padding: 2px 8px;
+            border-radius: 99px;
+            font-size: 0.66rem;
+            font-weight: 700;
+            background: var(--rose-50);
+            color: var(--rose-700);
+            border: 1px solid var(--rose-200);
+        }
+        [data-theme="dark"] .expense-period-badge {
+            background: rgba(244, 63, 94, 0.15);
+            color: #FDA4AF;
+            border-color: rgba(244, 63, 94, 0.3);
+        }
+
+        .exp-cat-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+        }
+
+        .exp-cat-tile {
+            border: 1.5px solid var(--border-color);
+            background: var(--card-bg-subtle);
+            border-radius: 11px;
+            padding: 7px 4px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-align: center;
+        }
+
+        .exp-cat-tile:hover {
+            border-color: var(--rose-500);
+            background: var(--card-bg);
+        }
+
+        .exp-cat-tile.active {
+            border-color: var(--rose-600);
+            background: var(--rose-50);
+            box-shadow: 0 2px 8px rgba(225, 29, 72, 0.15);
+        }
+        [data-theme="dark"] .exp-cat-tile.active {
+            background: rgba(244, 63, 94, 0.18);
+            border-color: #FB7185;
+        }
+
+        .exp-cat-tile .cat-emoji {
+            font-size: 1.1rem;
+            line-height: 1;
+        }
+
+        .exp-cat-tile .cat-name {
+            font-size: 0.64rem;
+            font-weight: 700;
+            color: var(--text-secondary);
+            line-height: 1.15;
+        }
+
+        .exp-cat-tile.active .cat-name {
+            color: var(--rose-700);
+            font-weight: 800;
+        }
+        [data-theme="dark"] .exp-cat-tile.active .cat-name {
+            color: #FFE4E6;
+        }
+
+        .quick-title-chips {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            flex-wrap: wrap;
+            margin-top: 6px;
+        }
+
+        .quick-chip {
+            font-size: 0.67rem;
+            font-weight: 600;
+            padding: 3px 9px;
+            border-radius: 99px;
+            background: var(--card-bg-subtle);
+            border: 1px dashed var(--border-color);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .quick-chip:hover {
+            border-style: solid;
+            border-color: var(--rose-500);
+            color: var(--rose-600);
+            background: var(--rose-50);
+        }
+
+        .form-label {
+            font-size: 0.69rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 9px 11px;
+            border-radius: 10px;
+            border: 1.5px solid var(--border-color);
+            background: var(--card-bg-subtle);
+            color: var(--text-main);
+            font-family: var(--font-main);
+            font-size: 0.8rem;
+            font-weight: 600;
+            outline: none;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+
+        .form-control:focus {
+            border-color: var(--rose-500);
+            background: var(--card-bg);
+            box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.12);
+        }
+
+        .amount-input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .amount-input-wrapper input {
+            padding-right: 40px;
+            font-family: var(--font-display);
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: var(--rose-600);
+        }
+        [data-theme="dark"] .amount-input-wrapper input {
+            color: #FB7185;
+        }
+
+        .amount-unit-badge {
+            position: absolute;
+            right: 10px;
+            font-size: 0.72rem;
+            font-weight: 800;
+            color: var(--rose-600);
+            background: var(--rose-50);
+            padding: 2px 6px;
+            border-radius: 6px;
+            pointer-events: none;
+        }
+        [data-theme="dark"] .amount-unit-badge {
+            background: rgba(244, 63, 94, 0.2);
+            color: #FDA4AF;
+        }
+
+        .pay-method-pills {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+        }
+
+        .pay-method-btn {
+            border: 1.5px solid var(--border-color);
+            background: var(--card-bg-subtle);
+            color: var(--text-secondary);
+            border-radius: 9px;
+            padding: 6px 4px;
+            font-family: var(--font-main);
+            font-size: 0.69rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+
+        .pay-method-btn.active {
+            border-color: var(--rose-600);
+            background: var(--rose-50);
+            color: var(--rose-700);
+        }
+        [data-theme="dark"] .pay-method-btn.active {
+            background: rgba(244, 63, 94, 0.18);
+            border-color: #FB7185;
+            color: #FFE4E6;
+        }
+
+        /* =========================================================
+           CORRECTIF PHOTO 1 : SIMULATEUR D'IMPACT TRÉSORERIE NETTE
+           Présentation en 3 colonnes structurées (Actuel | Charge | Après)
+           sans aucun retour à la ligne sur "DT" ni deux-points orphelin !
+           ========================================================= */
+        .treasury-impact-card {
+            background: linear-gradient(135deg, var(--card-bg-subtle) 0%, var(--card-bg) 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 13px;
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .treasury-impact-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.68rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .treasury-impact-grid {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr auto 1.15fr;
+            align-items: center;
+            gap: 6px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            padding: 8px 10px;
+        }
+
+        .t-step {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .t-step.t-step-right {
+            text-align: right;
+            align-items: flex-end;
+        }
+
+        .t-step.t-step-center {
+            text-align: center;
+            align-items: center;
+        }
+
+        .t-step-label {
+            font-size: 0.62rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        .t-step-val {
+            font-family: var(--font-display);
+            font-size: 0.86rem;
+            font-weight: 800;
+            color: var(--text-main);
+            white-space: nowrap !important;
+            line-height: 1.2;
+            margin-top: 1px;
+        }
+
+        .t-step-op {
+            font-size: 0.8rem;
+            font-weight: 800;
+            color: var(--text-muted);
+            padding: 0 2px;
+        }
+
+        /* Autres composants Bottom Sheet Encaissement */
+        .duration-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .dur-card {
+            border: 1.5px solid var(--border-color);
+            background: var(--card-bg-subtle);
+            border-radius: 12px;
+            padding: 8px 6px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .dur-card.active {
+            border-color: var(--emerald-600);
+            background: var(--emerald-50);
+            color: var(--emerald-900);
+        }
+
+        [data-theme="dark"] .dur-card.active {
+            background: rgba(16, 185, 129, 0.18);
+            border-color: #10B981;
+            color: #FFFFFF;
+        }
+
+        .dur-card .m-title {
+            font-size: 0.74rem;
+            font-weight: 800;
+        }
+
+        .dur-card .m-sub {
+            font-size: 0.64rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .child-check-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1.5px solid var(--emerald-500);
+            background: var(--emerald-50);
+            cursor: pointer;
+        }
+
+        [data-theme="dark"] .child-check-card {
+            background: rgba(16, 185, 129, 0.12);
+        }
+
+        .sheet-total-box {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 14px;
+            border-radius: 12px;
+            background: var(--card-bg-subtle);
+            border: 1px solid var(--border-color);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- =========================================================
+         BARRE DE CONTRÔLE PRINCIPALE (SIMULATEUR)
+         ========================================================= -->
+    <header class="showcase-topbar">
+        <div class="showcase-brand">
+            <div class="showcase-logo">
+                <i data-lucide="receipt" style="width: 20px; height: 20px;"></i>
+            </div>
+            <div class="showcase-title">
+                <h1>Maquette Cotisations & Dépenses — Style C Retenu</h1>
+                <p>Correctifs appliqués : Onglets sans coupure (Photo 4), Montants DT sans retour à la ligne (Photos 2 & 3), Impact Trésorerie (Photo 1)</p>
+            </div>
+        </div>
+
+        <div class="showcase-controls">
+            <!-- Rôle : Admin vs Parent -->
+            <div class="control-pill-group">
+                <span class="ctrl-label">Rôle</span>
+                <button class="ctrl-btn active" id="btn-role-admin" onclick="setRole('admin')">
+                    <i data-lucide="shield-check" style="width:14px;height:14px;"></i>
+                    Direction / Admin
+                </button>
+                <button class="ctrl-btn" id="btn-role-parent" onclick="setRole('parent')">
+                    <i data-lucide="heart-handshake" style="width:14px;height:14px;"></i>
+                    Espace Parent
+                </button>
+            </div>
+
+            <!-- Taille d'écran -->
+            <div class="control-pill-group">
+                <span class="ctrl-label">Écran</span>
+                <button class="ctrl-btn active" id="btn-size-sm" onclick="setScreenSize('sm', '390px — Petit Écran (Smartphone)')">
+                    <i data-lucide="smartphone" style="width:14px;height:14px;"></i>
+                    Petit (390px)
+                </button>
+                <button class="ctrl-btn" id="btn-size-md-sm" onclick="setScreenSize('md-sm', '540px — Grand Mobile / Phablette')">
+                    <i data-lucide="tablet" style="width:14px;height:14px;"></i>
+                    Moyen-S (540px)
+                </button>
+                <button class="ctrl-btn" id="btn-size-md" onclick="setScreenSize('md', '768px — Moyen Écran (Tablette Portrait)')">
+                    <i data-lucide="tablet-smartphone" style="width:14px;height:14px;"></i>
+                    Moyen (768px)
+                </button>
+                <button class="ctrl-btn" id="btn-size-lg" onclick="setScreenSize('lg', '1024px — Tablette Paysage / Petit Laptop')">
+                    <i data-lucide="laptop" style="width:14px;height:14px;"></i>
+                    Moyen-L (1024px)
+                </button>
+            </div>
+
+            <!-- Thème Clair / Sombre -->
+            <div class="control-pill-group">
+                <button class="ctrl-btn" id="btn-theme" onclick="toggleTheme()">
+                    <i data-lucide="moon" id="theme-icon" style="width:14px;height:14px;"></i>
+                    <span id="theme-label">Mode Sombre</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Sous-barre de choix de disposition des cartes (Style C par défaut !) -->
+    <div class="design-subbar" id="admin-design-bar">
+        <span style="font-size: 0.74rem; color: #94A3B8; font-weight: 600;">Disposition :</span>
+        <button class="design-tab active" id="tab-style-c" onclick="setCardLayout('style-c')">
+            <span class="badge-rec">Choisi</span>
+            Style C — Liste Compacte & Détail Dépliable
+        </button>
+        <button class="design-tab" id="tab-style-a" onclick="setCardLayout('style-a')">
+            Style A — Carte avec Badges
+        </button>
+        <button class="design-tab" id="tab-style-b" onclick="setCardLayout('style-b')">
+            <i data-lucide="layout-grid" style="width:13px;height:13px;"></i>
+            Style B — Grille 2 Colonnes (768px)
+        </button>
+        <button class="design-tab btn-demo-expense" onclick="switchMainTab('expenses'); openExpenseSheet();">
+            <i data-lucide="plus-circle" style="width:14px;height:14px;"></i>
+            Tester Modale « + Nouvelle Dépense »
+        </button>
+    </div>
+
+    <!-- =========================================================
+         ZONE DE PRÉVISUALISATION RESPONSIVE
+         ========================================================= -->
+    <main class="showcase-stage">
+        <div class="viewport-indicator">
+            <i data-lucide="maximize-2" style="width: 14px; height: 14px; color: #10B981;"></i>
+            <span>Largeur active : <strong id="viewport-label">390px — Petit Écran (Smartphone)</strong></span>
+            <span>•</span>
+            <span>Style C activé par défaut • Tous les montants en <strong>DT</strong> sont verrouillés sur une seule ligne</span>
+        </div>
+
+        <div class="device-simulator size-sm" id="simulator-frame">
+            <!-- Statusbar -->
+            <div class="device-statusbar">
+                <span>09:41</span>
+                <span style="font-weight: 700; letter-spacing: 0.03em;">CRÈCHE MIMA ELGHALIA</span>
+                <span>5G • 100%</span>
+            </div>
+
+            <!-- =====================================================
+                 VUE 1 : DIRECTION / ADMIN
+                 ===================================================== -->
+            <div id="view-admin">
+                <div class="app-header">
+                    <div class="header-top">
+                        <div class="header-title-wrap">
+                            <div class="header-icon-box">
+                                <i data-lucide="receipt" style="width: 20px; height: 20px;"></i>
+                            </div>
+                            <div class="header-title-text">
+                                <h2>Gestion Financière : Cotisations & Dépenses</h2>
+                                <p>Suivi des recettes & charges, encaissement par famille, reçus PDF</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BARRE DES 2 ONGLETS PRINCIPAUX (CORRIGÉE PHOTO 4 : ZÉRO COUPURE DU 4) -->
+                <div class="main-nav-strip">
+                    <div class="primary-tabs-grid">
+                        <button class="primary-tab-btn active-invoices" id="main-tab-invoices" onclick="switchMainTab('invoices')">
+                            <i data-lucide="receipt" style="width:14px;height:14px;flex-shrink:0;"></i>
+                            <span class="tab-label-short">Cotisations</span>
+                            <span class="tab-label-long">Cotisations du Mois</span>
+                            <span class="tab-badge badge-emerald">18</span>
+                        </button>
+                        <button class="primary-tab-btn" id="main-tab-expenses" onclick="switchMainTab('expenses')">
+                            <i data-lucide="trending-down" style="width:14px;height:14px;flex-shrink:0;"></i>
+                            <span class="tab-label-short">Dépenses</span>
+                            <span class="tab-label-long">Dépenses & Trésorerie</span>
+                            <span class="tab-badge badge-rose" id="expenses-tab-count">4</span>
+                        </button>
+                    </div>
+
+                    <!-- Sélecteur de période universel + Bouton d'action dynamique sur la même ligne -->
+                    <div class="period-and-action-row" id="period-action-bar">
+                        <div class="period-selector-pill">
+                            <button class="period-arrow-btn" onclick="changeMonth(-1)" title="Mois précédent">
+                                <i data-lucide="chevron-left" style="width:14px;height:14px;"></i>
+                            </button>
+                            <span class="period-label-text" id="month-display">Novembre 2026</span>
+                            <button class="period-arrow-btn" onclick="changeMonth(1)" title="Mois suivant">
+                                <i data-lucide="chevron-right" style="width:14px;height:14px;"></i>
+                            </button>
+                            <button class="btn-this-month-pill" id="btn-reset-month" style="display:none;" onclick="resetCurrentMonth()">
+                                Ce mois
+                            </button>
+                        </div>
+
+                        <!-- Bouton visible sur l'onglet Cotisations -->
+                        <button class="btn-context-generate" id="btn-gen-invoices" onclick="pulseGenerate(this)">
+                            <i data-lucide="refresh-cw" style="width:12px;height:12px;"></i>
+                            <span>Générer ce mois</span>
+                        </button>
+
+                        <!-- Bouton visible sur l'onglet Dépenses -->
+                        <button class="btn-context-expense" id="btn-add-expense" onclick="openExpenseSheet()">
+                            <i data-lucide="plus-circle" style="width:13px;height:13px;"></i>
+                            <span>+ Nouvelle Dépense</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="app-body">
+                    <!-- Synthèse Financière -->
+                    <section class="kpi-section" id="kpi-summary-banner">
+                        <div class="kpi-treasury-hero">
+                            <div class="treasury-left">
+                                <div class="treasury-badge-icon">
+                                    <i data-lucide="landmark" style="width: 19px; height: 19px;"></i>
+                                </div>
+                                <div>
+                                    <div class="treasury-label">Trésorerie Nette (Caisse)</div>
+                                    <div class="treasury-sub">Cash perçu − Dépenses du mois</div>
+                                </div>
+                            </div>
+                            <div class="treasury-amount">
+                                <div class="val nowrap-dt" id="kpi-net-val">+1 840 <span style="font-size:0.75rem;font-weight:600;">DT</span></div>
+                                <span class="rate-pill">Cash net du mois</span>
+                            </div>
+                        </div>
+
+                        <div class="kpi-grid-4">
+                            <div class="kpi-mini-card kpi-expected" onclick="switchMainTab('invoices')">
+                                <div class="kpi-mini-top">
+                                    <span>Total Attendu</span>
+                                    <i data-lucide="file-text" style="width:12px;height:12px;"></i>
+                                </div>
+                                <div class="kpi-mini-val nowrap-dt">2 890 <span class="unit">DT</span></div>
+                                <div class="kpi-mini-foot">Cotisations du mois</div>
+                            </div>
+
+                            <div class="kpi-mini-card kpi-collected" onclick="switchMainTab('invoices')">
+                                <div class="kpi-mini-top">
+                                    <span>Cash Réel Perçu</span>
+                                    <i data-lucide="trending-up" style="width:12px;height:12px;color:#10B981;"></i>
+                                </div>
+                                <div class="kpi-mini-val nowrap-dt">2 260 <span class="unit">DT</span></div>
+                                <div class="kpi-mini-foot">dont +260 DT av.</div>
+                            </div>
+
+                            <div class="kpi-mini-card kpi-remaining" onclick="switchMainTab('invoices')">
+                                <div class="kpi-mini-top">
+                                    <span>Reste à Percevoir</span>
+                                    <i data-lucide="clock" style="width:12px;height:12px;color:#F43F5E;"></i>
+                                </div>
+                                <div class="kpi-mini-val nowrap-dt">630 <span class="unit">DT</span></div>
+                                <div class="kpi-mini-foot">Recouvrement : 78%</div>
+                            </div>
+
+                            <div class="kpi-mini-card kpi-expenses" onclick="switchMainTab('expenses')" title="Cliquer pour voir le détail des dépenses">
+                                <div class="kpi-mini-top">
+                                    <span>Dépenses du Mois</span>
+                                    <i data-lucide="trending-down" style="width:12px;height:12px;color:#F59E0B;"></i>
+                                </div>
+                                <div class="kpi-mini-val nowrap-dt"><span id="kpi-exp-val">420</span> <span class="unit">DT</span></div>
+                                <div class="kpi-mini-foot" id="kpi-exp-count">4 charge(s) du mois</div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- =================================================
+                         CONTENU ONGLET 1 : COTISATIONS DU MOIS (STYLE C PAR DÉFAUT)
+                         ================================================= -->
+                    <div id="tab-panel-invoices" style="display:flex;flex-direction:column;gap:12px;">
+                        <section class="toolbar-card">
+                            <div class="segmented-switch">
+                                <button class="seg-btn active" id="seg-family" onclick="switchEntityMode('family')">
+                                    <i data-lucide="users" style="width: 14px; height: 14px;"></i>
+                                    <span>Vue par Famille</span>
+                                    <span class="seg-count">18</span>
+                                </button>
+                                <button class="seg-btn" id="seg-child" onclick="switchEntityMode('child')">
+                                    <i data-lucide="user-check" style="width: 14px; height: 14px;"></i>
+                                    <span>Vue par Enfant</span>
+                                    <span class="seg-count">24</span>
+                                </button>
+                            </div>
+
+                            <div class="search-filter-row">
+                                <div class="search-input-wrap">
+                                    <i data-lucide="search"></i>
+                                    <input type="text" class="search-input" id="search-box" placeholder="Recherche parent, enfant, tél..." oninput="filterCards()">
+                                </div>
+                                <div class="filter-pills">
+                                    <button class="filter-pill active" onclick="setFilterStatus('all', this)">Tous</button>
+                                    <button class="filter-pill" onclick="setFilterStatus('unpaid', this)">À régler</button>
+                                    <button class="filter-pill" onclick="setFilterStatus('paid', this)">Payés</button>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="cotisations-list layout-compact layout-row-md" id="cards-container">
+                            <!-- CARTE 1 (CORRECTIF PHOTO 2 : 100 DT sur une seule ligne !) -->
+                            <article class="cotis-card status-pending" data-status="unpaid" data-search="famille ben ali karim yassine lina 22334455">
+                                <div class="cotis-card-main">
+                                    <div class="cotis-card-header">
+                                        <div class="cotis-identity">
+                                            <div class="cotis-avatar avatar-blue">BA</div>
+                                            <div class="cotis-title-block">
+                                                <div class="cotis-name-row">
+                                                    <span class="cotis-name">Famille Karim Ben Ali</span>
+                                                </div>
+                                                <div class="cotis-sub-row">
+                                                    <a href="tel:+21622334455" class="phone-link">
+                                                        <i data-lucide="phone" style="width:12px;height:12px;"></i>
+                                                        22 334 455
+                                                    </a>
+                                                    <span>•</span>
+                                                    <span>Yassine & Lina</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="cotis-price-box">
+                                            <div class="cotis-main-amount nowrap-dt">250 <span class="dt">DT</span></div>
+                                            <span class="status-pill pill-pending">
+                                                <i data-lucide="clock" style="width:11px;height:11px;"></i>
+                                                À régler
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div class="cotis-badges-row" style="margin-top: 8px;">
+                                        <span class="meta-tag tag-children">👨‍👩‍👧‍👦 2 enfants</span>
+                                        <span class="meta-tag tag-arrears">Arriéré : +30 DT</span>
+                                        <span class="meta-tag tag-discount">Remise : -10 DT</span>
+                                    </div>
+                                </div>
+
+                                <!-- Détail ouvert par défaut sur les 2 premières cartes pour visualiser le correctif Photos 2 & 3 -->
+                                <div class="children-breakdown open" id="details-1">
+                                    <div class="child-line">
+                                        <div class="child-line-left">
+                                            <strong>• Yassine Ben Ali</strong>
+                                            <span class="child-schedule-badge">☀️ Journée complète + Samedi</span>
+                                        </div>
+                                        <span class="child-line-amount">150 DT</span>
+                                    </div>
+                                    <div class="child-line">
+                                        <div class="child-line-left">
+                                            <strong>• Lina Ben Ali</strong>
+                                            <span class="child-schedule-badge">🌤️ Demi-journée (13h)</span>
+                                            <span style="color:var(--rose-600);font-size:0.67rem;font-weight:700;white-space:nowrap;">(+30 DT arriéré oct.)</span>
+                                        </div>
+                                        <span class="child-line-amount">100 DT</span>
+                                    </div>
+                                </div>
+
+                                <div class="cotis-actions-bar">
+                                    <button class="btn-toggle-details" onclick="toggleDetails('details-1', this)">
+                                        <i data-lucide="chevron-down" style="width:14px;height:14px;"></i>
+                                        <span>Masquer détail</span>
+                                    </button>
+                                    <div class="action-buttons-right">
+                                        <button class="btn-icon-ghost" title="Envoyer un rappel au parent" onclick="alert('🔔 Rappel de cotisation (250 DT) envoyé à Karim Ben Ali !')">
+                                            <i data-lucide="bell" style="width:14px;height:14px;"></i>
+                                        </button>
+                                        <button class="btn-primary-pay" onclick="openPaymentSheet('Famille Karim Ben Ali', 250, '22 334 455')">
+                                            <i data-lucide="credit-card" style="width:14px;height:14px;"></i>
+                                            <span>Encaisser 250 DT</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </article>
+
+                            <!-- CARTE 2 (CORRECTIF PHOTO 3 : Acompte à gauche, "Reste 50 DT" sur 1 seule ligne à droite !) -->
+                            <article class="cotis-card status-partial" data-status="unpaid" data-search="famille trabelsi sonia adem 55889900">
+                                <div class="cotis-card-main">
+                                    <div class="cotis-card-header">
+                                        <div class="cotis-identity">
+                                            <div class="cotis-avatar avatar-amber">ST</div>
+                                            <div class="cotis-title-block">
+                                                <div class="cotis-name-row">
+                                                    <span class="cotis-name">Sonia Trabelsi</span>
+                                                </div>
+                                                <div class="cotis-sub-row">
+                                                    <a href="tel:+21655889900" class="phone-link">
+                                                        <i data-lucide="phone" style="width:12px;height:12px;"></i>
+                                                        55 889 900
+                                                    </a>
+                                                    <span>•</span>
+                                                    <span>Adem (☀️ Journée)</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="cotis-price-box">
+                                            <div class="cotis-main-amount nowrap-dt" style="color:var(--amber-600);">50 <span class="dt">DT dû</span></div>
+                                            <span class="status-pill pill-partial">
+                                                <i data-lucide="pie-chart" style="width:11px;height:11px;"></i>
+                                                Partiel (80/130 DT)
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div class="cotis-badges-row" style="margin-top: 8px;">
+                                        <span class="meta-tag tag-children">👶 1 enfant</span>
+                                        <span class="meta-tag tag-remaining">⏳ Reste dû : 50 DT</span>
+                                        <span class="meta-tag tag-receipt">REC-202611-014</span>
+                                    </div>
+                                </div>
+
+                                <div class="children-breakdown open" id="details-2">
+                                    <div class="child-line">
+                                        <div class="child-line-left">
+                                            <strong>• Adem Trabelsi</strong>
+                                            <span class="child-schedule-badge">☀️ Journée (130 DT)</span>
+                                            <span style="color:var(--emerald-600);font-size:0.67rem;font-weight:700;white-space:nowrap;">✓ 80 DT versés</span>
+                                        </div>
+                                        <span class="child-line-amount" style="color:var(--amber-600);">Reste 50 DT</span>
+                                    </div>
+                                </div>
+
+                                <div class="cotis-actions-bar">
+                                    <button class="btn-toggle-details" onclick="toggleDetails('details-2', this)">
+                                        <i data-lucide="chevron-down" style="width:14px;height:14px;"></i>
+                                        <span>Masquer détail</span>
+                                    </button>
+                                    <div class="action-buttons-right">
+                                        <button class="btn-secondary-receipt" onclick="alert('📄 Ouverture du reçu partiel REC-202611-014.pdf')">
+                                            <i data-lucide="file-text" style="width:14px;height:14px;"></i>
+                                            <span>Reçu PDF</span>
+                                        </button>
+                                        <button class="btn-primary-pay" onclick="openPaymentSheet('Sonia Trabelsi (Solde Adem)', 50, '55 889 900')">
+                                            <i data-lucide="check-circle-2" style="width:14px;height:14px;"></i>
+                                            <span>Régler 50 DT</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </article>
+
+                            <!-- CARTE 3 -->
+                            <article class="cotis-card status-paid" data-status="paid" data-search="famille mansouri walid nour 98112233">
+                                <div class="cotis-card-main">
+                                    <div class="cotis-card-header">
+                                        <div class="cotis-identity">
+                                            <div class="cotis-avatar">WM</div>
+                                            <div class="cotis-title-block">
+                                                <div class="cotis-name-row">
+                                                    <span class="cotis-name">Walid Mansouri</span>
+                                                </div>
+                                                <div class="cotis-sub-row">
+                                                    <a href="tel:+21698112233" class="phone-link">
+                                                        <i data-lucide="phone" style="width:12px;height:12px;"></i>
+                                                        98 112 233
+                                                    </a>
+                                                    <span>•</span>
+                                                    <span>Nour (☀️ Journée)</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="cotis-price-box">
+                                            <div class="cotis-main-amount nowrap-dt" style="color:var(--emerald-600);">130 <span class="dt">DT</span></div>
+                                            <span class="status-pill pill-paid">
+                                                <i data-lucide="check-circle-2" style="width:11px;height:11px;"></i>
+                                                Soldé (Espèces)
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div class="cotis-badges-row" style="margin-top: 8px;">
+                                        <span class="meta-tag tag-children">👶 1 enfant</span>
+                                        <span class="meta-tag tag-credit">💰 Avoir disponible : +20 DT</span>
+                                        <span class="meta-tag tag-receipt">REC-202611-008</span>
+                                    </div>
+                                </div>
+
+                                <div class="children-breakdown" id="details-3">
+                                    <div class="child-line">
+                                        <div class="child-line-left">
+                                            <strong>• Nour Mansouri</strong>
+                                            <span class="child-schedule-badge">☀️ Journée complète</span>
+                                            <span style="color:var(--emerald-600);font-size:0.67rem;font-weight:700;white-space:nowrap;">✓ Réglé le 03/11</span>
+                                        </div>
+                                        <span class="child-line-amount" style="color:var(--emerald-600);">130 DT</span>
+                                    </div>
+                                </div>
+
+                                <div class="cotis-actions-bar">
+                                    <button class="btn-toggle-details" onclick="toggleDetails('details-3', this)">
+                                        <i data-lucide="chevron-down" style="width:14px;height:14px;"></i>
+                                        <span>Détail reçu</span>
+                                    </button>
+                                    <div class="action-buttons-right">
+                                        <button class="btn-secondary-receipt" onclick="alert('📄 Téléchargement du reçu officiel REC-202611-008.pdf')">
+                                            <i data-lucide="file-text" style="width:14px;height:14px;"></i>
+                                            <span>Reçu PDF</span>
+                                        </button>
+                                        <button class="btn-icon-ghost" title="Annuler l'encaissement (Droit à l'erreur)" onclick="alert('↩️ Modale de droit à l\'erreur : Annuler l\'encaissement REC-202611-008')">
+                                            <i data-lucide="rotate-ccw" style="width:14px;height:14px;"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </article>
+
+                            <!-- CARTE 4 -->
+                            <article class="cotis-card status-advance" data-status="paid" data-search="famille gharbi amine meriem fares 20445566">
+                                <div class="cotis-card-main">
+                                    <div class="cotis-card-header">
+                                        <div class="cotis-identity">
+                                            <div class="cotis-avatar avatar-teal">AG</div>
+                                            <div class="cotis-title-block">
+                                                <div class="cotis-name-row">
+                                                    <span class="cotis-name">Amine Gharbi</span>
+                                                </div>
+                                                <div class="cotis-sub-row">
+                                                    <a href="tel:+21620445566" class="phone-link">
+                                                        <i data-lucide="phone" style="width:12px;height:12px;"></i>
+                                                        20 445 566
+                                                    </a>
+                                                    <span>•</span>
+                                                    <span>Meriem & Fares</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="cotis-price-box">
+                                            <div class="cotis-main-amount nowrap-dt" style="color:var(--teal-600);">0 <span class="dt">DT dû</span></div>
+                                            <span class="status-pill pill-advance">
+                                                <i data-lucide="sparkles" style="width:11px;height:11px;"></i>
+                                                Soldé d'avance
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div class="cotis-badges-row" style="margin-top: 8px;">
+                                        <span class="meta-tag tag-children">👨‍👩‍👧‍👦 2 enfants</span>
+                                        <span class="meta-tag tag-discount">Soldé en avance (02/10/2026)</span>
+                                        <span class="meta-tag tag-receipt">REC-202610-003</span>
+                                    </div>
+                                </div>
+
+                                <div class="children-breakdown" id="details-4">
+                                    <div class="child-line">
+                                        <div class="child-line-left">
+                                            <strong>• Meriem & Fares Gharbi</strong>
+                                            <span class="child-schedule-badge">Trimestre (Oct - Nov - Déc)</span>
+                                        </div>
+                                        <span class="child-line-amount" style="color:var(--teal-600);">690 DT</span>
+                                    </div>
+                                </div>
+
+                                <div class="cotis-actions-bar">
+                                    <button class="btn-toggle-details" onclick="toggleDetails('details-4', this)">
+                                        <i data-lucide="chevron-down" style="width:14px;height:14px;"></i>
+                                        <span>Détail trimestre</span>
+                                    </button>
+                                    <div class="action-buttons-right">
+                                        <button class="btn-secondary-receipt" onclick="alert('📄 Ouverture du reçu trimestriel REC-202610-003.pdf')">
+                                            <i data-lucide="file-text" style="width:14px;height:14px;"></i>
+                                            <span>Reçu PDF</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </article>
+                        </section>
+                    </div>
+
+                    <!-- =================================================
+                         CONTENU ONGLET 2 : DÉPENSES & TRÉSORERIE
+                         ================================================= -->
+                    <div id="tab-panel-expenses" style="display:none;flex-direction:column;gap:12px;">
+                        <section class="toolbar-card">
+                            <div class="search-input-wrap" style="max-width:100%;flex:1;">
+                                <i data-lucide="search"></i>
+                                <input type="text" class="search-input" id="expense-search-box" placeholder="Rechercher dépense, fournisseur, note..." oninput="filterExpenses()">
+                            </div>
+                            <div class="filter-pills">
+                                <button class="filter-pill active-rose" onclick="setExpenseCat('all', this)">Toutes</button>
+                                <button class="filter-pill" onclick="setExpenseCat('utilities', this)">💡 STEG / SONEDE</button>
+                                <button class="filter-pill" onclick="setExpenseCat('food', this)">🍎 Alimentation</button>
+                                <button class="filter-pill" onclick="setExpenseCat('supplies', this)">📦 Fournitures</button>
+                                <button class="filter-pill" onclick="setExpenseCat('maintenance', this)">🔧 Entretien</button>
+                                <button class="filter-pill" onclick="setExpenseCat('salaries', this)">👥 Salaires</button>
+                                <button class="filter-pill" onclick="setExpenseCat('rent', this)">🏠 Loyer</button>
+                            </div>
+                        </section>
+
+                        <section class="cotisations-list layout-compact layout-row-md" id="expenses-container">
+
+                            <!-- DÉPENSE 1 -->
+                            <article class="cotis-card status-expense" data-cat="utilities" data-search="facture steg electricite climatisation">
+                                <div class="cotis-card-main">
+                                    <div class="cotis-card-header">
+                                        <div class="cotis-identity">
+                                            <div class="cotis-avatar avatar-expense">💡</div>
+                                            <div class="cotis-title-block">
+                                                <div class="cotis-name-row">
+                                                    <span class="cotis-name">Facture Électricité STEG</span>
+                                                    <span class="meta-tag tag-arrears">STEG / SONEDE / Net</span>
+                                                </div>
+                                                <div class="cotis-sub-row">
+                                                    <span>📅 05 nov. 2026</span>
+                                                    <span>•</span>
+                                                    <span>Mode : Espèces</span>
+                                                    <span>•</span>
+                                                    <span style="font-style:italic;">Réf: Quittance #88412</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="cotis-price-box">
+                                            <div class="cotis-main-amount nowrap-dt" style="color:var(--rose-600);">-165 <span class="dt">DT</span></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="cotis-actions-bar">
+                                    <span style="font-size:0.7rem;color:var(--text-muted);">Charge déduite de la caisse</span>
+                                    <div class="action-buttons-right">
+                                        <button class="btn-icon-ghost" title="Modifier la dépense" onclick="openExpenseSheet('Facture Électricité STEG', 165, 'utilities', '2026-11-05', 'Espèces', 'Réf: Quittance #88412')">
+                                            <i data-lucide="edit-2" style="width:14px;height:14px;"></i>
+                                        </button>
+                                        <button class="btn-icon-ghost" title="Supprimer la dépense" onclick="this.closest('.cotis-card').remove()">
+                                            <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </article>
+
+                            <!-- DÉPENSE 2 -->
+                            <article class="cotis-card status-expense" data-cat="food" data-search="courses alimentation gouters fruits eau minerale">
+                                <div class="cotis-card-main">
+                                    <div class="cotis-card-header">
+                                        <div class="cotis-identity">
+                                            <div class="cotis-avatar avatar-expense">🍎</div>
+                                            <div class="cotis-title-block">
+                                                <div class="cotis-name-row">
+                                                    <span class="cotis-name">Approvisionnement Goûters & Eau</span>
+                                                    <span class="meta-tag tag-discount">Alimentation & Goûters</span>
+                                                </div>
+                                                <div class="cotis-sub-row">
+                                                    <span>📅 04 nov. 2026</span>
+                                                    <span>•</span>
+                                                    <span>Mode : Espèces</span>
+                                                    <span>•</span>
+                                                    <span style="font-style:italic;">Fruits frais, packs eau, biscuits</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="cotis-price-box">
+                                            <div class="cotis-main-amount nowrap-dt" style="color:var(--rose-600);">-110 <span class="dt">DT</span></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="cotis-actions-bar">
+                                    <span style="font-size:0.7rem;color:var(--text-muted);">Charge déduite de la caisse</span>
+                                    <div class="action-buttons-right">
+                                        <button class="btn-icon-ghost" title="Modifier la dépense" onclick="openExpenseSheet('Approvisionnement Goûters & Eau', 110, 'food', '2026-11-04', 'Espèces', 'Fruits frais, packs eau, biscuits')">
+                                            <i data-lucide="edit-2" style="width:14px;height:14px;"></i>
+                                        </button>
+                                        <button class="btn-icon-ghost" title="Supprimer la dépense" onclick="this.closest('.cotis-card').remove()">
+                                            <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </article>
+
+                            <!-- DÉPENSE 3 -->
+                            <article class="cotis-card status-expense" data-cat="supplies" data-search="fournitures pedagogie peinture feuilles gommettes">
+                                <div class="cotis-card-main">
+                                    <div class="cotis-card-header">
+                                        <div class="cotis-identity">
+                                            <div class="cotis-avatar avatar-expense">📦</div>
+                                            <div class="cotis-title-block">
+                                                <div class="cotis-name-row">
+                                                    <span class="cotis-name">Fournitures Atelier Peinture & Éveil</span>
+                                                    <span class="meta-tag tag-children">Fournitures & Pédagogie</span>
+                                                </div>
+                                                <div class="cotis-sub-row">
+                                                    <span>📅 02 nov. 2026</span>
+                                                    <span>•</span>
+                                                    <span>Mode : Espèces</span>
+                                                    <span>•</span>
+                                                    <span style="font-style:italic;">Librairie El Amal Médenine</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="cotis-price-box">
+                                            <div class="cotis-main-amount nowrap-dt" style="color:var(--rose-600);">-85 <span class="dt">DT</span></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="cotis-actions-bar">
+                                    <span style="font-size:0.7rem;color:var(--text-muted);">Charge déduite de la caisse</span>
+                                    <div class="action-buttons-right">
+                                        <button class="btn-icon-ghost" title="Modifier la dépense" onclick="openExpenseSheet('Fournitures Atelier Peinture & Éveil', 85, 'supplies', '2026-11-02', 'Espèces', 'Librairie El Amal Médenine')">
+                                            <i data-lucide="edit-2" style="width:14px;height:14px;"></i>
+                                        </button>
+                                        <button class="btn-icon-ghost" title="Supprimer la dépense" onclick="this.closest('.cotis-card').remove()">
+                                            <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </article>
+
+                            <!-- DÉPENSE 4 -->
+                            <article class="cotis-card status-expense" data-cat="maintenance" data-search="produits entretien hygiène javel savon">
+                                <div class="cotis-card-main">
+                                    <div class="cotis-card-header">
+                                        <div class="cotis-identity">
+                                            <div class="cotis-avatar avatar-expense">🔧</div>
+                                            <div class="cotis-title-block">
+                                                <div class="cotis-name-row">
+                                                    <span class="cotis-name">Produits d'Hygiène & Maintenance</span>
+                                                    <span class="meta-tag tag-remaining">Entretien & Réparations</span>
+                                                </div>
+                                                <div class="cotis-sub-row">
+                                                    <span>📅 01 nov. 2026</span>
+                                                    <span>•</span>
+                                                    <span>Mode : Espèces</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="cotis-price-box">
+                                            <div class="cotis-main-amount nowrap-dt" style="color:var(--rose-600);">-60 <span class="dt">DT</span></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="cotis-actions-bar">
+                                    <span style="font-size:0.7rem;color:var(--text-muted);">Charge déduite de la caisse</span>
+                                    <div class="action-buttons-right">
+                                        <button class="btn-icon-ghost" title="Modifier la dépense" onclick="openExpenseSheet('Produits d\'Hygiène & Maintenance', 60, 'maintenance', '2026-11-01', 'Espèces', '')">
+                                            <i data-lucide="edit-2" style="width:14px;height:14px;"></i>
+                                        </button>
+                                        <button class="btn-icon-ghost" title="Supprimer la dépense" onclick="this.closest('.cotis-card').remove()">
+                                            <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </article>
+
+                        </section>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- =====================================================
+                 VUE 2 : ESPACE PARENT (/mon-espace/cotisations)
+                 ===================================================== -->
+            <div id="view-parent" style="display: none;">
+                <div class="app-header">
+                    <div class="header-top">
+                        <div class="header-title-wrap">
+                            <div class="header-icon-box">
+                                <i data-lucide="credit-card" style="width: 20px; height: 20px;"></i>
+                            </div>
+                            <div class="header-title-text">
+                                <h2>Mes Cotisations & Reçus</h2>
+                                <p>Suivi transparent de votre compte famille</p>
+                            </div>
+                        </div>
+                        <span class="status-pill pill-pending" style="background:rgba(255,255,255,0.2);color:white;">
+                            Année 2026/2027
+                        </span>
+                    </div>
+                </div>
+
+                <div class="app-body">
+                    <div class="parent-balance-banner">
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <div style="width:38px;height:38px;border-radius:11px;background:#E11D48;color:white;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;">
+                                ⏳
+                            </div>
+                            <div>
+                                <div style="font-size:0.8rem;font-weight:800;">Reste à payer sur votre compte famille</div>
+                                <div style="font-size:0.68rem;opacity:0.85;margin-top:2px;">À régler en espèces à l'accueil de la crèche</div>
+                            </div>
+                        </div>
+                        <div class="nowrap-dt" style="font-family:var(--font-display);font-size:1.3rem;font-weight:800;">
+                            250 DT
+                        </div>
+                    </div>
+
+                    <div class="parent-credit-banner">
+                        <div style="display:flex;align-items:center;gap:8px;font-size:0.74rem;font-weight:700;">
+                            <span>💳 Remise fratrie active sur votre dossier</span>
+                        </div>
+                        <span class="nowrap-dt" style="font-size:0.78rem;font-weight:800;color:var(--emerald-600);">-10 DT / mois</span>
+                    </div>
+
+                    <div class="cotis-card status-pending">
+                        <div class="cotis-card-header">
+                            <div>
+                                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                                    <span class="cotis-name">Cotisation Famille — Novembre 2026</span>
+                                    <span class="meta-tag tag-children">👨‍👩‍👧‍👦 2 enfants</span>
+                                </div>
+                                <div style="font-size:0.71rem;color:var(--text-muted);margin-top:2px;">
+                                    Échéance : 05/11/2026 • Crèche Mima Elghalia
+                                </div>
+                            </div>
+                            <div class="cotis-price-box">
+                                <div class="cotis-main-amount nowrap-dt">250 <span class="dt">DT</span></div>
+                                <span class="status-pill pill-pending">À régler</span>
+                            </div>
+                        </div>
+
+                        <div class="children-breakdown open" style="margin-top:4px;">
+                            <div class="child-line">
+                                <div class="child-line-left">
+                                    <strong>• Yassine Ben Ali</strong>
+                                    <span class="child-schedule-badge">☀️ Journée complète + Samedi</span>
+                                </div>
+                                <span class="child-line-amount">150 DT</span>
+                            </div>
+                            <div class="child-line">
+                                <div class="child-line-left">
+                                    <strong>• Lina Ben Ali</strong>
+                                    <span class="child-schedule-badge">🌤️ Demi-journée (13h)</span>
+                                    <span style="color:var(--rose-600);font-size:0.67rem;font-weight:700;white-space:nowrap;">(+30 DT arriéré oct.)</span>
+                                </div>
+                                <span class="child-line-amount">100 DT</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- =====================================================
+                 MODALE 1 : ENCAISSEMENT FAMILIAL
+                 ===================================================== -->
+            <div class="sheet-overlay" id="payment-sheet-overlay" onclick="if(event.target===this) closePaymentSheet()">
+                <div class="bottom-sheet">
+                    <div class="sheet-handle"></div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                        <div>
+                            <h3 style="font-family:var(--font-display);font-size:0.98rem;font-weight:800;" id="sheet-family-name">
+                                Règlement : Famille Karim Ben Ali
+                            </h3>
+                            <p style="font-size:0.72rem;color:var(--text-muted);" id="sheet-family-phone">
+                                📞 22 334 455 • Sélectionnez la durée et les enfants
+                            </p>
+                        </div>
+                        <button class="btn-icon-ghost" onclick="closePaymentSheet()">
+                            <i data-lucide="x" style="width:16px;height:16px;"></i>
+                        </button>
+                    </div>
+
+                    <div>
+                        <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;">
+                            Période à encaisser :
+                        </div>
+                        <div class="duration-grid">
+                            <div class="dur-card active" onclick="selectDuration(1, this)">
+                                <div class="m-title">1 mois</div>
+                                <div class="m-sub">Nov. 2026</div>
+                            </div>
+                            <div class="dur-card" onclick="selectDuration(2, this)">
+                                <div class="m-title">2 mois</div>
+                                <div class="m-sub">Nov. + Déc.</div>
+                            </div>
+                            <div class="dur-card" onclick="selectDuration(3, this)">
+                                <div class="m-title">Trimestre</div>
+                                <div class="m-sub">3 mois d'avance</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display:flex;flex-direction:column;gap:6px;">
+                        <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);">
+                            Enfants inclus dans le reçu :
+                        </div>
+                        <label class="child-check-card">
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <input type="checkbox" checked style="accent-color:#059669;width:16px;height:16px;">
+                                <div>
+                                    <div style="font-size:0.78rem;font-weight:800;">Yassine & Lina Ben Ali</div>
+                                    <div style="font-size:0.68rem;color:var(--text-muted);">Fratrie complète • Forfait + Samedi</div>
+                                </div>
+                            </div>
+                            <strong class="nowrap-dt" style="font-size:0.86rem;color:var(--emerald-600);" id="sheet-computed-due">250 DT</strong>
+                        </label>
+                    </div>
+
+                    <div class="sheet-total-box">
+                        <div>
+                            <div style="font-size:0.72rem;color:var(--text-muted);font-weight:600;">Montant espèces remis</div>
+                            <div style="font-size:0.68rem;color:var(--emerald-600);font-weight:700;">✓ Reçu PDF généré automatiquement</div>
+                        </div>
+                        <div class="nowrap-dt" style="font-family:var(--font-display);font-size:1.3rem;font-weight:800;color:var(--emerald-600);" id="sheet-final-amount">
+                            250 DT
+                        </div>
+                    </div>
+
+                    <button class="btn-primary-pay" style="width:100%;height:42px;font-size:0.84rem;border-radius:12px;" onclick="confirmMockPayment()">
+                        <i data-lucide="check-circle-2" style="width:16px;height:16px;"></i>
+                        <span>Valider l'encaissement & Émettre le Reçu PDF</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- =====================================================
+                 MODALE 2 : CONCEPTION ÉLÉGANTE "+ NOUVELLE DÉPENSE"
+                 (Avec Correctif Photo 1 : Jauge de Trésorerie Nette en 3 étapes)
+                 ===================================================== -->
+            <div class="sheet-overlay" id="expense-sheet-overlay" onclick="if(event.target===this) closeExpenseSheet()">
+                <div class="bottom-sheet">
+                    <div class="sheet-handle"></div>
+
+                    <!-- 1. En-tête de la modale Nouvelle Dépense -->
+                    <div class="expense-modal-header">
+                        <div class="expense-header-left">
+                            <div class="expense-header-icon">
+                                <i data-lucide="trending-down" style="width:20px;height:20px;"></i>
+                            </div>
+                            <div>
+                                <h3 style="font-family:var(--font-display);font-size:1rem;font-weight:800;color:var(--text-main);" id="expense-sheet-title">
+                                    Enregistrer une Dépense
+                                </h3>
+                                <span class="expense-period-badge">
+                                    <i data-lucide="calendar" style="width:11px;height:11px;"></i>
+                                    <span id="expense-modal-period">Caisse de Novembre 2026</span>
+                                </span>
+                            </div>
+                        </div>
+                        <button class="btn-icon-ghost" onclick="closeExpenseSheet()" title="Fermer">
+                            <i data-lucide="x" style="width:16px;height:16px;"></i>
+                        </button>
+                    </div>
+
+                    <!-- 2. Grille Visuelle des 8 Catégories -->
+                    <div>
+                        <label class="form-label">
+                            <span>1. Catégorie de charge *</span>
+                            <span style="font-weight:600;text-transform:none;color:var(--rose-600);" id="selected-cat-label">💡 STEG / SONEDE / Net</span>
+                        </label>
+                        <div class="exp-cat-grid" id="exp-cat-tiles">
+                            <div class="exp-cat-tile active" data-val="utilities" data-icon="💡" data-label="STEG / SONEDE / Net" onclick="selectExpenseCategoryTile(this)">
+                                <span class="cat-emoji">💡</span>
+                                <span class="cat-name">STEG / Eau</span>
+                            </div>
+                            <div class="exp-cat-tile" data-val="food" data-icon="🍎" data-label="Alimentation & Goûters" onclick="selectExpenseCategoryTile(this)">
+                                <span class="cat-emoji">🍎</span>
+                                <span class="cat-name">Alimentation</span>
+                            </div>
+                            <div class="exp-cat-tile" data-val="supplies" data-icon="📦" data-label="Fournitures & Pédagogie" onclick="selectExpenseCategoryTile(this)">
+                                <span class="cat-emoji">📦</span>
+                                <span class="cat-name">Fournitures</span>
+                            </div>
+                            <div class="exp-cat-tile" data-val="maintenance" data-icon="🔧" data-label="Entretien & Réparations" onclick="selectExpenseCategoryTile(this)">
+                                <span class="cat-emoji">🔧</span>
+                                <span class="cat-name">Entretien</span>
+                            </div>
+                            <div class="exp-cat-tile" data-val="salaries" data-icon="👥" data-label="Salaires & Personnel" onclick="selectExpenseCategoryTile(this)">
+                                <span class="cat-emoji">👥</span>
+                                <span class="cat-name">Salaires</span>
+                            </div>
+                            <div class="exp-cat-tile" data-val="rent" data-icon="🏠" data-label="Loyer & Locaux" onclick="selectExpenseCategoryTile(this)">
+                                <span class="cat-emoji">🏠</span>
+                                <span class="cat-name">Loyer</span>
+                            </div>
+                            <div class="exp-cat-tile" data-val="activities" data-icon="🎨" data-label="Sorties & Événements" onclick="selectExpenseCategoryTile(this)">
+                                <span class="cat-emoji">🎨</span>
+                                <span class="cat-name">Activités</span>
+                            </div>
+                            <div class="exp-cat-tile" data-val="other" data-icon="📝" data-label="Autres charges" onclick="selectExpenseCategoryTile(this)">
+                                <span class="cat-emoji">📝</span>
+                                <span class="cat-name">Autres</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. Intitulé + Suggestions rapides -->
+                    <div>
+                        <label class="form-label">
+                            <span>2. Intitulé / Libellé de la dépense *</span>
+                        </label>
+                        <input type="text" class="form-control" id="exp-input-title" placeholder="Ex: Facture STEG Novembre, Achat gouache...">
+                        <div class="quick-title-chips" id="quick-chips-container">
+                            <span class="quick-chip" onclick="fillQuickTitle('Facture Électricité STEG')">+ Facture STEG</span>
+                            <span class="quick-chip" onclick="fillQuickTitle('Facture Eau SONEDE')">+ Facture SONEDE</span>
+                            <span class="quick-chip" onclick="fillQuickTitle('Abonnement Internet Fibre')">+ Internet Fibre</span>
+                        </div>
+                    </div>
+
+                    <!-- 4. Montant (DT) & Date côte à côte -->
+                    <div style="display:grid;grid-template-columns:1.1fr 1fr;gap:10px;">
+                        <div>
+                            <label class="form-label">3. Montant *</label>
+                            <div class="amount-input-wrapper">
+                                <input type="number" step="0.5" min="0.5" class="form-control" id="exp-input-amount" placeholder="0.00" value="120" oninput="updateTreasuryPreview()">
+                                <span class="amount-unit-badge">DT</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="form-label">Date de dépense *</label>
+                            <input type="date" class="form-control" id="exp-input-date" value="2026-11-08">
+                        </div>
+                    </div>
+
+                    <!-- 5. Mode de règlement en pilules tactiles -->
+                    <div>
+                        <label class="form-label">4. Mode de règlement</label>
+                        <div class="pay-method-pills" id="exp-method-pills">
+                            <button type="button" class="pay-method-btn active" data-method="Espèces" onclick="selectPayMethod(this)">
+                                💵 Espèces
+                            </button>
+                            <button type="button" class="pay-method-btn" data-method="Chèque" onclick="selectPayMethod(this)">
+                                🏦 Chèque
+                            </button>
+                            <button type="button" class="pay-method-btn" data-method="Virement bancaire" onclick="selectPayMethod(this)">
+                                🔄 Virement
+                            </button>
+                            <button type="button" class="pay-method-btn" data-method="Carte bancaire" onclick="selectPayMethod(this)">
+                                💳 Carte
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 6. Note / Référence facture -->
+                    <div>
+                        <label class="form-label">5. Note / Réf. Facture (optionnel)</label>
+                        <input type="text" class="form-control" id="exp-input-notes" placeholder="Ex: Quittance N° 83910, fournisseur...">
+                    </div>
+
+                    <!-- 7. CORRECTIF PHOTO 1 : Aperçu structuré en 3 colonnes (Solde actuel − Cette dépense = Nouveau solde) -->
+                    <div class="treasury-impact-card">
+                        <div class="treasury-impact-header">
+                            <span style="display:inline-flex;align-items:center;gap:5px;">
+                                <i data-lucide="calculator" style="width:13px;height:13px;color:var(--rose-600);"></i>
+                                Simulation Trésorerie Nette
+                            </span>
+                            <span style="color:var(--emerald-600);text-transform:none;">Temps réel</span>
+                        </div>
+                        <div class="treasury-impact-grid">
+                            <div class="t-step">
+                                <span class="t-step-label">Solde actuel</span>
+                                <span class="t-step-val" id="preview-net-before">+1 840 DT</span>
+                            </div>
+                            <div class="t-step-op">−</div>
+                            <div class="t-step t-step-center">
+                                <span class="t-step-label">Charge saisie</span>
+                                <span class="t-step-val" style="color:var(--rose-600);" id="preview-charge-val">120 DT</span>
+                            </div>
+                            <div class="t-step-op">=</div>
+                            <div class="t-step t-step-right">
+                                <span class="t-step-label">Après dépense</span>
+                                <span class="t-step-val" style="color:var(--emerald-600);" id="preview-net-after">+1 720 DT</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 8. Boutons d'action -->
+                    <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px;padding-top:2px;">
+                        <button type="button" class="filter-pill" style="justify-content:center;height:40px;font-size:0.78rem;border-radius:11px;" onclick="closeExpenseSheet()">
+                            Annuler
+                        </button>
+                        <button type="button" class="btn-primary-pay" style="background:linear-gradient(135deg,#F43F5E,#E11D48);box-shadow:0 4px 12px rgba(225,29,72,0.3);width:100%;height:40px;font-size:0.8rem;border-radius:11px;" onclick="confirmMockExpense()">
+                            <i data-lucide="check-circle-2" style="width:16px;height:16px;"></i>
+                            <span id="exp-submit-label">Enregistrer la dépense</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        lucide.createIcons();
+
+        let baseSheetAmount = 250;
+        let currentExpensesTotal = 420;
+        let currentExpensesCount = 4;
+        let currentNetTreasury = 1840;
+
+        const months = ['Septembre 2026', 'Octobre 2026', 'Novembre 2026', 'Décembre 2026', 'Janvier 2027'];
+        let currentMonthIdx = 2;
+
+        const CATEGORY_SUGGESTIONS = {
+            utilities: ['Facture Électricité STEG', 'Facture Eau SONEDE', 'Abonnement Internet Fibre'],
+            food: ['Approvisionnement Goûters & Fruits', 'Packs Eau Minérale', 'Produits Laitiers & Biscuits'],
+            supplies: ['Papeterie & Peinture Gouache', 'Jeux Éducatifs & Puzzles', 'Cahiers & Gommettes'],
+            maintenance: ['Produits d\'Hygiène & Javel', 'Réparation Plomberie / Clim', 'Entretien Jardin & Cour'],
+            salaries: ['Acompte Salaire Éducatrice', 'Prime Mensuelle Équipe', 'Indemnité Stage'],
+            rent: ['Loyer Mensuel Crèche', 'Assurance Locaux', 'Taxe Municipale'],
+            activities: ['Décoration Anniversaire / Fête', 'Atelier Marionnettes', 'Goûter Spécial Événement'],
+            other: ['Frais Administratifs / Timbres', 'Pharmacie & Trousse Secours', 'Transport & Déplacement']
+        };
+
+        let selectedExpCat = {
+            val: 'utilities',
+            icon: '💡',
+            label: 'STEG / SONEDE / Net'
+        };
+        let selectedExpMethod = 'Espèces';
+
+        function formatDT(val) {
+            return Math.round(val).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' DT';
+        }
+
+        function switchMainTab(tabName) {
+            const btnInv = document.getElementById('main-tab-invoices');
+            const btnExp = document.getElementById('main-tab-expenses');
+
+            btnInv.className = 'primary-tab-btn' + (tabName === 'invoices' ? ' active-invoices' : '');
+            btnExp.className = 'primary-tab-btn' + (tabName === 'expenses' ? ' active-expenses' : '');
+
+            document.getElementById('tab-panel-invoices').style.display = tabName === 'invoices' ? 'flex' : 'none';
+            document.getElementById('tab-panel-expenses').style.display = tabName === 'expenses' ? 'flex' : 'none';
+
+            document.getElementById('btn-gen-invoices').style.display = (tabName === 'invoices') ? 'inline-flex' : 'none';
+            document.getElementById('btn-add-expense').style.display = (tabName === 'expenses') ? 'inline-flex' : 'none';
+        }
+
+        function setScreenSize(sizeKey, labelText) {
+            const sim = document.getElementById('simulator-frame');
+            sim.className = 'device-simulator size-' + sizeKey;
+            document.getElementById('viewport-label').textContent = labelText;
+
+            ['sm', 'md-sm', 'md', 'lg'].forEach(k => {
+                const btn = document.getElementById('btn-size-' + k);
+                if (btn) btn.classList.toggle('active', k === sizeKey);
+            });
+        }
+
+        function setRole(role) {
+            document.getElementById('view-admin').style.display = role === 'admin' ? 'block' : 'none';
+            document.getElementById('view-parent').style.display = role === 'parent' ? 'block' : 'none';
+            document.getElementById('admin-design-bar').style.display = role === 'admin' ? 'flex' : 'none';
+
+            document.getElementById('btn-role-admin').classList.toggle('active', role === 'admin');
+            document.getElementById('btn-role-parent').classList.toggle('active', role === 'parent');
+        }
+
+        function setCardLayout(style) {
+            ['cards-container', 'expenses-container'].forEach(id => {
+                const list = document.getElementById(id);
+                if (!list) return;
+                list.classList.remove('layout-row-md', 'layout-grid-md', 'layout-compact');
+                if (style === 'style-a') list.classList.add('layout-row-md');
+                else if (style === 'style-b') list.classList.add('layout-grid-md');
+                else if (style === 'style-c') {
+                    list.classList.add('layout-compact', 'layout-row-md');
+                }
+            });
+
+            if (style === 'style-b' && document.getElementById('simulator-frame').classList.contains('size-sm')) {
+                setScreenSize('md', '768px — Moyen Écran (Tablette Portrait)');
+            }
+
+            ['a', 'b', 'c'].forEach(s => {
+                document.getElementById('tab-style-' + s).classList.toggle('active', 'style-' + s === style);
+            });
+        }
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            const isDark = html.getAttribute('data-theme') === 'dark';
+            html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+            document.getElementById('theme-label').textContent = isDark ? 'Mode Sombre' : 'Mode Clair';
+            document.getElementById('btn-theme').classList.toggle('active-alt', !isDark);
+        }
+
+        function toggleDetails(id, btn) {
+            const el = document.getElementById(id);
+            el.classList.toggle('open');
+            const isOpen = el.classList.contains('open');
+            btn.querySelector('span').textContent = isOpen ? 'Masquer détail' : 'Voir détail';
+        }
+
+        function changeMonth(delta) {
+            currentMonthIdx = Math.max(0, Math.min(months.length - 1, currentMonthIdx + delta));
+            document.getElementById('month-display').textContent = months[currentMonthIdx];
+            document.getElementById('expense-modal-period').textContent = 'Caisse de ' + months[currentMonthIdx];
+            document.getElementById('btn-reset-month').style.display = (currentMonthIdx !== 2) ? 'inline-block' : 'none';
+        }
+
+        function resetCurrentMonth() {
+            currentMonthIdx = 2;
+            document.getElementById('month-display').textContent = months[2];
+            document.getElementById('expense-modal-period').textContent = 'Caisse de ' + months[2];
+            document.getElementById('btn-reset-month').style.display = 'none';
+        }
+
+        function pulseGenerate(btn) {
+            const original = btn.innerHTML;
+            btn.innerHTML = '<span>✓ 18 générées !</span>';
+            setTimeout(() => { btn.innerHTML = original; lucide.createIcons(); }, 1400);
+        }
+
+        function switchEntityMode(mode) {
+            document.getElementById('seg-family').classList.toggle('active', mode === 'family');
+            document.getElementById('seg-child').classList.toggle('active', mode === 'child');
+            document.querySelectorAll('.children-breakdown').forEach(el => {
+                el.classList.toggle('open', mode === 'child');
+            });
+        }
+
+        let currentStatusFilter = 'all';
+        function setFilterStatus(status, btn) {
+            currentStatusFilter = status;
+            document.querySelectorAll('#tab-panel-invoices .filter-pill').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            filterCards();
+        }
+
+        function filterCards() {
+            const q = (document.getElementById('search-box').value || '').toLowerCase().trim();
+            document.querySelectorAll('#cards-container .cotis-card').forEach(card => {
+                const st = card.getAttribute('data-status');
+                const text = card.getAttribute('data-search') || '';
+                const matchStatus = currentStatusFilter === 'all' || st === currentStatusFilter;
+                const matchSearch = !q || text.includes(q);
+                card.style.display = (matchStatus && matchSearch) ? 'flex' : 'none';
+            });
+        }
+
+        let currentExpenseCat = 'all';
+        function setExpenseCat(cat, btn) {
+            currentExpenseCat = cat;
+            document.querySelectorAll('#tab-panel-expenses .filter-pill').forEach(b => b.classList.remove('active-rose'));
+            btn.classList.add('active-rose');
+            filterExpenses();
+        }
+
+        function filterExpenses() {
+            const q = (document.getElementById('expense-search-box').value || '').toLowerCase().trim();
+            document.querySelectorAll('#expenses-container .cotis-card').forEach(card => {
+                const cat = card.getAttribute('data-cat');
+                const text = card.getAttribute('data-search') || '';
+                const matchCat = currentExpenseCat === 'all' || cat === currentExpenseCat;
+                const matchSearch = !q || text.includes(q);
+                card.style.display = (matchCat && matchSearch) ? 'flex' : 'none';
+            });
+        }
+
+        /* =========================================================
+           LOGIQUE DE LA MODALE "+ NOUVELLE DÉPENSE"
+           ========================================================= */
+        function selectExpenseCategoryTile(tileEl) {
+            document.querySelectorAll('#exp-cat-tiles .exp-cat-tile').forEach(t => t.classList.remove('active'));
+            tileEl.classList.add('active');
+
+            const val = tileEl.getAttribute('data-val');
+            const icon = tileEl.getAttribute('data-icon');
+            const label = tileEl.getAttribute('data-label');
+            selectedExpCat = { val, icon, label };
+
+            document.getElementById('selected-cat-label').textContent = icon + ' ' + label;
+
+            const chips = CATEGORY_SUGGESTIONS[val] || [];
+            const container = document.getElementById('quick-chips-container');
+            container.innerHTML = chips.map(c =>
+                `<span class="quick-chip" onclick="fillQuickTitle('${c.replace(/'/g, "\\'")}')">+ ${c}</span>`
+            ).join('');
+        }
+
+        function fillQuickTitle(text) {
+            document.getElementById('exp-input-title').value = text;
+            document.getElementById('exp-input-amount').focus();
+        }
+
+        function selectPayMethod(btnEl) {
+            document.querySelectorAll('#exp-method-pills .pay-method-btn').forEach(b => b.classList.remove('active'));
+            btnEl.classList.add('active');
+            selectedExpMethod = btnEl.getAttribute('data-method');
+        }
+
+        function updateTreasuryPreview() {
+            const amt = parseFloat(document.getElementById('exp-input-amount').value || 0) || 0;
+            const after = currentNetTreasury - amt;
+
+            document.getElementById('preview-net-before').textContent = (currentNetTreasury >= 0 ? '+' : '') + formatDT(currentNetTreasury);
+            document.getElementById('preview-charge-val').textContent = formatDT(amt);
+
+            const elAfter = document.getElementById('preview-net-after');
+            elAfter.textContent = (after >= 0 ? '+' : '') + formatDT(after);
+            elAfter.style.color = after >= 0 ? 'var(--emerald-600)' : 'var(--rose-600)';
+        }
+
+        function openExpenseSheet(title = '', amount = '120', cat = 'utilities', date = '2026-11-08', method = 'Espèces', notes = '') {
+            const isEdit = Boolean(title);
+            document.getElementById('expense-sheet-title').textContent = isEdit ? 'Modifier la Dépense' : 'Enregistrer une Dépense';
+            document.getElementById('exp-submit-label').textContent = isEdit ? 'Mettre à jour' : 'Enregistrer la dépense';
+
+            document.getElementById('exp-input-title').value = title;
+            document.getElementById('exp-input-amount').value = amount;
+            document.getElementById('exp-input-date').value = date;
+            document.getElementById('exp-input-notes').value = notes;
+
+            const matchingTile = document.querySelector(`#exp-cat-tiles .exp-cat-tile[data-val="${cat}"]`) || document.querySelector('#exp-cat-tiles .exp-cat-tile');
+            if (matchingTile) selectExpenseCategoryTile(matchingTile);
+
+            const matchingMethod = document.querySelector(`#exp-method-pills .pay-method-btn[data-method="${method}"]`) || document.querySelector('#exp-method-pills .pay-method-btn');
+            if (matchingMethod) selectPayMethod(matchingMethod);
+
+            updateTreasuryPreview();
+            document.getElementById('expense-sheet-overlay').classList.add('open');
+        }
+
+        function closeExpenseSheet() {
+            document.getElementById('expense-sheet-overlay').classList.remove('open');
+        }
+
+        function confirmMockExpense() {
+            const title = (document.getElementById('exp-input-title').value || '').trim() || 'Nouvelle charge crèche';
+            const amount = parseFloat(document.getElementById('exp-input-amount').value || 0) || 50;
+            const notes = (document.getElementById('exp-input-notes').value || '').trim();
+
+            const container = document.getElementById('expenses-container');
+            const card = document.createElement('article');
+            card.className = 'cotis-card status-expense';
+            card.setAttribute('data-cat', selectedExpCat.val);
+            card.setAttribute('data-search', (title + ' ' + notes).toLowerCase());
+            card.innerHTML = `
+                <div class="cotis-card-main">
+                    <div class="cotis-card-header">
+                        <div class="cotis-identity">
+                            <div class="cotis-avatar avatar-expense">${selectedExpCat.icon}</div>
+                            <div class="cotis-title-block">
+                                <div class="cotis-name-row">
+                                    <span class="cotis-name">${title}</span>
+                                    <span class="meta-tag tag-arrears">${selectedExpCat.label}</span>
+                                </div>
+                                <div class="cotis-sub-row">
+                                    <span>📅 08 nov. 2026</span>
+                                    <span>•</span>
+                                    <span>Mode : ${selectedExpMethod}</span>
+                                    ${notes ? `<span>•</span><span style="font-style:italic;">${notes}</span>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="cotis-price-box">
+                            <div class="cotis-main-amount nowrap-dt" style="color:var(--rose-600);">-${amount.toFixed(0)} <span class="dt">DT</span></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="cotis-actions-bar">
+                    <span style="font-size:0.7rem;color:var(--emerald-600);font-weight:700;">✓ Ajoutée à l'instant</span>
+                    <div class="action-buttons-right">
+                        <button class="btn-icon-ghost" title="Supprimer la dépense" onclick="this.closest('.cotis-card').remove()">
+                            <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            container.prepend(card);
+            lucide.createIcons();
+
+            currentExpensesTotal += amount;
+            currentExpensesCount += 1;
+            currentNetTreasury -= amount;
+
+            document.getElementById('kpi-exp-val').textContent = currentExpensesTotal.toFixed(0);
+            document.getElementById('kpi-exp-count').textContent = currentExpensesCount + ' charge(s) du mois';
+            document.getElementById('expenses-tab-count').textContent = currentExpensesCount;
+            document.getElementById('kpi-net-val').innerHTML = `${currentNetTreasury >= 0 ? '+' : ''}${currentNetTreasury.toFixed(0)} <span style="font-size:0.75rem;font-weight:600;">DT</span>`;
+
+            switchMainTab('expenses');
+            closeExpenseSheet();
+        }
+
+        function openPaymentSheet(familyName, amount, phone) {
+            baseSheetAmount = amount;
+            document.getElementById('sheet-family-name').textContent = 'Règlement : ' + familyName;
+            document.getElementById('sheet-family-phone').textContent = '📞 ' + phone + ' • Sélectionnez la durée et les enfants';
+            document.getElementById('sheet-computed-due').textContent = amount + ' DT';
+            document.getElementById('sheet-final-amount').textContent = amount + ' DT';
+            document.querySelectorAll('#payment-sheet-overlay .dur-card').forEach((c, i) => c.classList.toggle('active', i === 0));
+            document.getElementById('payment-sheet-overlay').classList.add('open');
+        }
+
+        function closePaymentSheet() {
+            document.getElementById('payment-sheet-overlay').classList.remove('open');
+        }
+
+        function selectDuration(monthsCount, el) {
+            document.querySelectorAll('#payment-sheet-overlay .dur-card').forEach(c => c.classList.remove('active'));
+            el.classList.add('active');
+            const total = baseSheetAmount * monthsCount;
+            document.getElementById('sheet-computed-due').textContent = total + ' DT';
+            document.getElementById('sheet-final-amount').textContent = total + ' DT';
+        }
+
+        function confirmMockPayment() {
+            closePaymentSheet();
+            alert('✅ Encaissement validé avec succès ! Le reçu officiel PDF a été généré.');
+        }
+    </script>
+</body>
+</html>

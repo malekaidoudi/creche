@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Megaphone, Calendar, AlertCircle, Info, CheckCircle, ArrowLeft, Lock } from 'lucide-react';
+import { Megaphone, Calendar, AlertCircle, Info, CheckCircle, Lock } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../../hooks/useAuth';
 import useIsMobile from '../../hooks/useIsMobile';
 import MobileNavigation from '../../components/mobile/MobileNavigation';
 import { useAccess, FEATURES } from '../../access';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3003/api';
+const API_URL = `${(import.meta.env.VITE_API_URL || 'http://localhost:3003/api').replace(/\/api\/?$/, '').replace(/\/+$/, '')}/api`;
 
 export default function AnnouncementsPage() {
   const navigate = useNavigate();
@@ -132,24 +132,15 @@ export default function AnnouncementsPage() {
       {/* Header Sticky */}
       <div className="sticky top-0 z-30 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-4 py-3 shadow-xs pt-[calc(env(safe-area-inset-top,0px)+0.75rem)]">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {user?.role === 'parent' && (
-              <button
-                onClick={() => navigate('/mon-espace')}
-                className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300 transition-colors"
-                title="Retour"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-            )}
-            <div className="flex items-center gap-2.5">
-              <Megaphone className="w-6 h-6 text-blue-600" />
-              <div>
-                <h1 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white leading-tight">Annonces</h1>
-                <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
-                  Restez informé des dernières actualités de la crèche
-                </p>
-              </div>
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+              <Megaphone className="w-5 h-5" />
+            </div>
+            <div>
+              <h1 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white leading-tight">Annonces</h1>
+              <p className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
+                Restez informé des dernières actualités de la crèche
+              </p>
             </div>
           </div>
         </div>

@@ -13,14 +13,12 @@ import {
     CalendarX,
     X,
     MessageCircle,
-    Bell,
-    Download
+    Bell
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useDialogContext } from '../../contexts/DialogContext';
 import api from '../../services/api';
-import PWAInstallGuide from './PWAInstallGuide';
 
 const ParentOptionsModals = ({
     showHolidays,
@@ -40,7 +38,6 @@ const ParentOptionsModals = ({
 
     // États pour Nouveautés
     const [news, setNews] = useState([]);
-    const [newsModalTab, setNewsModalTab] = useState('news'); // 'news' | 'install'
 
     // États pour Témoignage
     const [feedbackForm, setFeedbackForm] = useState({ name: '', message: '', rating: 5 });
@@ -115,7 +112,7 @@ const ParentOptionsModals = ({
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm"
+                        className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm"
                         onClick={onCloseHolidays}
                     >
                         <motion.div
@@ -211,7 +208,7 @@ const ParentOptionsModals = ({
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm"
+                        className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm"
                         onClick={onCloseNews}
                     >
                         <motion.div
@@ -239,37 +236,11 @@ const ParentOptionsModals = ({
                                         <X className="w-5 h-5" />
                                     </button>
                                 </div>
-
-                                {/* Onglets : Actualités / Installer l'app */}
-                                <div className="flex items-center gap-2 mt-4">
-                                    <button
-                                        onClick={() => setNewsModalTab('news')}
-                                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-colors ${newsModalTab === 'news'
-                                            ? 'bg-blue-600 text-white'
-                                            : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
-                                            }`}
-                                    >
-                                        <Bell className="w-4 h-4" />
-                                        {isRTL ? 'الأخبار' : 'Actualités'}
-                                    </button>
-                                    <button
-                                        onClick={() => setNewsModalTab('install')}
-                                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-colors ${newsModalTab === 'install'
-                                            ? 'bg-blue-600 text-white'
-                                            : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
-                                            }`}
-                                    >
-                                        <Download className="w-4 h-4" />
-                                        {isRTL ? 'تثبيت التطبيق' : "Installer l'app"}
-                                    </button>
-                                </div>
                             </div>
 
                             {/* Contenu */}
                             <div className="p-4 overflow-y-auto max-h-[60vh] flex-1">
-                                {newsModalTab === 'install' ? (
-                                    <PWAInstallGuide />
-                                ) : news.length === 0 ? (
+                                {news.length === 0 ? (
                                     <div className="text-center py-8">
                                         <Bell className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                                         <p className="text-gray-500 dark:text-gray-400">
@@ -326,7 +297,7 @@ const ParentOptionsModals = ({
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm"
+                        className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm"
                         onClick={onCloseFeedback}
                     >
                         <motion.div
